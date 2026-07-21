@@ -1,0 +1,416 @@
+<title>Deep Work — Design Brief</title>
+<style>
+  :root {
+    /* LangChain docs tokens (confirmed from langchain-ai/docs + live site, 2026-07-21) */
+    --primary: 22 31 52;          /* #161F34 */
+    --primary-light: 127 200 255; /* #7FC8FF */
+    --primary-dark: 0 109 221;    /* #006DDD */
+    --bg: 255 255 255;
+    --fg: 3 7 16;                 /* #030710 */
+    --gray-50:#F3F3F4; --gray-100:#EEEEEF; --gray-200:#DFDFE0; --gray-300:#CECECF;
+    --gray-400:#9F9FA0; --gray-500:#707071; --gray-600:#505051; --gray-700:#3F3F40;
+    --gray-800:#262626; --gray-900:#171718; --gray-950:#0A0B0B;
+    --accent: var(--primary);           /* role: interactive/active tint base (light mode) */
+    --border: var(--gray-100);
+    --border-strong: var(--gray-200);
+    --muted: var(--gray-500);
+    --code-bg: #eff1f5;                 /* catppuccin-latte */
+    --surface: #FFFFFF;
+    --surface-2: var(--gray-50);
+    --font-heading: 'Inter', 'TWK Lausanne', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --r-tile: 8px; --r-int: 12px; --r-sel: 13.6px; --r-code: 14px; --r-frame: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: 3 7 16; --fg: 255 255 255;
+      --accent: var(--primary-light);
+      --border: rgb(255 255 255 / 0.1);
+      --border-strong: #4f5d73;
+      --muted: var(--gray-400);
+      --code-bg: #1e1e2e;               /* catppuccin-mocha */
+      --surface: #0D1322;
+      --surface-2: #161F34;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: 255 255 255; --fg: 3 7 16; --accent: var(--primary);
+    --border: var(--gray-100); --border-strong: var(--gray-200); --muted: var(--gray-500);
+    --code-bg: #eff1f5; --surface: #FFFFFF; --surface-2: var(--gray-50);
+  }
+  :root[data-theme="dark"] {
+    --bg: 3 7 16; --fg: 255 255 255; --accent: var(--primary-light);
+    --border: rgb(255 255 255 / 0.1); --border-strong: #4f5d73; --muted: var(--gray-400);
+    --code-bg: #1e1e2e; --surface: #0D1322; --surface-2: #161F34;
+  }
+
+  body {
+    background: rgb(var(--bg)); color: rgb(var(--fg));
+    font-family: var(--font-body); font-size: 16px; line-height: 1.65;
+    margin: 0;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header.brief { border-bottom: 1px solid var(--border); padding-bottom: 2rem; margin-bottom: 2.5rem; }
+  .eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--primary-dark)); }
+  :root[data-theme="dark"] .eyebrow { color: rgb(var(--primary-light)); }
+  @media (prefers-color-scheme: dark) { .eyebrow { color: rgb(var(--primary-light)); } :root[data-theme="light"] .eyebrow { color: rgb(var(--primary-dark)); } }
+  h1 { font-family: var(--font-heading); font-weight: 700; font-size: 2.25rem; letter-spacing: -0.02em; margin: .4rem 0 .6rem; text-wrap: balance; }
+  h2 { font-family: var(--font-heading); font-weight: 600; font-size: 1.5rem; letter-spacing: -0.01em; margin: 3rem 0 .75rem; }
+  h3 { font-family: var(--font-heading); font-weight: 600; font-size: 1.125rem; margin: 1.75rem 0 .5rem; }
+  p { max-width: 46rem; margin: .5rem 0 1rem; }
+  .lede { font-size: 1.125rem; color: var(--muted); max-width: 44rem; }
+  a { color: inherit; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgb(var(--accent)); }
+  code, .mono { font-family: var(--font-mono); font-size: .875rem; }
+  code.inline { background: var(--code-bg); border-radius: 6px; padding: .1em .4em; }
+  .sec-note { color: var(--muted); font-size: .875rem; max-width: 46rem; }
+
+  .badge { display: inline-block; font-size: .6875rem; font-weight: 600; letter-spacing: .04em; border-radius: 999px; padding: .1rem .55rem; vertical-align: middle; }
+  .badge.confirmed { background: rgb(110 137 0 / .15); color: #6E8900; }
+  :root[data-theme="dark"] .badge.confirmed { color: #c3e796; }
+  @media (prefers-color-scheme: dark) { .badge.confirmed { color: #c3e796; } :root[data-theme="light"] .badge.confirmed { color: #6E8900; } }
+  .badge.adapted { background: rgb(136 82 112 / .15); color: #885270; }
+  :root[data-theme="dark"] .badge.adapted { color: #e6b8d3; }
+  @media (prefers-color-scheme: dark) { .badge.adapted { color: #e6b8d3; } :root[data-theme="light"] .badge.adapted { color: #885270; } }
+
+  /* swatches */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: .75rem; margin: 1rem 0 1.5rem; }
+  .sw { border: 1px solid var(--border-strong); border-radius: var(--r-int); overflow: hidden; background: var(--surface); }
+  .sw .chip { height: 64px; }
+  .sw .meta { padding: .5rem .65rem .6rem; font-size: .75rem; line-height: 1.45; }
+  .sw .meta b { display: block; font-weight: 600; font-size: .8125rem; }
+  .sw .meta code { font-size: .6875rem; color: var(--muted); }
+  .sw-row { display: flex; height: 40px; border-radius: var(--r-tile); overflow: hidden; border: 1px solid var(--border-strong); margin: .5rem 0 1rem; }
+  .sw-row div { flex: 1; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; margin: 1rem 0 1.5rem; }
+  th { text-align: left; font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: .4rem .75rem .4rem 0; border-bottom: 1px solid var(--border-strong); }
+  td { padding: .45rem .75rem .45rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  td code { white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; }
+  .tablewrap { overflow-x: auto; }
+
+  /* shell diagram */
+  .shell { border: 1px solid var(--border-strong); border-radius: var(--r-frame); overflow: hidden; margin: 1.25rem 0; background: var(--surface); font-size: .6875rem; }
+  .shell .lbl { font-family: var(--font-mono); color: var(--muted); }
+  .sh-banner { background: rgb(var(--primary-dark)); color: #fff; padding: .3rem .9rem; display: flex; justify-content: space-between; }
+  .sh-nav { display: flex; align-items: center; gap: 1rem; padding: 0 .9rem; height: 44px; border-bottom: 1px solid var(--border); }
+  .sh-logo { font-weight: 700; font-size: .8125rem; }
+  .sh-search { flex: 0 1 240px; margin-left: auto; background: rgb(var(--fg) / .04); border-radius: 999px; padding: .25rem .8rem; color: var(--muted); }
+  .sh-cta { background: rgb(var(--primary-dark)); color: #fff; border-radius: var(--r-int); padding: .3rem .7rem; font-weight: 600; font-size: .75rem; }
+  .sh-tabs { display: flex; gap: 1.4rem; padding: 0 .9rem; height: 32px; align-items: center; border-bottom: 1px solid var(--border); font-size: .75rem; font-weight: 500; }
+  .sh-tabs .on { color: rgb(var(--accent)); box-shadow: inset 0 -1px 0 rgb(var(--accent)); text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor; }
+  .sh-body { display: flex; min-height: 240px; }
+  .sh-side { width: 168px; border-right: 1px solid var(--border); padding: .7rem .5rem; display: flex; flex-direction: column; gap: 2px; }
+  .sh-side .item { padding: .3rem .6rem; border-radius: var(--r-int); }
+  .sh-side .item.on { background: rgb(var(--accent) / .1); color: rgb(var(--accent)); font-weight: 500; text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor; }
+  .sh-main { flex: 1; padding: .9rem 1rem; }
+  .sh-rail { width: 130px; border-left: 1px solid var(--border); padding: .7rem .8rem; color: var(--muted); }
+  .measure { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .4rem 1.5rem; font-size: .8125rem; margin: .75rem 0 1.25rem; }
+  .measure div { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dotted var(--border-strong); padding: .2rem 0; }
+  .measure code { color: var(--muted); }
+
+  /* specimens */
+  .spec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1rem 0 1.5rem; }
+  .spec { border: 1px solid var(--border-strong); border-radius: var(--r-frame); padding: 1rem; background: var(--surface); }
+  .spec h4 { margin: 0 0 .75rem; font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .demo-navitem { padding: .375rem .75rem; border-radius: var(--r-int); font-size: .875rem; margin-bottom: 2px; }
+  .demo-navitem.on { background: rgb(var(--accent) / .1); color: rgb(var(--accent)); text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor; }
+  .demo-navitem.hov { background: rgb(80 80 81 / .05); }
+  .demo-search { background: rgb(var(--fg) / .03); border: 1px solid var(--border); border-radius: 999px; padding: .45rem 1rem; font-size: .875rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .demo-cta { display: inline-block; background: rgb(var(--primary-dark)); color: #fff; border-radius: var(--r-int); padding: .5rem .9rem; font-size: .875rem; font-weight: 600; }
+  .demo-link { font-weight: 600; border-bottom: 1px solid rgb(var(--accent)); display: inline; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip-s { font-size: .75rem; font-weight: 600; border-radius: 999px; padding: .2rem .7rem; }
+  .c-run { background: rgb(0 109 221 / .12); color: rgb(var(--primary-dark)); }
+  :root[data-theme="dark"] .c-run { color: rgb(var(--primary-light)); background: rgb(127 200 255 / .12); }
+  @media (prefers-color-scheme: dark) { .c-run { color: rgb(var(--primary-light)); background: rgb(127 200 255 / .12); } :root[data-theme="light"] .c-run { color: rgb(var(--primary-dark)); background: rgb(0 109 221 / .12); } }
+  .c-ok { background: rgb(110 137 0 / .15); color: #6E8900; }
+  :root[data-theme="dark"] .c-ok { color: #c3e796; }
+  @media (prefers-color-scheme: dark) { .c-ok { color: #c3e796; } :root[data-theme="light"] .c-ok { color: #6E8900; } }
+  .c-wait { background: rgb(217 119 6 / .15); color: #b45309; }
+  .c-err { background: rgb(199 90 82 / .15); color: #c75a52; }
+  .demo-code { background: var(--code-bg); border-radius: var(--r-code); padding: .75rem .9rem; font-family: var(--font-mono); font-size: .8125rem; overflow-x: auto; }
+  .code-frame { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-frame); padding: 2px; }
+
+  /* screens */
+  .screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .screen { border: 1px solid var(--border-strong); border-radius: var(--r-frame); background: var(--surface); overflow: hidden; }
+  .screen .wire { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: .9rem; min-height: 120px; }
+  .screen .txt { padding: .85rem 1rem 1rem; font-size: .875rem; }
+  .screen .txt b { font-size: .9375rem; }
+  .screen .txt p { font-size: .8125rem; color: var(--muted); margin: .3rem 0 0; }
+  .w-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-tile); padding: .35rem .6rem; margin-bottom: .35rem; font-size: .6875rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+  .w-col2 { display: flex; gap: .5rem; }
+  .w-col2 > div { flex: 1; }
+  .w-pane { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-tile); padding: .4rem .5rem; font-size: .625rem; color: var(--muted); min-height: 64px; }
+  .w-dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; }
+
+  ul { padding-left: 1.2rem; max-width: 46rem; }
+  li { margin: .3rem 0; }
+  .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .do-col { border: 1px solid var(--border-strong); border-radius: var(--r-frame); padding: 1rem 1.2rem; background: var(--surface); }
+  .do-col h4 { margin: 0 0 .5rem; font-size: .9375rem; }
+  .do-col ul { padding-left: 1.1rem; font-size: .875rem; }
+  footer { margin-top: 3.5rem; border-top: 1px solid var(--border); padding-top: 1.25rem; color: var(--muted); font-size: .8125rem; }
+</style>
+
+<div class="wrap">
+<header class="brief">
+  <div class="eyebrow">Deep Work · Design brief · v0.1 · 21 Jul 2026</div>
+  <h1>An ecosystem-native workspace for agents that do real work</h1>
+  <p class="lede">Deep Work is the open-source Codex / Cowork-style client for the LangChain platform: sign in with your LangSmith org, dispatch tasks to deep agents, steer them live, approve their actions, and manage a fleet of agents — from web, desktop, and mobile. The UI is a deliberate near-carbon copy of <span class="mono">docs.langchain.com</span>, so it feels like a first-party LangChain surface. Every value marked <span class="badge confirmed">confirmed</span> was extracted from LangChain's own sources; <span class="badge adapted">adapted</span> marks our substitutions.</p>
+</header>
+
+<h2>1 · Design north star</h2>
+<p><b>“Feels like LangChain shipped it.”</b> This is a contribution to the LangChain ecosystem, not a third-party brand exercise. Calm, documentation-grade surfaces; dense but never cramped; the accent blue reserved for what's active or actionable. The product should read as an <i>operations room for work being done by agents</i> — lists, threads, diffs, approvals — not a chat toy.</p>
+<ul>
+  <li><b>Three product pillars to design for:</b> a <b>task inbox</b> (dispatch → watch → steer → review), an <b>approvals surface</b> (what agents need from you), and a <b>fleet manager</b> (create, configure, schedule agents).</li>
+  <li><b>Calm by default, alive when running:</b> state is shown with tint pills and small motion (a breathing status dot), never spinners everywhere.</li>
+  <li><b>The trace is truth:</b> every run links to its LangSmith trace; the UI never hides what the agent actually did.</li>
+</ul>
+
+<h2>2 · Palette <span class="badge confirmed">confirmed</span></h2>
+<p class="sec-note">LangChain rebranded to blue in 2025 — the green parrot era is over. Values below are from <span class="mono">langchain-ai/docs</span> (docs.json + live CSS) and the official brand file <span class="mono">.github/brand-guidelines.md</span>. Colors are stored as RGB triplets (<code class="inline">--primary: 22 31 52</code>) and composed with alpha: active pill = <code class="inline">rgb(var(--primary) / 0.10)</code>.</p>
+
+<h3>Brand core</h3>
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background:#161F34"></div><div class="meta"><b>Primary</b><code>#161F34 · light-mode accent/text</code></div></div>
+  <div class="sw"><div class="chip" style="background:#006DDD"></div><div class="meta"><b>Primary dark</b><code>#006DDD · CTAs, banner, links</code></div></div>
+  <div class="sw"><div class="chip" style="background:#7FC8FF"></div><div class="meta"><b>Primary light</b><code>#7FC8FF · dark-mode accent</code></div></div>
+  <div class="sw"><div class="chip" style="background:#FFFFFF; border-bottom:1px solid #EEEEEF"></div><div class="meta"><b>Background · light</b><code>#FFFFFF</code></div></div>
+  <div class="sw"><div class="chip" style="background:#030710"></div><div class="meta"><b>Background · dark</b><code>#030710</code></div></div>
+</div>
+
+<h3>Dark-blue family (surfaces in dark mode)</h3>
+<div class="sw-row">
+  <div style="background:#030710"></div><div style="background:#0D1322"></div><div style="background:#161F34"></div><div style="background:#2F4B68"></div><div style="background:#40668D"></div>
+</div>
+<p class="sec-note mono">#030710 → #0D1322 (raised surface) → #161F34 (elevated / inline-code bg) → #2F4B68 → #40668D · dark borders: white/10, emphasis #4f5d73</p>
+
+<h3>Light-blue tints</h3>
+<div class="sw-row">
+  <div style="background:#7FC8FF"></div><div style="background:#99D3FF"></div><div style="background:#B2DEFF"></div><div style="background:#CCE9FF"></div><div style="background:#E5F4FF"></div><div style="background:#F2FAFF"></div>
+</div>
+<p class="sec-note mono">#7FC8FF → #99D3FF → #B2DEFF → #CCE9FF → #E5F4FF → #F2FAFF</p>
+
+<h3>Extended (use sparingly: semantic + callouts)</h3>
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background:#6E8900"></div><div class="meta"><b>Green</b><code>#6E8900 · success / tip</code></div></div>
+  <div class="sw"><div class="chip" style="background:#885270"></div><div class="meta"><b>Plum</b><code>#885270 · example</code></div></div>
+  <div class="sw"><div class="chip" style="background:#504B5F"></div><div class="meta"><b>Purple</b><code>#504B5F</code></div></div>
+  <div class="sw"><div class="chip" style="background:#634643"></div><div class="meta"><b>Peach</b><code>#634643</code></div></div>
+</div>
+
+<h3>Gray scale (light-mode text &amp; borders)</h3>
+<div class="sw-row">
+  <div style="background:#F3F3F4"></div><div style="background:#EEEEEF"></div><div style="background:#DFDFE0"></div><div style="background:#CECECF"></div><div style="background:#9F9FA0"></div><div style="background:#707071"></div><div style="background:#505051"></div><div style="background:#3F3F40"></div><div style="background:#262626"></div><div style="background:#171718"></div><div style="background:#0A0B0B"></div>
+</div>
+<p class="sec-note mono">50 #F3F3F4 · 100 #EEEEEF (borders) · 200 #DFDFE0 · 300 #CECECF · 400 #9F9FA0 · 500 #707071 (muted text) · 600–950 → #0A0B0B. Note: Mintlify derives grays from the primary — if you shift the primary hue, regenerate the ramp.</p>
+
+<h2>3 · Typography</h2>
+<div class="tablewrap"><table>
+  <tr><th>Role</th><th>LangChain uses</th><th>Deep Work ships</th><th>Notes</th></tr>
+  <tr><td><b>Headings</b></td><td>TWK Lausanne 600–700 <span class="badge confirmed">confirmed</span></td><td>Inter 600/700 <span class="badge adapted">adapted</span></td><td>Lausanne is commercial — do not redistribute. Tokenize as <code class="inline">--font-heading</code> so LangChain can drop the real face in if they adopt the project. (Alt candidates to try in Figma: Instrument Sans, Public Sans.)</td></tr>
+  <tr><td><b>Body</b></td><td>Inter 400 <span class="badge confirmed">confirmed</span></td><td>Inter 400</td><td>16px base, line-height ~1.65.</td></tr>
+  <tr><td><b>Mono</b></td><td>IBM Plex Mono <span class="badge confirmed">confirmed</span></td><td>IBM Plex Mono</td><td>Code, diffs, tokens, tool args. (Brand spec names Aeonik Mono; Plex Mono is their fallback.)</td></tr>
+</table></div>
+<p class="sec-note">Scale (confirmed classes): h1 <code class="inline">30→36px / 600 / tracking-tight</code> · h2 24px/700 · h3 20px/600 · body 16px · UI text 14px (<code class="inline">text-sm</code> is the workhorse) · labels 12px/600/uppercase/+5% tracking · code 14px, line-height 24px. Signature trick: active items get <b>faux-bold</b> via <code class="inline">text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor</code> — emphasis without layout shift.</p>
+
+<h2>4 · App shell — the docs anatomy, repurposed <span class="badge confirmed">confirmed</span></h2>
+<p>The shell is lifted from docs.langchain.com and re-labeled for an app. Left sidebar switches from doc groups to workspace nav; the right rail becomes a <b>run/context panel</b> instead of “On this page”.</p>
+
+<div class="shell" role="img" aria-label="Annotated diagram of the Deep Work application shell">
+  <div class="sh-banner"><span>Optional banner · bg #006DDD · dismissible</span><span class="mono">min-h 40px</span></div>
+  <div class="sh-nav">
+    <span class="sh-logo">deepwork</span>
+    <span class="lbl">org / workspace ▾</span>
+    <div class="sh-search"><span>Search or run a command…</span><span>⌘K</span></div>
+    <span class="lbl">Docs</span>
+    <span class="sh-cta">New task</span>
+  </div>
+  <div class="sh-tabs">
+    <span class="on">Tasks</span><span>Approvals</span><span>Agents</span><span>Schedules</span><span>Activity</span><span class="lbl" style="margin-left:auto">tab row h-40px · header total 96px</span>
+  </div>
+  <div class="sh-body">
+    <div class="sh-side">
+      <span class="lbl" style="padding:.2rem .6rem">sidebar 288px</span>
+      <div class="item on">Inbox</div>
+      <div class="item">Running</div>
+      <div class="item">Needs review</div>
+      <div class="item">Done</div>
+      <div class="item lbl" style="margin-top:.5rem">FILTERS · text-xs 600</div>
+      <div class="item">deepwork repo</div>
+      <div class="item">research agent</div>
+    </div>
+    <div class="sh-main">
+      <span class="lbl">content · max-w 72rem · pad-left 88px · gap 48px</span>
+      <p style="font-size:.75rem; margin:.6rem 0 0; max-width: 30rem;">Task list / thread view / agent detail renders here. Breadcrumb eyebrow → h1 → toolbar, then content.</p>
+    </div>
+    <div class="sh-rail">
+      <span class="lbl">rail 19rem</span><br>Run status<br>Todos<br>Files changed<br>Trace ↗
+    </div>
+  </div>
+</div>
+
+<div class="measure">
+  <div><span>Shell max width</span><code class="num">92rem / 1472px</code></div>
+  <div><span>Content max width</span><code class="num">72rem / 1152px</code></div>
+  <div><span>Navbar height</span><code class="num">56px (h-14)</code></div>
+  <div><span>Tab row height</span><code class="num">40px (h-10)</code></div>
+  <div><span>Header total</span><code class="num">96px (6rem)</code></div>
+  <div><span>Sidebar width</span><code class="num">288px (18rem)</code></div>
+  <div><span>Right rail</span><code class="num">19rem incl 2.5rem gutter</code></div>
+  <div><span>Column gap</span><code class="num">48px (gap-x-12)</code></div>
+  <div><span>Content pad top</span><code class="num">40px (pt-10)</code></div>
+  <div><span>Sidebar item</span><code class="num">text-sm · py-1.5 · r-12</code></div>
+</div>
+
+<h2>5 · Radii &amp; iconography</h2>
+<div class="tablewrap"><table>
+  <tr><th>Token</th><th>Value</th><th>Used for</th></tr>
+  <tr><td><code>--r-tile</code></td><td class="num">8px</td><td>icon tiles, small cards (rounded-lg)</td></tr>
+  <tr><td><code>--r-int</code></td><td class="num">12px</td><td>buttons, sidebar items, CTAs (rounded-xl) — the workhorse</td></tr>
+  <tr><td><code>--r-sel</code></td><td class="num">13.6px</td><td>sidebar dropdown selector card</td></tr>
+  <tr><td><code>--r-code</code></td><td class="num">14px</td><td>inner code blocks</td></tr>
+  <tr><td><code>--r-frame</code></td><td class="num">16px</td><td>code-group frames, cards (rounded-2xl)</td></tr>
+  <tr><td><code>--r-pill</code></td><td class="num">9999px</td><td>search bar, status chips, badges</td></tr>
+</table></div>
+<p class="sec-note"><b>Icons:</b> Tabler outline (v3.44), 16px at 1.5px stroke, colored via the text color. <span class="badge confirmed">confirmed</span> Free &amp; MIT — use directly in Figma via the Tabler plugin.</p>
+
+<h2>6 · Component specimens</h2>
+<div class="spec-grid">
+  <div class="spec"><h4>Sidebar nav states</h4>
+    <div class="demo-navitem on">Inbox</div>
+    <div class="demo-navitem hov">Running (hover)</div>
+    <div class="demo-navitem">Done (rest)</div>
+  </div>
+  <div class="spec"><h4>Search pill · ⌘K</h4>
+    <div class="demo-search"><span>Search or run a command…</span><span class="mono">⌘K</span></div>
+    <p class="sec-note" style="margin:.6rem 0 0">h-36 · rounded-full · bg fg/3%</p>
+  </div>
+  <div class="spec"><h4>Primary CTA &amp; link</h4>
+    <span class="demo-cta">New task</span>
+    <p style="margin:.75rem 0 0; font-size:.875rem">Runs deep-link to <span class="demo-link">the LangSmith trace</span>.</p>
+  </div>
+  <div class="spec"><h4>Status chips (pill + tint)</h4>
+    <div class="chips">
+      <span class="chip-s c-run">● Running</span>
+      <span class="chip-s c-wait">● Needs review</span>
+      <span class="chip-s c-ok">● Done</span>
+      <span class="chip-s c-err">● Failed</span>
+    </div>
+    <p class="sec-note" style="margin:.6rem 0 0">Semantic hues from the extended palette, 12–15% tint bg.</p>
+  </div>
+  <div class="spec"><h4>Code / diff block</h4>
+    <div class="code-frame"><div class="demo-code">$ mda deploy · catppuccin latte/mocha</div></div>
+    <p class="sec-note" style="margin:.6rem 0 0">16px frame + 2px gutter + 14px inner.</p>
+  </div>
+  <div class="spec"><h4>Approval card actions</h4>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+      <span class="demo-cta" style="font-size:.8125rem">Approve</span>
+      <span class="demo-cta" style="font-size:.8125rem; background:transparent; color:inherit; border:1px solid var(--border-strong)">Edit</span>
+      <span class="demo-cta" style="font-size:.8125rem; background:transparent; color:inherit; border:1px solid var(--border-strong)">Respond</span>
+      <span class="demo-cta" style="font-size:.8125rem; background:transparent; color:var(--muted); border:1px solid var(--border)">Ignore</span>
+    </div>
+    <p class="sec-note" style="margin:.6rem 0 0">The four verbs of the agent-inbox HITL contract.</p>
+  </div>
+</div>
+
+<h2>7 · Screens to explore</h2>
+<p class="sec-note">Six screens make the v1 product. Wireframe seeds below — the interesting design questions are noted on each.</p>
+<div class="screens">
+  <div class="screen">
+    <div class="wire">
+      <div class="w-row"><span>Fix flaky auth test</span><span class="chip-s c-run" style="font-size:.5625rem">Running</span></div>
+      <div class="w-row"><span>Q3 competitor research</span><span class="chip-s c-wait" style="font-size:.5625rem">Review</span></div>
+      <div class="w-row"><span>Weekly changelog draft</span><span class="chip-s c-ok" style="font-size:.5625rem">Done</span></div>
+    </div>
+    <div class="txt"><b>1 · Task inbox</b><p>The home screen. Rows = tasks with agent, repo/context, status chip, age. Design Qs: how loud is “needs you”? Grouping by status vs recency? Codex uses a flat list; Cowork groups by state.</p></div>
+  </div>
+  <div class="screen">
+    <div class="wire">
+      <div class="w-col2">
+        <div class="w-pane" style="flex:1.6">thread: agent narration, tool cards, steering composer at bottom</div>
+        <div class="w-pane">todos ▸ files ▸ diff ▸ trace</div>
+      </div>
+    </div>
+    <div class="txt"><b>2 · Task detail</b><p>Thread + right rail (todos, files changed, subagents, trace link). Design Qs: how much tool-call detail by default? Collapsed cards with expand, or narrated summary? Where does “steer” input live while running?</p></div>
+  </div>
+  <div class="screen">
+    <div class="wire">
+      <div class="w-row"><span>execute: rm -rf node_modules</span><span style="font-size:.5625rem">Approve · Edit</span></div>
+      <div class="w-row"><span>commit_and_open_pr → main</span><span style="font-size:.5625rem">Approve · Edit</span></div>
+    </div>
+    <div class="txt"><b>3 · Approvals</b><p>Cross-agent inbox of interrupts (accept / edit / respond / ignore). One-tap from a push notification on mobile. Design Q: batch approvals? Diff preview inline?</p></div>
+  </div>
+  <div class="screen">
+    <div class="wire">
+      <div class="w-col2">
+        <div class="w-pane">■ SWE agent<br>gh · sandbox</div>
+        <div class="w-pane">■ Research<br>web · notion</div>
+        <div class="w-pane">■ Exec asst<br>gmail · cal</div>
+      </div>
+    </div>
+    <div class="txt"><b>4 · Agent fleet</b><p>Gallery of your org's agents (cards: name, tools, channels, last run). Fleet-parity: create from template, clone, share. Design Q: card grid vs table — LangSmith is table-heavy.</p></div>
+  </div>
+  <div class="screen">
+    <div class="wire">
+      <div class="w-col2">
+        <div class="w-pane" style="flex:1.4">chat: “make it also watch Linear” …</div>
+        <div class="w-pane">AGENTS.md<br>tools.json<br>schedules</div>
+      </div>
+    </div>
+    <div class="txt"><b>5 · Agent builder</b><p>Chat-to-configure on the left (Fleet's pattern), live config on the right: instructions (AGENTS.md), tools/connectors, sub-agents, skills, schedules, per-tool Auto/Ask. Everything is a file — show it.</p></div>
+  </div>
+  <div class="screen">
+    <div class="wire">
+      <div class="w-row"><span>Sign in with LangSmith</span><span>→</span></div>
+      <div class="w-row"><span>org: acme · workspace: eng</span><span>▾</span></div>
+      <div class="w-row"><span>or paste an API key (self-hosted)</span></div>
+    </div>
+    <div class="txt"><b>6 · Onboarding / settings</b><p>OAuth with LangSmith (device flow on desktop), workspace picker, API-key fallback. Design Q: how to make “your org, your data” legible — this is the wrapper's trust story.</p></div>
+  </div>
+</div>
+<p class="sec-note"><b>Mobile:</b> inbox-first. Tabs → bottom bar (Tasks / Approvals / Agents); task detail is the thread with the rail collapsing into swipeable sheets; approvals designed for push-notification → one-tap. <b>Desktop:</b> same web shell + tray/menubar presence, global ⌘K, native notifications.</p>
+
+<h2>8 · Voice &amp; terminology</h2>
+<div class="tablewrap"><table>
+  <tr><th>Say</th><th>Not</th><th>Why</th></tr>
+  <tr><td>Task</td><td>Thread, run, job</td><td>User intent, not plumbing. A task <i>contains</i> runs.</td></tr>
+  <tr><td>Agent</td><td>Assistant, deployment, graph</td><td>Matches Fleet / deepagents vocabulary.</td></tr>
+  <tr><td>Needs review</td><td>Interrupted, paused</td><td>States describe what the human should do.</td></tr>
+  <tr><td>Approve / Edit / Respond / Ignore</td><td>Accept / deny</td><td>The agent-inbox HITL verb set.</td></tr>
+  <tr><td>Workspace</td><td>Tenant, org unit</td><td>LangSmith's own noun.</td></tr>
+</table></div>
+
+<h2>9 · Do &amp; don't</h2>
+<div class="dos">
+  <div class="do-col"><h4>Do</h4><ul>
+    <li>Copy the docs shell dimensions and interaction details exactly — that's the brief.</li>
+    <li>Use blue-tinted neutrals (the gray ramp is derived from #161F34).</li>
+    <li>Reserve #006DDD / #7FC8FF for active, actionable, running.</li>
+    <li>Design light and dark together; dark surfaces step #030710 → #0D1322 → #161F34.</li>
+    <li>Show provenance everywhere: trace links, sandbox IDs, PR links.</li>
+  </ul></div>
+  <div class="do-col"><h4>Don't</h4><ul>
+    <li>Ship the LangChain wordmark/logo or the name “LangChain” in the brand (registered trademark; this is an unaffiliated contribution until they adopt it).</li>
+    <li>Embed TWK Lausanne or Aeonik Mono font files (commercial licenses).</li>
+    <li>Use pure black; the darkest ink is #030710 / #0A0B0B.</li>
+    <li>Invent a second accent hue — semantic colors come from the extended palette.</li>
+    <li>Bury agent actions behind “magic” — every mutation is inspectable.</li>
+  </ul></div>
+</div>
+
+<h2>10 · Figma starter</h2>
+<ul>
+  <li><b>Frames:</b> desktop 1440×900 (content col 1152), wide 1600, mobile 390×844, tray/menubar 380×560.</li>
+  <li><b>Grid:</b> 4px base unit; shell columns: 288 sidebar + fluid content + 304 rail; 48px column gap.</li>
+  <li><b>Styles to create first:</b> the 5 brand colors + 11 grays as color styles; text styles for h1 36/600, h2 24/700, h3 20/600, body 16/400, ui 14/400·500, label 12/600 caps, mono 14.</li>
+  <li><b>Components to build first:</b> sidebar item (rest/hover/active), status chip (4 states), task row, tool-call card (collapsed/expanded), approval card, agent card, search pill, primary/secondary button, tab bar.</li>
+  <li><b>Reference tabs to keep open:</b> docs.langchain.com (shell), smith.langchain.com (tables/traces), github.com/langchain-ai/agent-inbox &amp; deep-agents-ui (screens 1–3 precedents).</li>
+</ul>
+
+<footer>Deep Work · design brief v0.1 · tokens extracted 21 Jul 2026 from langchain-ai/docs (docs.json, style.css, brand-guidelines.md) and live docs.langchain.com CSS. Companion planning docs land in <span class="mono">spencerthomas/deepwork</span>.</footer>
+</div>

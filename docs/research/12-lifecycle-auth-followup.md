@@ -1,0 +1,23 @@
+# Research: programmatic lifecycle + LangSmith org auth (follow-up, agent a5ea90111708be37d, 2026-07-21)
+
+## 1. Programmatic agent lifecycle — VERDICT: build on the Control Plane API
+- **[CONFIRMED] Public Control Plane API** at api.smith.langchain.com (X-Api-Key + X-Tenant-Id): **Deployments v2 full CRUD** + revisions + redeploy + resource tiers; GitHub Integrations v1 (`GET /v1/integrations/github/install` → integration_id); Auth Service v2 (OAuth provider config); Listeners v2. Deployment sources: `github` (repo_url + integration_id, `build_on_push` CD), `internal_source` (uploaded tarball), `internal_docker`, `internal_template`, `external_docker` (self-hosted).
+- **[CONFIRMED] `mda` CLI internals** (managed-deepagents 0.3.1 PyPI/npm; Rust binary strings): deploys via `POST /v2/deployments` with `deployment_type: managed_deep_agent` + source tarball; uses `/v1/platform/hub/repos/` (Context Hub sync of instructions/skills/memories), `/runs/crons` + `/runs/crons/search` (schedules), `/api/v1/workspaces/current/secrets`. Managed deep agents "API" = control plane; deliberately unpublished during private beta (may be gated to whitelisted orgs).
+- **[NOT AVAILABLE] Fleet agent create/update API** — only `GET/PUT /v1/agent-builder/integrations` public. Unpublished "Fleet API" exists behind the smith.langchain.com UI (changelog refs). Fleet invocation/read IS public (LangGraph SDK/REST, PAT + `X-Auth-Scheme: langsmith-api-key`, owner-gated: non-owner 404 / workspace members read-only). Self-config-via-chat is a de-facto config channel (INFERRED works over API).
+- **[NOT AVAILABLE] Reverse import into Fleet** (webhooks outbound-only; export one-way). Workaround: treat **exported deepagents project format (fleet/{AGENTS.md, config.json, tools.json, subagents/, skills/})** as canonical; deploy via control plane ourselves.
+- **[CONFIRMED] Public Sandboxes REST API**: create/start/stop, exec (incl. WebSocket), file upload/download, glob/grep, TCP tunnels, snapshots, registries, service access tokens → managed Codex-style execution without Modal/Daytona.
+- Beta `issues-agent` REST group (agent CRUD per session, webhook secrets, LCU spend) = the shape of LangChain's coming agent-management APIs.
+
+## 2. "Sign in with LangSmith" — VERDICT: real OAuth 2.1 exists; Deep Work would be first OSS to use it
+- **[CONFIRMED] LangSmith = spec-complete OAuth 2.1 authorization server**: RFC 8414 metadata `/.well-known/oauth-authorization-server`; `/oauth/authorize` (auth code + PKCE S256 required); device flow `/oauth/device/code` (RFC 8628); **public Dynamic Client Registration** `/oauth/register` (RFC 7591, no pre-provisioning, public clients, loopback/HTTPS/native redirects); revocation. Used by MCP clients AND `langsmith auth login` (alpha CLI; tokens work on general LangSmith API). **Cloud-only — self-hosted must use API keys.**
+- **[CONFIRMED] API keys**: PATs (user-scoped, discouraged for apps) vs **service keys `lsv2_sk_`** (workspace/multi-workspace/org-scoped; org-scoped requires X-Tenant-Id per request; Enterprise pins roles to keys). Key reach: tracing/datasets, control plane, Agent Server/Fleet invocation, Sandboxes, secrets, orgs/workspaces, Remote MCP; Context Hub via /v1/platform/hub/repos/ (same key family INFERRED).
+- **[CONFIRMED] open-swe v2 does NOT use LangSmith as IdP** (GitHub OAuth + own PyJWT). Its "LangSmith OAuth provider" = **Agent Auth** (langchain-auth pkg; callback smith.langchain.com/host-oauth-callback/{provider_id}) brokering per-user third-party tokens (GitHub) for the agent runtime; providers manageable via Auth Service v2. → Two distinct auth planes: app identity (OAuth 2.1) + agent credentials (Agent Auth).
+- **[CONFIRMED] OSS status quo**: agent-chat-ui = env vars | paste URL+key (browser-persisted) | `langgraph-nextjs-api-passthrough` server proxy | custom deployment auth. No OSS "Sign in with LangSmith" exists yet.
+- Deep Work auth spec: OAuth (DCR + PKCE web/mobile, device flow desktop) primary on cloud; API-key paste + server-side proxy fallback (mandatory self-hosted). Org-scoped service key server-side for control-plane ops; per-user PAT/OAuth for Fleet invocation (owner-gating).
+
+## Open questions (carry into plan as risks)
+- OAuth `scopes_supported` + whether bearer tokens accepted by control plane and `*.langgraph.app` data planes (probe + test with user's beta account).
+- DCR ToS/allowlist for consumer apps (nothing forbids in docs).
+- `deployment_type: managed_deep_agent` acceptance for non-beta orgs; tarball presigned upload flow publicity.
+- Unpublished Fleet API stability (capture via devtools before depending).
+- agent-inbox auth pattern divergence (pending other researcher).

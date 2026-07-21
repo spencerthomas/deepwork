@@ -1,0 +1,79 @@
+/**
+ * Deep Work design tokens — seed.
+ * Extracted 2026-07-21 from langchain-ai/docs (src/docs.json, src/style.css,
+ * .github/brand-guidelines.md) and live docs.langchain.com CSS.
+ * Values marked ADAPTED are deliberate substitutions (font licensing);
+ * everything else is confirmed from source.
+ *
+ * Color storage convention (matches the docs site): RGB triplets composed
+ * with alpha at point of use — e.g. background: rgb(var(--primary) / 0.10).
+ */
+
+:root {
+  /* Brand core */
+  --primary: 22 31 52;            /* #161F34 — light-mode accent/active */
+  --primary-light: 127 200 255;   /* #7FC8FF — dark-mode accent/active */
+  --primary-dark: 0 109 221;      /* #006DDD — CTAs, banner, links, running */
+  --background: 255 255 255;
+  --foreground: 3 7 16;           /* #030710 — never pure black */
+
+  /* Dark-blue surface family (brand-guidelines.md) */
+  --surface-raised-dark: 13 19 34;    /* #0D1322 */
+  --surface-elevated-dark: 22 31 52;  /* #161F34 — also dark inline-code bg */
+
+  /* Gray ramp — machine-derived from primary; regenerate if hue changes */
+  --gray-50: 243 243 244;  --gray-100: 238 238 239; --gray-200: 223 223 224;
+  --gray-300: 206 206 207; --gray-400: 159 159 160; --gray-500: 112 112 113;
+  --gray-600: 80 80 81;    --gray-700: 63 63 64;    --gray-800: 38 38 38;
+  --gray-900: 23 23 24;    --gray-950: 10 11 11;
+
+  /* Extended palette (semantic + callouts; use sparingly) */
+  --green: 110 137 0;      /* #6E8900 success/approve */
+  --plum: 136 82 112;      /* #885270 */
+  --purple: 80 75 95;      /* #504B5F */
+  --peach: 99 70 67;       /* #634643 */
+  --warning: 245 158 11;   /* #f59e0b in-progress/interrupted (UI convention) */
+  --error: 239 68 68;      /* #ef4444 error/reject (UI convention) */
+
+  /* Borders */
+  --border: rgb(var(--gray-100));
+  --border-dark: rgb(255 255 255 / 0.1);
+  --border-dark-emphasis: 79 93 115; /* #4f5d73 — WCAG 1.4.11 fix on dark cards/tables */
+
+  /* Typography. ADAPTED: headings ship Inter 600/700 (OFL) in place of the
+     commercial TWK Lausanne; swap --font-heading in one place to rebrand. */
+  --font-heading: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radii */
+  --radius-tile: 0.5rem;      /* 8px  — icon tiles, small cards */
+  --radius-interactive: 0.75rem; /* 12px — buttons, nav items, CTAs (workhorse) */
+  --radius-selector: 0.85rem; /* sidebar dropdown card */
+  --radius-code: 14px;        /* inner code blocks */
+  --radius-frame: 1rem;       /* 16px — code-group frames, cards */
+  --radius-pill: 9999px;      /* search, chips */
+
+  /* Layout (live-verified) */
+  --shell-max-width: 92rem;   /* 1472px */
+  --content-max-width: 72rem; /* 1152px */
+  --navbar-height: 3.5rem;    /* 56px */
+  --tabbar-height: 2.5rem;    /* 40px — header total 6rem */
+  --banner-height: 2.5rem;    /* dismissible */
+  --sidebar-width: 18rem;     /* 288px */
+  --rail-width: 19rem;        /* incl. 2.5rem gutter */
+  --content-gap: 3rem;        /* 48px */
+  --content-pad-left: 5.5rem; /* 88px at lg+ */
+  --chat-max-width: 900px;    /* thread column (deep-agents-ui convention) */
+
+  /* Code blocks (catppuccin) */
+  --code-bg: #eff1f5;         /* latte */
+  --code-bg-dark: #1e1e2e;    /* mocha */
+}
+
+/* Signature interaction details:
+   - Active nav/tab: background rgb(var(--primary) / 0.10); color rgb(var(--primary));
+     dark mode uses --primary-light equivalents.
+   - Faux-bold active state (no layout shift):
+     text-shadow: -0.2px 0 0 currentColor, 0.2px 0 0 currentColor;
+   - Prose links: font-weight 600; no underline; border-bottom 1px solid rgb(var(--primary)). */

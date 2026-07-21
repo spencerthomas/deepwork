@@ -1,0 +1,28 @@
+# deps
+node_modules/
+.pnpm-store/
+__pycache__/
+*.py[cod]
+.venv/
+.uv/
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+.mda/
+.langgraph_api/
+src-tauri/target/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# tooling
+.DS_Store
+*.log
+coverage/
+.vercel/

@@ -40,7 +40,7 @@ Two options for what the webview loads:
 
 **Decision: B.** Rationale: the OSS/no-canonical-URL point alone is dispositive; F05's desktop auth design assumes it; F01 pre-cleared the static-export path. Consequences: (a) `apps/web` must keep zero server routes (P-005 reversal would force the sidecar question back open — [F01 §5](./01-monorepo-and-oss-infra.md)); (b) OAuth *authorization-code* callbacks never target the desktop app — desktop uses device flow only, so no `http://localhost` redirect handling is needed; (c) a "connect to remote instance" mode is deliberately post-v1 (§9-10).
 
-**Data path.** The webview talks to LangSmith control/data planes through one of two SDK modes ([F04 §3.3](./04-sdk-and-agent-sources.md)): **proxy** via a user-configured `apps/server` URL (team posture), or **direct** with the device-flow bearer (solo posture). Whether direct mode works from a Tauri origin (CORS on `api.smith.langchain.com` / `*.langgraph.app`) and whether a bundled `apps/server` sidecar is shipped instead is F05 §9-11 — mirrored here as §9-1, probed at M4 start.
+**Data path.** The webview talks to LangSmith control/data planes through one of two SDK modes ([F04 §3.3](./04-sdk-and-agent-sources.md)): **proxy** via a user-configured `apps/server` URL (team posture), or **direct** with the device-flow bearer attached **Rust-side** (solo posture) — direct-mode requests route through the narrowly-scoped `data_request` bridge (§4.2), so the bearer never enters the webview in either mode (§6). Whether direct mode's bearer is accepted by `api.smith.langchain.com` / `*.langgraph.app`, whether streaming through the bridge is viable, and whether a bundled `apps/server` sidecar ships instead is F05 §9-11 — mirrored here as §9-1, probed at M4 start.
 
 ### 3.2 Process model
 
@@ -96,7 +96,7 @@ Sign-out clears keychain entries + best-effort revocation (F05 §3.2); the tray 
 
 - **Plugin:** first-party updater (research 05). Official behavior is full-artifact updates from a static JSON or dynamic server; differential updates are unconfirmed (research 05 open question) — plan for full artifacts.
 - **Feed:** static `latest.json` attached to the GitHub Release (no update server to run — fits OSS/no-backend posture, D-003). **Channels:** `stable` only in v1; a `beta` channel is cheap later (separate manifest URL) — §9-4.
-- **Updater signing:** Tauri updater artifacts are signed with the updater keypair per the plugin's requirements (research 05 sources); public key baked into `tauri.conf.json`, private key = GitHub Actions secret held by Tom. Key custody/rotation → §9-2.
+- **Updater signing:** Tauri updater artifacts are signed with the updater keypair per the plugin's requirements (research 05 sources); public key baked into `tauri.conf.json`; private key is an **organization-managed** CI secret (org-level GitHub secret, environment-scoped to the release workflow, admin-restricted access — never any individual's personal custody), with a written rotation policy and a documented recovery path: losing the key strands existing installs on manual updates, so recovery = rotate the keypair, re-pin the pubkey in the next platform-signed release, and surface the manual-download upgrade path (§3.9). Remaining custody specifics → §9-2.
 - **Flow:** check on launch + every 24 h + tray `Check for updates…`; download in background; "Restart to update" toast + tray hint — never a forced restart mid-task (an agent may be streaming).
 
 **Artifact matrix** (proposed; exact bundler target names verified at impl against Tauri docs — §9-6):
@@ -143,7 +143,8 @@ apps/desktop/
 | JS → Rust | `set_badge` | `{count: number}` | Tray badge/tooltip; 0 clears |
 | JS → Rust | `set_recent_approvals` | `{items: {label, deepLink}[] ≤5}` | Tray menu section (§3.3) |
 | JS → Rust | `auth_start_device_flow` | `{}` → stream of state events | Rust drives F05 polling; returns no tokens |
-| JS → Rust | `auth_get_session` | `{}` → `{state: 'signedIn'\|'signedOut', workspace?}` | Plus short-lived bearer for direct mode **only if** §9-1 lands on webview-side calls |
+| JS → Rust | `auth_get_session` | `{}` → `{state: 'signedIn'\|'signedOut', workspace?}` | Session state only — never returns tokens in any mode; direct-mode data calls go through `data_request` |
+| JS → Rust | `data_request` | `{sourceId, path, method, headers?, body?}` → response status/headers + body (streamed as chunk events) | Direct mode only (§9-1): Rust attaches the keychain bearer and performs the request; targets restricted to the registered source / LangSmith origin allowlist (§6); not a general fetch — raw tokens never cross IPC |
 | JS → Rust | `auth_sign_out` | `{}` | Keychain clear + revocation per F05 |
 | JS → Rust | `router_ready` | `{}` | Unblocks cold-start deep-link delivery |
 | JS → Rust | `open_external` | `{url}` | System browser; https-only allowlist |
@@ -194,7 +195,7 @@ apps/desktop/
 
 ## 6. Security & privacy
 
-- **No secrets in the webview.** Device-flow tokens live in the OS keychain, written and read Rust-side (F05 acceptance 6); the JS context receives session *state*, and a raw bearer only if §9-1 resolves to webview-direct calls — in which case it is held in memory, never persisted to webview storage. There is no Node runtime in Tauri; there are no Node-side secrets by construction.
+- **No secrets in the webview — no exceptions.** Device-flow tokens live in the OS keychain, written and read Rust-side (F05 acceptance 6); the JS context receives session *state* only. Raw bearers never enter webview memory or storage in any mode: if §9-1 lands on direct mode, token-bearing requests run Rust-side through the `data_request` bridge (§4.2) — narrowly scoped to registered source origins, never a general fetch — aligning with F05's custody contract. There is no Node runtime in Tauri; there are no Node-side secrets by construction.
 - **CSP (bundled assets):** `default-src 'self'`; `connect-src` limited to the configured `apps/server` origin + `api.smith.langchain.com` + `*.langgraph.app` (+ loopback in explicit local mode, mirroring F05's local-mode carve-out); no remote script/style/frame sources. Agent-generated content rendering rules are unchanged from web (untrusted-boundary principle, [02 §10](../02-architecture.md)).
 - **IPC allowlist = §4.2, exactly.** Tauri capabilities granted: tray, notification, deep-link, updater (research 05's confirmed set) + the §4.2 custom commands + https-only opener; **no** shell-exec, no fs access, no arbitrary-URL webview navigation. Any plugin added via §9-3 extends this list explicitly in `capabilities/`.
 - `open_external` validates `https:` and refuses `deepwork://` (no self-referral loops); deep-link input is parsed against the §4.3 grammar and route-guarded by F07 — malformed links cannot address IPC.
@@ -236,8 +237,8 @@ apps/desktop/
 
 ## 9. Open questions
 
-1. **Packaging/data path** (= F05 §9-11): bundled `apps/server` sidecar (Python packaging cost) vs user-pointed shared instance vs direct-from-desktop with device-flow bearer — direct mode hinges on unverified CORS/bearer acceptance from a Tauri origin on `api.smith.langchain.com` and `*.langgraph.app` (O-001/O-002 adjacent). Task 1 resolves before anything else lands.
-2. **Signing costs & custody:** Apple Developer Program enrollment (paid, account owner TBD), Windows Authenticode route (OV cert vs Azure Trusted Signing), Tauri updater private-key custody/rotation policy — all unresolved; blocks task 12 only.
+1. **Packaging/data path** (= F05 §9-11): bundled `apps/server` sidecar (Python packaging cost) vs user-pointed shared instance vs direct-from-desktop via the Rust-side `data_request` bridge (§4.2) — direct mode hinges on unverified bearer acceptance on `api.smith.langchain.com` and `*.langgraph.app` (O-001/O-002 adjacent; Rust-side requests sidestep webview CORS, but SSE streaming through the bridge needs its own spike). Whichever lands, bearers stay out of the webview (§6). Task 1 resolves before anything else lands.
+2. **Signing costs & custody:** Apple Developer Program enrollment (paid, account owner TBD), Windows Authenticode route (OV cert vs Azure Trusted Signing), Tauri updater key rotation cadence + recovery drill (custody model fixed in §3.7: organization-managed CI secret) — unresolved; blocks task 12 only.
 3. **Unverified Tauri mechanisms** (research 05 confirms only updater/notification/deep-link/tray): global-shortcut registration, window-state persistence, autostart, single-instance enforcement, and the exact keychain/secret-storage plugin (incl. Linux secret-service behavior). Verify against Tauri v2 plugin docs at M4 start; each addition extends the §6 capability list explicitly.
 4. **Update channels:** is a `beta` channel wanted for v1.x dogfooding, and is differential updating real (research 05 open question) or are full ~5 MB-installer-class artifacts fine forever?
 5. **Desktop event transport — resolved with F19**: desktop subscribes to `GET /api/notify/stream` (§3.4; F19 §4). Residual: whether a post-v1 OS-level push path (closed-app coverage) is worth pursuing, and F19 §9-Q2 (webhooks on `interrupted`) still bounds needs-review coverage.

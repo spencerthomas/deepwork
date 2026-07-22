@@ -4,7 +4,7 @@
 
 Sources: [03 · UI spec](../03-ui-spec.md) (§3.4) · [02 · Architecture](../02-architecture.md) (§6, §2–3) · [06 · Frontend implementation](../06-frontend-implementation.md) (Phase E) · [04 · Roadmap](../04-roadmap.md) (M3) · [01 · Vision](../01-vision.md) (pillar 3, cut line) · [07 · Org intelligence](../07-org-intelligence.md) (Layer 0) · [08 · deepagents feature map](../08-deepagents-feature-map.md) · [research 20 · MDA API](../../research/20-gapfill-mda-api.md) · [research 10 · open-swe/Fleet](../../research/10-openswe-fleet.md) · [research 12 · lifecycle & auth](../../research/12-lifecycle-auth-followup.md) · [research 01 · MDA & Deployment](../../research/01-managed-deep-agents.md) · [research 23 · runtime tiers](../../research/23-gapfill-runtime-tiers.md)
 
-Stack facts applied: frontend is Next.js (D-022); control-plane calls that need org/workspace keys go through the Python FastAPI `apps/server` glue (P-005, provisional). Fleet CRUD is not public (O-004); beta caveats are surfaced honestly, never papered over (O-003).
+Stack facts applied: frontend is Next.js (D-022); control-plane calls that need org/workspace keys go through the Python FastAPI `apps/server` glue (P-005, provisional — [F28](./28-backend-glue-service.md)). Fleet CRUD is not public ([research 12](../../research/12-lifecycle-auth-followup.md)) and MDA invocation acceptance for non-beta orgs is unverified (O-003) — the manager degrades gracefully and surfaces beta caveats honestly, never papering over them ([02 §6](../02-architecture.md)).
 
 ## 1. Scope
 
@@ -15,16 +15,16 @@ Stack facts applied: frontend is Next.js (D-022); control-plane calls that need 
 - **Configuration editing** as a file-first editor over the canonical deepagents project layout ([02 §3](../02-architecture.md)), backed by Context Hub repos (`/v1/platform/hub/repos/`) — diffable, versioned, with explicit draft/saved/published semantics.
 - **Per-tool Auto/Ask matrix** compiling to `interrupt_on`, including its documented limits (filesystem `permissions` rules do not cover `execute`/MCP tools — [02 §3](../02-architecture.md), [08](../08-deepagents-feature-map.md) §Permissions).
 - **Create flow**: template gallery → form → deploy handoff; **import/export** in the Fleet-export deepagents ZIP format, round-trip tested (v1 release criterion 4, [04](../04-roadmap.md)).
-- **Graceful degradation**: every action without a public API renders as a deep link to smith.langchain.com with an honest explanation (O-004, O-003; [02 §6](../02-architecture.md) beta caveats).
+- **Graceful degradation**: every action without a public API renders as a deep link to smith.langchain.com with an honest explanation ([02 §6](../02-architecture.md): "anything not creatable via API is linked out"; beta gaps per O-003).
 
 ### Out of scope
 
 - Schedules UX (cron editor, run history, untrusted-payload rendering) — [F18](./18-schedules-and-activity.md); F17 only embeds F18's per-agent scoped view.
-- Environment editor internals (snapshot picker, `setup.sh`, egress allow-lists) — F11 (see [catalog](./README.md)); F17 hosts its tab.
+- Environment editor internals (snapshot picker, `setup.sh`, egress allow-lists) — [F11](./11-execution-and-environments.md); F17 hosts its tab.
 - First-run deploy wizard and MDA-availability detection — [F06](./06-onboarding-and-deploy.md); F17's Deploy tab reuses F06's deploy engine for redeploys.
 - Org-memory content conventions, the read-only mount, and the propose/review loop — [F22](./22-org-intelligence-v1.md); F17's memory editor obeys F22's rules.
-- Template *content* (prompts, tool sets, rubric defaults per template) — F15 (see [catalog](./README.md)); F17 renders the gallery.
-- Fleet agent create/update — not public (O-004); link-out only. Slack/Teams channels config — cut from v1 ([01](../01-vision.md) cut line); channel *display* only, beta-flagged. Chat-to-configure builder — post-v1 ([01](../01-vision.md)).
+- Template *content* (prompts, tool sets, rubric defaults per template) — [F15](./15-task-templates.md); F17 renders the gallery.
+- Fleet agent create/update — no public API ([research 12](../../research/12-lifecycle-auth-followup.md)); link-out only. O-004 (self-config-via-chat over the public run API) is the tracked post-M3 probe that could soften this. Slack/Teams channels config — cut from v1 ([01](../01-vision.md) cut line); channel *display* only, beta-flagged. Chat-to-configure builder — post-v1 ([01](../01-vision.md)).
 - Approvals inbox, task loop, and `packages/agent` composition itself.
 
 ## 2. Dependencies & seams

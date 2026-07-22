@@ -92,6 +92,7 @@ Fired runs are threads (ephemeral mode creates one per fire; persistent reuses o
 - **Filters** (sidebar, URL-as-state via nuqs per doc 03 conventions): agent/source · `task_type` · status · time window (24h/7d/30d/custom). All applied to `threads.search` params where supported (status), else client-side on the merged page.
 - **Pagination**: per-source cursors (limit/offset), k-way merge by `updated_at`, "load more" fetches the next page from whichever sources are exhausted at the merge frontier — identical to the inbox aggregation strategy (doc 03 §3.1); virtualized list per doc 03 §7.
 - **Storm ergonomics**: ≥3 consecutive rows from the same schedule collapse into one grouped row ("×N fires of <schedule>, last at …") — this makes a misconfigured every-minute cron visible instead of unusable (§5).
+- **States**: skeleton rows while loading; empty state per filter combination ("Nothing ran in this window — widen the range or dispatch a task"); degraded = per-source banner, feed continues from healthy sources.
 
 ### 3.6 Untrusted-content rendering rule
 

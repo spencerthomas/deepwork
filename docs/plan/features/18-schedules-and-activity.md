@@ -11,12 +11,12 @@ Owns the two shell tabs from UI spec §3.5 plus the cron plumbing beneath them:
 | In scope | Out of scope (neighbor) |
 |---|---|
 | **Schedules tab**: org-wide cron list aggregated across agent sources; per-schedule prompt/input, next-run, enable/disable, edit, delete | Org-analyst / consolidation schedule **templates** and what they do → [F22](./22-org-intelligence-v1.md) (this spec provides the surface they prefill) |
-| **`CronEditor`** component (`packages/ui`, inventory item in UI spec §4) | Channels/`deliver_to` **delivery** (Slack etc.) — 0.4.0-dev only; field is flagged-off here, owned by a future channels feature |
-| `define_schedule` (project) vs UI-created cron distinction/merge rules | Agent config editor where `schedules/` files are edited → fleet-manager feature (Phase E, doc 06); this spec's list deep-links there |
+| **`CronEditor`** component (`packages/ui`, inventory item in UI spec §4) | Channels/`deliver_to` **delivery** (Slack etc.) — 0.4.0-dev only; field is flagged-off here, owned by a future channels feature (post-v1 backlog, no spec yet) |
+| `define_schedule` (project) vs UI-created cron distinction/merge rules | Agent config editor where `schedules/` files are edited → [F17 fleet manager](./17-fleet-manager.md); this spec's list deep-links there |
 | **Run history** per schedule → task detail; run↔schedule correlation metadata | Tracing-metadata convention ownership → F22 (we consume + extend it with schedule keys) |
-| **Activity tab**: cross-agent recent-runs feed, filters, pagination, slim counts | Charts/analytics — Deep Work never re-implements observability (D-003; doc 02 §10); LangSmith deep links only (P-002, doc 06 Phase E) |
-| **Untrusted-content rendering rule** for fired-run/webhook payloads (component + where it applies) | Agent-side payload wrapping middleware (`packages/agent`); thread-view rendering internals → F09 (we define the boundary contract it consumes) |
-| SDK surface (`packages/sdk` crons client) and pass-through via the `apps/server` key proxy (P-005) | Any Deep Work-side database or scheduler — none exists in v1 (doc 02 §1) |
+| **Activity tab**: cross-agent recent-runs feed, filters, pagination, slim counts | Charts/analytics — Deep Work deep-links out rather than re-implementing observability (doc 02 §10, following D-003's wrapper stance); LangSmith deep links only (P-002; doc 06 Phase E) |
+| **Untrusted-content rendering rule** for fired-run/webhook payloads (component + where it applies) | Agent-side payload wrapping middleware (`packages/agent` → [F14](./14-agent-package.md)); thread-view rendering internals → [F09](./09-task-detail-and-streaming.md) (we define the boundary contract it consumes) |
+| SDK surface (`packages/sdk` crons client) and pass-through via the `apps/server` key proxy (P-005 → [F28](./28-backend-glue-service.md)) | Any Deep Work-side database or scheduler — none exists in v1 (D-003; doc 02 §1) |
 
 Roadmap anchor: M3 — "Schedules CRUD (crons API) + Activity feed; untrusted-payload rendering" ([04-roadmap](../04-roadmap.md)). v1 release criterion 5 requires untrusted-payload boundaries on **all** webhook/schedule content.
 
@@ -25,11 +25,13 @@ Roadmap anchor: M3 — "Schedules CRUD (crons API) + Activity feed; untrusted-pa
 | Dependency / seam | Direction | Detail |
 |---|---|---|
 | Agent Server crons API (`POST /runs/crons`, `POST /runs/crons/search`) | consumes | Verified surface: mda binary calls both against the **deployment's own Agent Server**, not the control plane ([research 20](../../research/20-gapfill-mda-api.md) fact 2; [research 12](../../research/12-lifecycle-auth-followup.md) §1). Per-deployment ⇒ org-wide view = fan-out |
-| `AgentSource` registry (`packages/sdk`, built M1) | consumes | Same multi-source aggregation primitive as the task inbox (`threads.search` aggregation, UI spec §3.1) |
-| `apps/server` key proxy (P-005, FastAPI) | consumes | All crons/threads calls pass through the existing proxy route; **no new server state, no new routes** for this feature |
-| F22 · org intelligence ([./22-org-intelligence-v1.md](./22-org-intelligence-v1.md)) | mutual | F22's org-analyst template opens `CronEditor` prefilled; F22 owns the run-metadata convention (`task_type/agent/actor/tenant/context/surface`, doc 02 §10) — this spec adds the `surface:"schedule"` + `deepwork_schedule_id` keys (§4.3) |
-| F09 · task detail / thread view (spec not yet drafted) | provides | `UntrustedContent` boundary component + the "external-origin message" flag in the normalized stream layer; F09 must wrap flagged messages in thread view |
-| Fleet-manager agent detail (doc 03 §3.4 *Schedules* tab) | provides | Reuses `ScheduleList` + `CronEditor` filtered to one agent; single implementation |
+| [F07 app shell](./07-app-shell-and-navigation.md) | consumes | Both tabs are shell routes in `apps/web` (Next.js, D-022) under the six-tab IA (P-002; doc 03 §2) |
+| [F04 `AgentSource` registry](./04-sdk-and-agent-sources.md) (`packages/sdk`, built M1) | consumes | Same multi-source aggregation primitive as the task inbox (`threads.search` aggregation, UI spec §3.1) |
+| [F28 `apps/server` key proxy](./28-backend-glue-service.md) (P-005, FastAPI) | consumes | All crons/threads calls pass through the existing proxy route; **no new server state, no new routes** for this feature |
+| [F22 org intelligence](./22-org-intelligence-v1.md) | mutual | F22's org-analyst template opens `CronEditor` prefilled; F22 owns the run-metadata convention (`task_type/agent/actor/tenant/context/surface`, doc 02 §10) — this spec adds the `surface:"schedule"` + `deepwork_schedule_id` keys (§4.3) |
+| [F09 task detail & streaming](./09-task-detail-and-streaming.md) | provides | `UntrustedContent` boundary component + the "external-origin message" flag in the normalized stream layer; F09 must wrap flagged messages in thread view |
+| [F17 fleet manager](./17-fleet-manager.md) agent detail (doc 03 §3.4 *Schedules* tab) | provides | Reuses `ScheduleList` + `CronEditor` filtered to one agent; single implementation |
+| [F19 notifications](./19-notifications-and-push.md) | seam | UI-created cron run payloads carry `webhook` (assumption A1, §9-Q3) so fired runs join the one run-completion push pipeline (doc 02 §7) |
 | LangSmith tracing deep links | consumes | `TracePill` per fired run (doc 02 §10: trace is ground truth) |
 | Runtime-tier capability matrix | constrains | Crons exist on MDA + LangSmith Deployment; **absent on the pure-OSS tier** ([research 23](../../research/23-gapfill-runtime-tiers.md) fact 9; doc 02 §2); `langgraph dev` support unverified (§9-Q6) |
 
@@ -83,7 +85,7 @@ Fired runs are threads (ephemeral mode creates one per fire; persistent reuses o
 
 ### 3.5 Activity tab
 
-- **Purpose**: compact cross-agent audit feed — "what ran, when, ended how" — not analytics (P-002/D-003 boundary, §3.7).
+- **Purpose**: compact cross-agent audit feed — "what ran, when, ended how" — not analytics (P-002 boundary, §3.7).
 - **Data source**: aggregated `threads.search({sortBy:'updated_at', status?})` across sources — the **Agent Server data plane**, deliberately *not* LangSmith `POST /runs/query`, whose tiered gateway limits (doc 07 Layer 1: 10/10s for ≤7-day windows; gateway table: 15/10s — [research 20](../../research/20-gapfill-mda-api.md) fact 8; discrepancy noted, budget to the lower) make it unfit for a hot list path. `/runs/query` is reserved for nothing in this feature; anything needing it deep-links out.
 - **Row** (denser than inbox rows): status dot · agent chip · title/first-prompt preview · `task_type` chip (from F22 metadata) · relative time · interrupt badge · → task detail · `TracePill`. Rows whose thread originated from a schedule/webhook (`surface:"schedule"` / provider ≠ http) show a small "scheduled" glyph and their previews render inside the untrusted boundary (§3.6).
 - **Filters** (sidebar, URL-as-state via nuqs per doc 03 conventions): agent/source · `task_type` · status · time window (24h/7d/30d/custom). All applied to `threads.search` params where supported (status), else client-side on the merged page.
@@ -101,7 +103,7 @@ Doc 02 §10 adopts Claude Routines' `<routine-fire-payload>` prompt-injection de
 
 ### 3.7 Observability-slim (P-002)
 
-What Activity shows vs what links out — the honest split (D-003: Deep Work never re-implements observability, doc 02 §10; decision confirmed at M3 entry per doc 06 Phase E):
+What Activity shows vs what links out — the honest split (doc 02 §10: "Deep Work deep-links out rather than re-implementing observability", the D-003 wrapper stance applied; P-002 slims Observability to counts + deep links, with the final call confirmed at M3 entry per doc 06 Phase E):
 
 | Deep Work shows | LangSmith owns (deep link) |
 |---|---|

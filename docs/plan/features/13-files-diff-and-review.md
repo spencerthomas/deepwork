@@ -210,16 +210,16 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 
 ## 9. Open questions
 
-1. **F04/F09 spec filenames** — catalog ([./README.md](./README.md)) pending at time of writing; links use IDs until it lands.
-2. **`@pierre/diffs` viability** — observed only inside the ui-patterns compiled bundle (research 22); npm availability, license, theming to catppuccin (it ships github-light/dark), virtualization behavior on huge diffs, and whether it can consume Shiki tokens are all unverified. Fallback: custom Shiki-based unified renderer (risk R1).
-3. **`execute` tool input/output schema** — exact arg key for the command string and whether output carries an exit code / distinct stderr is unverified; terminal block header depends on it (F04 to pin during Task 1).
-4. **`FileDataV1` sunset** — the deepagents version where JS v2 (`mimeType`) replaced v1 (lines) is unknown (research 21 open question); determines when v1 handling can be dropped.
-5. **Dedicated `/diff` route vs client-side base/head compare** — §4.2 avoids new routes (only `tree|file` are sanctioned in 02 §4); if per-file patch computation client-side proves heavy, propose a `diff` extension with F11.
-6. **Connector access to the per-thread sandbox** — how `http(ctx)` handlers resolve the MDA-generated sandbox name (research 20 notes no public runtime API for discovery); shapes Task 2's implementation and the expired-sandbox error mapping (404 vs 410).
-7. **`/artifacts/` convention adoption** — needs template-owner sign-off; also whether Context Hub-backed memory paths can ever collide with it.
-8. **Structured review side-channel** — should the batch also land as run/message metadata for lossless re-render, vs v1's parse-the-text approach?
-9. **Server-side `multitask_strategy: 'interrupt'`** — SDK types accept it but only rollback + client-side enqueue confirmed (research 21); affects the "interrupt" option when sending a review mid-run (F09-shared).
-10. **P-003 confirmation** — terminal pane remains provisional; if cut, Task 11 drops without touching other tasks.
+1. **`@pierre/diffs` viability** — observed only inside the ui-patterns compiled bundle (research 22); npm availability, license, theming to catppuccin (it ships github-light/dark), virtualization behavior on huge diffs, and whether it can consume Shiki tokens are all unverified. Fallback: custom Shiki-based unified renderer (risk R1).
+2. **`execute` tool input/output schema** — exact arg key for the command string and whether output carries an exit code / distinct stderr is unverified; terminal block header depends on it (F04 to pin during Task 1).
+3. **`FileDataV1` sunset** — the deepagents version where JS v2 (`mimeType`) replaced v1 (lines) is unknown (research 21 open question); determines when v1 handling can be dropped.
+4. **Dedicated `/diff` route vs client-side base/head compare** — §4.2 avoids new routes (only `tree|file` are sanctioned in 02 §4); if per-file patch computation client-side proves heavy, propose a `diff` extension with F11/F14.
+5. **Connector access to the per-thread sandbox** — how `http(ctx)` handlers resolve the MDA-generated sandbox name (research 20 notes no public runtime API for discovery); shapes Task 2's implementation and the expired-sandbox error mapping (404 vs 410).
+6. **`/artifacts/` convention adoption** — needs [F15](./15-task-templates.md) sign-off; also whether Context Hub-backed memory paths can ever collide with it.
+7. **Structured review side-channel** — should the batch also land as run/message metadata for lossless re-render, vs v1's parse-the-text approach?
+8. **Server-side `multitask_strategy: 'interrupt'`** — SDK types accept it but only rollback + client-side enqueue confirmed (research 21); affects the "interrupt" option when sending a review mid-run (F09-shared).
+9. **P-003 confirmation** — terminal pane remains provisional; if cut, Task 11 drops without touching other tasks.
+10. **Shiki decision ratification** — §3.2's Prism-vs-Shiki recommendation needs a D- entry in [../decisions.md](../decisions.md) at batch review.
 
 ## 10. Risks
 

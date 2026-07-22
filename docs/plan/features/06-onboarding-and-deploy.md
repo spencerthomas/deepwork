@@ -40,7 +40,7 @@ Onboarding state (`step`, chosen path, `deployment_id`, funnel timestamps) persi
 |---|---|---|---|
 | **O-1 Sign in** | "Sign in with LangSmith" + API-key fallback + trust-story copy ("your org, your data") — all per [03-ui-spec §3.6](../03-ui-spec.md); mechanics in [F05](./05-auth-and-identity.md) | F05-owned | F05-owned |
 | **O-2 Org/workspace picker** | List of orgs → workspaces from F05 session; preselect single-workspace accounts and skip the screen | skeleton list | Enumeration failure → inline error + Retry; key-mode with org-scoped key but no tenant → prompt for workspace ID (`X-Tenant-Id` requirement, [research/20](../../research/20-gapfill-mda-api.md)) |
-| **O-3 Path chooser** | Three cards: **(a) Deploy the Deep Work agent** (primary CTA), **(b) Connect an existing agent**, **(c) Try the demo** (P-004). Plus a fourth conditional card: if `GET /v2/deployments` already lists a Deep Work deployment in this workspace, show **Join existing** (team-member path, §3.5) | deployments list skeleton; chooser renders immediately, Join card streams in | Deployments-list failure degrades silently (chooser still works); toast with Retry |
+| **O-3 Path chooser** | Three cards: **(a) Deploy the Deep Work agent** (primary CTA), **(b) Connect an existing agent**, **(c) Try the demo** (P-004). Plus a fourth conditional card: if `GET /v2/deployments` already lists a deployment carrying the Deep Work marker (§3.2) in this workspace, show **Join existing** (team-member path, §3.5) | deployments list skeleton; chooser renders immediately, Join card streams in | Deployments-list failure degrades silently (chooser still works); toast with Retry |
 | **O-4 Deploy wizard** | §3.2 | per-step | per-step (§3.2, §5) |
 | **O-5 Connect existing** | §3.3 | validate spinner on submit | §3.3 |
 | **O-6 Demo** | §3.4 | none (fixtures are local) | none |
@@ -58,7 +58,9 @@ Steps run inside one `apps/server` orchestration; the client subscribes to progr
 | **D3 Name + secrets** | Deployment name; model-provider API key(s) collected and passed as `secrets[]` on the create call ([research/20](../../research/20-gapfill-mda-api.md)); reserved platform vars are never forwarded (mda rule, ibid.) | field-level validation |
 | **D4a MDA-style deploy** | `POST /v2/deployments` (`source=internal_source`, `langgraph_config_path`, `secrets[]`, the `managed_deep_agent` marker — shape unverified → §9-2) → `POST /v2/deployments/{id}/upload-url` → signed PUT of the project tarball (**200 MB cap**) → poll revisions until `DEPLOYED` ([research/20](../../research/20-gapfill-mda-api.md)); then Context Hub sync (`/v1/platform/hub/repos/`) and cron reconciliation (`POST /runs/crons(/search)` on the deployment's own Agent Server) exactly as `mda deploy` does ([research/12](../../research/12-lifecycle-auth-followup.md), [research/20](../../research/20-gapfill-mda-api.md)) | Progress checklist: Created → Uploaded → Building → Deployed → Synced. Revision polling with backoff (gateway limits: 2000/10 s general, [research/20](../../research/20-gapfill-mda-api.md)) |
 | **D4b Classic fallback** | Same `POST /v2/deployments` with `source=github` (`repo_url` + `integration_id`, `build_on_push` CD) against the user's fork/copy of the agent repo, or `internal_source` tarball without the MDA marker ([research/12](../../research/12-lifecycle-auth-followup.md)). Triggered by: D1 probe negative, **or** D4a create rejected (`deployment_type` refused for non-beta orgs — [04-roadmap risk register](../04-roadmap.md)) — in the rejection case the wizard offers the switch inline without restarting (name/secrets carried over) | same checklist; github-source adds "waiting for first build" |
-| **D5 Done** | Write `AgentSource {kind: mda\|deployment, url, assistant}`; emit funnel checkpoint C2 (§3.8); advance to O-7 | success panel with deployment deep link to smith.langchain.com |
+| **D5 Done** | Write `AgentSource {type: mda\|deployment, deploymentUrl, assistantId}` (field names per [F04 §4](./04-sdk-and-agent-sources.md)); emit funnel checkpoint C2 (§3.8); advance to O-7 | success panel with deployment deep link to smith.langchain.com |
+
+**Deep Work deployment marker (durable).** Both create branches (D4a and D4b) stamp the deployment as Deep Work-managed at create time, so detection never depends on wizard-local state: the create payload carries `{deepwork: {managed: 'v1', template, wizard_session_id}}` in the deployment's metadata/tags (distinct from the MDA `managed_deep_agent` marker, §9-2). O-3's Join-existing card (§3.1) and the idempotency reconcile (below) filter `GET /v2/deployments` on this marker — never on name heuristics. Whether `POST /v2/deployments` accepts such metadata/tags and `GET /v2/deployments` returns them is unverified → §9-12; until confirmed, the fallback convention is the same triple encoded in a reserved name prefix (`dw--`) stamped at create, retired the moment the metadata marker is verified (provisional — pending batch-1 review).
 
 **Failure diagnostics** (each renders a distinct message + action, never a generic toast):
 
@@ -71,7 +73,7 @@ Steps run inside one `apps/server` orchestration; the client subscribes to progr
 | Revision failed | revision reaches a failed status (full status enum unpublished → §9-4) | show status + deep link to the deployment page on smith.langchain.com for build logs (log API existence → §9-4); Retry = new revision via redeploy, not a new deployment |
 | Poll timeout (>10 min) | client timer | keep polling in background; "still building" state; user may leave — O-3's Join card picks the deployment up later |
 
-**Retry semantics / idempotency:** the orchestration persists `deployment_id` immediately after create; every retry resumes from the last incomplete step. `POST /v2/deployments` is never re-issued for the same wizard session.
+**Retry semantics / idempotency:** the orchestration persists `deployment_id` immediately after create; every retry resumes from the last incomplete step. The crash window between `POST /v2/deployments` returning and `deployment_id` persisting is closed one of two ways: an upstream idempotency key on the create call if the control plane supports one (unverified → §9-13); otherwise, since the create payload carries `wizard_session_id` inside the Deep Work marker (above), any retry lacking a persisted `deployment_id` **reconciles first** — marker-filtered `GET /v2/deployments` for this wizard session, adopting a match as the persisted `deployment_id` — before it may issue a create. Invariant either way: `POST /v2/deployments` is never re-issued for the same wizard session; one wizard session never duplicates deployments.
 
 ### 3.3 Connect an existing agent (path b)
 
@@ -81,7 +83,7 @@ Form: deployment/server **URL** + **assistant id** (+ optional label). Validatio
 - **Fleet agent**: PAT + `X-Auth-Scheme: langsmith-api-key`; owner-gated — non-owner gets 404, workspace members read-only ([research/12](../../research/12-lifecycle-auth-followup.md)). The 404 case gets a specific message ("Fleet agents are owner-gated — ask the owner or use your own PAT"), not "not found".
 - **`langgraph dev` local**: `http://localhost:*` URL, no key ([research/23](../../research/23-gapfill-runtime-tiers.md)); only offered when the client can reach localhost (web app warns about mixed-content/https).
 
-Success writes `AgentSource {kind: deployment|fleet|local}` and jumps to O-8 (GitHub/environment nudges are skipped — connecting to an existing agent implies its execution story already exists; the nudges reappear contextually on first coding task, §3.6). Errors: unreachable URL, non-Agent-Server response, 401/403 (wrong credential plane), 404 (bad assistant id or Fleet gating) — each with field-level retry.
+Success writes `AgentSource {type: deployment|fleet|local}` and jumps to O-8 (GitHub/environment nudges are skipped — connecting to an existing agent implies its execution story already exists; the nudges reappear contextually on first coding task, §3.6). Errors: unreachable URL, non-Agent-Server response, 401/403 (wrong credential plane), 404 (bad assistant id or Fleet gating) — each with field-level retry.
 
 ### 3.4 Demo mode (path c, P-004)
 
@@ -93,7 +95,7 @@ Zero-credential mode rendering the full app from `packages/ui` fixtures ([06-fro
 |---|---|
 | **Solo builder** (v1 primary) | O-1 → O-2 auto-skip (single workspace) → O-3 with **Deploy** primary → wizard → GitHub nudge → first task. This is the 15-minute path. |
 | **Team admin** | Same as solo, plus in D3 an "org agent" toggle that selects the multi-tenant identity preset baked into the template (`identity.py`, `preset="multi-tenant-saas"` vs `"private-assistant"` — [02-architecture §3/§5](../02-architecture.md)). Post-deploy panel shows a copyable invite link for teammates. |
-| **Teammate** (per-user identity) | O-3 detects the org's existing deployment (`GET /v2/deployments`) → **Join existing** card → source registered, no deploy, no GitHub step (admin's App install is org-level, [F12](./12-github-and-git-flow.md)) → straight to first task. Per-user identity (trusted_backend / validated_token) is F05's plane. |
+| **Teammate** (per-user identity) | O-3 detects the org's existing deployment (marker-filtered `GET /v2/deployments`, §3.2) → **Join existing** card → source registered, no deploy, no GitHub step (admin's App install is org-level, [F12](./12-github-and-git-flow.md)) → straight to first task. Per-user identity (trusted_backend / validated_token) is F05's plane. |
 | **Fleet user** | O-3 → **Connect existing** pre-toggled to Fleet mode (PAT + `X-Auth-Scheme` hint) → inbox/approvals loop without smith.langchain.com ([vision success criterion 3](../01-vision.md)). |
 
 ### 3.6 GitHub App install & environment nudge — sequencing
@@ -161,7 +163,7 @@ Note: the roadmap text places the "create/deploy wizard" wholly in M3; this spec
 | `GET  /api/onboarding/deploy/{deployment_id}/events` | SSE progress (`created\|uploaded\|building\|deployed\|synced\|failed{class}`) |
 | `POST /api/sources/validate` | O-5 `{url, assistant_id, auth_mode}` → normalized `AgentSource` or typed error |
 
-**Client:** `AgentSource {id, kind: mda|deployment|fleet|local, url, assistantId, label}` (registry per [06-frontend-implementation Phase B](../06-frontend-implementation.md)); `dw.onboarding.v1` and `dw.funnel.v1` localStorage shapes as in §3.1/§3.8.
+**Client:** `AgentSource {id, type: mda|deployment|fleet|local, name, deploymentUrl, assistantId}` — field names canonical per [F04 §4](./04-sdk-and-agent-sources.md), which owns the full schema (incl. `auth` mode + `capabilities`); registry per [06-frontend-implementation Phase B](../06-frontend-implementation.md). `dw.onboarding.v1` and `dw.funnel.v1` localStorage shapes as in §3.1/§3.8.
 
 ## 5. Edge cases & failure modes
 
@@ -193,7 +195,7 @@ Note: the roadmap text places the "create/deploy wizard" wholly in M3; this spec
 1. Fresh account → C1→C4 (draft PR) in **< 15 min**, measured by the scripted E2E of §3.8-1 (from M2; at M1 the criterion is C1→C3 plus a completed non-coding task).
 2. All three O-3 paths reach a registered `AgentSource` (or demo shell) with zero dead ends; every step in §3.1's table has implemented loading, error, and retry states.
 3. MDA-unavailable and `deployment_type`-rejected workspaces both land on a successful classic deploy without re-entering name/secrets.
-4. Deploy wizard survives page refresh at every step; no duplicate deployment is ever created by retries (verified by test against a mock control plane).
+4. Deploy wizard survives page refresh at every step; no duplicate deployment is ever created by retries — including a crash between create and `deployment_id` persistence (reconcile path, §3.2) — verified by test against a mock control plane.
 5. A Developer-plan workspace sees the plan-gate explanation before entering secrets, with all three alternatives offered.
 6. Fleet connect works end-to-end with a PAT (vision criterion 3); the owner-gating 404 shows its specific message.
 7. Teammate path: joining an existing org deployment requires zero deploy/GitHub steps.
@@ -209,9 +211,9 @@ Note: the roadmap text places the "create/deploy wizard" wholly in M3; this spec
 | 3 | Demo mode (P-004): fixtures provider + banner + exit ramp | fixtures pkg | Full app browsable with zero credentials; no LangSmith calls (network assert in test) |
 | 4 | `apps/server` route: `POST /api/sources/validate` + typed errors | P-005 scaffold | Deployment/Fleet/local all validated; Fleet 404 typed distinctly |
 | 5 | O-5 connect-existing screen → AgentSource registry write | 1, 4, sdk registry | All §3.3 error states rendered; source usable by inbox |
-| 6 | O-3 path chooser + Join-existing detection (`GET /v2/deployments`) | 1, server proxy | Join card appears iff a Deep Work deployment exists; silent degrade on list failure |
+| 6 | O-3 path chooser + Join-existing detection (marker-filtered `GET /v2/deployments`, §3.2) | 1, server proxy | Join card appears iff a marker-stamped Deep Work deployment exists; silent degrade on list failure |
 | 7 | D1 capability probe route + caching (O-003) | server proxy | Returns available/unavailable/unknown; result drives D4a/D4b branch; probe signal documented against beta account findings |
-| 8 | Deploy orchestration in `apps/server`: create → upload-url → PUT → revision poll → hub sync → cron reconcile, SSE progress | 7, packages/agent tarball build | Golden-path integration test vs mock; idempotent resume from every step |
+| 8 | Deploy orchestration in `apps/server`: create → upload-url → PUT → revision poll → hub sync → cron reconcile, SSE progress | 7, packages/agent tarball build | Golden-path integration test vs mock; idempotent resume from every step incl. the create-crash reconcile (§3.2) |
 | 9 | O-4 wizard UI (D2 single template, D3 secrets, D4 progress checklist, D5 done) | 1, 8 | All §3.2 failure classes render distinct copy + correct retry action |
 | 10 | Classic fallback branch (github-source + plain tarball) incl. inline switch on rejection | 8, F12 `integration_id` read | Rejected-marker path completes a classic deploy carrying over D3 inputs |
 | 11 | Funnel instrumentation C1–C3 + `dw.funnel.v1` | 1, 5, 8 | Events fire once each; absent entirely in demo mode |
@@ -234,6 +236,8 @@ Note: the roadmap text places the "create/deploy wizard" wholly in M3; this spec
 9. Policy for **opt-in central funnel telemetry** (if any) — needs a project decision; default remains none.
 10. Roadmap delta: confirm pulling the single-template basic deploy wizard into M1 (roadmap text has the create/deploy wizard at M3; the M1 exit criterion "against a real MDA deployment" currently assumes CLI deploys).
 11. Whether O-8's prefilled starter task should be a fixed template or generated from repo/org context once F22 exists.
+12. **Deep Work deployment marker (§3.2)**: does `POST /v2/deployments` accept arbitrary metadata/tags, and does `GET /v2/deployments` return them for Join-existing filtering? Blocks retiring the `dw--` name-prefix fallback; needs testing with the beta account alongside §9-2.
+13. **Create idempotency key**: does `POST /v2/deployments` honor an idempotency key (header or payload)? Determines whether reconcile-by-wizard-session-marker (§3.2) is the permanent crash-window closure or a stopgap.
 
 ## 10. Risks
 

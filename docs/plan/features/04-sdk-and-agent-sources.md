@@ -209,7 +209,7 @@ class NotSupportedError extends DeepWorkError {}    // capability flag off
 
 - **No secrets in the registry or localStorage** — enforced by type (auth is a mode + `keyRef`, never material) and by an import-time schema check that rejects key-shaped strings. Per P-005, service keys, `X-MDA-Ingress-Secret`, and anything org-scoped live in `apps/server`; the `key_local` mode exists only for local mode with the on-screen trust story ([03 §3.6](../03-ui-spec.md)).
 - **Header hygiene**: `DeepWorkError` scrubs `Authorization`/`X-Api-Key`/`x-api-key`/`X-MDA-*` from anything it captures; no request/response logging of auth headers anywhere in the package.
-- **Trusted-backend headers are server-only**: the SDK has no code path that attaches `X-MDA-Ingress-Secret` client-side; the `proxy` auth mode is the only route to trusted_backend identity ([02 §5](../02-architecture.md)).
+- **Trusted-backend headers are server-only**: the SDK has no code path that attaches `X-MDA-Ingress-Secret` client-side; the proxy auth modes (`oauth_session`/`key_proxy`) are the only route to trusted_backend identity ([02 §5](../02-architecture.md)).
 - **Untrusted content passes through untouched**: normalization is structural only (no eval, no HTML handling); webhook/schedule payload rendering happens downstream inside untrusted-content boundaries ([02 §10](../02-architecture.md)).
 - **Tenant isolation**: `X-Tenant-Id` is stamped per request from source config, never from ambient globals — two sources in different workspaces cannot cross-contaminate requests.
 - Registry export files are shareable by design and therefore must stay secret-free (same schema check on export).

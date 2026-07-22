@@ -90,9 +90,9 @@ v0's `lib/data.ts` (1,110 lines, centralized mock domain) is kept permanently as
 
 ### 3.8 Build & publish mechanics (what F01 needs)
 
-- **Recommendation (docs pin no bundler):** v1 ships `@deepwork/ui` as an **internal source package** — TS + CSS exported as-is, consumed via pnpm workspace + Next.js transpilation; no build step, Turborepo caches typecheck/test/storybook tasks. Rationale: single consumer (D-022), fastest iteration, zero dual-format surface. Introduce a bundler (tsup is the conventional choice; **not pinned in any doc**) only if/when the package publishes to npm externally — decision deferred (§9).
+- **Policy (aligned with F01's npm publication policy v1; provisional — pending batch-1 review):** v1 ships `@deepwork/ui` as an **internal source package** — TS + CSS exported as-is, consumed via pnpm workspace + Next.js transpilation; no build step, Turborepo caches typecheck/test/storybook tasks. Rationale: single consumer (D-022), fastest iteration, zero dual-format surface. Introduce a bundler (tsup is the conventional choice; **not pinned in any doc**) only if/when a post-v1 publish decision lands (§9).
 - **Exports map:** `.` (components barrel), `./tokens.css`, `./styles.css` (utilities: faux-bold, prose links, scroll-fade, motion), `./tailwind-preset`, `./fixtures`. `sideEffects: ["*.css"]`. React 19 peer (v0 concept + agent-chat-ui are React 19 — [06 §1](../06-frontend-implementation.md#1-what-the-concept-is), [research 22](../../research/22-gapfill-ui-tokens.md)).
-- **Versioning:** changesets per [05 §toolchain](../05-oss-setup.md#toolchain); package stays `private: true` until an external-publish decision.
+- **Versioning:** changesets per [05 §toolchain](../05-oss-setup.md#toolchain); package stays `private: true` through v1 — all workspace packages are private/source-only, publication deferred post-v1 (F01 §3; provisional — pending batch-1 review).
 
 ## 4. Contracts
 
@@ -162,12 +162,12 @@ M0 = T1–T10 (matches [roadmap M0](../04-roadmap.md): tokens seeded, shadcn re-
 
 | # | Question | Blocking? |
 |---|---|---|
-| O1 | `docs/plan/decisions.md` and the features catalog were absent from the working tree at drafting time — the D-/P- glosses here (D-009, D-012, D-022, P-001, P-004, P-005) come from the planning brief and must be verified against the ledger once present | No (verify) |
+| O1 | The D-/P- glosses here (D-009, D-012, D-022, P-001, P-004, P-005) come from the planning brief and must be verified against the now-present ledger ([decisions](../decisions.md)) and [features catalog](README.md) | No (verify) |
 | O2 | Tailwind major: v0 concept is v4 (`@theme`), the seed preset is a classic JS preset; agent-chat-ui is also v4. Which mechanism is canonical, and is the preset kept, generated, or replaced? Docs don't pin the monorepo's Tailwind version | T3 |
 | O3 | Tabler icon delivery: docs site uses CSS `mask-image` (v3.44.0); package + version for React usage is not pinned in any doc | T5 |
 | O4 | shadcn base library: v0 uses shadcn 4.x on `@base-ui/react`; reference UIs use radix-based shadcn. Standardize before extraction | T10 |
 | O5 | Storybook major version, a11y/test tooling pins, and whether a hosted visual-diff service is adopted — no doc pins any | T8/T16 |
-| O6 | Bundler: source-only internal package recommended (§3.8); confirm with F01, and revisit tsup/dual-format only on an external npm-publish decision (scope name also unpinned — `@deepwork/ui` is the seed README's title only) | No |
+| O6 | Bundler: source-only private package is the adopted v1 policy, aligned with F01 (provisional — pending batch-1 review); revisit tsup/dual-format only on a post-v1 npm-publish decision (scope name also unpinned — `@deepwork/ui` is the seed README's title only) | No |
 | O7 | StatusChip green: brand success #6E8900 vs "UI convention #10b981 acceptable for chips" (spec §1.1) — pick one token value for `--status-done` | T2 |
 | O8 | Full catppuccin latte/mocha syntax palettes: seed carries only the two background hexes; source of the complete theme (Shiki built-ins vs vendored palette) unconfirmed | T7 |
 | O9 | Font loading ownership: recommendation is app-side (`next/font`) with the package referencing family names only — confirm against D-022 app scaffold | No |

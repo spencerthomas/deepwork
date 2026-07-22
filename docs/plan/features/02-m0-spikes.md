@@ -34,7 +34,7 @@ Spike discipline: every probe is scripted (re-runnable), every HTTP exchange is 
 
 **Code layout.** Top-level `spikes/` directory, excluded from pnpm workspaces and CI, deleted at M1 entry (memos and fixtures survive):
 
-```
+```text
 spikes/
   s1-oauth/       # shell + small TS scripts: discovery, DCR, PKCE, device flow, bearer matrix
   s2-mda/         # minimal mda project + deploy-replay script + capture configs
@@ -119,7 +119,7 @@ Rationale: S1/S2 produce *knowledge*, so their code is throwaway; S3 produces a 
 
 One file per spike at `docs/plan/memos/M0-S<n>-<topic>.md`:
 
-```
+```markdown
 # M0-S<n> · <topic> — decision memo
 Date · spike id · timebox spent · verdict: green | partial | red
 1. Hypothesis (verbatim from F02)
@@ -215,7 +215,6 @@ What F02 hands to neighbors — these are the interfaces; everything else in `sp
 - WebSocket availability on `/threads/{id}/stream/events` across deployment tiers during beta (S3 records SSE; WS is a stretch check).
 - MDA beta quotas (deployments, crons) — unpublished; ask the beta contact during S2.
 - Whether LangChain permits publishing redacted transcripts of gated MDA surfaces in this public repo (§6 rule holds until answered).
-- Catalog note: `../features/README.md` and `../decisions.md` were absent from the repo when this spec was drafted; neighbor filenames (`./01-monorepo-and-oss-infra.md`) and D-/P-/O- IDs follow the coordinator's catalog and must be reconciled when those files land.
 
 ## 10. Risks
 

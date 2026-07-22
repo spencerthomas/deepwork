@@ -186,7 +186,7 @@ Everything below is fixed by the source docs; deviations need a decision-log ent
 
 1. **Lint/format**: ratify biome (this spec's recommendation) over oxlint/oxfmt, accepting divergence from deepagentsjs? ([05](../05-oss-setup.md) left it open; [06](../06-frontend-implementation.md) assumes biome.)
 2. **Renovate vs dependabot**: [05](../05-oss-setup.md) names both. Renovate for grouping flexibility, or dependabot for deepagentsjs parity? Whichever wins must handle `uv.lock`.
-3. **Publishing**: is `@deepwork` the confirmed npm scope (is it free?), and are `@deepwork/sdk`/`@deepwork/ui` published from v1 or kept private until post-v1? Does `packages/agent` ever get a PyPI release, or is it strictly a deploy artifact?
+3. **Publishing**: v1 policy is all-private/source-only, publication deferred post-v1 *(provisional — pending batch-1 review)*. Remaining: is `@deepwork` the confirmed npm scope (is it free?) for a post-v1 publish of `@deepwork/sdk`/`@deepwork/ui`? Does `packages/agent` ever get a PyPI release, or is it strictly a deploy artifact?
 4. **`apps/server` hosting** *(P-005)*: no source doc gives it a preview or production deploy target (Vercel previews cover only `apps/web`). What runs it in CI previews and in the v1 self-deploy guide?
 5. **CODEOWNERS**: solo `@spencerthomas` on everything at M0, or leave it out until there's a second maintainer? (It's in the v1 community set, [05](../05-oss-setup.md).)
 6. **DCO enforcement**: CONTRIBUTING documents DCO ([05](../05-oss-setup.md)) — enforce with a DCO check app/action from day one, or document-only until contributions open at v1?

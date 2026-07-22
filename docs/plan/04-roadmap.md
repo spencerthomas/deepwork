@@ -24,6 +24,7 @@
 ### M2 — Approvals + coding tasks (week 7–11)
 
 - HITL end-to-end: `interrupt_on` config in agent; approvals inbox + interrupt cards (batch, edit, reject/respond); plan-approval flow in task detail.
+- Verification: `RubricMiddleware` wired into templates (rubric field in composer; verdicts/iterations in the run panel); fault-tolerance middleware stack in `packages/agent`.
 - Execution: thread-scoped LangSmith Sandbox backend, environment = snapshot + `setup.sh` editor; GitHub App (install flow, repo picker) + zero-token proxy-callback route; `commit_and_open_pr` → draft PR; files-changed rail via connector routes; diff review with batched line comments.
 - Sub-agent cards; branching/fork-from-checkpoint.
 - Exit: the Codex-parity loop — coding task to reviewed draft PR — works, with approvals from the web UI.
@@ -55,7 +56,7 @@
 
 ## Post-v1 backlog (explicitly deferred)
 
-Pure-OSS backend tier (protocol server / Aegra adapter) · native Expo apps · Slack/Linear channels for task creation · chat-to-configure agent builder · GitLab · multi-repo tasks/worktree parallelism · team RBAC surfaces · evals integration (LangSmith datasets from task outcomes) · goals/rubrics grading parity in cloud tasks (dcode is the reference) · **org-intelligence ladder** ([doc 07](07-org-intelligence.md)): v1.x memory-synthesis review loop → v2 OKF knowledge base (openwiki) + structured data plane (dbt-mcp, data-analyst template) → v3 Graphiti temporal org graph.
+Pure-OSS backend tier (protocol server / Aegra adapter) · native Expo apps · Slack/Linear channels for task creation · chat-to-configure agent builder · GitLab · multi-repo tasks/worktree parallelism · team RBAC surfaces · evals integration (LangSmith datasets from task outcomes) · goal lifecycle (dcode-style draft→review→amend on top of RubricMiddleware) · async-subagent supervisor pattern (parallel workstreams as linked tasks) · interpreter/PTC templates hardening as the beta stabilizes · ACP server for editor integrations (Zed/JetBrains) · A2A/MCP exposure of Deep Work agents documented for interop · **org-intelligence ladder** ([doc 07](07-org-intelligence.md)): v1.x memory-synthesis review loop → v2 OKF knowledge base (openwiki) + structured data plane (dbt-mcp, data-analyst template) → v3 Graphiti temporal org graph.
 
 ## Risk register
 

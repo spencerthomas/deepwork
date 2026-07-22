@@ -128,7 +128,7 @@ Foundations: tokens.css (committed as seed) · Tailwind preset · shadcn/ui (new
 | `SubagentCard` / `SubagentGroup` | lazy namespace subscription; n/m progress |
 | `TodoTray` | composer-attached tray + rail mirror |
 | `InterruptCard` / `DecisionForm` | v1 HITL contract; batch; Edit⇄Accept; schema-tolerant fallback |
-| `FileTree` / `FileViewer` / `DiffViewer` | Prism/Shiki + @pierre/diffs; 60vw dialog or takeover; line comments |
+| `FileTree` / `FileViewer` / `DiffViewer` | Prism/Shiki + @pierre/diffs; 60vw dialog or takeover; line comments; FileViewer renders multimodal content blocks (image/PDF/audio/video) — `read_file` returns media, and the composer accepts image attachments |
 | `PlanCard` | plan approval with per-step edit |
 | `AgentCard` / `AgentTable` | tier badges, health |
 | `CronEditor` | 5-field cron + timezone + prompt/input |

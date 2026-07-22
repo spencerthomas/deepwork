@@ -149,7 +149,7 @@ Exact plugin/manifest field names inside `artifacts` follow the upstream format 
 | `POST /api/marketplaces/resolve` | fetch + parse + schema-validate a catalog (gh/git/URL); size-capped; returns normalized plugin list with compat computation inputs |
 | `GET /api/marketplaces/{id}/plugins/{name}` | plugin detail: manifest, README (returned as text; rendered inert client-side) |
 | `POST /api/agents/{agentId}/plugins/install` \| `.../uninstall` | orchestrates Hub commits (skills) + `mcp-servers` CRUD + `plugins.json` update as one reported sequence; partial-failure report per artifact (§5) |
-| *(v2, design-complete)* `POST /api/hooks/dcode` | authenticated event ingest → push fan-out; no persistence (§3.5) |
+| *(v2, design-complete)* `POST /hooks/dcode/{grant}` | authenticated event ingest → push fan-out; no persistence (§3.5) |
 
 ### 4.4 `DcodeSessionEvent` (v2, design-complete — not built in M3)
 

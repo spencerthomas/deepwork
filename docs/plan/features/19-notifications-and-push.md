@@ -33,7 +33,7 @@ Stack facts: frontend is Next.js (D-022); the push fan-out service is the Python
 | needs ← | [F28 · backend glue](./28-backend-glue-service.md) | FastAPI app, deploy target with a **public HTTPS URL** (F01 §9-Q4 flags that none is chosen), session auth for device routes, secret management (VAPID keypair, per-source webhook tokens) |
 | needs ← | packages/sdk spec ([catalog](./README.md)) | Run creation goes through `packages/sdk`; it must attach `webhook` + Deep Work run `metadata` (title/origin/actor per [02 §10](../02-architecture.md)) on every run and cron it creates |
 | provides → | [F20 · PWA](./20-pwa-and-mobile.md) | Push message JSON contract (§4), VAPID public-key route, device registration API, iOS ≥16.4 onboarding requirement |
-| provides → | [F21 · Tauri](./21-desktop-tauri.md) | `GET /notify/stream` SSE feed + event shape (§4); deep-link URL map (web URL ↔ `deepwork://`) |
+| provides → | [F21 · Tauri](./21-desktop-tauri.md) | `GET /api/notify/stream` SSE feed + event shape (§4); deep-link URL map (web URL ↔ `deepwork://`) |
 | provides → | approvals surface ([03 §3.3](../03-ui-spec.md), catalog) | needs-review push deep-links into the one-tap approve screen — the flagship mobile flow, v1 release criterion 2 ([04](../04-roadmap.md)) |
 | provides → | F08 · task inbox ([catalog](./README.md)) | Normalized notification events a client may use to set unread markers; F19 does **not** own unread state |
 | depends on | P-005 (provisional) | If glue reverts to Next.js routes, §3/§4 port 1:1 (routes are framework-agnostic); the SQLite store (§3) moves with them |
@@ -45,17 +45,17 @@ Stack facts: frontend is Next.js (D-022); the push fan-out service is the Python
 
 ```
 run-create (packages/sdk adds webhook=…)          Deep Work apps/server (P-005)
-  Agent Server ──POST at run completion──▶  /webhooks/runs/{source_id}?t=SECRET
-                                                 │ verify token (constant-time)
+  Agent Server ──POST at run completion──▶  /hooks/runs/{grant}   (grant ↦ source)
+                                                 │ verify grant (constant-time)
                                                  │ parse minimal fields, DROP values/kwargs
                                                  │ classify → event · dedupe · rate-gate
                                                  ├─▶ Web Push (VAPID) ─▶ PWA / desktop browsers
-                                                 ├─▶ SSE /notify/stream ─▶ Tauri native notifications
+                                                 ├─▶ SSE /api/notify/stream ─▶ Tauri native notifications
                                                  └─▶ Expo Push (post-v1)
 ```
 
 - **Attachment point.** Every run-creating endpoint accepts `webhook` — verified list: `POST /threads/{id}/runs`, `/runs/stream`, `/runs/wait`, `/threads/{id}/runs/crons`, `POST /runs/crons`, stateless `/runs/stream|wait` ([Use webhooks](https://docs.langchain.com/langsmith/use-webhooks); confirmed available on MDA deployments, [research 20](../../research/20-gapfill-mda-api.md)). `packages/sdk` sets it on every run **and every cron it creates**, so schedule-fired runs flow through the same pipeline. Whether `useStream`'s protocol-v2 command envelope passes `webhook` through is unverified (§9-Q3); fallback: create the run via the SDK client (`runs.create` with `webhook`) and join its stream — resumable joins make this equivalent ([02 §7](../02-architecture.md)).
-- **Why the URL carries `{source_id}`.** The webhook payload contains `run_id/thread_id/assistant_id` but **no deployment URL**; with a multi-deployment agent-source registry ([03 §3.6](../03-ui-spec.md)) the receiving route must know which source fired. The per-source path segment + per-source secret solves identification and auth in one move.
+- **Why the URL carries a per-source grant.** The webhook payload contains `run_id/thread_id/assistant_id` but **no deployment URL**; with a multi-deployment agent-source registry ([03 §3.6](../03-ui-spec.md)) the receiving route must know which source fired. The unguessable per-source grant in the path (`/hooks/runs/{grant}`, grant ↦ `source_id`, HMAC-sealed so the server stays stateless — [F28 §3.4](./28-backend-glue-service.md)) solves identification and auth in one move.
 - **One POST per run, at completion.** The platform sends a single POST when a run finishes; there is no "run started/progress" webhook. Notification for "schedule fired" therefore means "a scheduled run *finished* (or needs review)" — stated honestly in the taxonomy below.
 
 ### 3.2 Event taxonomy (derived from delivered statuses)
@@ -87,7 +87,7 @@ This is a real decision, not a detail — flagged as **§9-Q1** with recommendat
 ### 3.4 Delivery semantics (v1)
 
 - **Broadcast, filtered.** Every event fans out to **all devices registered by the owning actor** (matched via run `metadata` actor/owner stamps, [02 §5/§10](../02-architecture.md)), filtered by each device's per-event-type prefs. No routing rules ("only the device that started the task") in v1 — cross-device handoff is a product principle ([02 §7](../02-architecture.md) resumability) and routing adds state for marginal benefit. Revisit post-v1.
-- **Per-surface transport.** Web/PWA: Web Push with VAPID (RFC 8292), payload encrypted (RFC 8291), ≤ ~4 KB. Desktop: the Tauri webview has no push service; the running app subscribes to `GET /notify/stream` (SSE, `Last-Event-ID` replay window) and raises native notifications (F21). A closed desktop app receives nothing — acceptable v1, documented. Mobile native: Expo Push post-v1 ([research 05](../../research/05-crossplatform-arch.md)); the fan-out gains one more sender, contracts unchanged.
+- **Per-surface transport.** Web/PWA: Web Push with VAPID (RFC 8292), payload encrypted (RFC 8291), ≤ ~4 KB. Desktop: the Tauri webview has no push service; the running app subscribes to `GET /api/notify/stream` (SSE, `Last-Event-ID` replay window) and raises native notifications (F21). A closed desktop app receives nothing — acceptable v1, documented. Mobile native: Expo Push post-v1 ([research 05](../../research/05-crossplatform-arch.md)); the fan-out gains one more sender, contracts unchanged.
 - **Collapse & ordering.** Web Push `tag` = `thread_id` with `renotify` — newer events on a thread replace older ones on the lock screen, which makes cross-run ordering largely moot for UX. The SSE feed orders by `webhook_sent_at`. The pipeline treats webhooks as **at-least-once, unordered** (no delivery/retry guarantees are documented — §9-Q4): dedupe key `(run_id, status)` within a 24 h window; late/duplicate arrivals are dropped silently.
 - **Cleanup.** Push-service responses `404`/`410 Gone` delete the subscription immediately (Web Push standard); repeated `5xx`/timeouts mark the device stale after N=5 consecutive failures and prune after 30 days. Client-side `pushsubscriptionchange` re-registers (F20).
 - **Storm control.** Hourly schedules × N agents is the design load. Two gates: (1) `schedule.run_finished` successes within a 5-minute window per actor collapse into one digest push ("3 scheduled runs finished"); (2) a per-actor token bucket (default 20 pushes/5 min) — overflow converts to a single summary push, never silent drop of `task.needs_review` (needs-review bypasses the digest, not the bucket). `TTL: 3600`, `Urgency: high` only for needs-review. Defaults configurable via server env.
@@ -104,8 +104,8 @@ This is a real decision, not a detail — flagged as **§9-Q1** with recommendat
 **Ingress route** (owned here; hosted per F28):
 
 ```
-POST /webhooks/runs/{source_id}?t=<per-source secret>   → 204 (always fast; processing async)
-  401 unknown source_id or bad token · 204 on duplicates (idempotent)
+POST /hooks/runs/{grant}   → 204 (always fast; processing async)
+  401 unknown/invalid grant · 204 on duplicates (idempotent)
 ```
 
 Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assistant_id`, `status`, `run_started_at`, `run_ended_at`, `webhook_sent_at`, `metadata`, `error {error, message} | null`. `values` is inspected **only** for an interrupt/HITL marker on `status=interrupted`, then discarded with `kwargs` — never persisted or logged (§6).
@@ -125,17 +125,17 @@ Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assis
 
 | Route | Behavior |
 |---|---|
-| `GET /notify/vapid` | `{public_key}` — VAPID keypair generated at server setup, private key env/secret-mounted, `sub` claim = operator `mailto:` config |
-| `POST /notify/devices` | `{platform: "webpush"|"tauri"|"expo", subscription?: {endpoint, keys:{p256dh, auth}}, name?, prefs: {completed, failed, needs_review, schedule}, generic: bool}` → `{device_id}`; re-POST of same endpoint upserts |
-| `PATCH /notify/devices/{id}` | update prefs / rotate subscription |
-| `DELETE /notify/devices/{id}` | unregister (also the "remove device" Settings action) |
-| `GET /notify/devices` | list for Settings |
-| `GET /notify/stream` | SSE, per-actor event feed, `Last-Event-ID` replay of a bounded window (default 24 h) — desktop consumer |
-| `POST /notify/test` | sends a test push to the calling device |
+| `GET /api/notify/vapid` | `{public_key}` — VAPID keypair generated at server setup, private key env/secret-mounted, `sub` claim = operator `mailto:` config |
+| `POST /api/notify/devices` | `{platform: "webpush"|"tauri"|"expo", subscription?: {endpoint, keys:{p256dh, auth}}, name?, prefs: {completed, failed, needs_review, schedule}, generic: bool}` → `{device_id}`; re-POST of same endpoint upserts |
+| `PATCH /api/notify/devices/{id}` | update prefs / rotate subscription |
+| `DELETE /api/notify/devices/{id}` | unregister (also the "remove device" Settings action) |
+| `GET /api/notify/devices` | list for Settings |
+| `GET /api/notify/stream` | SSE, per-actor event feed, `Last-Event-ID` replay of a bounded window (default 24 h) — desktop consumer |
+| `POST /api/notify/test` | sends a test push to the calling device |
 
 **Storage (Option A, §9-Q1)** — SQLite file, three tables: `devices` (id, actor, tenant?, platform, subscription-or-null, prefs, generic, created/last_ok/fail_count), `event_dedupe` (run_id, status, seen_at; 24 h TTL), `event_log` (normalized events for SSE replay; 24 h TTL). All contents rebuildable; no run content, no messages, no secrets beyond subscription keys.
 
-**Webhook URL + secrets.** Per agent source: `https://<server>/webhooks/runs/{source_id}?t=<32-byte random>`, minted when a source is added to the registry, rotatable from Settings. Where the deployment's `langgraph.json` is author-controlled (classic tier), additionally set `webhooks.headers` `Authorization: Bearer ${{ env.LG_WEBHOOK_TOKEN }}` and `webhooks.url {allowed_domains: [<server host>], require_https: true}` (supported since `langgraph-api ≥0.5.36`, verified) — defense in depth; MDA pass-through unknown (§9-Q5).
+**Webhook URL + secrets.** Per agent source: `https://<server>/hooks/runs/<grant>` — grant = unguessable per-source token (HMAC-sealed source binding, [F28 §3.4](./28-backend-glue-service.md)), minted when a source is added to the registry, rotatable from Settings. Where the deployment's `langgraph.json` is author-controlled (classic tier), additionally set `webhooks.headers` `Authorization: Bearer ${{ env.LG_WEBHOOK_TOKEN }}` and `webhooks.url {allowed_domains: [<server host>], require_https: true}` (supported since `langgraph-api ≥0.5.36`, verified) — defense in depth; MDA pass-through unknown (§9-Q5).
 
 ## 5. Edge cases & failure modes
 
@@ -170,7 +170,7 @@ Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assis
 6. A cron created through Deep Work carries the schedule stamp; three schedule successes within 5 minutes yield one digest push, while a schedule failure pushes individually.
 7. A device with `needs_review: off` receives no interrupt pushes but still receives completions; the `generic` toggle strips titles end-to-end.
 8. A `410 Gone` from the push service removes the subscription; Settings reflects it and re-enabling works without a duplicate row.
-9. Tauri (F21 integration test): with the app running and zero Web Push subscriptions, an event arrives over `/notify/stream` within seconds and replays correctly after a disconnect via `Last-Event-ID`.
+9. Tauri (F21 integration test): with the app running and zero Web Push subscriptions, an event arrives over `/api/notify/stream` within seconds and replays correctly after a disconnect via `Last-Event-ID`.
 10. On iOS Safari (non-installed), Settings/onboarding shows the home-screen-install nudge instead of a broken permission prompt; after install on ≥16.4, opt-in succeeds.
 11. Kill `apps/server`, complete a run, restart: no push (documented best-effort), but the task shows correctly in the inbox on next open — no stuck state.
 12. grep of server logs after a full test pass finds no `values`, `kwargs`, message content, or subscription keys.
@@ -181,12 +181,12 @@ Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assis
 |---|---|---|---|
 | 1 | **Spike: webhook behavior** — against `langgraph dev` + one hosted deployment: does the POST fire for `interrupted`? for cron-created runs? does `useStream`/protocol-v2 pass `webhook` through? capture golden payloads incl. an interrupt marker sample | F28 skeleton | AC-4; §9-Q2/Q3 answered; payloads committed as test fixtures |
 | 2 | Ratify §9-Q1 (storage exception) with a decision-log entry | — | D-/P- ID recorded; option A/B/C chosen |
-| 3 | Ingress route `/webhooks/runs/{source_id}`: token verify, minimal parse + discard, classifier, dedupe table | 1, 2 | AC-2, AC-3, AC-5, AC-12 |
-| 4 | Device registry + prefs API + VAPID key mgmt (`/notify/*` routes, SQLite per §4) | 2, F28 auth | Routes pass integration tests; upsert-on-endpoint verified |
+| 3 | Ingress route `/hooks/runs/{grant}`: grant verify, minimal parse + discard, classifier, dedupe table | 1, 2 | AC-2, AC-3, AC-5, AC-12 |
+| 4 | Device registry + prefs API + VAPID key mgmt (`/api/notify/*` routes, SQLite per §4) | 2, F28 auth | Routes pass integration tests; upsert-on-endpoint verified |
 | 5 | Web Push sender: encryption, `tag`/`renotify`, TTL/Urgency, 404/410 cleanup, failure counters | 3, 4 | AC-1, AC-8 |
 | 6 | Storm control: schedule digest window + per-actor token bucket | 5 | AC-6; needs-review bypass verified |
 | 7 | `packages/sdk`: attach `webhook` + metadata stamps (title, origin, schedule_id, actor) on every run/cron create; per-source secret minting in the source registry | 1 | Every SDK-created run observed carrying webhook + stamps |
-| 8 | SSE feed `/notify/stream` with `Last-Event-ID` replay + `event_log` TTL | 3 | AC-9 (jointly with F21) |
+| 8 | SSE feed `/api/notify/stream` with `Last-Event-ID` replay + `event_log` TTL | 3 | AC-9 (jointly with F21) |
 | 9 | Settings UI: device list, per-event toggles, generic mode, test push, webhook-health per source | 4, 5 | AC-7; test button round-trips |
 | 10 | Onboarding/iOS gating: installed-PWA detection, ≥16.4 nudge (UX with F20) | 9 | AC-10 |
 | 11 | Deep-link contract doc + `notificationclick` target map handed to F20/F21 | 5, 8 | AC-1 deep link; F21 `deepwork://` mapping reviewed |

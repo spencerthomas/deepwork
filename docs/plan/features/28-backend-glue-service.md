@@ -121,8 +121,9 @@ Paths are pinned here (F28-owned); payload semantics stay with the owner spec. M
 | `GET /hooks/github/setup` | hooks | M2 | GitHub post-install redirect ([F12 §4.3](./12-github-and-git-flow.md)) |
 | `POST /hooks/github/proxy-callback/{grant}` | hooks | M2 | sandbox auth-proxy callback: proxy POSTs `{host, port}` → `200 {headers}`, TTL-bound (60–3600 s platform bounds), any failure ⇒ non-200 ⇒ proxy fail-closed 502 ([F12 §4.2](./12-github-and-git-flow.md); [research 20](../../research/20-gapfill-mda-api.md) fact 12); grant per §3.4 |
 | `GET/POST /api/environments` · `GET/PUT/DELETE /api/environments/{name}` · `POST /api/environments/{name}/build` · `GET /api/environments/{name}/build/logs` (SSE) · `GET /api/threads/{thread_id}/sandbox` | session | M2 | [F11 §4.3](./11-execution-and-environments.md), adopted verbatim |
-| `POST /api/push/subscriptions` · `DELETE /api/push/subscriptions` | session | M4 | device subscription register/remove ([F19](./19-notifications-and-push.md); storage §9-3) |
-| `POST /hooks/runs/{grant}` | hooks | M4 | run-completion webhook receiver (`webhook` param on run create, [02 §7](../02-architecture.md)) → push fan-out; payload treated as untrusted ([04 criterion 5](../04-roadmap.md)) |
+| `/api/notify/*` — `GET vapid` · `GET/POST devices` · `PATCH/DELETE devices/{id}` · `GET stream` (SSE) · `POST test` | session | M4 | device registry + prefs, VAPID bootstrap, desktop SSE feed, test push — route shapes owned by [F19 §4](./19-notifications-and-push.md); storage §9-3 |
+| `POST /hooks/runs/{grant}` | hooks | M4 | run-completion webhook receiver (`webhook` param on run create, [02 §7](../02-architecture.md)); grant ↦ agent source (HMAC-sealed, §3.4) → push fan-out; payload treated as untrusted ([04 criterion 5](../04-roadmap.md)) |
+| `POST /hooks/langsmith/{grant}` | hooks | M3 | LangSmith automation-webhook ingest (grant ↦ workspace) → F19 pipeline ([F22 §4](./22-org-intelligence-v1.md)) |
 | `POST /hooks/context-hub` | hooks | v1.x | `context_hub.commit.created.v1`, HMAC-verified → L2 review loop ([F23](./23-org-intelligence-v1x-consolidation.md); [07](../07-org-intelligence.md)) |
 | Insights provisioning glue | session | M3 | via `/api/proxy/control` unless F22 needs orchestration routes — placeholder, shapes owned by [F22](./22-org-intelligence-v1.md) (O-007) |
 

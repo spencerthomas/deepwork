@@ -106,7 +106,7 @@ Two shipped recipes ([07 Layer 1](../07-org-intelligence.md); automations = filt
 | Rule (per Deep Work tracing project) | Filter | Action |
 |---|---|---|
 | **Eval fuel** | root runs where `hitl_outcome ∈ {rejected, edited}` or `rubric_verdict` failing or `verification_override` present (F16 §3.7 signal set) | Add to dataset `deepwork-hitl-feedback` (created once per workspace), sample 1.0 |
-| **Error push** | root runs, `error: true` | Webhook → `POST https://<server>/webhooks/langsmith/{workspace_id}?t=<secret>` → normalized to F19 `task.failed`. Covers runs Deep Work didn't create (Studio, direct SDK); F19's `(run_id, status)` dedupe suppresses doubles for Deep Work-created runs |
+| **Error push** | root runs, `error: true` | Webhook → `POST https://<server>/hooks/langsmith/{grant}` → normalized to F19 `task.failed`. Covers runs Deep Work didn't create (Studio, direct SDK); F19's `(run_id, status)` dedupe suppresses doubles for Deep Work-created runs |
 
 ## 4. Contracts
 
@@ -175,7 +175,7 @@ Split rationale: the **SDK stamps what the client knows** (task shape, origin), 
 | `GET /api/org-memory/tree` · `GET /api/org-memory/file?path=` | Hub reads (shares F17's Hub proxy) |
 | `POST /api/org-memory/commit` `{files[{path,content}], message, run_id?}` | Interview commits, human edits, digest filing; enforces `org-memory/**` prefix, size caps, `run_id` idempotency |
 | `POST /api/insights/provision` · `POST /api/automations/provision` | Glue wrapping §3.5/§3.6 (cost confirm, gating detection, per-workspace iteration) |
-| `POST /webhooks/langsmith/{workspace_id}?t=<secret>` | Automation-webhook ingest → F19 pipeline (payload schema §9-11) |
+| `POST /hooks/langsmith/{grant}` (grant ↦ workspace, [F28 §3.4](./28-backend-glue-service.md)) | Automation-webhook ingest → F19 pipeline (payload schema §9-11) |
 
 ## 5. Edge cases & failure modes
 
@@ -229,7 +229,7 @@ Split rationale: the **SDK stamps what the client knows** (task shape, origin), 
 | 7 | Seeding interview: skill + `curation` task template + F06 §3.7 hook + commit flow | 2, 3, F06 | AC-1 passes end-to-end; resumable; per-file commit |
 | 8 | Org-analyst: skill + prompt + `schedules/org_analyst.py` + MCP registration + CronEditor prefill + digest filing route + review toggle | 3, 5, F18 CronEditor, F19 webhook | AC-4/-5 pass on a real deployment; rate-budget assert green |
 | 9 | Insights provisioning: server glue + panel flow (generate/edit/save/cost/gating/readback-if-O-007) | 1, 6 | AC-6; degradation path tested against a free workspace |
-| 10 | Automation rules: recipes (dataset + error-webhook), provisioning glue or recipe cards per §9-3; `/webhooks/langsmith` ingest → F19 | 1, F19 pipeline | AC-7; ingress auth + untrusted handling tested |
+| 10 | Automation rules: recipes (dataset + error-webhook), provisioning glue or recipe cards per §9-3; `/hooks/langsmith` ingest → F19 | 1, F19 pipeline | AC-7; ingress auth + untrusted handling tested |
 | 11 | Multi-workspace iteration + idempotent provisioning + hardening (§5 table each tested or waived) | 3, 8, 9, 10 | AC-9; duplicate-provisioning tests green |
 | 12 | Cross-spec reconciliation: convention table synced into F08/F16/F18/F23; CI check for drift | 4, 5 | AC-10; docs delta PRs opened for §9-7 rename |
 

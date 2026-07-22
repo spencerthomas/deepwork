@@ -58,7 +58,7 @@ consolidation run ──commit──▶ Hub proposal area ──context_hub.comm
 
 ### 3.3 The webhook consumer — first inbound-service surface
 
-`POST /webhooks/context-hub` on `apps/server` *(P-005)*. Verification first, always: constant-time HMAC check against the shared secret provisioned at webhook registration (registration API surface unprobed — §9-Q1); missing/invalid signature → 401, body never processed. Respond 2xx quickly; all processing is after-verification and cheap.
+`POST /hooks/context-hub` on `apps/server` *(P-005)*. Verification first, always: constant-time HMAC check against the shared secret provisioned at webhook registration (registration API surface unprobed — §9-Q1); missing/invalid signature → 401, body never processed. Respond 2xx quickly; all processing is after-verification and cheap.
 
 **D-003 resolution — the Hub is the database.** The consumer stores nothing durable. Open proposals are *fully derivable from Hub state*: proposal area contents = open items; absence = closed; `org-memory/` head = merge base. So the webhook is a **freshness signal only** — on receipt, `apps/server` invalidates/refetches and (later, via F19's fan-out) pushes a notification; clients list open proposals by reading the Hub through the existing proxy. Consequences: replayed or duplicated deliveries are naturally idempotent (state-derived, keyed by commit id); **lost deliveries cost freshness, never correctness** — a **reconciliation sweep** (poll the proposal area on inbox open + a coarse server-side interval) is the backstop. This is the same D-003 problem class as [F19](./19-notifications-and-push.md)'s push subscriptions; F19 needs genuinely non-derivable state and may land differently — keep the two answers explicitly reconciled. Residual server-side state here is config-class only: webhook secret + service key (deployment secrets, [F28](./28-backend-glue-service.md)), never a datastore.
 
@@ -93,7 +93,7 @@ MemoryProposalItem {
 
 **Decision endpoint** (`apps/server`, operator session per [F05](./05-auth-and-identity.md)): `POST /approvals/memory-proposals/{id}/decision` with `{type: "approve"} | {type: "edit", edited_files: [{path, content}]} | {type: "reject", message?}`. Approve/edit returns the resulting `org-memory` commit id; stale base returns a typed `409 stale_base` with current head. Listing: `GET /approvals/memory-proposals` (server derives from Hub state, §3.3).
 
-**Webhook**: `POST /webhooks/context-hub`, event `context_hub.commit.created.v1`, HMAC-signed ([research 15](../../research/15-org-intelligence.md) — the only confirmed facts; header name, payload schema, registration API are §9-Q1). No other event names are assumed anywhere in this spec.
+**Webhook**: `POST /hooks/context-hub`, event `context_hub.commit.created.v1`, HMAC-signed ([research 15](../../research/15-org-intelligence.md) — the only confirmed facts; header name, payload schema, registration API are §9-Q1). No other event names are assumed anywhere in this spec.
 
 **Consolidation agent**: graph name `consolidation_agent`; `define_schedule` cron with lookback == interval invariant; `propose_memory_update(files, manifest)` is the only write-capable tool, and it can only write to the proposal area. Secrets: `CONTEXT_HUB_WEBHOOK_SECRET` + workspace service key, `apps/server`/deployment side only ([F01 §6](./01-monorepo-and-oss-infra.md)).
 

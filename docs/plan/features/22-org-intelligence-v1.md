@@ -156,6 +156,8 @@ Canonical table; F08/F16/F18/F23 tables must match this one (drift is a build fa
 | `rubric`, `rubric_source`, `rubric_verdict`, `verification_override` | per [F16 §4](./16-verification-and-rubrics.md) | composer + RubricMiddleware | run/thread (F16 owns semantics) |
 | `hitl_outcome` | `approved \| edited \| rejected \| responded` (worst outcome wins per run) | **proposed**: agent middleware at interrupt resolution — feasibility §9-13, coordinate F10/F14 | run |
 
+**Baseline vs conditional**: `task_type`, `agent`, `actor`, `tenant`, `surface`, and the origin id (`deepwork_task_id` / `deepwork_schedule_id`) are the required baseline — stamped on **every** run; `repo` joins the baseline on coding tasks. Conditional keys exist only when their trigger occurred: `hitl_outcome` only after an interrupt resolution; `rubric`/`rubric_source`/`rubric_verdict`/`verification_override` only when a rubric ran or an override was recorded. Absence of a conditional key on a run without its trigger is correct, not stamping drift.
+
 Split rationale: the **SDK stamps what the client knows** (task shape, origin), **middleware stamps what only the runtime knows** (identity, HITL outcomes); schedule fires get their stamps from the cron payload since no client is present. Verification that create-time metadata reaches trace-level filters for root + child runs is §9-6.
 
 ### 4.3 External calls (verified surfaces only)

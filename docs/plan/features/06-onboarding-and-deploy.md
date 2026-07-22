@@ -161,7 +161,7 @@ Note: the roadmap text places the "create/deploy wizard" wholly in M3; this spec
 | `GET  /api/onboarding/capabilities` | D1 probe result `{mda: available\|unavailable\|unknown, plan_gate?: bool}` per workspace |
 | `POST /api/onboarding/deploy` | start orchestration `{template, name, org_agent: bool, secrets, source_mode}` → `{deployment_id}` |
 | `GET  /api/onboarding/deploy/{deployment_id}/events` | SSE progress (`created\|uploaded\|building\|deployed\|synced\|failed{class}`) |
-| `POST /api/sources/validate` | O-5 `{url, assistant_id, auth_mode}` → normalized `AgentSource` or typed error |
+| `POST /api/sources/validate` | O-5 `{url, assistant_id, auth_mode}` (`auth_mode` ∈ [F05 §4 contract 4](./05-auth-and-identity.md)'s enum) → normalized `AgentSource` or typed error |
 
 **Client:** `AgentSource {id, type: mda|deployment|fleet|local, name, deploymentUrl, assistantId}` — field names canonical per [F04 §4](./04-sdk-and-agent-sources.md), which owns the full schema (incl. `auth` mode + `capabilities`); registry per [06-frontend-implementation Phase B](../06-frontend-implementation.md). `dw.onboarding.v1` and `dw.funnel.v1` localStorage shapes as in §3.1/§3.8.
 

@@ -49,7 +49,7 @@ Grader visibility: doc 08 calls the grader a *subagent*, so grading passes are e
 |---|---|---|---|---|
 | Research | **on** | every load-bearing claim cited; all sub-questions answered; ≥2 independent sources for key claims; uncertainty stated | 2 | narrative output has no CI — the rubric is the only machine check |
 | Writing | **on** | brief followed; requested structure present; consistent tone; no placeholders/TODOs | 2 | same |
-| Data-analyst | **on** | every reported number traceable to executed code; charts labeled; caveats stated | 2 | pairs with the interpreter template ([08](../08-deepagents-feature-map.md)) |
+| Data-analyst *(v2 — not wired in M2)* | **on** *(future default)* | every reported number traceable to executed code; charts labeled; caveats stated | 2 | pairs with the interpreter template ([08](../08-deepagents-feature-map.md)); id is v2-reserved in F15 §3.2 — design/sequencing in [F24](./24-org-intelligence-v2-v3.md) |
 | Coding | **off** (available) | if enabled: tests actually run in transcript; diff scoped to task; PR description accurate | 1 | sandbox tests + diff review + CI already verify; don't double-pay a judge on top |
 
 ### 3.3 Verification panel (renders in F09's rail)
@@ -60,7 +60,7 @@ A rail section below the status block ([03 §3.2 run panel](../03-ui-spec.md)), 
 |---|---|
 | **No rubric** | Panel collapsed to one ghost row: "Verification: none · Add for next run →" (opens composer prefill; satisfies the [03 §7](../03-ui-spec.md) teach-the-next-action rule). Never a large empty panel. |
 | **Grading (in progress)** | "Verifying — pass *n* of *max*", pulsing blue (running = primary-dark per [03 §1.1](../03-ui-spec.md)); grader subagent card visible in-thread like any subagent |
-| **Satisfied** | Green **Verified** chip; criteria list all ✓; iteration count "passed on pass *n*/*max*" |
+| **Satisfied** | Green **Verified** chip; criteria list all ✓; iteration count "passed on pass *n*/*max*". External-source rubrics: chip stays *Needs review* until human confirm (§3.4) |
 | **Max iterations** | Amber; unmet criteria pinned to top with grader feedback expanded; actions per §3.4 |
 | **Failed** | Amber (not red — see §3.4); grader's terminal reason shown |
 | **Grader error** | Gray "Verification unavailable" + error row + *Retry verification* + trace link |
@@ -74,7 +74,8 @@ Governing principle: **grader failure ≠ task failure, and rubric verdicts neve
 
 | Terminal state | Task status chip | User actions |
 |---|---|---|
-| `satisfied` | Done (green) + Verified badge in inbox row | — |
+| `satisfied` (rubric `source` `template`/`user`/`template+user`) | Done (green) + Verified badge in inbox row | — |
+| `satisfied` (`external` rubric source — §6 trust boundary) | Needs review (amber) — **never auto-Verified** | **Confirm Verified** (one click; records actor + timestamp like Accept anyway, then flips to Done + Verified) · Send back |
 | `max_iterations` | Needs review (amber) | **Accept anyway** · **Send back** (steering message pre-filled with unmet criteria + grader feedback — rides the [03 §3.2](../03-ui-spec.md) composer, queue semantics) · **Raise cap & continue** (if per-thread cap raise is supported — §9-3) |
 | `failed` | Needs review (amber) | Accept anyway · Send back (exact `failed` semantics vs `max_iterations` — §9-4) |
 | grader model/infra error | task's own status stands; gray chip | Retry verification · trace link. Whether the reliability stack (`ModelRetryMiddleware` etc., [02 §3](../02-architecture.md)) already wraps grader calls is §9-5 |
@@ -117,7 +118,8 @@ type RubricSpec = {
   criteria: { id: string; text: string }[];   // id = stable slug, generated client-side
   maxIterations: number;                      // default 2, UI range 1–5
   graderModel?: string;                       // "provider:model"; default = template task model
-  source: "template" | "user" | "template+user"; // template default, authored, or edited default
+  source: "template" | "user" | "template+user"   // template default, authored, or edited default
+        | "external";                             // carried in a schedule/webhook payload (§6) — gates the Verified mapping (§3.4)
 };
 ```
 
@@ -144,7 +146,7 @@ Upstream source of this state (dedicated state channel vs. subagent projection v
 | Key | Values | Consumer |
 |---|---|---|
 | `rubric` | `true`/absent | LangSmith filters, F22 partitions |
-| `rubric_source` | `template` · `user` · `template+user` (v1.x: `goal`) | grader-calibration analysis |
+| `rubric_source` | `template` · `user` · `template+user` · `external` (v1.x: `goal`) | grader-calibration analysis; §3.4 Verified gating |
 | `rubric_verdict` | terminal `VerificationState.status` | F22 automation rules (§3.7) |
 | `verification_override` | `{actor, at}` on thread metadata | audit, eval fuel |
 
@@ -164,7 +166,7 @@ Upstream source of this state (dedicated state channel vs. subagent projection v
 ## 6. Security & privacy
 
 - **Trust boundary unchanged**: the grader runs inside the deployment as a subagent — the transcript never leaves the user's org runtime + tracing ([01](../01-vision.md): "everything runs in your org"). One nuance: a *different grader model provider* means transcript content flows to that provider too — which is why the grader model chip is always visible in the panel (§3.3), never silent config.
-- **Rubric text is prompt input to the judge.** User- and template-authored rubrics share the trust level of the task prompt itself. Rubrics arriving via schedule/webhook-fired tasks are untrusted-payload content and render inside untrusted-content boundaries ([02 §10](../02-architecture.md)); a hostile rubric can at worst self-approve its own task — which still lands in *Needs review*-grade human surfaces (diff review, PR) before anything merges.
+- **Rubric text is prompt input to the judge.** User- and template-authored rubrics share the trust level of the task prompt itself. Rubrics arriving via schedule/webhook-fired tasks are untrusted-payload content (`source: "external"`, §4): they render inside untrusted-content boundaries ([02 §10](../02-architecture.md)) **and their `satisfied` verdict never maps to Done + Verified on its own** — external-rubric tasks land *Needs review* until a human clicks Confirm Verified (§3.4). A hostile rubric can therefore pass the judge it authored, but cannot mint a Verified badge or skip the human surfaces (diff review, PR) before anything merges. Whether an authenticated payload origin may bypass the confirm is §9-10.
 - **Override attribution**: Accept anyway stamps the acting identity from the MDA identity plane ([02 §5](../02-architecture.md)) — auditable via thread metadata + trace, stored in the org, not by Deep Work.
 - No new secrets, no new storage, no new egress; grading inherits sandbox zero-secret rules untouched ([02 §4](../02-architecture.md)).
 
@@ -186,7 +188,7 @@ v1/M2 only — goal lifecycle (§3.6) is deliberately absent.
 | # | Task | Depends on | Definition of done |
 |---|---|---|---|
 | 1 | **Harness probe**: pin `deepagents ≥0.6.5`, exercise RubricMiddleware against `langgraph dev`; document constructor params, verdict/state surface, grader-subagent stream visibility, per-run config path | M0 spikes ([F02](./02-m0-spikes.md)) done | §9 items 1–6 answered or upstreamed as issues (D-005, [02 §8](../02-architecture.md) no-fork rule); contract notes committed |
-| 2 | **`packages/agent` wiring**: RubricSpec compile step (runtime context → middleware config), research/writing/data-analyst defaults on, coding off | 1; [F14](./14-agent-package.md) v0 (M1) | Rubric-graded run completes on MDA + `langgraph dev`; template defaults per §3.2 table land as F15 seam data |
+| 2 | **`packages/agent` wiring**: RubricSpec compile step (runtime context → middleware config), research/writing defaults on, coding off (data-analyst is v2 → [F24](./24-org-intelligence-v2-v3.md)) | 1; [F14](./14-agent-package.md) v0 (M1) | Rubric-graded run completes on MDA + `langgraph dev`; template defaults per §3.2 table land as F15 seam data |
 | 3 | **SDK layer**: `VerificationState` normalization + casing hygiene, per-branch state | 1 | Typed state hydrates from live stream and from thread reload; unit tests on wire fixtures |
 | 4 | **Composer rubric field** (in F08's surface) | 3; [F08](./08-task-inbox.md) composer exists | §3.2 field: parse, prefill, advanced controls, helper copy; RubricSpec attached to run config |
 | 5 | **Verification panel** (in F09's rail) | 3; [F09](./09-task-detail-and-streaming.md) rail exists | All §3.3 states rendered incl. ghost row; criterion rows with expandable feedback; per-pass trace links |

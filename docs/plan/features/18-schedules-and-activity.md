@@ -28,7 +28,7 @@ Roadmap anchor: M3 — "Schedules CRUD (crons API) + Activity feed; untrusted-pa
 | [F07 app shell](./07-app-shell-and-navigation.md) | consumes | Both tabs are shell routes in `apps/web` (Next.js, D-022) under the six-tab IA (P-002; doc 03 §2) |
 | [F04 `AgentSource` registry](./04-sdk-and-agent-sources.md) (`packages/sdk`, built M1) | consumes | Same multi-source aggregation primitive as the task inbox (`threads.search` aggregation, UI spec §3.1) |
 | [F28 `apps/server` key proxy](./28-backend-glue-service.md) (P-005, FastAPI) | consumes | All crons/threads calls pass through the existing proxy route; **no new server state, no new routes** for this feature |
-| [F22 org intelligence](./22-org-intelligence-v1.md) | mutual | F22's org-analyst template opens `CronEditor` prefilled; F22 owns the run-metadata convention (`task_type/agent/actor/tenant/context/surface`, doc 02 §10) — this spec adds the `surface:"schedule"` + `deepwork_schedule_id` keys (§4.3) |
+| [F22 org intelligence](./22-org-intelligence-v1.md) | mutual | F22's org-analyst template opens `CronEditor` prefilled; F22 owns the run-metadata convention (`task_type/agent/actor/tenant/repo/surface`, doc 02 §10; `repo` supersedes `context` per F22 §9-7) — this spec adds the `surface:"schedule"` + `deepwork_schedule_id` keys (§4.3) |
 | [F09 task detail & streaming](./09-task-detail-and-streaming.md) | provides | `UntrustedContent` boundary component + the "external-origin message" flag in the normalized stream layer; F09 must wrap flagged messages in thread view |
 | [F17 fleet manager](./17-fleet-manager.md) agent detail (doc 03 §3.4 *Schedules* tab) | provides | Reuses `ScheduleList` + `CronEditor` filtered to one agent; single implementation |
 | [F19 notifications](./19-notifications-and-push.md) | seam | UI-created cron run payloads carry `webhook` (assumption A1, §9-Q3) so fired runs join the one run-completion push pipeline (doc 02 §7) |
@@ -43,7 +43,7 @@ Roadmap anchor: M3 — "Schedules CRUD (crons API) + Activity feed; untrusted-pa
 - **Row** (table, LangSmith-style per doc 03 §3.4): schedule name/prompt-preview (one line, mono for `input` JSON) · agent chip (source + assistant) · cron expression + human-readable phrase · **next run** (relative + absolute in viewer TZ; schedule's own TZ shown as secondary when it differs) · origin badge (§3.3) · enabled state · last-fire status glyph (from run history, §3.4) · overflow menu (edit / duplicate / delete / view runs / open agent config).
 - **Actions**:
   - **Create**: toolbar CTA → `CronEditor` (§3.2). Create goes to the selected source's `POST /runs/crons`.
-  - **Edit**: implemented as **create-new-then-delete-old** — the only strategy verified to exist upstream (mda itself reconciles by delete + recreate, research 20 fact 11). Create first, delete second, so a failure never loses the schedule; the seconds-wide double-fire window is accepted and documented in the confirm dialog. If a native update endpoint exists (§9-Q2) swap it in behind the same SDK method.
+  - **Edit**: implemented as **create-new-then-delete-old** — the only strategy verified to exist upstream (mda itself reconciles by delete + recreate, research 20 fact 11). Create first, delete second, so a failure never loses the schedule; the seconds-wide double-fire window is accepted and documented in the confirm dialog. The new cron is stamped `metadata.deepwork.replaces: <old cron id>` at create (§4.3), so a failed delete leaves a machine-findable orphan pair rather than two anonymous twins (§5 edit-race repair). If a native update endpoint exists (§9-Q2) swap it in behind the same SDK method.
   - **Delete**: confirm dialog shows the full definition and offers "copy as JSON" before deleting (a delete operation exists — mda deletes MDA-owned crons on deploy; exact path per Agent Server API reference, §9-Q2).
   - **Enable/disable**: ships **only if** the M3-entry API probe finds a pause/enabled field (§9-Q2). Fallback if absent: the toggle is omitted; "disable" degrades to delete-with-export (definition downloadable for later recreation). No Deep Work DB exists to stash disabled definitions (doc 02 §1) — we do not fake a toggle we can't honor.
   - Project-origin schedules (§3.3) get **no destructive actions** — edit/delete deep-link to the agent's `schedules/` config in [F17](./17-fleet-manager.md), because `mda deploy` will clobber UI changes (research 20 fact 11).
@@ -59,7 +59,7 @@ Mirrors the verified `define_schedule` contract (research 20 fact 11: 5-field cr
 | Cron | 5-field expression input with plain-language preview and **next 3 fires** rendered in both the schedule TZ and viewer TZ (client-computed, `cron-parser` or equivalent) |
 | Timezone | IANA select; defaults to viewer TZ; omitted field = server default (UTC per open-swe/Fleet precedent, [research 10](../../research/10-openswe-fleet.md)) — displayed explicitly, never implied |
 | Prompt / Input | XOR toggle: markdown textarea (prompt) or JSON editor (input); enforcing exactly-one client-side |
-| deliver_to | Rendered greyed with "requires channels (0.4.0-dev)" — behind the dev-channel feature flag the roadmap risk register already mandates ([04-roadmap](../04-roadmap.md): "feature-flag dev-channel-only UI"); shape when enabled: `{channel, to: provider_thread|provider_conversation, auto_post}` (research 20 fact 10) |
+| deliver_to | Rendered greyed with "requires channels (0.4.0-dev)" — behind the dev-channel feature flag the roadmap risk register already mandates ([04-roadmap](../04-roadmap.md): "feature-flag dev-channel-only UI"); shape when enabled: `{channel, to: provider_thread\|provider_conversation, auto_post}` (research 20 fact 10) |
 | Guardrails | Interval < 1 h ⇒ warning with estimated fires/day; < 5 min ⇒ typed-confirmation ("I understand") — client-side only, Deep Work cannot enforce server-side (§5 storms) |
 
 Thread mode (`ephemeral` default vs `persistent {id}`, research 20 fact 11) is displayed read-only for project schedules; UI-created crons are v1-ephemeral until the public cron payload schema is verified (§9-Q3).
@@ -71,7 +71,7 @@ Both kinds coexist in one Agent Server cron store; the list must distinguish the
 | Origin | Created by | Lifecycle | Badge |
 |---|---|---|---|
 | `project` | `schedules/` + `mda deploy` reconciliation (delete-and-recreate after revision DEPLOYED; skipped with `--no-wait`) — research 20 facts 2, 11 | Owned by the repo; survives only until next deploy rewrites it | "project" (mono, links to agent config) |
-| `ui` | Deep Work `POST /runs/crons` | Owned by the workspace; Deep Work stamps `metadata.deepwork = {origin:"ui", created_by:<actor>, v:1}` on the cron payload (assumption A1, §9-Q3) | "manual" |
+| `ui` | Deep Work `POST /runs/crons` | Owned by the workspace; Deep Work stamps `metadata.deepwork = {origin:"ui", created_by:<actor>, v:1, replaces?:<old cron id>}` on the cron payload (`replaces` on edit swap only, §3.1; assumption A1, §9-Q3) | "manual" |
 | `unknown` | Anything else (other tools, SDK scripts) | Read-only display + delete | "external" |
 
 Detection: `deepwork.origin` when present; else the marker mda stamps on its own crons — **not yet recovered from the binary** (§9-Q1). Until Q1 resolves, heuristics: a cron matching a `schedules/`-declared entry (name/expression equality via the agent's Context Hub copy) is `project`; the risk that `mda deploy` deletes UI-created crons wholesale is tracked in §10-R1.
@@ -134,7 +134,7 @@ interface ScheduleSource {                      // implemented per AgentSource
   listSchedules(): Promise<Schedule[]>;
   createSchedule(def: ScheduleDef): Promise<Schedule>;
   deleteSchedule(id: string): Promise<void>;
-  replaceSchedule(id: string, def: ScheduleDef): Promise<Schedule>; // create-then-delete
+  replaceSchedule(id: string, def: ScheduleDef): Promise<Schedule>; // create-then-delete; stamps deepwork.replaces:<old id> on the new cron (§3.1)
   scheduleRuns(s: Schedule, cursor?: Cursor): Promise<Page<ActivityItem>>;
 }
 type Schedule = {
@@ -146,7 +146,7 @@ type Schedule = {
   enabled?: boolean;               // only if pause capability exists
   nextRunAt?: string;              // server value if present, else client-computed + `computed:true`
   threadMode?: 'ephemeral' | {persistentId: string};
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown>; // incl. deepwork {origin, created_by, v, replaces?} (§3.3, §4.3)
 };
 type ActivityItem = {
   threadId: string; sourceId: string; assistantId: string;
@@ -162,8 +162,9 @@ type ActivityItem = {
 |---|---|---|---|
 | `surface` | fired runs/threads | agent middleware / cron payload | `"schedule"` (extends F22's `surface` enum) |
 | `deepwork_schedule_id` | fired runs/threads | UI-created cron payload (A1) | cron id |
-| `metadata.deepwork.origin` | the cron object | Deep Work on create | `"ui"` |
-| `task_type`, `agent`, `actor`, `tenant`, `context` | every run | F22 convention (doc 02 §10) | consumed for Activity filters |
+| `metadata.deepwork.origin` | the cron object; preserved onto its fired runs/threads | Deep Work on cron create | `"ui" \| "project"` |
+| `metadata.deepwork.replaces` | the new cron object on edit swap | `replaceSchedule` create-then-delete (§3.1) | obsolete cron id — edit-repair deletes the cron it names (§5) |
+| `task_type`, `agent`, `actor`, `tenant`, `repo` | every run (`repo`: coding tasks) | F22 convention (doc 02 §10; `repo` supersedes its `context` — F22 §9-7) | consumed for Activity filters |
 
 ## 5. Edge cases & failure modes
 
@@ -176,7 +177,7 @@ type ActivityItem = {
 | Next-run drift | Server `next_run` (if the search payload provides one, §9-Q2) is truth; client-computed values are labeled and re-derived on refetch (60 s poll while tab visible); never persisted |
 | Schedule storms (every-minute cron) | CronEditor guardrails (§3.2); Activity collapse-grouping (§3.5); enqueue default `multitask_strategy` means persistent-thread fires **queue** behind a still-running fire (doc 02 §7, research 20 fact 4) — backlog depth shown on the schedule row when >1 queued |
 | Fired payload contains markup/injection content | `UntrustedContent` everywhere per §3.6; agent side already covered by doc 02 §10 |
-| Edit race (create-new succeeded, delete-old failed) | Both crons exist; list detects duplicate `deepwork.replaces` marker and surfaces a one-click "finish edit (delete old)" repair row |
+| Edit race (create-new succeeded, delete-old failed) | Both crons exist; the new cron's `deepwork.replaces` marker (§3.1, §4.3) names the obsolete id, so the list detects a cron whose `replaces` target still exists and surfaces a one-click "finish edit (delete old)" repair row |
 | `/runs/crons/search` rate-limited (2000/10s general gateway bucket, research 20 fact 8) | Fan-out throttled, per-source results cached 30 s, jittered refresh; Activity pagination never issues parallel unbounded fan-out |
 | Source on pure-OSS tier | Capability probe returns `crons:false`; Schedules tab shows "unsupported on this backend" row (research 23 fact 9) — no phantom empty state |
 

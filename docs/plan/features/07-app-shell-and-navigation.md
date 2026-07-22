@@ -23,7 +23,7 @@ Sources: [../03-ui-spec.md](../03-ui-spec.md) (§2, §6, §7) · [../06-frontend
 | [../06-frontend-implementation.md](../06-frontend-implementation.md) Phase A | v0 concept imported as `apps/web`; `AppShell` (sidebar/rail slots), `PageHeader`, `CommandBar` move to `packages/ui`; blanket client components called out as a smell (§2.5) |
 | [../../../packages/ui/tokens.css](../../../packages/ui/tokens.css) | Layout CSS vars (§4.2) — single source of truth for measurements |
 | [../04-roadmap.md](../04-roadmap.md) | M0: shell chrome against static data; M4: palette, keyboard nav, empty states, a11y pass |
-| [../../research/11-docs-design-language.md](../../research/11-docs-design-language.md) | Live-verified anatomy (h-56 navbar, h-40 tabs, 18rem sidebar, 19rem rail, 92rem shell), search pill recipe, fade masks, banner var |
+| [../../research/11-docs-design-language.md](../../research/11-docs-design-language.md) | Live-verified anatomy (56px `h-14` navbar, 40px `h-10` tabs, 18rem sidebar, 19rem rail, 92rem shell), search pill recipe, fade masks, banner var |
 | Upstream libs | shadcn/ui new-york re-themed (UI spec §4); nuqs URL state; sonner toasts (UI spec §4 conventions); Tailwind breakpoints `lg` 1024px / `xl` 1280px (v0 concept uses Tailwind v4 defaults, [06 §1](../06-frontend-implementation.md)) |
 
 Seams held for neighbors: F05 owns everything behind the org/workspace switcher and route guarding; F20 owns bottom-bar flows, one-tap approval, installability; the per-screen specs own sidebar *filter definitions* and rail *panel contents* — F07 owns only the slots, dimensions, and collapse behavior.
@@ -34,9 +34,9 @@ Seams held for neighbors: F05 owns everything behind the org/workspace switcher 
 
 ```
 ┌ banner (optional · 40px min-h-10 · bg #006DDD · dismissible · --banner-height) ┐
-├ navbar h-56: logo h-6 · org/workspace ▾ · SearchPill (h-9 rounded-full ⌘K)     │
+├ navbar 56px h-14: logo h-6 · org/workspace ▾ · SearchPill (h-9 rounded-full ⌘K)│
 │   · docs link · [New task] CTA (bg-primary-dark rounded-xl)                    │
-├ tab row h-40: Tasks·Approvals·Agents·Schedules·Activity·Observability          │
+├ tab row 40px h-10: Tasks·Approvals·Agents·Schedules·Activity·Observability     │
 │   1px bottom indicator · active = accent + faux-bold        header Σ 96px      │
 ├──────────┬────────────────────────────────────────────┬────────────────────────┤
 │ sidebar  │ content max-w 72rem · gap-x 48px            │ right rail 19rem       │
@@ -46,7 +46,7 @@ Seams held for neighbors: F05 owns everything behind the org/workspace switcher 
 shell max-w 92rem · sidebar items text-sm py-1.5 rounded-xl · active bg-primary/10
 ```
 
-All values from UI spec §2 / research 11, tokenized in `tokens.css` (§4.2). Signature details carried over verbatim: faux-bold active text-shadow (no layout shift), `bg-primary/10` active pills (dark: `primary-light` variants), scroll-fade masks top/bottom of sidebar and on the tab row when it scrolls, `--banner-height` var so content offset follows banner dismissal. Thread column inside task detail caps at `--chat-max-width` 900px (owned by the task-detail spec; the shell only provides the column).
+All values from UI spec §2 / research 11, tokenized in `tokens.css` (§4.2 — navbar `var(--navbar-height)` 3.5rem/56px, tabs `var(--tabbar-height)` 2.5rem/40px). Signature details carried over verbatim: faux-bold active text-shadow (no layout shift), `bg-primary/10` active pills (dark: `primary-light` variants), scroll-fade masks top/bottom of sidebar and on the tab row when it scrolls, `--banner-height` var so content offset follows banner dismissal. Thread column inside task detail caps at `--chat-max-width` 900px (owned by the task-detail spec; the shell only provides the column).
 
 ### 3.2 Information architecture under P-002
 

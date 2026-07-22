@@ -46,7 +46,8 @@ Roadmap anchor: M3 — "Schedules CRUD (crons API) + Activity feed; untrusted-pa
   - **Edit**: implemented as **create-new-then-delete-old** — the only strategy verified to exist upstream (mda itself reconciles by delete + recreate, research 20 fact 11). Create first, delete second, so a failure never loses the schedule; the seconds-wide double-fire window is accepted and documented in the confirm dialog. If a native update endpoint exists (§9-Q2) swap it in behind the same SDK method.
   - **Delete**: confirm dialog shows the full definition and offers "copy as JSON" before deleting (a delete operation exists — mda deletes MDA-owned crons on deploy; exact path per Agent Server API reference, §9-Q2).
   - **Enable/disable**: ships **only if** the M3-entry API probe finds a pause/enabled field (§9-Q2). Fallback if absent: the toggle is omitted; "disable" degrades to delete-with-export (definition downloadable for later recreation). No Deep Work DB exists to stash disabled definitions (doc 02 §1) — we do not fake a toggle we can't honor.
-  - Project-origin schedules (§3.3) get **no destructive actions** — edit/delete deep-link to the agent's `schedules/` config in the fleet manager, because `mda deploy` will clobber UI changes (research 20 fact 11).
+  - Project-origin schedules (§3.3) get **no destructive actions** — edit/delete deep-link to the agent's `schedules/` config in [F17](./17-fleet-manager.md), because `mda deploy` will clobber UI changes (research 20 fact 11).
+- **States** (doc 03 §7 bar): loading = skeleton rows, never spinners; empty = teaching state ("No schedules yet — create one, or start from an org-analyst template" linking F22's gallery); error/degraded per-source as above, with healthy sources still rendered.
 
 ### 3.2 CronEditor (`packages/ui`)
 
@@ -197,7 +198,7 @@ type ActivityItem = {
 6. Activity feed filters (agent, task_type, status, time) round-trip through the URL (nuqs); pagination merges ≥2 sources in correct `updated_at` order; list is virtualized.
 7. An injection-shaped fired payload renders inside `UntrustedContent` in: schedule payload preview, run-history preview, Activity row, and (with F09) thread view — verified by fixture test; images not fetched, HTML inert.
 8. Activity issues no `POST /runs/query` calls (asserted in an integration test against the proxy log); count strip derives solely from fetched pages.
-9. Every analytical affordance is a deep link to LangSmith; no chart components render in either tab (P-002/D-003 audit).
+9. Every analytical affordance is a deep link to LangSmith; no chart components render in either tab (P-002 audit; doc 02 §10).
 10. Demo mode: both tabs fully functional against fixtures with zero credentials (doc 06 decision 4).
 
 ## 8. Task breakdown

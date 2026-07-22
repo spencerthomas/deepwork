@@ -56,9 +56,9 @@ Two options for what the webview loads:
 
 ### 3.4 Native notifications (F19 seam)
 
-- **What desktop raises locally** (research 05: fan-out targets Expo/Web Push; "local notifications on desktop"): run completed / failed, new interrupt (`input.requested`), per F19's event taxonomy.
-- **How events arrive on desktop, v1:** derived from data the webview already holds — open `useStream` subscriptions (root channels, [03 §5](../03-ui-spec.md)) and the F10 hidden-tab poll. No push transport, no OS push service. A server-push transport for desktop (e.g. subscribing to `apps/server`'s fan-out) is F19's call — §9-5; note 02 §7 *implies* desktop sits on the fan-out, research 05 says local — F19 owns reconciling this.
-- Consequence: notification latency while hidden = poll cadence (≤60 s) except for threads with open streams (instant). F10 §9-Q4 (do webhooks fire on `interrupted`?) bounds how much F19 can improve this.
+- **What desktop raises locally**: `task.completed` / `task.failed`, `task.needs_review`, `schedule.run_finished` — F19's event taxonomy. "Local" (research 05) means the *raising* is local via the Tauri notification plugin; the events themselves arrive server-pushed.
+- **How events arrive on desktop, v1:** the running app subscribes to F19's `GET /api/notify/stream` SSE feed (per-actor, `Last-Event-ID` replay of a bounded window — F19 §4) and maps events to native notifications. The desktop webview has no OS push service; the SSE feed **is** the desktop transport. This reconciles 02 §7 (fan-out) with research 05 ("local notifications on desktop"): desktop sits on the fan-out via SSE and raises locally.
+- Consequence: notification latency ≈ SSE delivery — seconds after the webhook fires, window visible **or hidden** (close-to-tray, §3.2, keeps the subscription alive). A **closed** app receives nothing — documented v1 limitation, mirrored in F19 §3.4. After a disconnect (sleep/network), `Last-Event-ID` replay catches up; replayed events dedupe by `event_id` so each raises at most one notification. F19 §9-Q2 (webhooks on `interrupted`) bounds needs-review coverage.
 - Clicking a notification = its deep link (§3.5): show window, navigate. Per-category toggles in desktop settings (§4.4). Webview raises via the notification plugin through `@tauri-apps/api`; permission prompted on first use.
 
 ### 3.5 Deep links: `deepwork://`
@@ -207,7 +207,7 @@ apps/desktop/
 1. `apps/desktop` builds from the `apps/web` static export on macOS, Windows, Linux; installers ship from the `desktop-v*` CI workflow with signed (and on macOS notarized) artifacts + `latest.json`.
 2. Device flow signs in end-to-end on a Tauri build; tokens present in OS keychain, absent from webview storage — F05 acceptance 6 verified on all three OSes; expiry → state 4 → fresh-code retry works.
 3. Tray badge equals `useApprovalsCount().total` within one poll interval, window visible or hidden; deciding an approval updates the badge without restart.
-4. A run-completed and an input-requested event each raise exactly one native notification (per settings toggles); clicking it opens the correct screen via the §3.5 map.
+4. A `task.completed` and a `task.needs_review` event arriving on `/api/notify/stream` each raise exactly one native notification (per settings toggles) — including when redelivered via `Last-Event-ID` replay after a disconnect (`event_id` dedupe); clicking it opens the correct screen via the §3.5 map.
 5. `deepwork://task/...`, `deepwork://approval/...`, `deepwork://agent/...` resolve correctly from cold start *and* running instance; signed-out replay works; no auth-guard bypass (F07 §6).
 6. Updater: an old version detects, downloads, and installs a new release only after user confirmation; a tampered signature is rejected and the app keeps running.
 7. Global ⌘K/Ctrl+K summons the window + palette from any focused app; conflict degrades per §3.8.
@@ -226,7 +226,7 @@ apps/desktop/
 | 5 | Window-state persistence + monitor-geometry validation | 4 | AC 8 restore cases |
 | 6 | Device-flow screen + Rust flow driver + keychain custody (joint with F05 task 13) | 2, 1 | AC 2; §3.6 states all reachable in a stub-server test |
 | 7 | Tray icon, badge, menu (incl. recent approvals + signed-out variants) fed by `set_badge`/`set_recent_approvals` | 4, F10 selector | AC 3 |
-| 8 | Native notifications: F19 event mapping, settings toggles, click-through to deep links | 7, F19 taxonomy | AC 4 |
+| 8 | Native notifications: `/api/notify/stream` subscription (reconnect + `Last-Event-ID`), F19 event mapping + `event_id` dedupe, settings toggles, click-through to deep links | 7, F19 SSE feed | AC 4 |
 | 9 | Deep links: scheme registration, cold-start buffer, running-instance forwarding, F07 router bridge, signed-out queue | 4, 6 | AC 5 |
 | 10 | Global shortcut + launch-at-login + desktop settings surface (§4.4) | 4 | AC 7, AC 8 (launch half) |
 | 11 | Updater integration: manifest, signature keys, check/download/confirm-restart UX | 2 | AC 6 against a staged release |

@@ -130,13 +130,34 @@ Beta caveats (tracked as roadmap risks): the MDA thread/run invocation API is de
 - **Notifications**: every run-create accepts a `webhook` param → Deep Work's push fan-out route → Web Push/VAPID (PWA), Tauri native notifications (desktop), Expo Push later. One run-completion pipeline for all surfaces.
 - **Casing hygiene** (bug class eliminated up front): wire fields are snake_case; JS middleware emits camelCase HITL payloads and Python emits snake_case — the SDK normalizes with camelCase canonical *except* `reviewConfigs.actionName/argsSchema`, which the UI reads in both casings. The UI spec pins exact shapes.
 
-## 8. Observability & provenance
+## 8. OSS-first dependency policy
+
+Deep Work **consumes** the LangChain ecosystem as versioned packages and builds only where nothing upstream exists — so it benefits from every community release rather than maintaining forks.
+
+| Consume (pin + weekly renovate, `@langchain/*` grouped) | Build |
+|---|---|
+| `deepagents` (py/js), `deepagents-code`, `managed-deepagents`, `@langchain/react`, `@langchain/langgraph-sdk`, `langgraph-cli`, `langchain-auth`, `langsmith[sandbox]`, `langchain-mcp-adapters`, sandbox provider packages | `apps/*` (the product surfaces), `packages/sdk` (glue: agent-source registry, control-plane client, normalization), `packages/agent` (composition, not framework), `packages/ui` (tokens + components), server routes (OAuth, proxies, push) |
+
+Rules: no forks and no vendoring; gaps go upstream as issues/PRs (the LangChain relationship makes this a feature, not a risk); anything we build that is generically useful (e.g. a sandbox file-browser connector) is designed to be upstreamable.
+
+## 9. Local companion: Deep Agents Code (`dcode`)
+
+Deep Work builds **no CLI** — `dcode` (OSS, deepagents-based, any-model, LangSmith-traced) is the local companion, the way Claude Code CLI pairs with its web surface. Integration points:
+
+- **Terminal ↔ cloud handoff**: task detail exposes *Continue in terminal* → `dcode --sandbox langsmith --sandbox-id <thread-sandbox>` — dcode reattaches to the same LangSmith sandbox the cloud thread uses. Zero new infrastructure.
+- **Shared conventions**: project `.deepagents/AGENTS.md` + agentskills.io skills are read identically by dcode and `packages/agent`; org skills sync from Context Hub in both directions (memory-layout mapping is a v2 design task — both sides are markdown-file-first).
+- **Goals & rubrics adopted into the task model**: dcode's `/goal` (agent drafts acceptance criteria → human review → per-turn grading until done) and `/rubric` become Deep Work's richer plan-approval: tasks can carry a goal or rubric, graded server-side, surfaced as the verification panel. dcode's implementation is the reference; cloud parity via middleware in `packages/agent`.
+- **Plugins**: dcode supports Claude- and Codex-style plugin manifests/marketplaces (skills + MCP servers; `langchain-ai/langchain-plugins` is the cross-tool registry). Deep Work's plugins screen manages the same format — an org marketplace is just a repo, usable locally and (where remote-MCP/skills-compatible) in cloud agents.
+- **Activity (v2, optional)**: dcode `hooks.json` can POST session events to Deep Work so the Activity feed sees local and cloud work side by side.
+
+## 10. Observability & provenance
 
 - Every run renders a **View trace** deep link (LangSmith run URL) — the trace is the ground truth the UI never contradicts.
+- **Native org monitoring**: per-agent tracing projects + a metadata convention on every run (`task_type`, `agent`, `actor`, `tenant`, `context`, `surface`) so orgs monitor Deep Work with LangSmith itself — dashboards, filters, scheduled Insights reports, automations. Deep Work deep-links out rather than re-implementing observability; the full org-intelligence story (insights, memory synthesis, knowledge base, data plane, graph) is [doc 07](07-org-intelligence.md).
 - Sandbox IDs, branch names, PR links, and Context Hub file versions are surfaced in the task detail rail — "provenance everywhere" is a design principle (see UI spec).
 - Webhook/steering payloads from external sources render inside untrusted-content boundaries (adopting Claude Routines' `<routine-fire-payload>` prompt-injection defense verbatim).
 
-## 9. Repo & package architecture
+## 11. Repo & package architecture
 
 ```
 deepwork/
@@ -153,7 +174,7 @@ deepwork/
 
 pnpm + Turborepo + changesets; details in [05 · OSS setup](05-oss-setup.md).
 
-## 10. Key risks
+## 12. Key risks
 
 | Risk | Mitigation |
 |---|---|

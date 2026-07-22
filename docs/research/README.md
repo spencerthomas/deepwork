@@ -20,6 +20,8 @@ Condensed findings that ground the [v1 plan](../plan/). All research was perform
 | [03](03-competitor-teardown.md) | Codex, Claude Code/Cowork, Jules, Copilot, Cursor — table stakes & UX patterns |
 | [10](10-openswe-fleet.md) | open-swe v2 (deepagents rewrite) and LangSmith Fleet |
 | [09](09-openwiki-opengpts.md) | openwiki (live deepagents reference) and opengpts (archived; domain-model lessons) |
+| [14](14-dcode.md) | Deep Agents Code (`dcode`): goals/rubrics, sandbox reattach, plugins, hooks — the local companion CLI |
+| [15](15-org-intelligence.md) | Org-intelligence layer: LangSmith Insights/automations, memory synthesis, OKF/openwiki, graph & DB tooling |
 
 ## Frontend & design
 

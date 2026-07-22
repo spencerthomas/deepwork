@@ -32,6 +32,8 @@
 
 - Agents index/detail (deployments + `/v1/deepagents/*` + Fleet read); file-first config editor (instructions/skills/memory via Context Hub; MCP connectors; per-tool Auto/Ask matrix); template gallery + create/deploy wizard; Fleet-export import/export.
 - Schedules CRUD (crons API) + Activity feed; untrusted-payload rendering.
+- Org-intelligence Layers 0–1 ([doc 07](07-org-intelligence.md)): `org-memory/` starter template + onboarding seeding interview; tracing-metadata conventions; org-analyst schedule template (langsmith-mcp-server digests); Insights config provisioning (or deep links if the beta API probe fails).
+- `dcode` companion: *Continue in terminal* handoff (`--sandbox-id`), plugins screen wired to the Claude/Codex-compatible marketplace format.
 - Exit: an org's agents are manageable from Deep Work without touching smith.langchain.com (except gated Fleet CRUD, which links out).
 
 ### M4 — Multi-surface + v1 hardening (week 16–19)
@@ -53,7 +55,7 @@
 
 ## Post-v1 backlog (explicitly deferred)
 
-Pure-OSS backend tier (protocol server / Aegra adapter) · native Expo apps · Slack/Linear channels for task creation · chat-to-configure agent builder · GitLab · multi-repo tasks/worktree parallelism · team RBAC surfaces · evals integration (LangSmith datasets from task outcomes).
+Pure-OSS backend tier (protocol server / Aegra adapter) · native Expo apps · Slack/Linear channels for task creation · chat-to-configure agent builder · GitLab · multi-repo tasks/worktree parallelism · team RBAC surfaces · evals integration (LangSmith datasets from task outcomes) · goals/rubrics grading parity in cloud tasks (dcode is the reference) · **org-intelligence ladder** ([doc 07](07-org-intelligence.md)): v1.x memory-synthesis review loop → v2 OKF knowledge base (openwiki) + structured data plane (dbt-mcp, data-analyst template) → v3 Graphiti temporal org graph.
 
 ## Risk register
 

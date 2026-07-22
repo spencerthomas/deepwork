@@ -35,6 +35,7 @@ Deep Work is a Codex / Claude-Cowork-class product experience delivered as an op
 | [04 — Roadmap](docs/plan/04-roadmap.md) | Milestones to v1, risks, open questions |
 | [05 — OSS setup](docs/plan/05-oss-setup.md) | License, repo structure, CI, conventions |
 | [06 — Frontend implementation](docs/plan/06-frontend-implementation.md) | Evaluation of the [deep-work-frontend](https://github.com/spencerthomas/deep-work-frontend) concept + phased plan to make it `apps/web` |
+| [07 — Organizational intelligence](docs/plan/07-org-intelligence.md) | The learning loop: LangSmith monitoring/Insights, memory synthesis, OKF knowledge base, structured data plane, temporal org graph |
 | [Design brief](docs/design/deepwork-design-brief.html) | Visual brief with tokens, specimens, and screen concepts |
 | [Research digest](docs/research/README.md) | Condensed findings that ground every decision above |
 

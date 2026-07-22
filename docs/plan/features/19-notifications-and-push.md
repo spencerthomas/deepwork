@@ -67,7 +67,7 @@ Run terminal statuses: `success · error · timeout · interrupted` (enum verifi
 | `task.completed` | webhook `status == "success"` | yes |
 | `task.failed` | `status == "error"` (payload `error: {error, message}`) or `status == "timeout"` (reason=timeout) | yes |
 | `task.needs_review` | `status == "interrupted"` **and** interrupt marker present in payload (checked, then discarded — §6). Webhook delivery for interrupted runs is plausible ("at the completion of a run") but **undocumented** — verified by spike task 1; fallback in §5 | yes, `Urgency: high` |
-| `schedule.run_finished` | any of the above where run `metadata` carries the Deep Work cron stamp (`deepwork.origin="schedule"`, `deepwork.schedule_id`) — set by us at cron creation; MDA-side `metadata.owner` stamping corroborates ([research 20](../../research/20-gapfill-mda-api.md)) | success: collapsed digest; failed/needs-review: yes |
+| `schedule.run_finished` | any of the above where run `metadata` carries the F18 schedule stamp — `deepwork_schedule_id` present **or** `surface="schedule"` ([F18 §4.3](./18-schedules-and-activity.md)), set via the cron payload at creation. Never classified on `deepwork.origin` — that is a cron-object stamp whose values are `ui`/`project`, not a run marker. MDA-side `metadata.owner` stamping corroborates ([research 20](../../research/20-gapfill-mda-api.md)) | success: collapsed digest; failed/needs-review: yes |
 
 Not events: run started (no webhook exists), steering/queue activity (in-band via streams), user-initiated cancel (lands as `interrupted` without a HITL marker → suppressed).
 

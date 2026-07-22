@@ -26,7 +26,7 @@ Frontend is Next.js `apps/web` (D-022); any server-side proxying of connector ca
 | Sandbox connector routes | consumes/defines | `/connectors/deepwork/sandbox/:threadId/tree|file` (02 §4) — identity-enforced (`secure by default`, research 20); response schemas defined here (§4.2), implemented in [F14](./14-agent-package.md) with F11 |
 | [F09](./09-task-detail-and-streaming.md) steering | produces | one plain-text human message per review batch (§4.3), submitted through the composer's queue-vs-interrupt affordance (02 §7, enqueue default) |
 | F12 GitHub flow | produces | `Approve & open PR` intent (§3.4); F12 owns what happens after the click (tool call, HITL gate, PR/CI display) |
-| F11 environments | consumes | sandbox presence/id/TTL from the env chip state; `SANDBOX_EXPIRED` handling + "resume environment" action |
+| F11 environments | consumes | sandbox presence/id/TTL from the env chip state; `410` `sandbox_expired` handling + "resume environment" action |
 | `packages/ui` tokens | consumes | catppuccin-latte/mocha framed code blocks, 14px mono, unified diff default (03 §1.3) |
 
 ## 3. Design
@@ -40,7 +40,7 @@ Two data sources, selected per thread (03 §3.2 lists both):
 | Sandbox-backed (coding) | connector `tree` route — git-derived vs the task's base branch inside the sandbox | per-file `+adds/−dels`, roll-up in header |
 | State-backed (research/writing, StateBackend virtual FS, 02 §4) | `values.files` via F04 | file-level only: added / modified / deleted counts (no line baseline exists) |
 
-Detection: env/sandbox chip present in thread state → connector; else `values.files`. Tree renders as a collapsible path tree (ui-patterns deep-agent-ide reference: 160px tree, depth×14+8px indent, amber modified dots — research 22), status dot per file (green added / amber modified / red deleted), monospace paths, header shows `N files · +A −D`. Clicking a file opens `FileViewer` (state-backed) or the diff takeover scoped to that file (sandbox-backed). Connector data revalidates on `tool-finished` events for mutating tools (`write_file`, `edit_file`, `delete`, `execute`) with a 2s debounce; `values.files` is live by nature.
+Detection: env/sandbox chip present in thread state → connector; else `values.files`. Tree renders as a collapsible path tree (ui-patterns deep-agent-ide reference: 160px tree, depth×14+8px indent, amber modified dots — research 22), status dot per file (green added / amber modified / red deleted), monospace paths, header shows `N files · +A −D`. Clicking a file opens `FileViewer` (state-backed) or the diff takeover scoped to that file (sandbox-backed). Connector data revalidates on `tool-finished` events for mutating tools (`write_file`, `edit_file`, `delete`, `execute`) with a 500ms debounce (kept short so refresh lands within AC-1's 2s window); `values.files` is live by nature.
 
 ### 3.2 FileViewer
 
@@ -78,7 +78,7 @@ A run-panel pane (concept app already has one — 06 §1) fed entirely by `execu
 | Empty | tree empty ∧ `values.files` empty | teaching empty state: "No changes yet — files appear as the agent writes them" (+ artifact variant for non-coding) |
 | Error | connector 4xx/5xx after retry | inline error row + retry; block stays mounted |
 | Degraded: connector down | fetch fails, thread streaming fine | banner "Live file tree unavailable"; render `values.files` subset + **recently-touched list** derived from `write_file/edit_file/delete` tool calls in the thread (paths from args — always available from thread state); viewer/diff disabled for sandbox-only content |
-| Degraded: sandbox expired | `SANDBOX_EXPIRED` (§4.2) | banner "Environment expired — showing last known state"; SWR-cached tree read-only; "Resume environment" action → F11 |
+| Degraded: sandbox expired | `410` `sandbox_expired` (§4.2) | banner "Environment expired — showing last known state"; SWR-cached tree read-only; "Resume environment" action → F11 |
 | Highlight failure | worker error/timeout | plain-text render, silent fallback |
 
 ### 3.8 Performance
@@ -162,7 +162,7 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 - **Comment on a deleted file**: allowed; old-side anchors only.
 - **`values.files` null-delete race**: map-diff consumption (§4.1) makes deletion idempotent; viewer open on a deleted file shows "File was deleted by the agent" with last content retained until closed.
 - **Binary flagged in tree but requested as text** (or vice versa): trust per-response `mime_type`/decode result over tree flags.
-- **Huge trees** (>2,000 entries): `truncated: true` → banner "Showing first 2,000 changes"; counts header still totals from git numstat server-side.
+- **Huge trees** (>2,000 entries): `truncated: true` → banner "Showing first 2,000 changes"; header totals render from `total_files`/`total_additions`/`total_deletions` (full git numstat, §4.2) while `files` stays the truncated subset.
 - **Non-UTF-8 text**: decode failure → binary fallback card, never garbled render.
 - **Terminal output interleave**: multiple concurrent `execute` calls (subagents) render as separate blocks keyed by `tool_call_id`, ordered by `tool-started` arrival; namespace label on subagent-issued blocks.
 - **Review sent while a run is active**: enqueue default means comments apply after the current step — the composer's existing affordance communicates this (F09); no special casing here.

@@ -97,9 +97,9 @@ Aggregation runs in `packages/sdk` over the agent-source registry; each source c
 
 ### 3.3 Create flow
 
-Template gallery (Deep Work SWE · Research · Writing · blank — content from [F15](./15-task-templates.md)) → form (name, description, `provider:model`, workspace, sandbox on/off per template, identity preset) → one of two paths, chosen automatically:
+Template gallery — display names map explicitly onto [F15](./15-task-templates.md)'s binding template ids: **"Deep Work SWE" ↦ `coding`**, **"Research" ↦ `research`**, **"Writing" ↦ `writing`** (reserved `data-analyst` hidden until v2, [F24](./24-org-intelligence-v2-v3.md)); **"Blank" maps to no template id** — it creates an *unmanaged custom assistant* (no `deepwork_managed` metadata, F15 §3.5) that the reconciler never touches and the composer renders under **Custom** (F15 §3.6). Gallery card → form (name, description, `provider:model`, workspace, sandbox on/off per template, identity preset) → one of two paths, chosen automatically:
 
-1. **New assistant on an existing Deep Work deployment** (default, instant): templates are assistant configs on the same agent, not separate codebases (D-014; [02 §3](../02-architecture.md)) — create = assistants API call, no build.
+1. **New assistant on an existing Deep Work deployment** (default, instant): templates are assistant configs on the same agent, not separate codebases (D-014; [02 §3](../02-architecture.md)) — create = assistants API call, no build. Template picks provision via F15 §3.5 (stable UUIDv5 id + managed metadata); Blank creates a plain unmanaged assistant.
 2. **New deployment**: no Deep Work deployment yet, or user opts for isolation → hand off to the [F06](./06-onboarding-and-deploy.md) wizard (which owns MDA-availability detection and the classic fallback).
 
 ### 3.4 Import / export
@@ -188,7 +188,7 @@ All verified surfaces; anything else is §9. Control-plane base = `api.smith.lan
 | 8 | Auto/Ask matrix: schema detection, compile to `interrupt_on`, assistant-version save, limits messaging | 5 | AC-5 |
 | 9 | Schedules + Environment tab shells passing agent context to [F18](./18-schedules-and-activity.md)/[F11](./11-execution-and-environments.md) embeds | 2, F18, F11 | Tabs render embedded views with correct scoping |
 | 10 | Deploy tab: revision history, redeploy via [F06](./06-onboarding-and-deploy.md) engine, failure surfacing, deep links | F06 engine | AC-7 |
-| 11 | Create flow: gallery ([F15](./15-task-templates.md) data) → form → assistant-config path; deployment path hands to F06 | 1, F15, F06 | Both §3.3 paths produce a working agent |
+| 11 | Create flow: gallery ([F15](./15-task-templates.md) ids via the §3.3 display-name mapping; Blank = unmanaged custom) → form → assistant-config path; deployment path hands to F06 | 1, F15, F06 | Both §3.3 paths produce a working agent; picker→provisioning resolution matches §3.3 mapping |
 | 12 | Import/export: ZIP validation (server-side), project mapping, export generation, CI round-trip test | 4, 11 | AC-8 |
 | 13 | Degradation + beta-badge audit across all surfaces (§3.5 matrix) | 2–12 | AC-9; AC-10 checklist run |
 

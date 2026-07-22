@@ -23,7 +23,7 @@ Frontend is Next.js `apps/web` (D-022); any server-side proxying of connector ca
 |---|---|---|
 | [F04](./04-sdk-and-agent-sources.md) data layer | consumes | `NormalizedFile` (§4.1) from `values.files`; F04 normalizes all three `FileData` variants once at the SDK boundary (03 §5, D-011); components never see variants |
 | `useStream` root channels | consumes | `values` (files/todos), `tools` (`AssembledToolCall` + `tool-output-delta`) per research 21; no extra subscriptions needed |
-| Sandbox connector routes | consumes/defines | `/connectors/deepwork/sandbox/:threadId/tree|file` (02 §4) — identity-enforced (`secure by default`, research 20); response schemas defined here (§4.2), implemented in [F14](./14-agent-package.md) with F11 |
+| Sandbox connector routes | consumes/defines | `/connectors/deepwork/sandbox/:threadId/tree\|file` (02 §4) — identity-enforced (`secure by default`, research 20); response schemas defined here (§4.2), implemented in [F14](./14-agent-package.md) with F11 |
 | [F09](./09-task-detail-and-streaming.md) steering | produces | one plain-text human message per review batch (§4.3), submitted through the composer's queue-vs-interrupt affordance (02 §7, enqueue default) |
 | F12 GitHub flow | produces | `Approve & open PR` intent (§3.4); F12 owns what happens after the click (tool call, HITL gate, PR/CI display) |
 | F11 environments | consumes | sandbox presence/id/TTL from the env chip state; `410` `sandbox_expired` handling + "resume environment" action |
@@ -147,9 +147,9 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 
 | Component | Props (essence) | Notes |
 |---|---|---|
-| `FileTree` | `entries: TreeEntry[]`, `selected`, `onSelect`, `variant: 'rail'|'takeover'` | virtualized; status dots; counts |
+| `FileTree` | `entries: TreeEntry[]`, `selected`, `onSelect`, `variant: 'rail'\|'takeover'` | virtualized; status dots; counts |
 | `FileViewer` | `file: NormalizedFile`, `caps?`, `onDownload` | worker highlight; multimodal; truncation UX |
-| `DiffViewer` | `files: DiffFile[]`, `comments`, `onCommentAdd/Edit/Delete`, `view: 'unified'|'split'` | `@pierre/diffs`; per-line gutter |
+| `DiffViewer` | `files: DiffFile[]`, `comments`, `onCommentAdd/Edit/Delete`, `view: 'unified'\|'split'` | `@pierre/diffs`; per-line gutter |
 | `ReviewBar` | `commentCount`, `onSend`, `onApproveAndPr`, `prState` | takeover sticky header |
 | `ArtifactList` / `ArtifactViewer` | `artifacts: NormalizedFile[]` | rail + takeover |
 | `TerminalPane` | `blocks: ExecBlock[]` (derived from `AssembledToolCall`s) | read-only; ANSI SGR only |
@@ -181,7 +181,7 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 
 ## 7. Acceptance criteria
 
-1. Sandbox-backed thread: rail shows tree + per-file `+/−` counts from the `tree` route within 2s of a mutating `tool-finished`; state-backed thread: identical block from `values.files` with file-level counts. Golden fixtures cover all three `FileData` variants end-to-end (via F04).
+1. Sandbox-backed thread: rail shows tree + per-file `+/−` counts from the `tree` route within 2s of a mutating `tool-finished` (500ms debounce §3.1 + fetch fit inside the window); state-backed thread: identical block from `values.files` with file-level counts. Golden fixtures cover all three `FileData` variants end-to-end (via F04).
 2. `FileViewer` renders text (highlighted ≤ caps, plain above), markdown (rich + raw toggle), image, PDF, audio, video, and binary-fallback fixtures; oversize file shows truncation banner + working download.
 3. Takeover opens full-width from the rail, unified diff default, per-file collapse; 100-file / 10k-line diff fixture scrolls at 60fps target with no per-file content fetched until expanded.
 4. Adding 3 comments across 2 files and pressing Send produces **exactly one** human message matching the §4.3 grammar byte-for-byte against a golden transcript; the thread re-renders it as a review card; queue-vs-interrupt affordance honored.
@@ -197,7 +197,7 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 | # | Task | Depends on | Definition of done |
 |---|---|---|---|
 | 1 | `NormalizedFile` consumption types + fixtures for py/js-v1/js-v2 variants in `packages/sdk` | F04 types landed | variant round-trip tests green; components compile against `NormalizedFile` only |
-| 2 | Connector `tree`/`file` handlers in `packages/agent/connectors/deepwork.py` (F14) per §4.2 | F11 sandbox backend; seam review w/ F11/F14 | contract tests vs `langgraph dev` + live sandbox; 403/404/400/413 paths covered |
+| 2 | Connector `tree`/`file` handlers in `packages/agent/connectors/deepwork.py` (F14) per §4.2 | F11 sandbox backend; seam review w/ F11/F14 | contract tests vs `langgraph dev` + live sandbox; 403/410/400/413 paths covered |
 | 3 | `FileTree` + rail Files-changed block (virtualized, counts, status dots, source selection) | 1, 2 | AC-1, AC-8 partial; stories for both sources |
 | 4 | `FileViewer` text path: Shiki worker, caps, truncation UX, markdown mode | 1 | AC-2 text/markdown; worker fallback test |
 | 5 | `FileViewer` multimodal + binary fallback | 4 | AC-2 media fixtures; sanitized embeds verified |

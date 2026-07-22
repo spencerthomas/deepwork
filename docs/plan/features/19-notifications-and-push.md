@@ -116,17 +116,19 @@ Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assis
 {"event_id": "…", "type": "task.completed|task.failed|task.needs_review|schedule.run_finished",
  "source_id": "…", "thread_id": "…", "run_id": "…", "assistant_id": "…",
  "title": "<metadata title or null>", "reason": "error|timeout|null",
- "schedule_id": "…|null", "ts": "<webhook_sent_at>"}
+ "interrupt_id": "…|null", "schedule_id": "…|null", "ts": "<webhook_sent_at>"}
 ```
 
-**Push message JSON** (encrypted body; F20's service worker renders): `{type, url, title, body, tag: thread_id, ts}` — `url` is the deep-link target; ≤4 KB total.
+`interrupt_id` is **best-effort and nullable**: on `status=interrupted` it is extracted from the interrupt marker when the payload exposes one (§9-Q2), which is then discarded per §6; `null` otherwise. Clients must not depend on it — when `null`, the pending interrupt is resolved from thread state, which F20's approval flow treats as authoritative.
+
+**Push message JSON** (encrypted body; F20's service worker renders): `{type, url, title, body, tag: thread_id, interrupt_id, ts}` — `url` is the deep-link target (its `interrupt` param is omitted when `interrupt_id` is null); `interrupt_id` carries the same best-effort/null semantics as the normalized event; ≤4 KB total.
 
 **Device API** (session-authenticated via F28; actor identity from the signed-in session):
 
 | Route | Behavior |
 |---|---|
 | `GET /api/notify/vapid` | `{public_key}` — VAPID keypair generated at server setup, private key env/secret-mounted, `sub` claim = operator `mailto:` config |
-| `POST /api/notify/devices` | `{platform: "webpush"|"tauri"|"expo", subscription?: {endpoint, keys:{p256dh, auth}}, name?, prefs: {completed, failed, needs_review, schedule}, generic: bool}` → `{device_id}`; re-POST of same endpoint upserts |
+| `POST /api/notify/devices` | `{platform: "webpush"\|"tauri"\|"expo", subscription?: {endpoint, keys:{p256dh, auth}}, name?, prefs: {completed, failed, needs_review, schedule}, generic: bool}` → `{device_id}`; re-POST of same endpoint upserts |
 | `PATCH /api/notify/devices/{id}` | update prefs / rotate subscription |
 | `DELETE /api/notify/devices/{id}` | unregister (also the "remove device" Settings action) |
 | `GET /api/notify/devices` | list for Settings |
@@ -185,7 +187,7 @@ Consumed payload fields (verified platform shape): `run_id`, `thread_id`, `assis
 | 4 | Device registry + prefs API + VAPID key mgmt (`/api/notify/*` routes, SQLite per §4) | 2, F28 auth | Routes pass integration tests; upsert-on-endpoint verified |
 | 5 | Web Push sender: encryption, `tag`/`renotify`, TTL/Urgency, 404/410 cleanup, failure counters | 3, 4 | AC-1, AC-8 |
 | 6 | Storm control: schedule digest window + per-actor token bucket | 5 | AC-6; needs-review bypass verified |
-| 7 | `packages/sdk`: attach `webhook` + metadata stamps (title, origin, schedule_id, actor) on every run/cron create; per-source secret minting in the source registry | 1 | Every SDK-created run observed carrying webhook + stamps |
+| 7 | `packages/sdk`: attach `webhook` + metadata stamps (title, actor, `surface`; `deepwork_schedule_id` on cron payloads per [F18 §4.3](./18-schedules-and-activity.md)) on every run/cron create; per-source secret minting in the source registry | 1 | Every SDK-created run observed carrying webhook + stamps |
 | 8 | SSE feed `/api/notify/stream` with `Last-Event-ID` replay + `event_log` TTL | 3 | AC-9 (jointly with F21) |
 | 9 | Settings UI: device list, per-event toggles, generic mode, test push, webhook-health per source | 4, 5 | AC-7; test button round-trips |
 | 10 | Onboarding/iOS gating: installed-PWA detection, ≥16.4 nudge (UX with F20) | 9 | AC-10 |

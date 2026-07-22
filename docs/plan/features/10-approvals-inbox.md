@@ -8,7 +8,7 @@ Sources: [UI spec §3.3](../03-ui-spec.md) · [frontend plan Phase C](../06-fron
 
 The cross-agent surface for everything agents are waiting on — vision pillar 2, "Fleet's headline differentiator, matched in the open" ([01](../01-vision.md)). This spec owns:
 
-- The **Approvals tab**: aggregated list of pending HITL interrupts across all configured agent sources, with counts feeding the shell tab badge and desktop tray (seam to F07, [./07-app-shell.md](./07-app-shell.md)).
+- The **Approvals tab**: aggregated list of pending HITL interrupts across all configured agent sources, with counts feeding the shell tab badge and desktop tray (seam to F07, [./07-app-shell-and-navigation.md](./07-app-shell-and-navigation.md)).
 - The **interrupt card** experience: single and batched decisions, per-arg editing, reject/respond, mark-resolved, schema-tolerant fallback — the `InterruptCard`/`DecisionForm` components in `packages/ui` ([03 §4](../03-ui-spec.md)).
 - **Usage** of the v1 HITL contract (D-010/D-011): payload normalization, `respond()/respondAll()` resume, casing hygiene.
 

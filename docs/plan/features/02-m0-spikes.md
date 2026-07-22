@@ -14,7 +14,7 @@ F02 turns the three riskiest unknowns in the plan into recorded facts before M1 
 | **S2 — MDA loop** | Does the full `mda init/dev/deploy` + external-client loop work end-to-end, and can we reproduce deploy via raw API (no CLI)? | O-003 | MDA loop memo + deploy-replay script |
 | **S3 — stream contract** | Does Agent Streaming Protocol v2 behave as researched, pinned as executable golden-transcript tests? | protocol assumptions in [research 21](../../research/21-gapfill-ui-contract.md) | Permanent contract-test harness + fixtures |
 
-In scope: spike code layout (throwaway `spikes/` vs permanent `packages/sdk` test dirs), the decision-memo format, and the handoff of S3's harness into permanent CI. Out of scope (neighbors — link, don't build): monorepo scaffold and the CI pipeline that *runs* the contract tests → F01 ([./01-monorepo-and-ci.md](./01-monorepo-and-ci.md)); the production SDK layer that *consumes* the pinned contract → F04 ([./04-sdk-and-agent-sources.md](./04-sdk-and-agent-sources.md)); production auth routes, agent package, and all UI.
+In scope: spike code layout (throwaway `spikes/` vs permanent `packages/sdk` test dirs), the decision-memo format, and the handoff of S3's harness into permanent CI. Out of scope (neighbors — link, don't build): monorepo scaffold and the CI pipeline that *runs* the contract tests → F01 ([./01-monorepo-and-oss-infra.md](./01-monorepo-and-oss-infra.md)); the production SDK layer that *consumes* the pinned contract → F04 ([./04-sdk-and-agent-sources.md](./04-sdk-and-agent-sources.md)); production auth routes, agent package, and all UI.
 
 ## 2. Dependencies & seams
 
@@ -215,7 +215,7 @@ What F02 hands to neighbors — these are the interfaces; everything else in `sp
 - WebSocket availability on `/threads/{id}/stream/events` across deployment tiers during beta (S3 records SSE; WS is a stretch check).
 - MDA beta quotas (deployments, crons) — unpublished; ask the beta contact during S2.
 - Whether LangChain permits publishing redacted transcripts of gated MDA surfaces in this public repo (§6 rule holds until answered).
-- Catalog note: `../features/README.md` and `../decisions.md` were absent from the repo when this spec was drafted; neighbor filenames (`./01-monorepo-and-ci.md`) and D-/P-/O- IDs follow the coordinator's catalog and must be reconciled when those files land.
+- Catalog note: `../features/README.md` and `../decisions.md` were absent from the repo when this spec was drafted; neighbor filenames (`./01-monorepo-and-oss-infra.md`) and D-/P-/O- IDs follow the coordinator's catalog and must be reconciled when those files land.
 
 ## 10. Risks
 

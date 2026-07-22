@@ -37,6 +37,8 @@ Deep Work is a Codex / Claude-Cowork-class product experience delivered as an op
 | [06 — Frontend implementation](docs/plan/06-frontend-implementation.md) | Evaluation of the [deep-work-frontend](https://github.com/spencerthomas/deep-work-frontend) concept + phased plan to make it `apps/web` |
 | [07 — Organizational intelligence](docs/plan/07-org-intelligence.md) | The learning loop: LangSmith monitoring/Insights, memory synthesis, OKF knowledge base, structured data plane, temporal org graph |
 | [08 — deepagents feature map](docs/plan/08-deepagents-feature-map.md) | Every deepagents feature set (incl. beta) mapped to its use in Deep Work |
+| [Decision log](docs/plan/decisions.md) | Decided / provisional / open — the single source of truth for project decisions |
+| [Feature specs](docs/plan/features/README.md) | 28 per-feature specs: implementation-ready for v1, design-complete for post-v1 |
 | [Design brief](docs/design/deepwork-design-brief.html) | Visual brief with tokens, specimens, and screen concepts |
 | [Research digest](docs/research/README.md) | Condensed findings that ground every decision above |
 

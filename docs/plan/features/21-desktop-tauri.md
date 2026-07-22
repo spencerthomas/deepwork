@@ -240,7 +240,7 @@ apps/desktop/
 2. **Signing costs & custody:** Apple Developer Program enrollment (paid, account owner TBD), Windows Authenticode route (OV cert vs Azure Trusted Signing), Tauri updater private-key custody/rotation policy — all unresolved; blocks task 12 only.
 3. **Unverified Tauri mechanisms** (research 05 confirms only updater/notification/deep-link/tray): global-shortcut registration, window-state persistence, autostart, single-instance enforcement, and the exact keychain/secret-storage plugin (incl. Linux secret-service behavior). Verify against Tauri v2 plugin docs at M4 start; each addition extends the §6 capability list explicitly.
 4. **Update channels:** is a `beta` channel wanted for v1.x dogfooding, and is differential updating real (research 05 open question) or are full ~5 MB-installer-class artifacts fine forever?
-5. **Desktop event transport** (with F19): does desktop stay poll/stream-derived (§3.4) or subscribe to `apps/server` push fan-out? Depends on F10 §9-Q4 (webhooks on `interrupted`) and on 02 §7 vs research 05 wording (see contradictions note in review).
+5. **Desktop event transport — resolved with F19**: desktop subscribes to `GET /api/notify/stream` (§3.4; F19 §4). Residual: whether a post-v1 OS-level push path (closed-app coverage) is worth pursuing, and F19 §9-Q2 (webhooks on `interrupted`) still bounds needs-review coverage.
 6. **Exact bundler targets** per OS (dmg/NSIS/MSI/AppImage/deb/rpm set) and macOS universal-vs-dual binaries — proposal in §3.7 pending verification.
 7. **Per-OS tray badge affordance** (macOS title text vs Windows overlay vs Linux tooltip-only) — pick at impl, keep §3.3 semantics.
 8. **Minimum OS / webview baselines** (WebView2 evergreen, macOS floor → WKWebView features, WebKitGTK version) → browserslist config for `apps/web`; is Linux a v1 release *blocker* or best-effort tier?
@@ -255,5 +255,5 @@ apps/desktop/
 | Notarization/signing pipeline stalls first release (cert lead times, CI secrets) | Med | Med | Start §9-2 procurement at M3; unsigned dev builds unblock QA; Linux/updater signing has no external dependency |
 | Webview drift breaks the app on one OS (esp. WebKitGTK) | Med | Med | Browserslist floor + 3-OS CI smoke (task 3) + QA matrix (task 13); Linux tier decision in §9-8 caps the blast radius |
 | P-005 reversal reopens the static-export question (F01 §5) | Low-Med | High | Inherited constraint documented in both specs; if reversed pre-M0 the sidecar decision merges into §9-1 |
-| Poll-derived notifications feel slow (≤60 s hidden) vs push-quality expectations | Med | Low-Med | Honest cadence copy in settings; F19 §9-5 transport upgrade path; open streams already deliver instantly |
+| Closed-app notification gap (the SSE feed requires a running app; no OS push transport) | Med | Low-Med | Close-to-tray default + launch-at-login keep the feed alive; honest copy in settings/docs (v1 limitation, F19 §3.4); post-v1 OS push path per §9-5 |
 | Tray/deep-link plugin behavior diverges across Linux DEs | Med | Low | Degrade-gracefully rules (§5); documented limitations; AppImage as the single supported Linux format initially |

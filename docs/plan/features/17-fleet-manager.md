@@ -97,9 +97,9 @@ Aggregation runs in `packages/sdk` over the agent-source registry; each source c
 
 ### 3.3 Create flow
 
-Template gallery (Deep Work SWE · Research · Writing · blank — content from F15) → form (name, description, `provider:model`, workspace, sandbox on/off per template, identity preset) → one of two paths, chosen automatically:
+Template gallery (Deep Work SWE · Research · Writing · blank — content from [F15](./15-task-templates.md)) → form (name, description, `provider:model`, workspace, sandbox on/off per template, identity preset) → one of two paths, chosen automatically:
 
-1. **New assistant on an existing Deep Work deployment** (default, instant): templates are assistant configs on the same agent, not separate codebases ([02 §3](../02-architecture.md)) — create = assistants API call, no build.
+1. **New assistant on an existing Deep Work deployment** (default, instant): templates are assistant configs on the same agent, not separate codebases (D-014; [02 §3](../02-architecture.md)) — create = assistants API call, no build.
 2. **New deployment**: no Deep Work deployment yet, or user opts for isolation → hand off to the [F06](./06-onboarding-and-deploy.md) wizard (which owns MDA-availability detection and the classic fallback).
 
 ### 3.4 Import / export
@@ -114,10 +114,10 @@ Canonical interchange = the Fleet-export deepagents ZIP: `AGENTS.md`, `config.js
 
 | Action | Public API? | Behavior |
 |---|---|---|
-| Fleet create/update/delete | ❌ (O-004) | "Manage in LangSmith ↗" deep link; export format offered as the migration path |
-| MDA thread/run invoke | Design-partner-gated during beta ([research 20](../../research/20-gapfill-mda-api.md)) | Works for the beta org; otherwise beta badge + link-out (O-003) |
-| `managed_deep_agent` deploy for non-beta orgs | Unverified ([02 §6](../02-architecture.md)) | F06 detects and falls back to classic deployment |
-| Per-user memory, Slack channels | 0.4.0-dev only | Feature-detected; beta badge; hidden on 0.3.1 stable |
+| Fleet create/update/delete | ❌ ([research 12](../../research/12-lifecycle-auth-followup.md)) | "Manage in LangSmith ↗" deep link; export format offered as the migration path; revisit if the O-004 probe succeeds |
+| MDA thread/run invoke | Design-partner-gated during beta ([research 20](../../research/20-gapfill-mda-api.md)) | Works for the beta org; otherwise beta badge + link-out |
+| `managed_deep_agent` deploy for non-beta orgs | Unverified (O-003) | [F06](./06-onboarding-and-deploy.md) detects and falls back to classic deployment |
+| Per-user memory, Slack channels | 0.4.0-dev only ([research 20](../../research/20-gapfill-mda-api.md)) | Feature-detected; beta badge; hidden on 0.3.1 stable ([04](../04-roadmap.md) risk register mandates the flag) |
 | Fleet channel/config display | ❌ | `—` + tooltip explaining the gap |
 
 ## 4. Contracts

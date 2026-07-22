@@ -46,7 +46,7 @@ Detection: env/sandbox chip present in thread state → connector; else `values.
 
 - **Highlighting: Shiki (recommended decision).** 03 §1.3/§4 leaves Prism vs Shiki open. Choose Shiki: TextMate-grammar accuracy, first-party catppuccin-latte/mocha themes (exactly the pinned code palette), dual-theme CSS-variable output, async-friendly for worker offload. Prism (used by deep-agents-ui `oneDark`, agent-chat-ui `coldarkDark` — research 22) loses on theme fidelity and grammar quality. Record in [../decisions.md](../decisions.md); consequence: diffs (`@pierre/diffs`) and code blocks have separate token pipelines — theme alignment is R3.
 - **Text**: framed code block (16px outer + 2px gutter + 14px inner, 03 §1.3), line numbers, path header with copy-path + download; markdown files render as sanitized rich markdown with a "raw" toggle (deep-agents-ui `FileViewDialog` precedent, research 22).
-- **Multimodal** (`read_file` is multimodal — research 02; 03 §4 requires image/PDF/audio/video): rendered from `NormalizedFile.mimeType` + bytes as blob URLs — `image/*` → `<img>` (zoom/fit), `application/pdf` → sandboxed `<iframe>`, `audio/*`/`video/*` → native elements. Unknown/binary → metadata card (name, size, mime) + download only.
+- **Multimodal** (`read_file` is multimodal — research 02; 03 §4 requires image/PDF/audio/video): rendered from `NormalizedFile.mimeType` + `content` bytes (Uint8Array, or base64-decoded when `encoding: 'base64'`) as blob URLs — `image/*` → `<img>` (zoom/fit), `application/pdf` → sandboxed `<iframe>`, `audio/*`/`video/*` → native elements. Unknown/binary → metadata card (name, size, mime) + download only.
 - **Large files** (defaults, tunable): highlight ≤ 256 KB *and* ≤ 10k lines, else plain text; render ≤ 1 MB, else first 64 KB + truncation banner "Showing first 64 KB — download full file"; connector `file` route hard cap 2 MB (413 over). Never block the main thread to decide: caps checked on metadata before content fetch.
 - Presentation: 60vw×80vh dialog from rail/tool-call contexts; full pane inside the takeover (03 §4 "60vw dialog or takeover").
 
@@ -91,19 +91,19 @@ A run-panel pane (concept app already has one — 06 §1) fed entirely by `execu
 
 ## 4. Contracts
 
-### 4.1 `NormalizedFile` (consumed; produced by F04)
+### 4.1 `NormalizedFile` (consumed; canonical shape owned by F04 — [04 §4](./04-sdk-and-agent-sources.md), reproduced verbatim)
 
 ```ts
-type NormalizedFile = {
+interface NormalizedFile {
   path: string;                       // absolute virtual-FS path
-  kind: 'text' | 'binary';
-  text?: string;                      // kind=text
-  bytesBase64?: string;               // kind=binary
+  content: string | Uint8Array;       // string = text; Uint8Array = bytes
   mimeType?: string;                  // from FileDataV2 or sniffed by F04
+  encoding?: 'utf-8' | 'base64';      // py-variant wire encoding
   createdAt?: string; modifiedAt?: string;
+  wireVariant: 'py' | 'jsV1' | 'jsV2';
 }
 ```
-Normalization rules (F04's job; recorded here as the consumption contract, research 21): Python `{content, encoding:'utf-8'|'base64'}` → text|binary by encoding; JS **v1** `{content: string[]}` → text via line-join; JS **v2** `{content: string|Uint8Array, mimeType}` → by content type. `Record<path, FileData>` with null-delete updates → F13 receives adds/updates/removals as map diffs. Components in this spec reject raw `FileData` at the type level.
+Normalization rules (F04's job; recorded here as the consumption contract, research 21): Python `{content, encoding:'utf-8'|'base64'}` → `content` per `encoding` (`wireVariant: 'py'`); JS **v1** `{content: string[]}` → string via line-join (`'jsV1'`); JS **v2** `{content: string|Uint8Array, mimeType}` → passed through by content type (`'jsV2'`). F13 treats string `content` as text, and `Uint8Array` content (or `encoding: 'base64'`) as binary. `Record<path, FileData>` with null-delete updates → F13 receives adds/updates/removals as map diffs. Components in this spec reject raw `FileData` at the type level.
 
 ### 4.2 Sandbox connector routes (proposed contract; routes named in 02 §4, schema owned here, implemented with F11)
 
@@ -117,7 +117,8 @@ Identity: enforced by the connector protocol (`secure by default`; fail-closed 4
   "files": [{ "path": "src/a.py", "status": "added|modified|deleted|renamed",
               "old_path": null, "additions": 12, "deletions": 3,
               "size": 4096, "binary": false }],
-  "truncated": false,                                     // true past 2,000 entries
+  "truncated": false,                                     // true past 2,000 entries; files = first 2,000
+  "total_files": 1, "total_additions": 12, "total_deletions": 3,  // always from the full git numstat, even when truncated
   "generated_at": "<iso8601>"
 }
 ```
@@ -126,7 +127,7 @@ Identity: enforced by the connector protocol (`secure by default`; fail-closed 4
 200 { "path": "...", "ref": "head", "content": "<base64>", "mime_type": "text/x-python",
       "size": 4096, "truncated": false }
 ```
-Errors (all routes): `{"error": {"code", "message"}}` — `403` identity, `404 SANDBOX_EXPIRED`, `400 PATH_OUTSIDE_WORKSPACE`, `413 FILE_TOO_LARGE` (cap 2 MB). Base-ref fetch exists so the client can compute a single-file diff without a dedicated diff route (whether a `/diff` route is warranted → §9). Wire fields snake_case per 02 §7.
+Errors (all routes): `{"error": {"code", "message"}}` — `403` identity, `400 PATH_OUTSIDE_WORKSPACE`, `413 FILE_TOO_LARGE` (cap 2 MB). Expired sandbox is the exception: HTTP `410` with body `{"code": "sandbox_expired", "thread_id": "..."}` — F11's canonical contract, emitted by F14's connector routes, consumed here. Base-ref fetch exists so the client can compute a single-file diff without a dedicated diff route (whether a `/diff` route is warranted → §9). Wire fields snake_case per 02 §7.
 
 ### 4.3 Review-batch steering message (produced; the exact payload the agent receives)
 

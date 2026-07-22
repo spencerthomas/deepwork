@@ -21,7 +21,7 @@ Milestone anchor: [Roadmap M2](../04-roadmap.md) — "thread-scoped LangSmith Sa
 | `apps/server` (Python FastAPI glue, P-005 → [F28](./28-backend-glue-service.md)) | build | env registry API, snapshot build pipeline, lifecycle status; holds the workspace API key — the browser never calls `/v2/sandboxes` directly | P-005; [02 §6](../02-architecture.md) |
 | `apps/web` (Next.js, D-022) | build | Environment tab screens, composer picker, env chip | D-022; [03 §3.4](../03-ui-spec.md) |
 | F12 GitHub & git flow | seam | proxy `callbacks` config referenced from env `proxy_config`; clone/push with zero tokens in-box | [02 §4](../02-architecture.md); [F12](./12-github-and-git-flow.md) |
-| F13 files & diff | seam | files channel (`values.files`) for StateBackend tasks; connector `tree|file` routes for sandbox tasks | [02 §4](../02-architecture.md); [F13](./13-files-diff-and-review.md) |
+| F13 files & diff | seam | files channel (`values.files`) for StateBackend tasks; connector `tree\|file` routes for sandbox tasks | [02 §4](../02-architecture.md); [F13](./13-files-diff-and-review.md) |
 | [F09](./09-task-detail-and-streaming.md) task detail | seam | env chip data contract (§4.4) rendered in the run panel | [03 §3.2](../03-ui-spec.md) rail: "environment/sandbox chip (id, TTL)" |
 | D-015 | decision | thread-scoped sandboxes, environments = named snapshots + `setup.sh`, zero secrets in-sandbox — this spec elaborates it; warm start via `capture_snapshot` (Codex's 12 h container cache cut follow-up latency ~90%) | D-015; [02 §4](../02-architecture.md); [research 03](../../research/03-competitor-teardown.md) fact 8 |
 
@@ -34,7 +34,7 @@ A Deep Work **environment** is a named recipe that resolves to LangSmith Sandbox
 - **Base**: a Docker image reference *or* a Dockerfile (snapshots build from either — [research 06](../../research/06-execution-sandboxes.md) fact 9).
 - **`setup.sh`**: provisioning script run once at sandbox provisioning (Codex-style; MDA uploads it to `/tmp/mda-setup.sh` — [research 20](../../research/20-gapfill-mda-api.md) fact 19).
 - **Egress policy**: per-environment level compiling to proxy rules, surfaced in the editor as levels mirroring Claude Code's None/Trusted/Full/Custom ([research 06](../../research/06-execution-sandboxes.md) fact 10; [research 03](../../research/03-competitor-teardown.md) fact 9). Effective policy per level — `trusted` (platform default): HTTP/S to any host via the proxy, all raw TCP denied; `custom`: HTTP/S only to allow-listed hosts, raw TCP only to explicitly listed `host:port` rows (`allow_list` opens host:port), everything else denied; `full`: HTTP/S open **and** raw TCP open. Traffic matching no rule is always denied (fail-closed), and the editor requires an explicit confirmation step before saving `full` or any level broader than `trusted`. A `none` level (deny-all) is desired but unverified (§9-Q7).
-- **Env vars**: plain (non-secret) key/values only. **Secrets never enter the sandbox** — credentials are injected into outbound requests by the sandbox auth proxy (`workspace_secret`/opaque header rules, and F12's callback pattern for GitHub). This is a v1 release criterion ([04 · roadmap](../04-roadmap.md) criterion 5).
+- **Env vars**: non-secret configuration only — by contract, `env.json` carries no credential values; credentials exist solely as *references* (§4.1 `credentials`) resolved server-side and injected into outbound requests by the sandbox auth proxy (`workspace_secret`/opaque header rules, and F12's callback pattern for GitHub), so Deep Work itself never places a secret in the sandbox. A save-time secret-pattern denylist flags likely secret values in `env` as a best-effort guardrail — it cannot prove absence; the guarantee is the structural split above. Zero-secrets is a v1 release criterion ([04 · roadmap](../04-roadmap.md) criterion 5).
 - **Repo pairing**: one or more `owner/repo` the environment is built for; filters the composer picker and tells F12 which installation tokens the proxy callback may mint.
 
 **Two snapshots per environment** (D-015 warm start):
@@ -119,7 +119,7 @@ IA: **Agents tab → agent detail → *Environment* tab** ([03 §3.4](../03-ui-s
 | `base` | `{image: ref}` \| `{dockerfile: path}` | snapshot source ([research 06](../../research/06-execution-sandboxes.md) fact 9) |
 | `setup` | path (default `./setup.sh`) | provisioning script |
 | `egress` | `{level: "trusted"\|"custom"\|"full", allow: ["host[:port]"]}` | compiles to proxy `allow_list`/access rules; effective per-level policy in §3.1 (`trusted` = HTTP/S via proxy + all raw TCP denied; `custom` = allow-listed HTTP/S + listed `host:port` raw TCP only; `full` = HTTP/S **and** raw TCP open — save requires explicit confirmation); unmatched traffic denied (fail-closed). A "none" level is desired but unverified (§9-Q7) |
-| `env` | `{KEY: value}` | non-secret only; validated against a secret-pattern denylist at save |
+| `env` | `{KEY: value}` | non-secret by contract (credentials go in `credentials` as references); save-time secret-pattern denylist rejects likely secret values as a best-effort guardrail, not proof |
 | `credentials` | `[{host_glob, source: "workspace_secret"\|"callback"}]` | proxy-injected; values never stored here (F12 owns callback minting) |
 | `repos` | `["owner/repo"]` | pairing; composer filter |
 | `resources` | `{vcpu, memory_gb, disk_gb}` | defaults 2/8/32; ceilings unknown (§9-Q3) |
@@ -138,6 +138,8 @@ IA: **Agents tab → agent detail → *Environment* tab** ([03 §3.4](../03-ui-s
 | `GET/POST /api/environments`, `GET/PUT/DELETE /api/environments/{name}` | registry CRUD over the agent-project files (commit via the same flow F-agent-config uses) |
 | `POST /api/environments/{name}/build` → `GET /api/environments/{name}/build/logs` (SSE) | base build + warm provisioning + `capture_snapshot`; streamed logs |
 | `GET /api/threads/{thread_id}/sandbox` | lifecycle status for the env chip (state, `idle_expires_at`, ids); polled/SSE |
+
+**Expired-sandbox error (canonical contract, defined here):** any route that needs the thread's sandbox filesystem after delete-after-stop — F14's `/connectors/deepwork/sandbox/*` routes, consumed by F13 — returns HTTP `410` with JSON body `{"code": "sandbox_expired", "thread_id": "..."}`, never `404`; the lifecycle route above keeps reporting `state: expired` normally.
 
 ### 4.4 Env chip (seam to F09)
 
@@ -164,7 +166,7 @@ IA: **Agents tab → agent detail → *Environment* tab** ([03 §3.4](../03-ui-s
 - **Egress is the exfiltration boundary**: per-level policy per §3.1 — `trusted` default is HTTP/S-only via proxy with all raw TCP denied, `custom` narrows to allow-listed hosts/ports, `full` opens raw TCP too and requires explicit user confirmation at save; traffic matching no rule is denied (fail-closed); rules render in the editor, never free-form in the sandbox ([research 06](../../research/06-execution-sandboxes.md) fact 10).
 - **Key custody**: workspace API key lives server-side (`apps/server`) only; browser → server → `/v2/sandboxes` (P-005; [02 §5](../02-architecture.md)).
 - **Isolation as safety**: risky commands run full-permission *inside* the disposable sandbox rather than via per-action prompts (open-swe lesson — [research 10](../../research/10-openswe-fleet.md)); `interrupt_on` still gates `execute` where the user configures Ask ([02 §3](../02-architecture.md)).
-- **Provenance**: sandbox id + snapshot id + environment name in the task rail and run metadata ([02 §10](../02-architecture.md)); env-var values are plain config committed to the agent project — the save-time secret-pattern check (§4.1) keeps credentials out of git.
+- **Provenance**: sandbox id + snapshot id + environment name in the task rail and run metadata ([02 §10](../02-architecture.md)); env-var values are plain config committed to the agent project — kept credential-free structurally (credentials only as §4.1 `credentials` references resolved via the auth proxy), with the save-time secret-pattern check as a best-effort guardrail against accidentally pasted secrets, not a proof of absence.
 
 ## 7. Acceptance criteria
 
@@ -202,7 +204,7 @@ IA: **Agents tab → agent detail → *Environment* tab** ([03 §3.4](../03-ui-s
 4. **Stop/restart semantics**: exact behavior at `idle_ttl` (stop vs delete), restart API call, and what `preserve_memory_on_stop` covers — §3.2's kept/lost table needs verification against the sandbox SDK.
 5. **Dockerfile snapshot builds**: is there a build-log streaming surface, and what are the registries endpoints' roles? (Needed for A1's live logs; otherwise poll + tail.)
 6. **Sandbox cost/quota** (extends O-005, "MDA quotas/pricing at GA"): the LCU/LSU metering formula for sandboxes and any usage-read API to render real numbers instead of deep links ([research 23](../../research/23-gapfill-runtime-tiers.md) OQ).
-7. **"None" egress level**: can the proxy be configured to deny *all* HTTP/S (empty allow-list ⇒ deny-all), matching Claude Code's "None"? Docs only state the HTTP/S-open default.
+7. **"None" egress level**: can the proxy be configured to deny *all* HTTP/S (empty allow-list ⇒ deny-all), matching Claude Code's "None"? Docs only state the HTTP/S-open default. Likewise verify the mechanism for `full`'s blanket raw-TCP open (§3.1 states the intent; only per-`host:port` opening is documented).
 8. **Environment metadata home**: agent-project files (working assumption, §3.1) vs a Context Hub repo vs `apps/server` state — decide before task 2; file-first is favored by [02 §6](../02-architecture.md).
 9. **`capture_snapshot` limits**: size/rate limits, retention, and cross-region availability of captured snapshots.
 10. **Non-secret env-var injection**: the exact `create_sandbox` mechanism for plain env vars (bake at capture vs create-time param) is unverified in our research.

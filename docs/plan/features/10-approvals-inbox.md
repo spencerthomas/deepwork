@@ -58,7 +58,7 @@ One card per interrupt (= one `HITLRequest`), containing one decision row per `a
 - **Edit⇄Accept auto-switch**: primary button reads *Accept* (`{type:'approve'}`) while pristine; dirtying any field flips it to *Accept edits* (`{type:'edit', editedAction:{name, args}}`). The tool `name` is copied from the `actionRequest` and is **not user-editable** (no tool-swap; §6).
 - **Reject vs Respond, kept distinct**: *Reject* opens an optional-message field → `{type:'reject', message?}` — the run **continues**; the tool call receives an error `ToolMessage` (`status:'error'`). *Respond* is a required textarea → `{type:'respond', message}` → `ToolMessage status:'success'` ([research 21](../../research/21-gapfill-ui-contract.md)). Buttons render only for decisions present in `allowedDecisions`.
 - **Batch UX**: per-call decision rows collapse to summaries once decided; a progress-dot strip tracks the batch (approve/edit → green, reject → red, respond → amber, undecided → hollow — agent-chat-ui convention per [03 §3.3](../03-ui-spec.md)). Submit stays disabled until every row has a decision (§5.4); an *Approve remaining* shortcut fills the rest with `{type:'approve'}` where allowed. Drafts are client-local, in-memory keyed by `interrupt_id` (lost on reload — acceptable; noted).
-- **Mark resolved** (overflow menu, destructive, confirm dialog): force-ends the **whole thread** with no resume — `threads.updateState(threadId, {values: null, asNode: END})`, the agent-inbox force-end semantics ([research 13](../../research/13-agent-inbox.md)). Copy makes the difference explicit: "Reject tells the agent no and lets it continue; Mark resolved ends the task." The legacy `ignore` verb does not exist in v1 and never appears.
+- **Mark resolved** (overflow menu, destructive, confirm dialog): force-ends the **whole thread** with no resume — `threads.updateState(threadId, {values: null, asNode: END})`, the agent-inbox force-end semantics ([research 13](../../research/13-agent-inbox.md)); mechanism (and the "Mark resolved" wording) provisional pending §9-Q1. Copy makes the difference explicit: "Reject tells the agent no and lets it continue; Mark resolved ends the task." The legacy `ignore` verb does not exist in v1 and never appears.
 - Submitting shows optimistic *Submitting…*; on success the row leaves the list with a toast linking to the resuming task. No undo — resume is irreversible.
 
 ### 3.4 Schema-tolerant fallback
@@ -112,7 +112,7 @@ stream.respond({ decisions: [
 
 **Hydration**: `thread.getState().tasks[].interrupts` + live `input.requested {interrupt_id, payload}` ([research 21](../../research/21-gapfill-ui-contract.md)).
 
-**Force-end (Mark resolved)**: `threads.updateState(threadId, {values: null, asNode: END})` via the classic Threads API, which every tier exposes ([02 §2](../02-architecture.md); MDA/identity verification §9-Q1).
+**Force-end (Mark resolved)**: `threads.updateState(threadId, {values: null, asNode: END})` via the classic Threads API — the intended path ([02 §2](../02-architecture.md)); per-tier exposure (esp. MDA with identity enforcement) unverified → §9-Q1.
 
 **Internal model** (ours, defined here):
 

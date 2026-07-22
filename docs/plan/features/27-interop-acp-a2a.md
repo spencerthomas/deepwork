@@ -80,7 +80,7 @@ Docs live in-repo under `docs/` per the v1 posture ([05 · OSS setup](../05-oss-
 
 ### 3.6 Fleet manager Interop panel (optional, last)
 
-Read-only card on [F17](./17-fleet-manager.md) agent detail: derived `/a2a/{assistant_id}` and `/mcp` URLs with copy buttons, the source's identity mode, and an **exposure chip** (`key-gated` / `identity: validated_token` / `identity: trusted_backend` / `guest tokens enabled — public` / `unauthenticated`). Pure derivation from data F17 already fetches; degrades to hidden when the deployment URL or identity mode is unknown.
+Read-only card on [F17](./17-fleet-manager.md) agent detail: derived `/a2a/{assistant_id}` and `/mcp` URLs with copy buttons, the source's identity mode, and an **exposure chip** (`key-gated` / `identity: validated_token` / `identity: trusted_backend` / `guest tokens enabled — public` / `unauthenticated`). Pure derivation from data F17 already fetches — no fetch of its own. UI states: **loading** — skeleton card while F17's agent-detail data resolves; **empty/degraded** — card hidden when the deployment URL or identity mode is unknown (never a guessed URL or exposure chip); **error** — if the underlying F17 detail fetch failed, the panel is simply absent (F17's error surface owns the message; no second banner); **copy failure** — clipboard-write rejection shows an inline "copy failed — select manually" fallback with the URL text selectable.
 
 ## 4. Contracts
 

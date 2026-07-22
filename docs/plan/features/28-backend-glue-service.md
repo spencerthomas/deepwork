@@ -59,7 +59,7 @@ Server-*originated* SSE (deploy progress F06, build logs F11) uses the same resp
 
 ### 3.3 Configuration
 
-All config via environment variables, validated at boot (fail fast, refuse to start on invalid/missing required config; pydantic-settings proposed — flag: recommendation, not sourced). No config file is required beyond `.env` for local dev.
+All config via environment variables, validated at boot under **one policy** (§4.2-4): globally required vars ("always" rows below) missing/invalid ⇒ refuse to start; feature-scoped vars absent ⇒ that feature disabled at boot, its routes 404 (§6); feature-scoped vars present-but-invalid ⇒ refuse to start (set-but-broken is operator error, never a silent off). (pydantic-settings proposed — flag: recommendation, not sourced.) No config file is required beyond `.env` for local dev.
 
 | Variable (proposed names) | Secret? | Used by | Required when |
 |---|---|---|---|
@@ -122,7 +122,7 @@ Paths are pinned here (F28-owned); payload semantics stay with the owner spec. M
 | `POST /hooks/github/proxy-callback/{grant}` | hooks | M2 | sandbox auth-proxy callback: proxy POSTs `{host, port}` → `200 {headers}`, TTL-bound (60–3600 s platform bounds), any failure ⇒ non-200 ⇒ proxy fail-closed 502 ([F12 §4.2](./12-github-and-git-flow.md); [research 20](../../research/20-gapfill-mda-api.md) fact 12); grant per §3.4 |
 | `GET/POST /api/environments` · `GET/PUT/DELETE /api/environments/{name}` · `POST /api/environments/{name}/build` · `GET /api/environments/{name}/build/logs` (SSE) · `GET /api/threads/{thread_id}/sandbox` | session | M2 | [F11 §4.3](./11-execution-and-environments.md), adopted verbatim |
 | `/api/notify/*` — `GET vapid` · `GET/POST devices` · `PATCH/DELETE devices/{id}` · `GET stream` (SSE) · `POST test` | session | M4 | device registry + prefs, VAPID bootstrap, desktop SSE feed, test push — route shapes owned by [F19 §4](./19-notifications-and-push.md); storage §9-3 |
-| `POST /hooks/runs/{grant}` | hooks | M4 | run-completion webhook receiver (`webhook` param on run create, [02 §7](../02-architecture.md)); grant ↦ agent source (HMAC-sealed, §3.4) → push fan-out; payload treated as untrusted ([04 criterion 5](../04-roadmap.md)) |
+| `POST /hooks/runs/{grant}` | hooks | M4 | run-completion webhook receiver (`webhook` param on run create, [02 §7](../02-architecture.md)); **auth = grant URL only** — the platform provides no payload signing (F19 verified): grant ↦ agent source, HMAC-sealed with TTL + Settings rotation (§3.4); auth failure ⇒ 401, fail-closed; replay bounded by the (run_id, status) dedupe window → push fan-out; payload treated as untrusted ([04 criterion 5](../04-roadmap.md)) |
 | `POST /hooks/langsmith/{grant}` | hooks | M3 | LangSmith automation-webhook ingest (grant ↦ workspace) → F19 pipeline ([F22 §4](./22-org-intelligence-v1.md)) |
 | `POST /hooks/context-hub` | hooks | v1.x | `context_hub.commit.created.v1`, HMAC-verified → L2 review loop ([F23](./23-org-intelligence-v1x-consolidation.md); [07](../07-org-intelligence.md)) |
 | Insights provisioning glue | session | M3 | via `/api/proxy/control` unless F22 needs orchestration routes — placeholder, shapes owned by [F22](./22-org-intelligence-v1.md) (O-007) |
@@ -132,7 +132,7 @@ Paths are pinned here (F28-owned); payload semantics stay with the owner spec. M
 1. **F05 contracts 1–7 are binding** on every `session` route: sealed cookie; strip-then-inject (`Authorization`, `X-Api-Key`, `X-Tenant-Id`, `X-MDA-*` never accepted from clients); target allowlist (control-plane hosts + registered deployment URLs only — no open relay, private-network targets refused outside local mode); fail-closed 401/403 with zero upstream calls.
 2. **Hooks routes authenticate independently** (grant URL / HMAC / provider state) and are rate-limited (§6); they never read the session cookie.
 3. **SSE relay is content-transparent**: no parsing, reordering, or re-framing of protocol-v2 events; `Last-Event-ID` passes through; golden-transcript byte-equivalence is the regression gate (§3.6).
-4. **Boot validation**: missing/invalid required config (per enabled feature set, §3.3 table) aborts startup with a named error; `readyz` stays red until valid.
+4. **Boot validation — one policy**: globally required config (§3.3 "always" rows) missing/invalid aborts startup with a named error; feature-scoped config absent disables only that feature at boot (its routes 404, §6); feature-scoped config present-but-invalid aborts startup; `readyz` stays red until valid.
 5. **Route stability**: paths in §4.1 are the contract for `apps/web`/`packages/sdk`; changes require updating this table and the F04 passthrough stub in the same PR.
 
 ## 5. Edge cases & failure modes
@@ -146,7 +146,7 @@ Paths are pinned here (F28-owned); payload semantics stay with the owner spec. M
 | LangSmith upstream down | Proxied routes 502/504 with typed error body; `readyz` unaffected (§3.5); demo mode unaffected (no server) |
 | Proxy-callback grant expired / sandbox outlives TTL | Verification fails → non-200 → proxy 502 in sandbox → tool error + retry ([F12 §5](./12-github-and-git-flow.md)); never fail-open |
 | Server restart mid-task (stateless) | Sessions survive (cookie-sealed); token caches cold; sealed grants (§3.4) still verify; in-flight SSE relays drop and clients rejoin |
-| Run webhook arrives for unknown/expired grant | 404, logged, counted; no fan-out — prevents blind-POST probing |
+| Run webhook arrives with unknown/expired/invalid grant | 401, fail-closed (§4.1 row), logged, counted; no fan-out — prevents blind-POST probing. Duplicate delivery inside the (run_id, status) dedupe window ⇒ acknowledged, no re-fan-out |
 | Context Hub webhook bad HMAC | 401, constant-time compare, rate-limit bucket |
 | Two `apps/server` instances behind an LB | Supported only if all state is per §3.4 stateless options; in-memory-grant fallback and in-memory rate limits are documented as single-instance-only |
 | `apps/web` served from an origin not in `DW_ALLOWED_ORIGINS` | CORS-blocked; startup log prints configured origins to make this diagnosable |
@@ -156,7 +156,7 @@ Paths are pinned here (F28-owned); payload semantics stay with the owner spec. M
 
 This service holds the org's most sensitive material (ingress secret, GitHub App private key, sealed operator credentials). F05 §6 is the governing threat model; F12 §6 governs the GitHub surface. Service-level hardening checklist (each row lands as a test or a documented manual check, §7-7):
 
-- **Fail-closed defaults everywhere**: no session → 401 before any upstream call; unknown proxy target → 403; callback/webhook verification failure → non-200; missing feature config → feature disabled at boot, routes 404, never a degraded-auth fallback.
+- **Fail-closed defaults everywhere**: no session → 401 before any upstream call; unknown proxy target → 403; callback/webhook verification failure → non-200; missing feature-scoped config → feature disabled at boot, routes 404, never a degraded-auth fallback (globally required config aborts boot instead — §4.2-4, one policy).
 - **No secret ever logged or traced**: structured logging with a denylist redactor (`Authorization`, `X-Api-Key`, `X-MDA-Ingress-Secret`, cookies, minted tokens, VAPID/private keys); config `repr` masked (§3.3); audit logs carry ids, never values (F12 §6 mint-log rule).
 - **Constant-time comparison** for all secret/HMAC checks (ingress secret upstream precedent: MDA compares constant-time — [research 20](../../research/20-gapfill-mda-api.md)).
 - **SSRF/open-relay**: allowlist enforcement on every proxied request incl. redirect targets; loopback/private ranges only in explicit local mode (F05 §5).
@@ -168,7 +168,7 @@ This service holds the org's most sensitive material (ingress secret, GitHub App
 
 ## 7. Acceptance criteria
 
-1. Fresh clone: `uv sync && turbo run test --filter=server` green; boot with valid minimal config serves `healthz`/`readyz`; boot with a missing required var exits non-zero naming the variable.
+1. Fresh clone: `uv sync && turbo run test --filter=server` green; boot with valid minimal config serves `healthz`/`readyz`; boot with a missing globally-required var exits non-zero naming the variable; boot with a feature-scoped var absent starts cleanly with that feature's routes 404ing; a present-but-invalid feature-scoped var exits non-zero.
 2. Passthrough: a golden-transcript run relayed via `/api/proxy/source/...` is byte-identical (SSE payload) to the direct connection, including a `Last-Event-ID` resume mid-run (contract test vs `langgraph dev`).
 3. F05 acceptance 1–5 (sealing, strip-then-inject, fail-closed, sign-out) pass against this implementation; forged client `X-MDA-Actor-Id` arrives upstream as the session's actor.
 4. F12 §4.2 callback behaviors pass here: valid grant → `{headers}` within TTL bounds; expired/unknown grant, unknown host, mint failure → non-200; `test_zero_secrets_in_sandbox` wired per F12 task 13.
@@ -199,7 +199,7 @@ This service holds the org's most sensitive material (ingress secret, GitHub App
 
 1. **P-005 ratification** — this entire spec is written against a provisional decision; reversal is cheap only before M0 ([decisions](../decisions.md)).
 2. **Hosted deploy target** for `apps/server` (long-lived container host; which one to document?) and whether CI gets any preview deploy — no source doc answers (F01 §9-Q4 shared).
-3. **Push-subscription storage** (shared with [F19](./19-notifications-and-push.md)): deployment Store vs local volume file vs Context Hub — §3.4 options; blocks task 11. Related: how run-completion webhooks are authenticated (the `webhook` run param is a bare URL — is any signature provided upstream, or is the per-run grant URL the only control?).
+3. **Push-subscription storage** (shared with [F19](./19-notifications-and-push.md)): deployment Store vs local volume file vs Context Hub — §3.4 options; blocks task 11. (Webhook auth is no longer open: F19 verified the platform signs nothing — grant-URL-only, pinned on the §4.1 route row.)
 4. **Sealed stateless grant** for the proxy callback (§3.4) — acceptable to F12, or does callback-caller authentication (F12 §9-Q1) demand server-held state?
 5. **Run-webhook payload shape** — what exactly does Agent Server POST at run completion? Needed for F19's payload contract and the untrusted-boundary handling ([02 §7](../02-architecture.md) confirms the param, not the body).
 6. WebSocket passthrough: ever needed, or does the direct-from-client posture permanently cover WS use cases (desktop)? ([03 §5](../03-ui-spec.md) marks WS "where beneficial".)

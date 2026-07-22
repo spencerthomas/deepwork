@@ -104,7 +104,7 @@ MemoryProposalItem {
 - **Consolidation hallucination** → the core reason every merge is human-gated (writes-are-proposals, [07 §1.3](../07-org-intelligence.md)): a hallucinated "convention", once merged, would steer *every future agent run*. Mandatory evidence links make review cheap; proposals whose evidence doesn't resolve are auto-flagged in the card.
 - **Runaway proposal volume** → per-run caps + open-proposal circuit breaker + one-click cron disable (§3.4).
 - **Stale base** → 409 at approve time, regenerate affordance; human edits always win races.
-- **Rejected content re-proposed** → rejection feedback in next-run context; verbatim recurrence is AC-5 failure.
+- **Rejected content re-proposed** → rejection feedback in next-run context (Q7-contingent, §3.4); verbatim recurrence is an AC-5 failure once the proposal log exists.
 - **Hub write fails on approve** → decision is synchronous with the reviewer; typed error surfaces in the card, retry is safe only if Hub commits are idempotent-or-conflict (semantics unknown, §9-Q3) — until probed, retry re-reads head first.
 - **Run overruns its interval** → `multitask_strategy` enqueue default ([research 20](../../research/20-gapfill-mda-api.md)); lookback-from-last-success (§3.1) absorbs the shifted schedule.
 - **Cross-thread read denied** (MDA `metadata.owner` fail-closed) → service-key path §3.1; degrade to digest-driven proposals rather than silently proposing from an empty window.
@@ -123,7 +123,7 @@ MemoryProposalItem {
 2. A run over seeded fixture threads produces ≥1 proposal commit in the proposal area with diff + manifest + resolvable evidence links, and **zero writes under `org-memory/**`**.
 3. A valid signed `context_hub.commit.created.v1` delivery yields the item in the approvals inbox with rendered diff; an invalid/missing signature yields 401 and no processing.
 4. Approve merges exactly the reviewed diff into `org-memory/**` and closes the proposal; edit-then-approve merges the amended content; the next consolidation run observes the updated memory.
-5. Reject-with-message produces no memory change; the message appears in the next run's context; the same content is not re-proposed verbatim.
+5. Reject-with-message produces no memory change (unconditional). The feedback halves — message in the next run's context, no verbatim re-proposal — are **contingent on §9-Q7** (proposal-log location) and activate when it resolves; until then they are blocked, not waived.
 6. With webhook delivery disabled entirely, the reconciliation sweep still surfaces new proposals (correctness without webhooks).
 7. Replayed deliveries create no duplicate items; decisions on already-closed proposals return a typed conflict.
 8. A proposal whose base is stale (human edited a touched file post-proposal) is blocked with `409 stale_base` and a regenerate affordance.
@@ -155,7 +155,7 @@ MemoryProposalItem {
 4. **Context Hub write scopes under LangSmith OAuth** (O-001-adjacent; [07 §6-Q2](../07-org-intelligence.md)): can approval commit as the reviewing user, or must it use the service key (weaker audit trail)?
 5. **Two graphs, one MDA project**: does `mda deploy` accept `consolidation_agent` alongside the main graph in one project ([research 20](../../research/20-gapfill-mda-api.md) shows multi-graph `langgraph.json` generation but doesn't confirm authoring)? Fallback: separate classic deployment.
 6. **Org-wide episodic reads vs MDA identity scoping**: is the service-key-against-threads-API path acceptable, and how exactly are per-user/tenant threads excluded (§6)?
-7. **Last-successful-run marker + proposal log location** under D-003: Hub file, thread state, or the same store F19 chooses for subscriptions? Align with F19's answer.
+7. **Last-successful-run marker + proposal log location** under D-003: Hub file, thread state, or the same store F19 chooses for subscriptions? Align with F19's answer. Blocks: §3.4 rejected-content dedupe and the §3.2 rejection-feedback loop (the feedback halves of AC-5).
 8. **F10 item-source seam**: does F10's inbox architecture accept a non-interrupt item source cleanly, or does `memory_proposal` force a refactor? Coordinate before F10 finalizes.
 9. **Proposal identity for dedupe**: Hub commit id vs content hash — depends on Q3 commit semantics.
 

@@ -52,7 +52,7 @@ Prompt-overlay *shapes* come from the use-case-guide mapping ([08](../08-deepage
 | Subagents advertised | review specialization ([02 §3](../02-architecture.md)) + auto GP | research specialization (deep-research shape) + auto GP | auto GP only |
 | Rubric default ([F16](./16-verification-and-rubrics.md)) | **off** (available; 1 pass if enabled) — tests/CI/diff already verify | **on**, 2 passes — claims cited, sub-questions answered, ≥2 sources for key claims, uncertainty stated | **on**, 2 passes — brief followed, structure present, consistent tone, no placeholders |
 | Model default | `provider:model` string per template ([02 §3 Models](../02-architecture.md)); **values TBD → §9-7**, user-overridable per task | same | same |
-| `interrupt_on` defaults | `commit_and_open_pr`: Ask (approve/edit/reject); `execute`: per-environment Auto/Ask via `when` predicate ([02 §3](../02-architecture.md)) | none (no gated tools present; `http_request` posture → §9-6); user-flagged MCP tools respected | none |
+| `interrupt_on` defaults | `commit_and_open_pr`: Ask (approve/edit/reject); `execute`: per-environment Auto/Ask via `when` predicate ([02 §3](../02-architecture.md)) | `http_request`: **Ask for non-GET/HEAD methods** via `when` predicate (provisional — pending batch-1 review; ratify vs read-only-methods → §9-6); user-flagged MCP tools respected | none |
 | Plan approval default (F08 toggle) | **on** (proposal) | off | off |
 | Landed output → artifacts ([F13](./13-files-diff-and-review.md)) | draft PR + diff | `/final_report.md` + offloaded source files | document file(s) |
 
@@ -122,7 +122,22 @@ type TemplateSpec = {
 };
 ```
 
-**Assistant payload** (what provisioning writes): `graph_id: "agent"`; `name`/`description` from the spec; `context`: `{ template: TemplateId, templateVersion, taskType, tools, sandbox, middleware, rubricDefault, model, interruptOnDefaults, planApprovalDefault }` (keys mirror `TemplateSpec`, resolved); `metadata`: `{ deepwork_template: TemplateId, deepwork_template_version: string, deepwork_managed: "true" }`. Per-run overrides submit the same context keys run-scoped (§3.6). The `context_schema` in `packages/agent` typing this payload is an F14 contract; F15 owns the key names above.
+**Assistant payload** (what provisioning writes): `graph_id: "agent"`; `name`/`description` from the spec; `context`: `{ template: TemplateId, templateVersion, taskType, tools, sandbox, middleware, rubricDefault, model, interruptOnDefaults, planApprovalDefault }` (keys mirror `TemplateSpec`, resolved); `metadata`: `{ deepwork_template: TemplateId, deepwork_template_version: string, deepwork_managed: "true" }`. Per-run overrides submit **only** the `RunOverrides` subset below (§3.6), never the full payload. The `context_schema` in `packages/agent` typing this payload is an F14 contract; F15 owns the key names above.
+
+**`RunOverrides`** — the only client-suppliable run-scoped context keys (§3.6):
+
+```ts
+type RunOverrides = {
+  model?: string;                       // "provider:model"
+  rubric?: RubricSpec | null;           // attach/edit/disable per task (F16)
+  environment?: string;                 // F11 run-config key (coding template)
+  planApproval?: boolean;
+  interruptOn?: Record<string, { allowedDecisions: string[] }>; // tightening-only: may add gates or narrow decisions, never remove/loosen a catalog gate
+};
+// Enforced server-side in packages/agent (F14 gate): non-allowlisted keys — incl. catalog-owned
+// tools/sandbox/middleware/interruptOnDefaults — are rejected fail-closed; a loosening
+// interruptOn entry is rejected, not clamped.
+```
 
 **Provisioning API sequence** (per deployment; all standard assistants endpoints, available on mda/deployment/local tiers per [F04 §3.1](./04-sdk-and-agent-sources.md)): `search(metadata)` → `create(assistant_id=uuid5, if_exists=do_nothing)` → on catalog bump `patch(full context)` → `versions`/`set_latest` for history/rollback.
 
@@ -153,16 +168,16 @@ excluded_middleware: []          # extra_middleware / class-form entries are ban
 
 ## 6. Security & privacy
 
-- **Templates are data, not code** (D-014): assistant context can select among F14's composed capabilities but cannot inject new tools, middleware, or prompts outside the deployed files — a compromised composer/API caller can at most re-enable tools already in the curated union for that agent. The gate's fail-mode must be *closed* (unknown template id ⇒ built-ins only, no `execute`/PR/web tools) — F14 requirement.
-- **`interrupt_on` defaults are safety floors.** Per-task overrides may *tighten* (Auto→Ask) freely; *loosening* the Coding PR gate (`commit_and_open_pr` Ask→Auto) is an explicit per-agent setting in F17's Auto/Ask matrix, never a silent composer toggle ([02 §3](../02-architecture.md) HITL row).
-- **Research egress**: `fetch_url`/`http_request` run in the deployment runtime (no sandbox, no egress proxy — the sandbox allow-list story in [F11](./11-execution-and-environments.md) does not apply). Fetched web content is untrusted input; prompt-injection posture per [02 §10](../02-architecture.md) (untrusted-content boundaries) applies to rendering, and the write-capable `http_request` default posture is §9-6. Writing's filesystem-only toolset makes it the zero-egress template by construction.
+- **Templates are data, not code** (D-014): assistant context can select among F14's composed capabilities but cannot inject new tools, middleware, or prompts outside the deployed files. Run-scoped input cannot even re-select tools — the `RunOverrides` allowlist (§4) excludes catalog-owned keys — so a compromised composer/API caller with only run-create access widens nothing; a caller with assistants-API write access can at most re-enable tools already in the curated union for that agent. The gate's fail-mode must be *closed* (unknown template id ⇒ built-ins only, no `execute`/PR/web tools) — F14 requirement.
+- **`interrupt_on` defaults are safety floors.** Per-task overrides may *tighten* (Auto→Ask) freely; *loosening* the Coding PR gate (`commit_and_open_pr` Ask→Auto) is an explicit per-agent setting in F17's Auto/Ask matrix, never a silent composer toggle ([02 §3](../02-architecture.md) HITL row). Enforcement is server-side: `packages/agent` validates run input against the `RunOverrides` allowlist (§4) and rejects catalog-owned keys and loosening `interruptOn` entries fail-closed — UI affordances are not the enforcement layer.
+- **Research egress**: `fetch_url`/`http_request` run in the deployment runtime (no sandbox, no egress proxy — the sandbox allow-list story in [F11](./11-execution-and-environments.md) does not apply). Fetched web content is untrusted input; prompt-injection posture per [02 §10](../02-architecture.md) (untrusted-content boundaries) applies to rendering. Write-capable `http_request` methods (non-GET/HEAD) never fire ungated: they default to an Ask interrupt (§3.2, provisional — pending batch-1 review; ratification → §9-6). Writing's filesystem-only toolset makes it the zero-egress template by construction.
 - **Interpreter boundary**: QuickJS code has no host filesystem/network/shell access; only the PTC allowlist and (if enabled) `task()` cross the boundary ([interpreters docs](https://docs.langchain.com/oss/python/deepagents/interpreters)) — keep `ptcTools` read-only (§3.4) so PTC can never mint side effects that `interrupt_on` would otherwise gate.
 - **No new secrets or storage**: provisioning uses the caller's existing auth planes (F05); template payloads contain no credentials; zero-secrets-in-sandbox (D-015) untouched.
 
 ## 7. Acceptance criteria
 
 1. Provisioning a fresh `langgraph dev` + MDA deployment creates exactly three managed assistants with the §4 metadata and stable UUIDv5 ids; re-running is a no-op (`if_exists`).
-2. A Research task created via the composer completes on M1 infra with **zero** sandbox API calls; transcript shows `fetch_url`/`http_request` available and `execute`/`commit_and_open_pr` absent from the model's tool list; `/final_report.md` appears in the run panel artifacts list (F13 seam).
+2. A Research task created via the composer completes on M1 infra with **zero** sandbox API calls; transcript shows `fetch_url`/`http_request` available and `execute`/`commit_and_open_pr` absent from the model's tool list; a non-GET/HEAD `http_request` call fires the Ask interrupt while GET/HEAD runs ungated (§3.2 gate); `/final_report.md` appears in the run panel artifacts list (F13 seam).
 3. A Writing task's transcript shows filesystem/todo/task tools only — no web or execution tools visible in any model request.
 4. A Coding task (M2) provisions a thread sandbox, fires the `commit_and_open_pr` interrupt with decisions approve/edit/reject, and lands a draft PR via the auto-PR path (F11/F12 integration).
 5. Composer prefills per template: rubric defaults exactly per §3.2 (Research/Writing on with 2 passes, Coding off), plan-approval defaults, environment field required only for Coding.
@@ -177,11 +192,11 @@ excluded_middleware: []          # extra_middleware / class-form entries are ban
 | # | Task | Depends on | Definition of done |
 |---|---|---|---|
 | 1 | `TemplateSpec` schema + catalog data files (`templates/{research,writing,coding}/`) incl. prompt overlays and §3.2 values; `data-analyst` id reserved | F14 layout exists (M1 v0) | Schema validated in CI; F16 seam values match §3.2; prompts reviewed against the deep-research/content-builder shapes |
-| 2 | Joint contract with F14: `context_schema` keys (§4) + template gate requirements (tool visibility, fail-closed, interpreter/auto-PR toggles) | 1 | Written contract in both specs' §4; gate behavior demonstrated on `langgraph dev` for research vs writing tool surfaces |
+| 2 | Joint contract with F14: `context_schema` keys (§4) + template gate requirements (tool visibility, fail-closed, interpreter/auto-PR toggles, `RunOverrides` allowlist validation §4) | 1 | Written contract in both specs' §4; gate behavior demonstrated on `langgraph dev` for research vs writing tool surfaces |
 | 3 | Provisioner in `packages/sdk` (search/create/patch/versions/set_latest, UUIDv5 ids, full-config reconcile with preserved-keys diff, managed-flag guard) | 1; F04 client | AC-1, AC-6 green against `langgraph dev`; race-abort path unit-tested |
 | 4 | Research template end-to-end on M1 (prompt + research subagent advertised + rubric default wired via F16 task 2) | 1–3 | AC-2, AC-5 (research rows); dogfood release gate ([04 M1](../04-roadmap.md)) |
 | 5 | Writing template end-to-end on M1 | 1–3 | AC-3, AC-5 (writing rows) |
-| 6 | Composer resolution + override plumbing with F08 (picker→assistant ladder §3.6, run-scoped overrides, precedence, Custom chip) | 3; F08 task 9 | AC-5, AC-10; degradation ladder covered by fixtures incl. Fleet read-only source |
+| 6 | Composer resolution + override plumbing with F08 (picker→assistant ladder §3.6, run-scoped `RunOverrides` + precedence, Custom chip) | 3; F08 task 9 | AC-5, AC-10; degradation ladder covered by fixtures incl. Fleet read-only source; server-side rejection cases (catalog-owned keys, loosening `interruptOn`) unit-tested |
 | 7 | Profile overlay loading (YAML → `HarnessProfileConfig` → registration at startup) + banned-state lint + boot-resilience | 1 | AC-8; malformed-overlay boot test |
 | 8 | Coding template (M2): sandbox flag, auto-PR on, `interrupt_on` defaults compiled with F14, composer env/repo requirements | 1–3; F11 task 1, F12 | AC-4; loosening-guard (§6) verified |
 | 9 | Interpreter flag path on the canary deployment: gate wiring, PTC allowlist, F09 code-card fixture | 2; F14 interpreter composition | AC-9; flip criteria documented per beta policy (§3.4) |
@@ -194,7 +209,7 @@ excluded_middleware: []          # extra_middleware / class-form entries are ban
 3. **`context` vs `config.configurable`**: assistants docs push `context` (static context matching `context_schema`); [F11](./11-execution-and-environments.md) specs `config.configurable.environment`. Pick one canonical run-override channel and align both specs (decision-log entry).
 4. **MDA beta**: are external `POST /assistants` / `PATCH` calls accepted at MDA deployment URLs during beta, or gated with the rest of the data plane (O-003)? Spike 2 must exercise the provisioning sequence specifically.
 5. **Version pinning of in-flight runs**: does a run started under assistant version N finish under N if N+1 activates mid-run? Determines whether reconciliation needs a quiesce step.
-6. **`http_request` posture in Research**: it can perform writes (POST) from the deployment runtime with no sandbox egress controls — default Auto (current §3.2), Ask, or a read-only-methods variant? Needs Tom's call + F17 Auto/Ask surfacing.
+6. **`http_request` posture in Research**: it can perform writes (POST) from the deployment runtime with no sandbox egress controls — §3.2 now defaults **Ask for non-GET/HEAD methods** (provisional — pending batch-1 review). Remaining call for Tom: ratify that default vs a stricter read-only-methods variant (drop write methods entirely), + F17 Auto/Ask surfacing.
 7. **Model defaults**: per-template `provider:model` values (and whether Fast/Pro-tier naming à la Fleet is worth mirroring, [research 10](../../research/10-openswe-fleet.md)) — Tom's pick; cost guidance blocked on O-005.
 8. **Plan-approval defaults**: ratify Coding=on / Research=off / Writing=off (§3.2 proposal).
 9. **Profile merge order**: when a template overlay and a built-in provider profile both match the selected model, which wins per field? Upstream documents merge semantics — pin the answer during task 7 and record it.

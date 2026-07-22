@@ -19,7 +19,7 @@ The inbox is the home screen (`/tasks`): the status-grouped, filterable list of 
 | D-003 — no Deep Work backend/DB | Org is the source of truth; unread state, drafts, seen-timestamps are client-side only (§3.3); nothing inbox-specific is persisted server-side | decisions |
 | F04 SDK (`packages/sdk`) | Source registry; per-source `threads.search` fan-out; normalized `TaskSummary`; `DataProvider` with `fixtures` and `live` impls ([06 Phase B](../06-frontend-implementation.md)) | [F04](./04-sdk-and-agent-sources.md) |
 | `packages/ui` | `TaskRow`/`TaskList`/`StatusChip`/`EmptyState` per component inventory (UI spec §4); tokens/preset already seeded | [03 §4](../03-ui-spec.md) |
-| Platform API | `threads.search({metadata, limit≤100, offset, sortBy:'updated_at', sortOrder:'desc', status?})` per source ([13](../../research/13-agent-inbox.md), [04 L13–14](../../research/04-langchain-uis.md)); thread statuses `idle|busy|interrupted|error` | research |
+| Platform API | `threads.search({metadata, limit≤100, offset, sortBy:'updated_at', sortOrder:'desc', status?})` per source ([13](../../research/13-agent-inbox.md), [04 L13–14](../../research/04-langchain-uis.md)); thread statuses `idle\|busy\|interrupted\|error` | research |
 
 Seams: the inbox consumes only `DataProvider` (swap fixtures↔live; demo mode stays credential-free per [06 §4](../06-frontend-implementation.md)). Composer's rubric field is a pass-through string to F16. Metadata stamped at creation is the same convention [F22](./22-org-intelligence-v1.md)/[07 Layer 1](../07-org-intelligence.md) rely on for tracing.
 
@@ -136,7 +136,7 @@ Virtualized list (fixed 72px rows make this trivial — `@tanstack/react-virtual
 
 **Foreign threads** (created by Studio, agent-chat-ui, schedules without our stamps) still match the `assistant_id`/`graph_id` search and **must render**: title falls back to first human message, context chip = agent name, no template metadata. The inbox is a truthful view of the org's threads, not only of Deep Work's.
 
-**Unread store:** `deepwork.inbox.seen.v1` → `Record<threadId, ISO8601>`, LRU 5,000 (§3.3). Provisional under D-003.
+**Unread store:** `deepwork.inbox.seen.v1` → `Record<"sourceId:threadId", ISO8601>`, LRU 5,000 (§3.3). Provisional under D-003.
 
 ## 5. Edge cases & failure modes
 
@@ -159,7 +159,7 @@ Virtualized list (fixed 72px rows make this trivial — `@tanstack/react-virtual
 - **Untrusted text everywhere:** titles/previews derive from user prompts and agent output. Render as plain text (React text nodes; no `dangerouslySetInnerHTML`, no markdown in rows) — same untrusted-content posture as webhook payloads ([02 §10](../02-architecture.md)). Hostile-title XSS is an acceptance test (§7.12).
 - **Credential paths:** browser talks to sources directly only in local/localStorage mode; otherwise via the key/streaming proxy (P-005 `apps/server`, provisional). Inbox code never reads or logs keys; degraded-state banners show source *names*, never URLs-with-credentials or raw error bodies.
 - **Tenant scoping is server-side:** MDA identity stamps `metadata.owner` and fails closed ([20 L14](../../research/20-gapfill-mda-api.md)); the inbox never widens a query beyond what the caller's identity returns, and adds no client-side "cross-tenant" merging beyond the user's own configured sources.
-- **Local data minimization (D-003):** unread map holds thread IDs + timestamps only — no titles/content; composer drafts live in `sessionStorage` (tab-scoped) and are cleared on successful submit.
+- **Local data minimization (D-003):** unread map holds source/thread IDs + timestamps only — no titles/content; composer drafts live in `sessionStorage` (tab-scoped) and are cleared on successful submit.
 
 ## 7. Acceptance criteria
 

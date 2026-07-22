@@ -15,7 +15,7 @@ Stack corrections applied throughout: frontend is Next.js (D-022); the server-si
 - Toolchain pins: lint/format choice (recommendation below), semantic PR titles with per-package scopes, all GitHub Actions pinned to SHAs.
 - CI: Node 22/24 matrix, format → lint → typecheck → test → build; Python jobs (ruff, pytest, `langgraph dev` contract tests owned by [F02](./02-m0-spikes.md)); Vercel Git-integration previews for `apps/web`.
 - Renovate/dependabot policy (weekly, `@langchain/*` grouped) and the scaffold-time version pins from [05](../05-oss-setup.md).
-- Releases: changesets + `changelog-github` + npm provenance; the published-vs-app-only split.
+- Releases: changesets + `changelog-github` versioning; npm publication policy v1: all workspace packages private/source-only, publication deferred post-v1 (provisional — pending batch-1 review).
 - Community files (staged v1 set), the "not accepting feature PRs yet" posture, licensing/trademark hygiene (MIT + NOTICE block, non-affiliation disclaimer, no-LangChain-assets audit).
 - One-time import of the v0 frontend concept as the `apps/web` seed — the *scaffold* portion only: import, rename, lockfile regeneration, strict TS, remove `ignoreBuildErrors` ([06](../06-frontend-implementation.md) Phase A; P-001/D-012).
 
@@ -46,7 +46,7 @@ Stack corrections applied throughout: frontend is Next.js (D-022); the server-si
 
 **Layout** ([05](../05-oss-setup.md), [02 §11](../02-architecture.md), amended per P-005):
 
-```
+```text
 deepwork/
   apps/
     web/        # Next.js 16 App Router (Turbopack) — UI only; no server glue (P-005)
@@ -82,7 +82,7 @@ Vercel previews come from the Vercel Git integration, **not** Actions (open-agen
 
 **Dependency updates.** Weekly Renovate or dependabot with `@langchain/*` grouped — v1-line SDKs release weekly; policy is pinned-but-fresh ([05](../05-oss-setup.md), [02 §8](../02-architecture.md)). Lean Renovate for richer grouping rules; deepagentsjs precedent is dependabot ([research 07](../../research/07-oss-v1-setup.md)) — §9-Q2. The chosen bot must also cover `pyproject.toml`/`uv.lock`; verify at scaffold time. `managed-deepagents` tracks the **dev channel** (0.4.0-dev) deliberately ([05](../05-oss-setup.md)); exclude it from auto-bumping and track via the F02 canary instead ([04](../04-roadmap.md) risk table).
 
-**Releases.** changesets + `changelog-github`, published via `changesets/action` (v1.9.0, SHA-pinned) on push to `main`, `NPM_CONFIG_PROVENANCE=true`, workflow permissions `contents: write / pull-requests: write / id-token: write` (deepagentsjs release.yml pattern, [research 07](../../research/07-oss-v1-setup.md)). Published to npm: `@deepwork/ui` (name already seeded in [packages/ui/README](../../../packages/ui/README.md)) and the SDK package (proposed `@deepwork/sdk` — same scope; confirm §9-Q3). App-only, never published: `apps/*` (`private: true`) and `packages/agent` (a deployable `mda` project, not a library; changesets ignores it — Python release tooling, if ever needed, is release-please per the Python deepagents precedent, §9-Q3).
+**Releases.** changesets + `changelog-github` via `changesets/action` (v1.9.0, SHA-pinned) on push to `main`, workflow permissions `contents: write / pull-requests: write / id-token: write` (deepagentsjs release.yml pattern, [research 07](../../research/07-oss-v1-setup.md)). **npm publication policy v1: nothing publishes** — every workspace package (`apps/*`, `packages/{agent,sdk,ui}`) is `private: true`/source-only; publication (candidate names `@deepwork/ui`, seeded in [packages/ui/README](../../../packages/ui/README.md), and `@deepwork/sdk`) is deferred post-v1 *(provisional — pending batch-1 review; §9-Q3)*. changesets still versions `packages/{sdk,ui}` and writes changelogs; `changesets publish` skips private packages, so the publish leg stays dormant with `NPM_CONFIG_PROVENANCE=true` + id-token staged for the post-v1 flip. `packages/agent` is a deployable `mda` project, not a library; changesets ignores it — Python release tooling, if ever needed, is release-please per the Python deepagents precedent (§9-Q3).
 
 **Community files & posture.** v1 set: LICENSE, README, CONTRIBUTING (dev setup + PR conventions + DCO), SECURITY (private reporting), CODE_OF_CONDUCT (Contributor Covenant), bug + feature issue forms, PR template, CODEOWNERS. Deferred until traction: FUNDING, stale-bots, labelers, translations, CLA, GOVERNANCE ([05](../05-oss-setup.md)). Repo public from day one with a "**not accepting feature PRs yet — see roadmap**" banner in README + CONTRIBUTING until v1 (Codex-CLI pattern, [05](../05-oss-setup.md)).
 
@@ -119,7 +119,7 @@ Everything below is fixed by the source docs; deviations need a decision-log ent
 - `pnpm-workspace.yaml`: `packages: [apps/*, packages/*]` + `catalog:` holding the `@langchain/*` pins, react, typescript.
 - `turbo.json`: pipeline `format → lint → typecheck → test → build`; Python tasks with explicit `inputs`.
 - Root `pyproject.toml`: `[tool.uv.workspace] members = ["packages/agent", "apps/server"]`; ruff + pytest config.
-- `.changeset/config.json`: changelog `@changesets/changelog-github`, `access: public`, `ignore: ["apps/*", "packages/agent"]` (deepagentsjs ignores examples; ours ignores non-published members).
+- `.changeset/config.json`: changelog `@changesets/changelog-github`, `access: public` (staged for the post-v1 publish flip; inert while all packages are private, §3), `ignore: ["apps/*", "packages/agent"]` (deepagentsjs ignores examples; ours ignores never-versioned members — `packages/{sdk,ui}` stay versioned but unpublished in v1).
 - `.github/workflows/`: `ci.yml` (jobs per §3 table), `release.yml` (changesets/action v1.9.0 SHA-pinned, provenance env + permissions per §3), `pr_lint.yml`. Every `uses:` pinned to a full commit SHA.
 - Renovate/dependabot config: weekly schedule; group `@langchain/*`; uv/pyproject coverage.
 
@@ -145,8 +145,8 @@ Everything below is fixed by the source docs; deviations need a decision-log ent
 
 ## 6. Security & privacy
 
-- **Supply chain**: pnpm `minimumReleaseAge` enforced ([06](../06-frontend-implementation.md) §2.5 shows it already caught one incident); all Actions SHA-pinned; npm publishes carry provenance attestations (id-token) — deepagentsjs pattern ([research 07](../../research/07-oss-v1-setup.md)); weekly grouped updates keep pins fresh against the documented `@langchain/*` churn risk ([04](../04-roadmap.md)).
-- **Secrets surface is minimal by design**: CI holds only `NPM_TOKEN` (release job). Vercel previews via Git integration mean no Vercel credentials in Actions ([research 07](../../research/07-oss-v1-setup.md)). No LangSmith/GitHub-App secrets exist at M0; when later specs add them they belong to `apps/server`'s deploy target *(P-005)*, never to the repo or client bundles.
+- **Supply chain**: pnpm `minimumReleaseAge` enforced ([06](../06-frontend-implementation.md) §2.5 shows it already caught one incident); all Actions SHA-pinned; no npm publishes in v1 (all packages private, §3) — provenance attestation config (id-token) stays staged for the post-v1 flip, deepagentsjs pattern ([research 07](../../research/07-oss-v1-setup.md)); weekly grouped updates keep pins fresh against the documented `@langchain/*` churn risk ([04](../04-roadmap.md)).
+- **Secrets surface is minimal by design**: CI holds no npm credentials in v1 (nothing publishes, §3; `NPM_TOKEN` arrives only with the post-v1 publish decision). Vercel previews via Git integration mean no Vercel credentials in Actions ([research 07](../../research/07-oss-v1-setup.md)). No LangSmith/GitHub-App secrets exist at M0; when later specs add them they belong to `apps/server`'s deploy target *(P-005)*, never to the repo or client bundles.
 - **Fork PRs**: CI jobs must not require secrets, so the full matrix runs on forks; the release workflow triggers only on push to `main`.
 - **Vulnerability intake**: SECURITY.md with private reporting at v1 ([05](../05-oss-setup.md)); no public issue template for vulnerabilities.
 - **Privacy**: the repo/CI stores no user data — consistent with the product stance that Deep Work stores essentially nothing ([02](../02-architecture.md) §1). Roadmap criterion 5 ("zero secrets in sandboxes") is later scope but the CI slot for its verifying test is this spec's job structure.
@@ -158,7 +158,7 @@ Everything below is fixed by the source docs; deviations need a decision-log ent
 3. `apps/web` builds with `strict: true` and no `ignoreBuildErrors`; the workspace lockfile contains no `minimumReleaseAge` violations; the package is renamed (no `my-project` anywhere).
 4. CI on a PR runs the four jobs of §3 (js matrix 22/24, python, contract slot, pr-lint); a PR titled without a valid type/scope fails pr-lint.
 5. `grep -rE 'uses:.*@(v[0-9]|main|master)' .github/workflows/` returns nothing — every action is SHA-pinned.
-6. A changeset touching `packages/ui` produces a version PR via `changesets/action`; the release workflow config sets `NPM_CONFIG_PROVENANCE=true` and `id-token: write`; `apps/*` and `packages/agent` are in the changesets ignore list and marked non-publishable.
+6. A changeset touching `packages/ui` produces a version PR via `changesets/action`; no package publishes to npm — every workspace package is `private: true` (v1 policy, §3; provisional — pending batch-1 review); the release workflow keeps `NPM_CONFIG_PROVENANCE=true` and `id-token: write` staged; `apps/*` and `packages/agent` are in the changesets ignore list.
 7. Renovate/dependabot config exists with weekly schedule, a single `@langchain/*` group, and `managed-deepagents` excluded from auto-bumps.
 8. Opening a PR against `apps/web` yields a Vercel preview URL via the Git integration; no Vercel token exists in Actions secrets.
 9. All nine v1 community files (§3 list) exist; README and CONTRIBUTING carry the "not accepting feature PRs yet — see roadmap" notice.
@@ -176,7 +176,7 @@ Everything below is fixed by the source docs; deviations need a decision-log ent
 | 5 | Import v0 concept as `apps/web`: copy @ `c46b994`, rename, strict TS, drop `ignoreBuildErrors`, regenerate lockfile, wire into biome/CI, vitest + RTL scaffold | 1, 4 | AC-3; `lib/data.ts` untouched |
 | 6 | Placeholders `apps/desktop` (Tauri v2, M4) and `apps/mobile` (PWA config, M4) with `private: true` and README stubs noting the static-export constraint | 1 | Workspace resolves; no CI tasks registered |
 | 7 | Vercel Git integration for `apps/web` previews (dashboard config; document in CONTRIBUTING) | 5 | AC-8 |
-| 8 | Releases: `.changeset/config.json` (§4), `release.yml` (changesets/action SHA-pinned, provenance, permissions), `private: true` on apps + agent | 4 | AC-6 |
+| 8 | Releases: `.changeset/config.json` (§4), `release.yml` (changesets/action SHA-pinned, staged provenance, permissions), `private: true` on every workspace package (v1 no-publish policy, §3) | 4 | AC-6 |
 | 9 | Renovate/dependabot config (pending §9-Q2): weekly, `@langchain/*` group, dev-channel exclusion, uv coverage | 1 | AC-7 |
 | 10 | Community files v1 set + contribution-posture notices | 1 | AC-9 |
 | 11 | Licensing/trademark hygiene: NOTICE block, disclaimer, Elastic-2.0 paragraph, asset/font audit (scripted grep in CI or a checklist run) | 10 | AC-10 |

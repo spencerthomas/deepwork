@@ -83,15 +83,16 @@ github.com / api.github.com
 5. **Commit identity**: commits authored as the app's bot identity (`<app-slug>[bot]` with its GitHub noreply address, configured via `git config` in setup); pushes already attribute to the app via the token. Human co-authorship trailer is §9-Q6.
 6. **PR**: created **draft by default** via `gh` inside the sandbox (open-swe's production pattern — [research 06 fact 11](../../research/06-execution-sandboxes.md)), gated by `interrupt_on` (Auto/Ask) per [02 §3](../02-architecture.md).
 
-**PR body/provenance conventions (proposal):** model writes the summary body; the *tool* appends an unforgeable footer (model text cannot spoof placement below the marker):
+**PR body/provenance conventions (proposal):** model writes the summary body; the *tool* appends an unforgeable footer below a reserved, tool-owned sentinel marker:
 
 ```
+<!-- deepwork:provenance -->
 ---
 Opened by Deep Work · Task: <deep-work task URL> · Branch: deepwork/{slug}-{tid}
 Trace: <LangSmith run URL — included only for private repos, org-configurable; default off on public>
 ```
 
-Task link always; trace link is org-internal information (URL embeds org context) so default-on only for private repos (§9-Q5). Trace remains always visible in the task rail regardless ([02 §10](../02-architecture.md) provenance principle).
+The HTML-comment sentinel makes the footer idempotent and unspoofable: before writing, the tool strips everything from the first sentinel occurrence onward (including any model-written impostor sentinels), preserving the model-authored body above it, then appends the fresh footer — so existing-PR updates (§4.1 step 5) replace the prior footer instead of stacking duplicates. Task link always; trace link is org-internal information (URL embeds org context) so default-on only for private repos (§9-Q5). Trace remains always visible in the task rail regardless ([02 §10](../02-architecture.md) provenance principle).
 
 ### 3.5 CI status readback (seam to F09/F13)
 
@@ -120,7 +121,7 @@ commit_and_open_pr(
 }
 ```
 
-Behavior (ordered): (1) ensure on `deepwork/{slug}-{tid}`, creating from base if needed; (2) stage + commit all sandbox working-tree changes (empty diff ⇒ structured tool error, no PR); (3) push via proxy (fail-closed path §3.3); (4) if an open PR for this head already exists, update title/body and return it (`created=false`) — idempotent under retries; else create (draft per arg, with §5 draft-fallback); (5) append provenance footer; (6) return. Errors surface as error ToolMessages via `ToolErrorMiddleware` ([02 §3](../02-architecture.md)). The tool is listed in `interrupt_on` defaults (Ask) — approvals UX per [03 §3.3](../03-ui-spec.md).
+Behavior (ordered): (1) ensure on `deepwork/{slug}-{tid}`, creating from base if needed; (2) stage + commit all sandbox working-tree changes (empty diff ⇒ structured tool error, no PR); (3) push via proxy (fail-closed path §3.3); (4) if an open PR for this head already exists, update title/body and return it (`created=false`) — idempotent under retries; else create (draft per arg, with §5 draft-fallback); (5) write provenance footer: strip from the sentinel marker onward, append fresh footer (§3.4) — replace-not-append, so retries never duplicate it and the model-authored body is preserved; (6) return. Errors surface as error ToolMessages via `ToolErrorMiddleware` ([02 §3](../02-architecture.md)). The tool is listed in `interrupt_on` defaults (Ask) — approvals UX per [03 §3.3](../03-ui-spec.md).
 
 ### 4.2 Proxy callback (apps/server; plumbing F28)
 
@@ -183,11 +184,11 @@ Behavior (ordered): (1) ensure on `deepwork/{slug}-{tid}`, creating from base if
 
 1. Install flow: from Settings, a user installs the App on ≥2 accounts (personal + org), and both installations' repos appear in the picker with no Deep Work-side persistence (server restarted between steps).
 2. A coding task binds one repo; in-sandbox `git clone`, `git push`, `GH_TOKEN=dummy gh pr create --draft` all succeed via the proxy with zero secrets inside (criterion 5 test below green).
-3. `commit_and_open_pr` produces a **draft** PR on `deepwork/{slug}-{tid}` with the provenance footer; re-invocation updates the same PR (`created=false`); empty worktree yields a structured error, no PR.
+3. `commit_and_open_pr` produces a **draft** PR on `deepwork/{slug}-{tid}` with the provenance footer; re-invocation updates the same PR (`created=false`) and leaves exactly one footer (sentinel replace, §3.4); empty worktree yields a structured error, no PR.
 4. Rail shows branch, PR link, and live CI status transitioning pending→passing/failing on a repo with real Actions (data via §4.4; rendering asserted with F09).
 5. Revoking repo access mid-run produces a failed tool call with an actionable message and a degraded settings state — no hang, no fail-open.
 6. Down-scoping proven: a minted token for repo A returns 404 on repo B of the same installation (integration test).
-7. **Zero-secrets verification test** (release criterion 5, [04](../04-roadmap.md)) — `test_zero_secrets_in_sandbox`, CI-gated on real LangSmith sandboxes (nightly + on changes to token/proxy/tool code): the mint path records every token value `T` minted during a scripted clone→branch→commit→push→`gh pr create --draft` run, then asserts **inside the sandbox**: (a) no `T` appears in any process environment (`/proc/*/environ` sweep) — `GH_TOKEN` equals literally `dummy`; (b) `grep -r` for each `T` across the sandbox filesystem (incl. `~/.config/gh`, `~/.gitconfig`, `~/.git-credentials`, `<repo>/.git/config`, shell history) finds nothing; (c) `git remote get-url origin` contains no userinfo; and asserts **outside**: (d) fail-closed — with the callback returning 500, `git ls-remote` exits non-zero (proxy 502) and no git operation succeeds; (e) TTL-bound — callback responses carry a TTL within platform bounds and a fresh mint (counter ≥2) occurs across a TTL boundary during a long-running session.
+7. **Zero-secrets verification test** (release criterion 5, [04](../04-roadmap.md)) — `test_zero_secrets_in_sandbox`, CI-gated on real LangSmith sandboxes (nightly + on changes to token/proxy/tool code): the mint path records every token minted during a scripted clone→branch→commit→push→`gh pr create --draft` run — the harness never retains raw token values: it keeps one-way hashes, holding raw values only in short-lived memory for the sweep itself, and redacts them from assertion messages, logs, test reports, and CI artifacts — then asserts **inside the sandbox**: (a) no minted token appears in any process environment (`/proc/*/environ` sweep) — `GH_TOKEN` equals literally `dummy`; (b) a filesystem sweep for each minted token across the sandbox (incl. `~/.config/gh`, `~/.gitconfig`, `~/.git-credentials`, `<repo>/.git/config`, shell history) finds nothing; (c) `git remote get-url origin` contains no userinfo; and asserts **outside**: (d) fail-closed — with the callback returning 500, `git ls-remote` exits non-zero (proxy 502) and no git operation succeeds; (e) TTL-bound — callback responses carry a TTL within platform bounds and a fresh mint (counter ≥2) occurs across a TTL boundary during a long-running session.
 
 ## 8. Task breakdown
 
@@ -200,7 +201,7 @@ Behavior (ordered): (1) ensure on `deepwork/{slug}-{tid}`, creating from base if
 | 5 | Proxy-callback endpoint: grant binding, host→header mapping, TTL, fail-closed | 2 | §4.2 behaviors under test incl. unknown-host reject and 500-on-mint-failure |
 | 6 | `define_sandbox` proxy_config wiring in `packages/agent` (+ snapshot `setup.sh`: gh, GH_TOKEN=dummy, git identity) | 5 | Sandbox clone + gh auth-less flow works on MDA and classic tiers |
 | 7 | Branch-naming util + git conventions in agent instructions | 6 | Property tests: charset/length/determinism; instructions reviewed against §3.4 rules 1–5 |
-| 8 | `commit_and_open_pr` tool + provenance footer + `interrupt_on` default | 7, 2 | §4.1 contract tests; draft default; footer unforgeable |
+| 8 | `commit_and_open_pr` tool + provenance footer + `interrupt_on` default | 7, 2 | §4.1 contract tests; draft default; footer unforgeable + sentinel-replace idempotent |
 | 9 | Idempotency & edge-case handling (existing branch/PR, draft fallback, empty commit, force policy) | 8 | Each §5 row with a deterministic trigger has a test |
 | 10 | CI-status endpoint + normalization | 8 | §4.4 shape golden-tested against recorded check-run fixtures; rate-limit → `unknown` |
 | 11 | Rail wiring for branch/PR/CI (with F09) | 10, F09 | §7-4 demo green |

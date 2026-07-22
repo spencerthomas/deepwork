@@ -80,7 +80,7 @@ One client, two address families: the LangSmith **control plane** at `api.smith.
 | MDA data plane, `trusted_backend` | `X-MDA-Ingress-Secret` + `X-MDA-Actor-Id` [+ `X-MDA-Tenant-Id`] | **`apps/server` only, never client-side** (P-005; [02 §5](../02-architecture.md)) |
 | `langgraph dev` | none | direct |
 
-The SDK ships both paths behind one interface: `direct` composes `defaultHeaders` on the client/`useStream` options; `proxy` rewrites the base URL to the `apps/server` passthrough route (the `langgraph-nextjs-api-passthrough` pattern relocated to FastAPI per P-005).
+The SDK ships both paths behind one interface: `direct` composes `defaultHeaders` on the client/`useStream` options; `proxy` rewrites the base URL to the `apps/server` passthrough route (the `langgraph-nextjs-api-passthrough` pattern relocated to FastAPI per P-005). Mode→route mapping is fixed (auth modes are [F05 §4 contract 4](./05-auth-and-identity.md)'s canonical enum, adopted 1:1 in §4): `oauth_session`/`key_proxy` → always `via: 'proxy'` (`apps/server` strips inbound auth/identity headers, then injects from the session — F05 contract 2); `key_local`/`validated_token` → `direct`, headers obtained from the source's header-provider callback, never from globals (F05 contract 4); `none_local` → `direct`, no headers. `trusted_backend` identity is reachable only through the proxy modes.
 
 ### 3.3 Normalization layer (D-011)
 
@@ -130,10 +130,12 @@ interface AgentSource {
   tenantId?: string;               // workspace scoping (OAP precedent)
   isDefault?: boolean;
   origin: 'env' | 'user';
-  auth: { mode: 'proxy' }                                    // apps/server injects (default)
-       | { mode: 'client-key'; keyRef: string }              // local mode only; ref, never the key
-       | { mode: 'bearer' }                                  // MDA validated_token (token from auth flow)
-       | { mode: 'none' };                                   // langgraph dev
+  // canonical enum = F05 §4 contract 4, adopted 1:1; route/header behavior per mode: §3.2
+  auth: { mode: 'oauth_session' }                            // OAuth bearer in apps/server session; via proxy
+       | { mode: 'key_proxy' }                               // PAT/service key in apps/server session; via proxy (default)
+       | { mode: 'key_local'; keyRef: string }               // local mode only; direct; ref, never the key
+       | { mode: 'validated_token' }                         // MDA bearer from auth flow; direct from client
+       | { mode: 'none_local' };                             // langgraph dev; direct, no headers
   capabilities: Partial<SourceCapabilities>;                 // overrides on type defaults
 }
 interface SourceCapabilities {
@@ -205,7 +207,7 @@ class NotSupportedError extends DeepWorkError {}    // capability flag off
 
 ## 6. Security & privacy
 
-- **No secrets in the registry or localStorage** — enforced by type (auth is a mode + `keyRef`, never material) and by an import-time schema check that rejects key-shaped strings. Per P-005, service keys, `X-MDA-Ingress-Secret`, and anything org-scoped live in `apps/server`; the client-key mode exists only for local mode with the on-screen trust story ([03 §3.6](../03-ui-spec.md)).
+- **No secrets in the registry or localStorage** — enforced by type (auth is a mode + `keyRef`, never material) and by an import-time schema check that rejects key-shaped strings. Per P-005, service keys, `X-MDA-Ingress-Secret`, and anything org-scoped live in `apps/server`; the `key_local` mode exists only for local mode with the on-screen trust story ([03 §3.6](../03-ui-spec.md)).
 - **Header hygiene**: `DeepWorkError` scrubs `Authorization`/`X-Api-Key`/`x-api-key`/`X-MDA-*` from anything it captures; no request/response logging of auth headers anywhere in the package.
 - **Trusted-backend headers are server-only**: the SDK has no code path that attaches `X-MDA-Ingress-Secret` client-side; the `proxy` auth mode is the only route to trusted_backend identity ([02 §5](../02-architecture.md)).
 - **Untrusted content passes through untouched**: normalization is structural only (no eval, no HTML handling); webhook/schedule payload rendering happens downstream inside untrusted-content boundaries ([02 §10](../02-architecture.md)).

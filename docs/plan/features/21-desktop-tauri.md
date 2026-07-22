@@ -17,7 +17,7 @@ Sources: [../03-ui-spec.md](../03-ui-spec.md) (§5, §6) · [../04-roadmap.md](.
 | `apps/web` static export (D-022, P-005) | consumes | With no server routes in `apps/web`, Next satisfies Tauri's `output:'export'` requirement without a Node sidecar — constraint recorded by [F01 §3](./01-monorepo-and-oss-infra.md), inherited here ([research 05](../../research/05-crossplatform-arch.md)) |
 | [F05](./05-auth-and-identity.md) | consumes | Device flow at `/oauth/device/code` (RFC 8628, endpoints via RFC 8414 metadata); tokens in OS keychain, never in webview storage (F05 acceptance 6); F05 task 13 = the shared implementation task |
 | [F10](./10-approvals-inbox.md) → [F07](./07-app-shell-and-navigation.md) | consumes | `useApprovalsCount(): {total, bySource}` — the same selector feeding the tab badge feeds the tray count ([F10 §2](./10-approvals-inbox.md); F07 §9-7 wants one shared counter feed) |
-| [F19](./19-notifications-and-push.md) | consumes | Normalized `NotificationEvent`s (run completed, input requested). Desktop raises them **locally** via the Tauri notification plugin — research 05 puts desktop on local notifications while Web Push/Expo serve PWA/mobile; transport to desktop in §3.4/§9-5 |
+| [F19](./19-notifications-and-push.md) | consumes | Normalized events over F19's `GET /api/notify/stream` SSE feed (`Last-Event-ID` replay — F19 §4). Desktop raises them **locally** via the Tauri notification plugin while the app runs — Web Push/Expo serve PWA/mobile ([research 05](../../research/05-crossplatform-arch.md)); transport details §3.4 |
 | [F04](./04-sdk-and-agent-sources.md) | consumes | `packages/sdk` is framework-agnostic TS explicitly "so it also serves Tauri" ([F04 §1](./04-sdk-and-agent-sources.md)); `DataProvider`/registry unchanged in the desktop build |
 | [F01](./01-monorepo-and-oss-infra.md) | extends | Adds a `desktop-release` workflow to F01's CI (F01 scopes itself out of Tauri impl); artifacts attach to GitHub Releases, not npm |
 | [F28](./28-backend-glue-service.md) (P-005) | optional | Reachability of a user-run `apps/server` decides proxy-vs-direct data path (§3.1, §9-1 = F05 §9-11) |
@@ -45,7 +45,7 @@ Two options for what the webview loads:
 ### 3.2 Process model
 
 - **Single window, single instance** (v1). A second launch or a deep link activates the existing instance (mechanism: §9-3). Multi-window is post-v1; the web app is designed as one shell (F07).
-- **Close-to-tray**: closing the window hides it; the app keeps running in the tray, webview alive. This is load-bearing — the F10 approvals poll keeps running while hidden, so tray badge and notifications work without any background service. True quit only via tray menu / app menu.
+- **Close-to-tray**: closing the window hides it; the app keeps running in the tray, webview alive. This is load-bearing — the F10 approvals poll and the F19 `/api/notify/stream` subscription keep running while hidden, so tray badge and notifications work without any background service. True quit only via tray menu / app menu.
 - Default poll cadence while hidden: 60 s (vs F10's 30 s visible) to cut idle load; resumes 30 s + focus-revalidate on show.
 
 ### 3.3 Tray: badge + menu

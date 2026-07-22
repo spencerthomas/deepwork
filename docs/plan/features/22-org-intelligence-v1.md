@@ -208,7 +208,7 @@ Split rationale: the **SDK stamps what the client knows** (task shape, origin), 
 ## 7. Acceptance criteria
 
 1. Fresh org: interview → review → commit produces the §4.1 tree; files readable at `/memories/org` in a live deployment; an in-agent write attempt to the mount is runtime-denied (test).
-2. Every Deep Work-created run carries the §4.2 keys and each is filterable in LangSmith; schedule fires carry `surface:"schedule"` without a client present.
+2. Every Deep Work-created run carries the §4.2 **baseline** keys and each is filterable in LangSmith; conditional keys appear exactly when applicable — `hitl_outcome` after a resolved interrupt, rubric keys on a rubric run (one fixture each) — and are absent otherwise; schedule fires carry `surface:"schedule"` without a client present.
 3. Deep-link map fully wired: each §3.4 row resolves a working LangSmith URL from `traceUrls`; P-002 audit — zero chart/analytics components in Deep Work; no UI surface issues `/runs/query` (proxy-log assert, shared with F18 AC-8).
 4. Org-analyst end-to-end on a real deployment: provision (prefilled CronEditor) → fire → digest at `digests/YYYY-WW.md` with per-claim trace links → push notification → digest visible in Settings inside `UntrustedContent`. Sweep issues only sequential ≤7d-window queries (asserted from trace of the sweep itself).
 5. Digest filing is idempotent: replayed completion webhook produces no duplicate commit.

@@ -43,7 +43,7 @@ Sources: [02 · Architecture §2/§4/§7/§12](../02-architecture.md) · [01 · 
 
 ### 3.2 Client seam
 
-Exactly the seam [F04](./04-sdk-and-agent-sources.md) reserves: `buildStreamOptions(source)` returns the `CustomAdapterOptions` branch for `type: 'custom'`, constructing `HttpAgentServerAdapter` from the source's adapter config (§4). What differs from the v1 tiers is **only transport config**: `apiUrl` = the protocol server, `paths` remaps route names (cookbook examples mount under `/api/threads/...`; [02 §7](../02-architecture.md) names `/threads/{id}/commands` + `/stream/events` — the `paths` option absorbs this discrepancy, pinned in the spike), `defaultHeaders` carries whatever the deployer's reverse proxy requires, auth mode is `none` (§6). Registration: the same registry as every tier — env seed via `NEXT_PUBLIC_AGENT_SOURCES` or Settings UI, with `type: 'custom'`; the probe step hits the server's threads-list route as the health check and stamps capability results, so components downstream see flags, never tier names.
+Exactly the seam [F04](./04-sdk-and-agent-sources.md) reserves: `buildStreamOptions(source)` returns the `CustomAdapterOptions` branch for `type: 'custom'`, constructing `HttpAgentServerAdapter` from the source's adapter config (§4). What differs from the v1 tiers is **only transport config**: `apiUrl` = the protocol server, `paths` remaps route names (cookbook examples mount under `/api/threads/...`; [02 §7](../02-architecture.md) names `/threads/{id}/commands` + `/stream/events` — the `paths` option absorbs this discrepancy, pinned in the spike), `defaultHeaders` carries only **non-secret** reverse-proxy values (routing/tenant tags — never credentials: the registry seed is `NEXT_PUBLIC_AGENT_SOURCES`, baked into the browser bundle and readable by anyone who loads the page; authenticated exposure uses a session-bound mechanism or server-side proxy, §6), auth mode is `none` (§6). Registration: the same registry as every tier — env seed via `NEXT_PUBLIC_AGENT_SOURCES` or Settings UI, with `type: 'custom'`; the probe step hits the server's threads-list route as the health check and stamps capability results, so components downstream see flags, never tier names.
 
 ### 3.3 What is lost (server side)
 
@@ -80,7 +80,7 @@ One `docker-compose.yml` at repo root (`deploy/selfhost/`), four services, refer
 interface CustomAdapterConfig {
   kind: 'http-protocol'                       // path (a); 'aegra' added only if path (b) is chosen
   paths?: Partial<Record<'commands' | 'stream' | 'state' | 'threads' | 'history', string>>;
-  defaultHeaders?: Record<string, string>;    // reverse-proxy auth etc. — never key material (F04 §6 rule)
+  defaultHeaders?: Record<string, string>;    // non-secret values only (routing/tenant tags) — never credentials/key material (F04 §6 rule; NEXT_PUBLIC_* is browser-visible, §6)
   traceUrlTemplate?: string;                  // e.g. "https://my-otel.example/trace/{runId}"; absent ⇒ TracePill hidden
 }
 // AgentSource gains: adapterConfig?: CustomAdapterConfig   (present iff type === 'custom')
@@ -106,6 +106,7 @@ services:
   server:          { profiles: ["github"] }            # apps/server (F28) — optional GitHub App glue
   web:
     environment:
+      # NEXT_PUBLIC_* is compiled into the browser bundle — public by definition; no credentials, no secret defaultHeaders (§6)
       NEXT_PUBLIC_AGENT_SOURCES: '[{"id":"selfhost","type":"custom","name":"Self-hosted",
         "deploymentUrl":"http://localhost:8123","auth":{"mode":"none"},
         "adapterConfig":{"kind":"http-protocol"}}]'

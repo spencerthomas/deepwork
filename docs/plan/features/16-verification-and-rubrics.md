@@ -207,6 +207,7 @@ v1/M2 only — goal lifecycle (§3.6) is deliberately absent.
 7. Mid-thread rubric attach (dcode `/rubric` is sticky-or-one-turn mid-session) — supported by the cloud middleware per-turn, or creation-time only? Gates the follow-up-composer affordance.
 8. JS parity: RubricMiddleware availability in `deepagents` JS (research 02 flags unverified JS divergences) — matters only if `packages/agent` ever mirrors to JS; Python-first per D-008 / [02 §11](../02-architecture.md).
 9. Goal lifecycle (v1.x): where do approved criteria persist across turns (thread state channel vs `/memories/` file) — the [02 §9](../02-architecture.md) "needs design" flag; blocks nothing in M2.
+10. **External-rubric origin authentication**: is there an authenticated/verifiable origin for schedule/webhook payloads ([F18](./18-schedules-and-activity.md)) strong enough to let an `external` rubric's `satisfied` map straight to Verified without the §3.4 human confirm? v1 always requires the confirm.
 
 ## 10. Risks
 
@@ -216,5 +217,6 @@ v1/M2 only — goal lifecycle (§3.6) is deliberately absent.
 | Verdict state turns out not to be streamable (trace-only) | Med | Med | Fallback: panel renders terminal state from thread values on completion + "grading…" from run status only; degraded but shippable; upstream issue filed |
 | Grading loops silently burn tokens on vague user criteria | Med | Med | Low default cap (2), hard UI max (5), cost copy at authoring, iteration count + trace links always visible (§3.5) |
 | Judge quality: false "Verified" badges erode the exact trust the pillar targets | Med | High | Verified badge always paired with criteria list + trace links (verify the verifier); Accept-anyway/override telemetry (§3.7) measures grader calibration; template criteria kept concrete/checkable |
+| Hostile external rubric (schedule/webhook payload) self-approves its task | Low | High | `external` source's `satisfied` gated behind human Confirm Verified (§3.4/§6); untrusted-content rendering; `rubric_source` stamp keeps external verdicts filterable |
 | Users conflate rubric failure with task failure | Low | Med | Amber-not-red rule (§3.4) enforced in `StatusChip`; copy says "completed, not verified" |
 | F08/F09 land later than task 4/5 need | Med | Low | Panel and field are self-contained components (`packages/ui`); can develop against static `VerificationState` fixtures like the M0 shell |

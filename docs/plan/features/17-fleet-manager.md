@@ -31,17 +31,18 @@ Stack facts applied: frontend is Next.js (D-022); control-plane calls that need 
 
 | Direction | Spec / decision | What crosses the seam |
 |---|---|---|
-| needs ← | `packages/sdk` data layer (see [catalog](./README.md); [06](../06-frontend-implementation.md) Phase B) | `AgentSource` registry, control-plane client, normalized types; F17 adds the `AgentSummary`/`AgentConfigModel` types (§4) |
+| needs ← | [F04 · SDK & agent sources](./04-sdk-and-agent-sources.md) | `AgentSource` registry, control-plane client, normalized types; F17 adds the `AgentSummary`/`AgentConfigModel` types (§4) |
 | needs ← | [F06 · Onboarding & deploy](./06-onboarding-and-deploy.md) | The deploy engine (tarball upload / github-source, revision polling) as a callable service; F17's Deploy tab and create flow invoke it, never reimplement it |
-| needs ← | F15 templates (see [catalog](./README.md)) | Template catalog entries (Deep Work SWE · Research · Writing · blank) with per-template assistant-config payloads ([02 §3](../02-architecture.md): templates are assistant configs, not codebases) |
-| provides → | [F18 · Schedules & activity](./18-schedules-and-activity.md) | Agent context (deployment URL, assistant id, tier, capability flags) for the embedded per-agent Schedules tab |
-| provides → | F11 environment (see [catalog](./README.md)) | Same context object for the Environment tab; F17 renders the tab shell only |
+| needs ← | [F14 · Agent package](./14-agent-package.md) | The Deep Work agent must expose `interrupt_on` through its config schema so the Auto/Ask matrix saves per-assistant ([02 §6](../02-architecture.md)); verified in §9-Q7 |
+| needs ← | [F15 · Task templates](./15-task-templates.md) | Template catalog entries (Deep Work SWE · Research · Writing · blank) with per-template assistant-config payloads (D-014: templates are assistant configs, not codebases) |
+| provides → | [F18 · Schedules & activity](./18-schedules-and-activity.md) | Agent context (deployment URL, assistant id, tier, capability flags) for the embedded per-agent Schedules tab (F18 owns `ScheduleList`/`CronEditor`); F17's config editor is the deep-link target for project-origin `schedules/` files |
+| provides → | [F11 · Execution & environments](./11-execution-and-environments.md) | Same context object for the Environment tab; F17 renders the tab shell only |
 | coordinates ↔ | [F22 · Org intelligence v1](./22-org-intelligence-v1.md) | Memory editor: `/memories/org` is read-only in the editor (writes go through F22's review loop); per-user memory slices are editable, beta-flagged |
-| depends on | P-005 (provisional) | Org/workspace service keys (`lsv2_sk_` + `X-Tenant-Id`) live server-side in `apps/server`; the browser never holds them ([research 12](../../research/12-lifecycle-auth-followup.md)) |
-| depends on | D-022 | Routes `/agents`, `/agents/[id]?tab=…` in the Next.js App Router; tab + filter state via nuqs (URL-as-state convention, [03 §3.1](../03-ui-spec.md)) |
-| constrained by | O-004 | Fleet CRUD not public — invoke/read only; export format is the bridge ([02 §12](../02-architecture.md)) |
-| constrained by | O-003 | Beta-gated features (MDA invoke, per-user memory, channels, `managed_deep_agent` acceptance) get visible beta badges and documented fallbacks |
-| seed | [06](../06-frontend-implementation.md) §1, Phase E | v0 concept's `/agents`, `/agents/[id]`, and connector Auto/Ask screens are the visual seed; data layer replaced wholesale |
+| depends on | P-005 (provisional) → [F28](./28-backend-glue-service.md) | Org/workspace service keys (`lsv2_sk_` + `X-Tenant-Id`) live server-side in `apps/server`; the browser never holds them ([research 12](../../research/12-lifecycle-auth-followup.md)) |
+| depends on | D-022 · P-002 | Routes `/agents`, `/agents/[id]?tab=…` in the Next.js App Router; nuqs URL state ([03 §3.1](../03-ui-spec.md)). P-002 folds the v0 `/config` surfaces (connectors, Auto/Ask, skills) into this agent detail |
+| constrained by | [research 12](../../research/12-lifecycle-auth-followup.md) · O-004 | Fleet CRUD not public — invoke/read only; export format is the bridge ([02 §12](../02-architecture.md)); O-004 (chat-based self-config) is the tracked potential unlock |
+| constrained by | O-003 | `managed_deep_agent` acceptance for non-beta orgs unverified — create/deploy paths detect and fall back via [F06](./06-onboarding-and-deploy.md); dev-channel features (per-user memory, channels) are feature-flagged per the [04](../04-roadmap.md) risk register |
+| seed | [06](../06-frontend-implementation.md) §1, Phase E (D-012/P-001) | v0 concept's `/agents`, `/agents/[id]`, and connector Auto/Ask screens are the visual seed; data layer replaced wholesale |
 
 ## 3. Design
 
@@ -56,7 +57,7 @@ Aggregation runs in `packages/sdk` over the agent-source registry; each source c
 | Model | assistant config (`provider:model`, [02 §3](../02-architecture.md)) | assistant config | Fast/Pro/Max tier if readable from assistant metadata ([research 10](../../research/10-openswe-fleet.md)); else `—` | assistant config |
 | Tools count | project tools + MCP tools (`/v1/deepagents/mcp-servers` + `/mcp/tools`) | assistant schemas where exposed; else `—` | `—` (config not readable) | assistant schemas |
 | Channels | 0.4.0-dev Slack channels, **beta badge** ([research 20](../../research/20-gapfill-mda-api.md)); `—` on 0.3.1 | `—` | not readable via public API → `—` (§9-Q6) | `—` |
-| Schedules | `POST /runs/crons/search` on the deployment ([research 20](../../research/20-gapfill-mda-api.md)) | same | same (invoke/read scope permitting) | same |
+| Schedules | `POST /runs/crons/search` on the deployment ([research 20](../../research/20-gapfill-mda-api.md)) | same | same (invoke/read scope permitting) | `—` (cron support on `langgraph dev` unverified — [F18](./18-schedules-and-activity.md) §9) |
 | Last run | `threads.search` sorted by `updated_at` ([03 §3.1](../03-ui-spec.md)) | same | same | same |
 | Health | `/v1/deepagents/*` health where applicable; else `GET /ok` probe + latest revision status | revision status + `/ok` | `/ok` probe | `/ok` probe |
 
@@ -78,6 +79,7 @@ Aggregation runs in `packages/sdk` over the agent-source registry; each source c
 | Sub-agents | code-defined `SubAgent`s → read-only cards; file-based `subagents/` (imported Fleet-export projects) → editable | Partial, per provenance |
 | Skills | `skills/<name>/SKILL.md` browser + editor (Hub-synced) | Full |
 | Memory | `/memories/AGENTS.md` (Hub); per-user `/memories/user/AGENTS.md` **only on the 0.4.0-dev channel — beta badge** ([research 20](../../research/20-gapfill-mda-api.md)); `/memories/org` read-only per [F22](./22-org-intelligence-v1.md) | Edit agent memory; org memory view-only with "propose change" → F22 loop |
+| Schedules (project-defined) | `schedules/` in the project source — reconciled as MDA-owned crons at deploy; `mda deploy` deletes and recreates them, clobbering UI edits ([research 20](../../research/20-gapfill-mda-api.md)) | View + [F18](./18-schedules-and-activity.md) deep-link target; edits are code-level → pending-publish tray. UI-created crons live in the Schedules tab |
 | Permissions | Per-tool **Auto/Ask matrix** → `interrupt_on` (below) | Full where the agent exposes it |
 
 *Auto/Ask matrix.* Rows = all known tools (built-ins, `execute`, `commit_and_open_pr`, MCP tools). Auto = tool absent from `interrupt_on`; Ask = `{tool: {allowed_decisions: [approve, edit, reject, respond]}}` subset per row ([02 §3](../02-architecture.md)). Compiled into the assistant's config where the agent's config schema exposes an `interrupt_on` key ([02 §6](../02-architecture.md): "`interrupt_on` config on the agent + assistant config schema") — saving creates a new assistant version (assistants API supports versioning, [research 01](../../research/01-managed-deep-agents.md)). Two documented limits rendered inline in the UI: (1) filesystem `permissions` rules guard paths but **do not cover `execute`/MCP tools** — the matrix is the only gate for those; (2) code-level `when:` predicates are not expressible in the matrix — such entries render as "conditional (code-defined)" read-only rows. Foreign agents whose config schema lacks the key get a read-only matrix + explainer.

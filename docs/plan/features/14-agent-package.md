@@ -23,6 +23,8 @@ Milestones: **M1** ships v0 (research + writing task types, no sandbox, deployab
 | `langgraph-cli` | per [05] pins | `langgraph dev` for local dev + contract tests |
 | uv · ruff · pytest | [05] toolchain | non-JS workspace in the pnpm monorepo, shared with `apps/server` (P-005, per [F01](./01-monorepo-and-oss-infra.md)) |
 
+**Interim exception (pin conflict):** the scaffold exact-pins the 0.7 alpha per §9 Q1's proposal, superseding [05](../05-oss-setup.md)'s 0.6.12 pin, pending batch-1 ratification of the decision-log entry.
+
 | Neighbor | Seam |
 |---|---|
 | [F15 templates](./15-task-templates.md) | Templates are **assistant configs over this one agent**, not codebases ([02 §3](../02-architecture.md)). F14 owns the config surface (`context_schema`: model, sandbox on/off, interpreter flag, rubric ref, tool exclusions, Auto/Ask matrix → `interrupt_on`); F15 owns the values. |
@@ -172,7 +174,7 @@ On classic tiers the same handlers mount via `langgraph.json` `http.app` ([02 §
 - **Fallback exhaustion** (open-swe v1's top failure, [research 10]): run ends in error state with the queue and checkpoints intact; resumable; never a silent hang.
 - **Steering vs retries/replays**: id-dedupe makes injection idempotent; messages queued during an interrupt wait are drained on resume, before the next model call.
 - **Cap hit mid-tool**: the in-flight tool completes or errors first; the limit message follows — no truncated ToolMessage.
-- **Sandbox idle-expired** (`idle_ttl` 600s) mid-thread: auto-recreate + `setup.sh` re-run ([02 §4]); `execute` sees a latency spike, not an error. Connector routes against an expired sandbox return a structured `410 expired` (UI may offer re-warm) — F11/F13 seam.
+- **Sandbox idle-expired** (`idle_ttl` 600s) mid-thread: auto-recreate + `setup.sh` re-run ([02 §4]); `execute` sees a latency spike, not an error. Connector routes against an expired sandbox return the canonical expired-sandbox error — HTTP `410`, body `{"code": "sandbox_expired", "thread_id": "..."}` (defined in F11, consumed by F13; UI may offer re-warm).
 - **MCP server down / bearer expired**: transient → ToolRetry; persistent → error ToolMessage via ToolError; static-bearer rotation is a deployment-secret update.
 - **`commit_and_open_pr` idempotence**: nothing to commit → structured no-op Result; PR already open → returns the existing URL (auto-PR condition 3 also prevents refire).
 - **Summarization drops media blocks** → baked instruction: media to backend, paths in context ([08]).
@@ -226,7 +228,7 @@ On classic tiers the same handlers mount via `langgraph.json` `http.app` ([02 §
 
 ## 9. Open questions
 
-1. **Version pin conflict**: [05](../05-oss-setup.md) pins `deepagents` 0.6.12 ("watch 0.7.0") but this spec requires ≥0.7.0a3 (overrides-by-name) and 0.7a1 (`delete`); open-swe v2 ships on `0.7.0a7`. Proposal: exact-pin the alpha like open-swe; needs a decision-log entry.
+1. **Version pin conflict**: [05](../05-oss-setup.md) pins `deepagents` 0.6.12 ("watch 0.7.0") but this spec requires ≥0.7.0a3 (overrides-by-name) and 0.7a1 (`delete`); open-swe v2 ships on `0.7.0a7`. Proposal: exact-pin the alpha like open-swe; interim exception in effect (§2) — the scaffold pins the alpha, superseding 05's pin, pending batch-1 ratification via a decision-log entry.
 2. **Steering queue write path**: how the client appends to state mid-run (state-update command vs enqueue-run folding) — open-swe's `dispatch.py`/`reconcile.py` were not inspected ([research 10] open question). The pattern is grounded; the plumbing is not. Blocks T6 detail.
 3. **Reliability middleware params**: exact upstream kwarg names/defaults for retry backoff, fallback chains, limit counters — and wrap-nesting semantics (retry-inside-fallback, whether limits count retried attempts) — unverified; pin during T9.
 4. **Protocol shape of cap/fallback events**: message injection vs `lifecycle` vs anything else — Spike 3 transcript decides the F09 rendering contract (§3.3.4 states the requirement either way).

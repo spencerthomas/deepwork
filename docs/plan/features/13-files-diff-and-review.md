@@ -68,7 +68,7 @@ Visible only for sandbox-backed coding tasks. Click emits the F12 "open PR" inte
 
 ### 3.6 Read-only terminal pane (P-003, provisional)
 
-A run-panel pane (concept app already has one — 06 §1) fed entirely by `execute` tool streams on the `tools` channel: `tool-started {tool_call_id, tool_name, input}` → append `$ <command>` prompt line; `tool-output-delta` → append output; `tool-finished/tool-error` → status line (research 21). Append-only log across the thread's `execute` calls, newest at bottom, stick-to-bottom with pause-on-scroll-up. ANSI SGR colors rendered via a lightweight converter (not xterm.js — there is no PTY and **no stdin in v1**, 06 §4 decision 3); all other escape sequences stripped. Scrollback ring buffer 10k lines; per-block and select-all copy. Steering while a command runs happens in the composer, not here. Interactive terminal (stdin/PTY over sandbox exec) is post-v1; *Continue in terminal* → `dcode --sandbox-id` (02 §9) is the escape hatch and renders next to this pane.
+A run-panel pane (concept app already has one — 06 §1) fed entirely by `execute` tool streams on the `tools` channel: `tool-started {tool_call_id, tool_name, input}` → append `$ <command>` prompt line; `tool-output-delta` → append output; `tool-finished/tool-error` → status line (research 21). Append-only log across the thread's `execute` calls, newest at bottom, stick-to-bottom with pause-on-scroll-up. ANSI SGR colors rendered via a lightweight converter (not xterm.js — there is no PTY and **no stdin in v1**, 06 §4 decision 3); all other escape sequences stripped. Scrollback ring buffer 10k lines; per-block and select-all copy. Steering while a command runs happens in the composer, not here. Interactive terminal (stdin/PTY over sandbox exec) is post-v1; *Continue in terminal* → `dcode --sandbox-id` (02 §9, D-013, [F25](./25-dcode-integration.md)) is the escape hatch and renders next to this pane.
 
 ### 3.7 States
 
@@ -107,7 +107,7 @@ Normalization rules (F04's job; recorded here as the consumption contract, resea
 
 ### 4.2 Sandbox connector routes (proposed contract; routes named in 02 §4, schema owned here, implemented with F11)
 
-Identity: enforced by the connector protocol (`secure by default`; fail-closed 403 outside the caller's identity namespace — research 20). Client calls carry the same auth as the data plane: `validated_token` direct, or `trusted_backend` via the `apps/server` proxy (P-005; 02 §5). Classic tiers mount identical handlers via `langgraph.json` `http.app` (02 §4).
+Identity: enforced by the connector protocol (`secure by default`; fail-closed 403 outside the caller's identity namespace — research 20). Client calls carry the same auth as the data plane: `validated_token` direct, or `trusted_backend` via the `apps/server` proxy (P-005, [F28](./28-backend-glue-service.md); 02 §5). Classic tiers mount identical handlers via `langgraph.json` `http.app` (02 §4, D-004 fallback tiers).
 
 `GET /connectors/deepwork/sandbox/:threadId/tree`
 ```jsonc
@@ -196,7 +196,7 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 | # | Task | Depends on | Definition of done |
 |---|---|---|---|
 | 1 | `NormalizedFile` consumption types + fixtures for py/js-v1/js-v2 variants in `packages/sdk` | F04 types landed | variant round-trip tests green; components compile against `NormalizedFile` only |
-| 2 | Connector `tree`/`file` handlers in `packages/agent/connectors/deepwork.py` per §4.2 | F11 sandbox backend; seam review w/ F11 | contract tests vs `langgraph dev` + live sandbox; 403/404/400/413 paths covered |
+| 2 | Connector `tree`/`file` handlers in `packages/agent/connectors/deepwork.py` (F14) per §4.2 | F11 sandbox backend; seam review w/ F11/F14 | contract tests vs `langgraph dev` + live sandbox; 403/404/400/413 paths covered |
 | 3 | `FileTree` + rail Files-changed block (virtualized, counts, status dots, source selection) | 1, 2 | AC-1, AC-8 partial; stories for both sources |
 | 4 | `FileViewer` text path: Shiki worker, caps, truncation UX, markdown mode | 1 | AC-2 text/markdown; worker fallback test |
 | 5 | `FileViewer` multimodal + binary fallback | 4 | AC-2 media fixtures; sanitized embeds verified |
@@ -204,7 +204,7 @@ Grammar rules: header line fixed except `{N}`; blocks separated by one blank lin
 | 7 | Line-comment model + drafts + §4.3 serializer/parser | 6 | AC-4 golden-transcript test; sessionStorage persistence test |
 | 8 | Composer send wiring via F09 (single message, queue/interrupt honored) | 7; F09 composer | AC-4 e2e against `langgraph dev` |
 | 9 | `Approve & open PR` wiring | 6; F12 intent defined | AC-5 |
-| 10 | Artifacts: template convention PR (`/artifacts/`), rail list, viewer | 1, 4; template owners' ack | AC-6; heuristic fallback labeled correctly |
+| 10 | Artifacts: template convention PR (`/artifacts/`), rail list, viewer | 1, 4; F15 ack | AC-6; heuristic fallback labeled correctly |
 | 11 | `TerminalPane` from `execute` streams (P-003) | F04 tool-call projections | AC-7; ANSI strip tests |
 | 12 | States/degraded matrix incl. recently-touched derivation; perf + a11y pass | 3–11 | AC-8, AC-9; keyboard nav in takeover; reduced-motion clean |
 

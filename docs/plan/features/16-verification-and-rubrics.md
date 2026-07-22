@@ -79,7 +79,7 @@ Governing principle: **grader failure ≠ task failure, and rubric verdicts neve
 | `failed` | Needs review (amber) | Accept anyway · Send back (exact `failed` semantics vs `max_iterations` — §9-4) |
 | grader model/infra error | task's own status stands; gray chip | Retry verification · trace link. Whether the reliability stack (`ModelRetryMiddleware` etc., [02 §3](../02-architecture.md)) already wraps grader calls is §9-5 |
 
-**Accept anyway** is a first-class override: one click, records actor + timestamp as thread metadata (threads already carry metadata, e.g. `metadata.owner` per [02 §5](../02-architecture.md); Deep Work stores nothing itself per [01 non-goals](../01-vision.md)), flips chip to Done with the *Overridden* badge (§3.3), and emits the eval-fuel signal (§3.7). No confirmation dialog — the panel's unmet-criteria list *is* the informed-consent surface.
+**Accept anyway** is a first-class override: one click, records actor + timestamp as thread metadata (threads already carry metadata, e.g. `metadata.owner` per [02 §5](../02-architecture.md); Deep Work stores nothing itself — D-003, [01 non-goals](../01-vision.md)), flips chip to Done with the *Overridden* badge (§3.3), and emits the eval-fuel signal (§3.7). No confirmation dialog — the panel's unmet-criteria list *is* the informed-consent surface.
 
 ### 3.5 Why this exists: the cheap-verification thesis
 

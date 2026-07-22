@@ -34,6 +34,7 @@ Deep Work is a Codex / Claude-Cowork-class product experience delivered as an op
 | [03 — UI specification](docs/plan/03-ui-spec.md) | Design language, app shell, screens, components, data contracts |
 | [04 — Roadmap](docs/plan/04-roadmap.md) | Milestones to v1, risks, open questions |
 | [05 — OSS setup](docs/plan/05-oss-setup.md) | License, repo structure, CI, conventions |
+| [06 — Frontend implementation](docs/plan/06-frontend-implementation.md) | Evaluation of the [deep-work-frontend](https://github.com/spencerthomas/deep-work-frontend) concept + phased plan to make it `apps/web` |
 | [Design brief](docs/design/deepwork-design-brief.html) | Visual brief with tokens, specimens, and screen concepts |
 | [Research digest](docs/research/README.md) | Condensed findings that ground every decision above |
 

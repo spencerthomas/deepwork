@@ -39,7 +39,7 @@ include = ["src/deepwork_agent", "tests", "README.md", "Makefile"]
 packages = ["src/deepwork_agent"]
 
 [tool.pytest.ini_options]
-addopts = "-q --strict-config --strict-markers"
+addopts = "-q --strict-config --strict-markers --disable-socket"
 testpaths = ["tests/unit"]
 
 [tool.ruff]

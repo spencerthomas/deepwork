@@ -12,16 +12,12 @@ import {
 import { describe, expect, it } from "vitest";
 
 const capability = capabilitySummary(
-  unavailableCapability(
-    "unknown",
-    "contract-not-verified",
-    {
-      observedAt: "2026-07-23T00:00:00.000Z",
-      adapterVersion: "adapter-disabled",
-      contractVersion: "contract-unverified",
-      evidenceClass: "documented",
-    },
-  ),
+  unavailableCapability("unknown", "contract-not-verified", {
+    observedAt: "2026-07-23T00:00:00.000Z",
+    adapterVersion: "adapter-disabled",
+    contractVersion: "contract-unverified",
+    evidenceClass: "documented",
+  }),
 );
 
 describe("explicitly unavailable ports", () => {
@@ -30,9 +26,7 @@ describe("explicitly unavailable ports", () => {
   });
 
   it("returns CapabilityUnavailable without making a guessed request", async () => {
-    const port = unavailableMutationPort<{ action: string }, never>(
-      capability,
-    );
+    const port = unavailableMutationPort<{ action: string }, never>(capability);
     const result = await port.mutate({ action: "gated-operation" });
 
     expect(result).toMatchObject({
@@ -46,16 +40,12 @@ describe("explicitly unavailable ports", () => {
 
   it("retries only recoverable source unavailability", async () => {
     const sourceUnavailable = capabilitySummary(
-      unavailableCapability(
-        "unavailable",
-        "source-unavailable",
-        {
-          observedAt: "2026-07-23T00:00:00.000Z",
-          adapterVersion: "adapter-disabled",
-          contractVersion: "contract-unverified",
-          evidenceClass: "documented",
-        },
-      ),
+      unavailableCapability("unavailable", "source-unavailable", {
+        observedAt: "2026-07-23T00:00:00.000Z",
+        adapterVersion: "adapter-disabled",
+        contractVersion: "contract-unverified",
+        evidenceClass: "documented",
+      }),
     );
     const port = unavailableQueryPort<undefined, never>(sourceUnavailable);
 

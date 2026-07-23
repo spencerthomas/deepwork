@@ -8,23 +8,18 @@ import ts from "@typescript/typescript6";
 
 const packageRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const sourceRoot = join(packageRoot, "src");
-const nodeBuiltins = new Set(
-  builtinModules.flatMap((name) => [name, `node:${name}`]),
-);
+const nodeBuiltins = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const help =
   "Legal destination: packages/domain/src/** pure helpers only. " +
   "Architecture: ARCHITECTURE.md#package-graph and " +
   "ARCHITECTURE.md#mechanical-enforcement. " +
   "Repair: pnpm --filter @deepwork/domain check-architecture";
 
-const FRAMEWORK_PACKAGES =
-  /^(?:react|react-dom|next|vue|svelte)(?:\/|$)/;
-const NETWORK_PACKAGES =
-  /^(?:axios|ky|undici|eventsource|ws)(?:\/|$)/;
+const FRAMEWORK_PACKAGES = /^(?:react|react-dom|next|vue|svelte)(?:\/|$)/;
+const NETWORK_PACKAGES = /^(?:axios|ky|undici|eventsource|ws)(?:\/|$)/;
 const PROVIDER_PACKAGES =
   /^(?:@langchain\/(?:core|langgraph-api|langgraph-sdk)|langchain|openai|@anthropic-ai\/sdk)(?:\/|$)/;
-const FORBIDDEN_ZONE =
-  /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
+const FORBIDDEN_ZONE = /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
 const FORBIDDEN_PACKAGES =
   /^(?:server-only|@tauri-apps\/|pg$|postgres$|better-sqlite3$|@prisma\/client$|drizzle-orm$)/;
 
@@ -47,9 +42,7 @@ function dynamicImportLineCommentFixtures(expectedCode) {
         `tests/fixtures/negative/in-memory/dynamic-import-` +
         `${terminatorName}-${argumentName}.fixture.ts`,
       source:
-        'const moduleName = "./identity.js"; void import// fixture' +
-        terminator +
-        `(${argument});`,
+        'const moduleName = "./identity.js"; void import// fixture' + terminator + `(${argument});`,
       expectedCodes: [expectedCode],
     })),
   );
@@ -58,17 +51,11 @@ function dynamicImportLineCommentFixtures(expectedCode) {
 export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/framework-side-effect.fixture.ts",
-    expectedCodes: [
-      "DW-DOMAIN-FRAMEWORK-IMPORT",
-      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-DOMAIN-FRAMEWORK-IMPORT", "DW-DOMAIN-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/browser-network.fixture.ts",
-    expectedCodes: [
-      "DW-DOMAIN-BROWSER-API",
-      "DW-DOMAIN-NETWORK-API",
-    ],
+    expectedCodes: ["DW-DOMAIN-BROWSER-API", "DW-DOMAIN-NETWORK-API"],
   },
   {
     path: "tests/fixtures/negative/provider-network-side-effect.fixture.ts",
@@ -104,18 +91,12 @@ export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/in-memory/commented-static-import.fixture.ts",
     source: 'import/* fixture */"@deepwork/sdk";',
-    expectedCodes: [
-      "DW-DOMAIN-INTERNAL-IMPORT",
-      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-DOMAIN-INTERNAL-IMPORT", "DW-DOMAIN-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/commented-static-export.fixture.ts",
     source: 'export { SourceId } from/* fixture */"@deepwork/sdk";',
-    expectedCodes: [
-      "DW-DOMAIN-INTERNAL-IMPORT",
-      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-DOMAIN-INTERNAL-IMPORT", "DW-DOMAIN-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/import-equals.fixture.ts",
@@ -138,10 +119,7 @@ export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/in-memory/import-type.fixture.ts",
     source: 'type Legacy = import("@deepwork/sdk").SourceId; void 0;',
-    expectedCodes: [
-      "DW-DOMAIN-INTERNAL-IMPORT",
-      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-DOMAIN-INTERNAL-IMPORT", "DW-DOMAIN-IMPORT-NOT-ALLOWED"],
   },
   ...dynamicImportLineCommentFixtures("DW-DOMAIN-DYNAMIC-IMPORT"),
 ];
@@ -153,9 +131,7 @@ function moduleImports(source, sourceFile) {
     );
   }
   const scriptKind =
-    extname(sourceFile).toLowerCase() === ".tsx"
-      ? ts.ScriptKind.TSX
-      : ts.ScriptKind.TS;
+    extname(sourceFile).toLowerCase() === ".tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const transpileResult = ts.transpileModule(source, {
     compilerOptions: {
       jsx: ts.JsxEmit.Preserve,
@@ -202,10 +178,7 @@ function moduleImports(source, sourceFile) {
     ) {
       addSpecifier(node.moduleReference.expression);
       unsafeDynamicImportCount += 1;
-    } else if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) {
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       const argument = node.arguments[0];
       const staticString = addSpecifier(argument);
       if (!staticString || node.arguments.length !== 1) {
@@ -213,10 +186,7 @@ function moduleImports(source, sourceFile) {
       }
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument;
-      if (
-        !ts.isLiteralTypeNode(argument) ||
-        !addSpecifier(argument.literal)
-      ) {
+      if (!ts.isLiteralTypeNode(argument) || !addSpecifier(argument.literal)) {
         unsafeDynamicImportCount += 1;
       }
     } else if (
@@ -241,20 +211,12 @@ function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
 }
 
-export function inspectSource(
-  source,
-  sourceFile = join(sourceRoot, "__inspection__.ts"),
-) {
+export function inspectSource(source, sourceFile = join(sourceRoot, "__inspection__.ts")) {
   const violations = [];
-  const add = (code, message) =>
-    violations.push({ code, message: `${message}. ${help}` });
+  const add = (code, message) => violations.push({ code, message: `${message}. ${help}` });
   const imports = moduleImports(source, sourceFile);
 
-  for (
-    let index = 0;
-    index < imports.unsafeDynamicImportCount;
-    index += 1
-  ) {
+  for (let index = 0; index < imports.unsafeDynamicImportCount; index += 1) {
     add(
       "DW-DOMAIN-DYNAMIC-IMPORT",
       "domain cannot use a computed or template-literal dynamic import or a CommonJS module load because its destination or module form cannot be safely enforced",
@@ -272,61 +234,33 @@ export function inspectSource(
       );
     }
     if (specifier.startsWith("@deepwork/")) {
-      add(
-        "DW-DOMAIN-INTERNAL-IMPORT",
-        `domain cannot import internal package ${specifier}`,
-      );
+      add("DW-DOMAIN-INTERNAL-IMPORT", `domain cannot import internal package ${specifier}`);
     }
     if (/^@deepwork\/[^/]+\//.test(specifier)) {
-      add(
-        "DW-DOMAIN-DEEP-IMPORT",
-        `domain cannot deep-import package path ${specifier}`,
-      );
+      add("DW-DOMAIN-DEEP-IMPORT", `domain cannot deep-import package path ${specifier}`);
     }
     if (FRAMEWORK_PACKAGES.test(specifier)) {
-      add(
-        "DW-DOMAIN-FRAMEWORK-IMPORT",
-        `domain cannot import framework package ${specifier}`,
-      );
+      add("DW-DOMAIN-FRAMEWORK-IMPORT", `domain cannot import framework package ${specifier}`);
     }
     if (NETWORK_PACKAGES.test(specifier)) {
-      add(
-        "DW-DOMAIN-NETWORK-IMPORT",
-        `domain cannot import network package ${specifier}`,
-      );
+      add("DW-DOMAIN-NETWORK-IMPORT", `domain cannot import network package ${specifier}`);
     }
     if (PROVIDER_PACKAGES.test(specifier)) {
-      add(
-        "DW-DOMAIN-PROVIDER-IMPORT",
-        `domain cannot import provider package ${specifier}`,
-      );
+      add("DW-DOMAIN-PROVIDER-IMPORT", `domain cannot import provider package ${specifier}`);
     }
     if (nodeBuiltins.has(specifier)) {
-      add(
-        "DW-DOMAIN-NODE-IMPORT",
-        `domain cannot import Node API ${specifier}`,
-      );
+      add("DW-DOMAIN-NODE-IMPORT", `domain cannot import Node API ${specifier}`);
     }
     if (relative && !specifier.endsWith(".js")) {
-      add(
-        "DW-DOMAIN-ESM-EXTENSION",
-        `local runtime import requires a .js extension: ${specifier}`,
-      );
+      add("DW-DOMAIN-ESM-EXTENSION", `local runtime import requires a .js extension: ${specifier}`);
     }
     if (
-      (relative &&
-        !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
+      (relative && !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
       specifier.startsWith("/")
     ) {
-      add(
-        "DW-DOMAIN-PATH-ESCAPE",
-        `import escapes the package source boundary: ${specifier}`,
-      );
+      add("DW-DOMAIN-PATH-ESCAPE", `import escapes the package source boundary: ${specifier}`);
     }
-    if (
-      FORBIDDEN_ZONE.test(specifier) ||
-      FORBIDDEN_PACKAGES.test(specifier)
-    ) {
+    if (FORBIDDEN_ZONE.test(specifier) || FORBIDDEN_PACKAGES.test(specifier)) {
       add(
         "DW-DOMAIN-FORBIDDEN-ZONE",
         `domain cannot import server, Tauri, route, fixture, generated, or database path ${specifier}`,
@@ -362,41 +296,28 @@ async function sourceFiles(directory) {
 
 function assertNoViolations(file, violations) {
   if (violations.length === 0) return;
-  const details = violations
-    .map(({ code, message }) => `${code}: ${message}`)
-    .join("\n");
+  const details = violations.map(({ code, message }) => `${code}: ${message}`).join("\n");
   throw new Error(`Boundary violation in ${file}:\n${details}`);
 }
 
 export async function checkBoundaries() {
   for (const file of await sourceFiles(sourceRoot)) {
-    assertNoViolations(
-      file,
-      inspectSource(await readFile(file, "utf8"), file),
-    );
+    assertNoViolations(file, inspectSource(await readFile(file, "utf8"), file));
   }
 
   for (const fixture of negativeFixtures) {
     const file = join(packageRoot, fixture.path);
     const codes = new Set(
-      inspectSource(
-        fixture.source ?? await readFile(file, "utf8"),
-        file,
-      ).map(({ code }) => code),
+      inspectSource(fixture.source ?? (await readFile(file, "utf8")), file).map(({ code }) => code),
     );
     for (const expectedCode of fixture.expectedCodes) {
       if (!codes.has(expectedCode)) {
-        throw new Error(
-          `Negative fixture ${fixture.path} did not trigger ${expectedCode}.`,
-        );
+        throw new Error(`Negative fixture ${fixture.path} did not trigger ${expectedCode}.`);
       }
     }
   }
 }
 
-if (
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await checkBoundaries();
 }

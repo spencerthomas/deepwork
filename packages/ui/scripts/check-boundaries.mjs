@@ -1,28 +1,23 @@
 import { builtinModules } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // TypeScript 7 has no API; the wrapper is pinned and its parser is asserted below.
 import ts from "@typescript/typescript6";
 
-const packageRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
+const packageRoot = resolve(process.cwd());
 const sourceRoot = join(packageRoot, "src");
-const nodeBuiltins = new Set(
-  builtinModules.flatMap((name) => [name, `node:${name}`]),
-);
+const nodeBuiltins = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const help =
   "Legal destination: @deepwork/domain or React public entries, packages/ui/src/**, or contained package CSS assets. " +
   "Architecture: ARCHITECTURE.md#package-graph and " +
   "ARCHITECTURE.md#mechanical-enforcement. " +
   "Repair: pnpm --filter @deepwork/ui check-architecture";
 
-const NETWORK_PACKAGES =
-  /^(?:axios|ky|undici|eventsource|ws)(?:\/|$)/;
+const NETWORK_PACKAGES = /^(?:axios|ky|undici|eventsource|ws)(?:\/|$)/;
 const PROVIDER_PACKAGES =
   /^(?:@langchain\/(?:core|langgraph-api|langgraph-sdk)|langchain|openai|@anthropic-ai\/sdk)(?:\/|$)/;
-const FORBIDDEN_ZONE =
-  /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
+const FORBIDDEN_ZONE = /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
 const FORBIDDEN_PACKAGES =
   /^(?:server-only|@tauri-apps\/|pg$|postgres$|better-sqlite3$|@prisma\/client$|drizzle-orm$)/;
 
@@ -56,25 +51,15 @@ function dynamicImportLineCommentFixtures(expectedCode) {
 export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/sdk-side-effect.fixture.ts",
-    expectedCodes: [
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/provider-side-effect.fixture.ts",
-    expectedCodes: [
-      "DW-UI-PROVIDER-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-PROVIDER-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/raw-network.fixture.ts",
-    expectedCodes: [
-      "DW-UI-NETWORK-IMPORT",
-      "DW-UI-NETWORK-API",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-NETWORK-IMPORT", "DW-UI-NETWORK-API", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/self-next-node-environment-extension-html.fixture.ts",
@@ -104,45 +89,27 @@ export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/in-memory/commented-static-import.fixture.ts",
     source: 'import/* fixture */"@deepwork/sdk";',
-    expectedCodes: [
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/commented-static-export.fixture.ts",
-    source:
-      'export { unavailableQueryPort } from/* fixture */"@deepwork/sdk";',
-    expectedCodes: [
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    source: 'export { unavailableQueryPort } from/* fixture */"@deepwork/sdk";',
+    expectedCodes: ["DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/import-equals.fixture.ts",
     source: 'import legacy = require("@deepwork/sdk"); void legacy;',
-    expectedCodes: [
-      "DW-UI-DYNAMIC-IMPORT",
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-DYNAMIC-IMPORT", "DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/commonjs-require.fixture.ts",
     source: 'const legacy = require("@deepwork/sdk"); void legacy;',
-    expectedCodes: [
-      "DW-UI-DYNAMIC-IMPORT",
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-DYNAMIC-IMPORT", "DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   {
     path: "tests/fixtures/negative/in-memory/import-type.fixture.ts",
     source: 'type Legacy = import("@deepwork/sdk").SdkResult; void 0;',
-    expectedCodes: [
-      "DW-UI-SDK-IMPORT",
-      "DW-UI-IMPORT-NOT-ALLOWED",
-    ],
+    expectedCodes: ["DW-UI-SDK-IMPORT", "DW-UI-IMPORT-NOT-ALLOWED"],
   },
   ...dynamicImportLineCommentFixtures("DW-UI-DYNAMIC-IMPORT"),
   {
@@ -163,9 +130,7 @@ function moduleImports(source, sourceFile) {
     );
   }
   const scriptKind =
-    extname(sourceFile).toLowerCase() === ".tsx"
-      ? ts.ScriptKind.TSX
-      : ts.ScriptKind.TS;
+    extname(sourceFile).toLowerCase() === ".tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const transpileResult = ts.transpileModule(source, {
     compilerOptions: {
       jsx: ts.JsxEmit.Preserve,
@@ -212,10 +177,7 @@ function moduleImports(source, sourceFile) {
     ) {
       addSpecifier(node.moduleReference.expression);
       unsafeDynamicImportCount += 1;
-    } else if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) {
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       const argument = node.arguments[0];
       const staticString = addSpecifier(argument);
       if (!staticString || node.arguments.length !== 1) {
@@ -223,10 +185,7 @@ function moduleImports(source, sourceFile) {
       }
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument;
-      if (
-        !ts.isLiteralTypeNode(argument) ||
-        !addSpecifier(argument.literal)
-      ) {
+      if (!ts.isLiteralTypeNode(argument) || !addSpecifier(argument.literal)) {
         unsafeDynamicImportCount += 1;
       }
     } else if (
@@ -251,20 +210,12 @@ function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
 }
 
-export function inspectSource(
-  source,
-  sourceFile = join(sourceRoot, "__inspection__.ts"),
-) {
+export function inspectSource(source, sourceFile = join(sourceRoot, "__inspection__.ts")) {
   const violations = [];
-  const add = (code, message) =>
-    violations.push({ code, message: `${message}. ${help}` });
+  const add = (code, message) => violations.push({ code, message: `${message}. ${help}` });
   const imports = moduleImports(source, sourceFile);
 
-  for (
-    let index = 0;
-    index < imports.unsafeDynamicImportCount;
-    index += 1
-  ) {
+  for (let index = 0; index < imports.unsafeDynamicImportCount; index += 1) {
     add(
       "DW-UI-DYNAMIC-IMPORT",
       "UI cannot use a computed or template-literal dynamic import or a CommonJS module load because its destination or module form cannot be safely enforced",
@@ -290,59 +241,36 @@ export function inspectSource(
       add("DW-UI-SDK-IMPORT", `UI cannot import SDK package ${specifier}`);
     }
     if (specifier === "@deepwork/ui" || specifier.startsWith("@deepwork/ui/")) {
-      add(
-        "DW-UI-SELF-IMPORT",
-        `UI source cannot self-import through ${specifier}`,
-      );
+      add("DW-UI-SELF-IMPORT", `UI source cannot self-import through ${specifier}`);
     }
     if (/^@deepwork\/[^/]+\//.test(specifier)) {
-      add(
-        "DW-UI-DEEP-IMPORT",
-        `UI cannot deep-import package path ${specifier}`,
-      );
+      add("DW-UI-DEEP-IMPORT", `UI cannot deep-import package path ${specifier}`);
     }
     if (specifier === "next" || specifier.startsWith("next/")) {
       add("DW-UI-NEXT-IMPORT", `UI cannot import Next.js package ${specifier}`);
     }
     if (NETWORK_PACKAGES.test(specifier)) {
-      add(
-        "DW-UI-NETWORK-IMPORT",
-        `UI cannot import network package ${specifier}`,
-      );
+      add("DW-UI-NETWORK-IMPORT", `UI cannot import network package ${specifier}`);
     }
     if (PROVIDER_PACKAGES.test(specifier)) {
-      add(
-        "DW-UI-PROVIDER-IMPORT",
-        `UI cannot import provider package ${specifier}`,
-      );
+      add("DW-UI-PROVIDER-IMPORT", `UI cannot import provider package ${specifier}`);
     }
     if (nodeBuiltins.has(specifier)) {
       add("DW-UI-NODE-IMPORT", `UI cannot import Node API ${specifier}`);
     }
-    if (
-      relative &&
-      !specifier.endsWith(".js") &&
-      !specifier.endsWith(".css")
-    ) {
+    if (relative && !specifier.endsWith(".js") && !specifier.endsWith(".css")) {
       add(
         "DW-UI-ESM-EXTENSION",
         `local runtime import requires a .js or .css extension: ${specifier}`,
       );
     }
     if (
-      (relative &&
-        !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
+      (relative && !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
       specifier.startsWith("/")
     ) {
-      add(
-        "DW-UI-PATH-ESCAPE",
-        `import escapes the package source boundary: ${specifier}`,
-      );
+      add("DW-UI-PATH-ESCAPE", `import escapes the package source boundary: ${specifier}`);
     }
-    if (
-      FORBIDDEN_ZONE.test(specifier) ||
-      FORBIDDEN_PACKAGES.test(specifier)
-    ) {
+    if (FORBIDDEN_ZONE.test(specifier) || FORBIDDEN_PACKAGES.test(specifier)) {
       add(
         "DW-UI-FORBIDDEN-ZONE",
         `UI cannot import server, Tauri, route, fixture, generated, or database path ${specifier}`,
@@ -366,7 +294,7 @@ export function inspectSource(
 function staticCssReference(value) {
   const trimmed = value.trim();
   if (
-    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
     const unquoted = trimmed.slice(1, -1);
@@ -386,10 +314,7 @@ function importReference(clause) {
 }
 
 function inspectCssReference(reference, sourceFile, add, imported) {
-  if (
-    reference !== reference.trim() ||
-    /[\u0000-\u001f\u007f]/.test(reference)
-  ) {
+  if (reference !== reference.trim() || /[\u0000-\u001f\u007f]/.test(reference)) {
     add(
       "DW-UI-CSS-DYNAMIC-REFERENCE",
       "UI CSS reference cannot contain hidden whitespace or control characters",
@@ -397,30 +322,21 @@ function inspectCssReference(reference, sourceFile, add, imported) {
     return;
   }
   if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(reference)) {
-    add(
-      "DW-UI-CSS-NETWORK-URL",
-      `UI CSS cannot load an external or scheme URL: ${reference}`,
-    );
+    add("DW-UI-CSS-NETWORK-URL", `UI CSS cannot load an external or scheme URL: ${reference}`);
     return;
   }
   if (reference.startsWith("#")) return;
   if (
     /%(?:2e|2f|5c)/i.test(reference) ||
     reference.startsWith("/") ||
-    !isWithin(
-      packageRoot,
-      resolve(dirname(sourceFile), reference.split(/[?#]/, 1)[0]),
-    )
+    !isWithin(packageRoot, resolve(dirname(sourceFile), reference.split(/[?#]/, 1)[0]))
   ) {
     add(
       "DW-UI-CSS-PATH-ESCAPE",
       `UI CSS reference escapes or encodes traversal outside the package boundary: ${reference}`,
     );
   }
-  if (
-    imported &&
-    (!reference.startsWith(".") || !reference.split(/[?#]/, 1)[0].endsWith(".css"))
-  ) {
+  if (imported && (!reference.startsWith(".") || !reference.split(/[?#]/, 1)[0].endsWith(".css"))) {
     add(
       "DW-UI-CSS-IMPORT-NOT-ALLOWED",
       `UI CSS @import must be a contained relative .css path: ${reference}`,
@@ -428,13 +344,9 @@ function inspectCssReference(reference, sourceFile, add, imported) {
   }
 }
 
-export function inspectCss(
-  source,
-  sourceFile = join(packageRoot, "__inspection__.css"),
-) {
+export function inspectCss(source, sourceFile = join(packageRoot, "__inspection__.css")) {
   const violations = [];
-  const add = (code, message) =>
-    violations.push({ code, message: `${message}. ${help}` });
+  const add = (code, message) => violations.push({ code, message: `${message}. ${help}` });
   const inspectableSource = source.replace(/\/\*[\s\S]*?\*\//g, " ");
 
   for (const match of inspectableSource.matchAll(/@import\s+([^;]+);/gi)) {
@@ -451,10 +363,7 @@ export function inspectCss(
   for (const match of inspectableSource.matchAll(/\burl\s*\(\s*([^)]*)\)/gi)) {
     const reference = staticCssReference(match[1]);
     if (reference === undefined) {
-      add(
-        "DW-UI-CSS-DYNAMIC-REFERENCE",
-        "UI CSS url() must use a statically inspectable path",
-      );
+      add("DW-UI-CSS-DYNAMIC-REFERENCE", "UI CSS url() must use a statically inspectable path");
     } else {
       inspectCssReference(reference, sourceFile, add, false);
     }
@@ -480,46 +389,30 @@ async function sourceFiles(directory, extensions = [".ts", ".tsx"]) {
 
 function assertNoViolations(file, violations) {
   if (violations.length === 0) return;
-  const details = violations
-    .map(({ code, message }) => `${code}: ${message}`)
-    .join("\n");
+  const details = violations.map(({ code, message }) => `${code}: ${message}`).join("\n");
   throw new Error(`Boundary violation in ${file}:\n${details}`);
 }
 
 export async function checkBoundaries() {
   for (const file of await sourceFiles(sourceRoot)) {
-    assertNoViolations(
-      file,
-      inspectSource(await readFile(file, "utf8"), file),
-    );
+    assertNoViolations(file, inspectSource(await readFile(file, "utf8"), file));
   }
   const rootCssFiles = (await readdir(packageRoot, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && extname(entry.name) === ".css")
     .map((entry) => join(packageRoot, entry.name));
-  for (const file of [
-    ...rootCssFiles,
-    ...(await sourceFiles(sourceRoot, [".css"])),
-  ]) {
-    assertNoViolations(
-      file,
-      inspectCss(await readFile(file, "utf8"), file),
-    );
+  for (const file of [...rootCssFiles, ...(await sourceFiles(sourceRoot, [".css"]))]) {
+    assertNoViolations(file, inspectCss(await readFile(file, "utf8"), file));
   }
 
   for (const fixture of negativeFixtures) {
     const file = join(packageRoot, fixture.path);
     const inspect = extname(file) === ".css" ? inspectCss : inspectSource;
     const codes = new Set(
-      inspect(
-        fixture.source ?? await readFile(file, "utf8"),
-        file,
-      ).map(({ code }) => code),
+      inspect(fixture.source ?? (await readFile(file, "utf8")), file).map(({ code }) => code),
     );
     for (const expectedCode of fixture.expectedCodes) {
       if (!codes.has(expectedCode)) {
-        throw new Error(
-          `Negative fixture ${fixture.path} did not trigger ${expectedCode}.`,
-        );
+        throw new Error(`Negative fixture ${fixture.path} did not trigger ${expectedCode}.`);
       }
     }
   }
@@ -527,7 +420,7 @@ export async function checkBoundaries() {
 
 if (
   process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  resolve(process.argv[1]) === join(packageRoot, "scripts", "check-boundaries.mjs")
 ) {
   await checkBoundaries();
 }

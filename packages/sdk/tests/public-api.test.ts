@@ -11,8 +11,6 @@ describe("public contracts", () => {
     expectTypeOf<QueryPort<unknown, unknown>>().toBeObject();
     expectTypeOf<MutationPort<unknown, unknown>>().toBeObject();
     expectTypeOf<StreamPort<unknown, unknown>>().toBeObject();
-    expectTypeOf<
-      GeneratedMutationTransport<unknown, unknown>
-    >().toBeObject();
+    expectTypeOf<GeneratedMutationTransport<unknown, unknown>>().toBeObject();
   });
 });

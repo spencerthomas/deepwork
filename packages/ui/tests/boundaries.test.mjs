@@ -1,38 +1,24 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  inspectCss,
-  inspectSource,
-  negativeFixtures,
-} from "../scripts/check-boundaries.mjs";
+import { inspectCss, inspectSource, negativeFixtures } from "../scripts/check-boundaries.mjs";
 
-const packageRoot = fileURLToPath(new URL("../", import.meta.url));
+const packageRoot = resolve(process.cwd());
 
 describe("UI negative boundary fixtures", () => {
   for (const fixture of negativeFixtures) {
     it(`reports actionable rules for ${fixture.path}`, async () => {
-      const source =
-        fixture.source ??
-        await readFile(join(packageRoot, fixture.path), "utf8");
-      const inspect = fixture.path.endsWith(".css")
-        ? inspectCss
-        : inspectSource;
-      const violations = inspect(
-        source,
-        join(packageRoot, fixture.path),
-      );
+      const source = fixture.source ?? (await readFile(join(packageRoot, fixture.path), "utf8"));
+      const inspect = fixture.path.endsWith(".css") ? inspectCss : inspectSource;
+      const violations = inspect(source, join(packageRoot, fixture.path));
       const codes = violations.map(({ code }) => code);
       expect(codes).toEqual(expect.arrayContaining(fixture.expectedCodes));
       for (const { message } of violations) {
         expect(message).toContain("Legal destination:");
         expect(message).toContain("ARCHITECTURE.md#package-graph");
-        expect(message).toContain(
-          "pnpm --filter @deepwork/ui check-architecture",
-        );
+        expect(message).toContain("pnpm --filter @deepwork/ui check-architecture");
       }
     });
   }
@@ -47,8 +33,6 @@ describe("UI negative boundary fixtures", () => {
     expect(failure).toBeInstanceOf(SyntaxError);
     expect(failure.message).toContain("Legal destination:");
     expect(failure.message).toContain("ARCHITECTURE.md#package-graph");
-    expect(failure.message).toContain(
-      "pnpm --filter @deepwork/ui check-architecture",
-    );
+    expect(failure.message).toContain("pnpm --filter @deepwork/ui check-architecture");
   });
 });

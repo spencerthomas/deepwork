@@ -19,29 +19,20 @@ const metadata = {
 
 describe("capability evidence", () => {
   it("keeps unknown support explicitly unavailable", () => {
-    const evidence = unavailableCapability(
-      "unknown",
-      "contract-not-verified",
-      metadata,
-    );
+    const evidence = unavailableCapability("unknown", "contract-not-verified", metadata);
 
     expect(isCapabilityAvailable(evidence)).toBe(false);
     expect(evidence.safeReason).toBe("contract-not-verified");
   });
 
   it("omits capability values from safe summaries", () => {
-    const evidence = availableCapability(
-      { privatePayload: "must-not-be-summarized" },
-      metadata,
-    );
+    const evidence = availableCapability({ privatePayload: "must-not-be-summarized" }, metadata);
 
     expect(capabilitySummary(evidence)).toEqual({
       state: "available",
       ...metadata,
     });
-    expect(JSON.stringify(capabilitySummary(evidence))).not.toContain(
-      "privatePayload",
-    );
+    expect(JSON.stringify(capabilitySummary(evidence))).not.toContain("privatePayload");
   });
 
   it("snapshots and deeply freezes supported evidence values", () => {
@@ -69,39 +60,20 @@ describe("capability evidence", () => {
   it("rejects unsupported, cyclic, and non-finite evidence values", () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
-    const unsupported = [
-      undefined,
-      1n,
-      Symbol("unsupported"),
-      () => "unsupported",
-    ];
+    const unsupported = [undefined, 1n, Symbol("unsupported"), () => "unsupported"];
     const symbolKeyed = {
       [Symbol("unsupported")]: true,
     };
 
-    expect(() =>
-      availableCapability(Number.NaN, metadata),
-    ).toThrow(TypeError);
-    expect(() =>
-      availableCapability(new Date() as never, metadata),
-    ).toThrow(TypeError);
-    expect(() =>
-      availableCapability(cyclic as never, metadata),
-    ).toThrow(TypeError);
+    expect(() => availableCapability(Number.NaN, metadata)).toThrow(TypeError);
+    expect(() => availableCapability(new Date() as never, metadata)).toThrow(TypeError);
+    expect(() => availableCapability(cyclic as never, metadata)).toThrow(TypeError);
     for (const value of unsupported) {
-      expect(() =>
-        availableCapability(value as never, metadata),
-      ).toThrow(TypeError);
+      expect(() => availableCapability(value as never, metadata)).toThrow(TypeError);
     }
-    expect(() =>
-      availableCapability({ nested: undefined } as never, metadata),
-    ).toThrow(TypeError);
-    expect(() =>
-      availableCapability([true, , false] as never, metadata),
-    ).toThrow(TypeError);
-    expect(() =>
-      availableCapability(symbolKeyed as never, metadata),
-    ).toThrow(TypeError);
+    expect(() => availableCapability({ nested: undefined } as never, metadata)).toThrow(TypeError);
+    expect(() => availableCapability([true, , false] as never, metadata)).toThrow(TypeError);
+    expect(() => availableCapability(symbolKeyed as never, metadata)).toThrow(TypeError);
   });
 
   it("accepts only declared JSON-compatible evidence classes at runtime", () => {
@@ -132,15 +104,9 @@ describe("capability evidence", () => {
         ...metadata,
         evidenceClass,
       } as never;
+      expect(() => availableCapability(true, invalidMetadata)).toThrow(TypeError);
       expect(() =>
-        availableCapability(true, invalidMetadata),
-      ).toThrow(TypeError);
-      expect(() =>
-        unavailableCapability(
-          "unknown",
-          "contract-not-verified",
-          invalidMetadata,
-        ),
+        unavailableCapability("unknown", "contract-not-verified", invalidMetadata),
       ).toThrow(TypeError);
     }
   });
@@ -149,9 +115,9 @@ describe("capability evidence", () => {
     expect(() =>
       unavailableCapability("permission-denied", "source-unavailable", metadata),
     ).toThrow(TypeError);
-    expect(() =>
-      unavailableCapability("unknown", "source-unavailable", metadata),
-    ).toThrow(TypeError);
+    expect(() => unavailableCapability("unknown", "source-unavailable", metadata)).toThrow(
+      TypeError,
+    );
   });
 
   it("freezes exported vocabularies", () => {
@@ -164,12 +130,8 @@ describe("capability evidence", () => {
   });
 
   it("validates and normalizes canonical RFC3339 instants", () => {
-    expect(rfc3339Instant("2026-07-23T10:30:15.25+10:00")).toBe(
-      "2026-07-23T00:30:15.250Z",
-    );
-    expect(rfc3339Instant("2024-02-29T00:00:00Z")).toBe(
-      "2024-02-29T00:00:00.000Z",
-    );
+    expect(rfc3339Instant("2026-07-23T10:30:15.25+10:00")).toBe("2026-07-23T00:30:15.250Z");
+    expect(rfc3339Instant("2024-02-29T00:00:00Z")).toBe("2024-02-29T00:00:00.000Z");
     expect(
       availableCapability(true, {
         ...metadata,

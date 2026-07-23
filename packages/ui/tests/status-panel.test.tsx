@@ -1,42 +1,26 @@
-import {
-  capabilitySummary,
-  unavailableCapability,
-} from "@deepwork/domain";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { capabilitySummary, unavailableCapability } from "@deepwork/domain";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StatusPanel } from "@deepwork/ui";
 
 const unknownCapability = capabilitySummary(
-  unavailableCapability(
-    "unknown",
-    "contract-not-verified",
-    {
-      observedAt: "2026-07-23T00:00:00.000Z",
-      adapterVersion: "adapter-disabled",
-      contractVersion: "contract-unverified",
-      evidenceClass: "documented",
-    },
-  ),
+  unavailableCapability("unknown", "contract-not-verified", {
+    observedAt: "2026-07-23T00:00:00.000Z",
+    adapterVersion: "adapter-disabled",
+    contractVersion: "contract-unverified",
+    evidenceClass: "documented",
+  }),
 );
 
 afterEach(cleanup);
 
 describe("StatusPanel", () => {
   it("names loading and error announcements accurately", () => {
-    const { rerender } = render(
-      <StatusPanel state="loading" title="Loading workspace" />,
-    );
+    const { rerender } = render(<StatusPanel state="loading" title="Loading workspace" />);
 
     expect(
-      screen
-        .getByRole("status", { name: "Loading workspace" })
-        .getAttribute("aria-live"),
+      screen.getByRole("status", { name: "Loading workspace" }).getAttribute("aria-live"),
     ).toBe("polite");
 
     rerender(
@@ -60,11 +44,7 @@ describe("StatusPanel", () => {
     );
 
     expect(screen.getByText("Unavailable")).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Availability is unknown. No request will be attempted.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("Availability is unknown. No request will be attempted.")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByText("Available")).toBeNull();
   });
@@ -84,15 +64,8 @@ describe("StatusPanel", () => {
   });
 
   it("renders unsafe and long localized content as text", () => {
-    const content =
-      '<img src=x onerror="alert(1)"> SehrLangesZusammengesetztesStatuswort';
-    render(
-      <StatusPanel
-        description={content}
-        state="success"
-        title="Prüfung abgeschlossen"
-      />,
-    );
+    const content = '<img src=x onerror="alert(1)"> SehrLangesZusammengesetztesStatuswort';
+    render(<StatusPanel description={content} state="success" title="Prüfung abgeschlossen" />);
 
     expect(screen.getByText(content)).toBeTruthy();
     expect(document.querySelector("img")).toBeNull();
@@ -121,11 +94,7 @@ describe("StatusPanel", () => {
     );
 
     expect(screen.getAllByRole("heading")).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
-      "Parent section",
-    );
-    expect(
-      screen.getByRole("region", { name: "Nested status" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Parent section");
+    expect(screen.getByRole("region", { name: "Nested status" })).toBeTruthy();
   });
 });

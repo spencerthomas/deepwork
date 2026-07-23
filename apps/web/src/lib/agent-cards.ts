@@ -118,3 +118,23 @@ export function deriveAgentCards(
 export function activeAgentCount(cards: readonly AgentCardModel[]): number {
   return cards.filter((card) => card.state === "active").length;
 }
+
+/**
+ * Honest label for the local runner's session task count. A failed task-list
+ * fetch leaves the store's task list empty, so reporting `tasks.length` would
+ * fabricate "0 tasks this session"; surface the failure instead, and pluralize
+ * the count correctly.
+ */
+export function agentSessionTaskLabel(
+  loadingTasks: boolean,
+  taskCount: number,
+  listError?: string,
+): string {
+  if (loadingTasks) {
+    return "Loading tasks…";
+  }
+  if (listError !== undefined) {
+    return "Task count unavailable";
+  }
+  return `${taskCount} ${taskCount === 1 ? "task" : "tasks"} this session`;
+}

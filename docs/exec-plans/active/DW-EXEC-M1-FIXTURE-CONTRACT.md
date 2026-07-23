@@ -693,6 +693,13 @@ Acceptance:
   a file-negative ID/probe all returned zero diagnostics. Corpus rendering,
   evidence hashes, both validator passes, and docs checks otherwise reproduced
   successfully; Milestone 4 remains open and no implementation SHA is accepted.
+- [x] 2026-07-23 AEST — Bounded rework closes the first reproduced false green:
+  the corpus ID policy is now compared with the exact fixture prefix and
+  qualified thread/run templates, while a SHA-pinned semantic probe removes the
+  whole `idPolicy` and requires `FIXTURE_SCHEMA_REQUIRED_FIELD`. Deterministic
+  evidence was regenerated twice with an empty second update; fresh exact-SHA
+  review remains required, and the capability-name, duplicate-negative, and Git
+  scope blockers remain open.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -1111,7 +1118,7 @@ three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
 `FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
-`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 139
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 140
 single-code probes. It retains the prior 66 category-semantic, depth,
 confusable-key, and generic-network probes, then adds two coherent delay-drift
 cases, seven abbreviated/octal/local/scheme host forms, six JSON type-alias
@@ -1119,9 +1126,10 @@ cases, corpus-wide record-ID collision, closed delay-object coverage, all 39
 case/tenant/workspace fixed-ID mutations, coordinated interrupt-signature
 mutation, three token forms, tilde-path content, two normalized direct-host
 forms, three case-integrated host forms, and the adversarial validator-purity
-source probe. Every one of the 194 combined negatives produced exactly its
+source probe, plus the exact missing-ID-policy probe. Every one of the 195
+combined negatives produced exactly its
 declared code. The semantic matrix SHA-256 is
-`276b2a9c9ae7d5e9d9e5007432b2f22a67a75b1aa4cdacc03e4027d7fca09092`.
+`244bb3aaef61c6591fd19019813d366d3a426b2c0d7e52aa9d96e06a27e79bfd`.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is

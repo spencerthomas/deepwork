@@ -19,10 +19,15 @@ FORMAT_VERSION = "1.0.0"
 MAX_DOCUMENT_DEPTH = 64
 TOOL_SUMMARY_MAX_CHARS = 160
 TOOL_SAFE_SUMMARY = "Synthetic result with no external content."
+EXPECTED_ID_POLICY = {
+    "prefix": "fx_",
+    "qualifiedThreadTemplate": "{sourceId}:{threadId}",
+    "qualifiedRunTemplate": "{sourceId}:{threadId}:{runId}",
+}
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
-EXPECTED_SEMANTIC_PROBE_COUNT = 139
+EXPECTED_SEMANTIC_PROBE_COUNT = 140
 SEMANTIC_MATRIX_SHA256 = (
-    "276b2a9c9ae7d5e9d9e5007432b2f22a67a75b1aa4cdacc03e4027d7fca09092"
+    "244bb3aaef61c6591fd19019813d366d3a426b2c0d7e52aa9d96e06a27e79bfd"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
@@ -1848,6 +1853,12 @@ def _validate_case_inventory(cases):
     return diagnostics
 
 
+def _validate_corpus_policy(corpus):
+    if not isinstance(corpus, dict) or corpus.get("idPolicy") != EXPECTED_ID_POLICY:
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+    return []
+
+
 def _apply_mutation(document, mutation):
     result = copy.deepcopy(document)
     parts = [
@@ -1946,6 +1957,8 @@ def diagnose_negative(negative):
     if mutations is None:
         mutations = [negative["mutation"]]
     mutated = _apply_mutations(read_json(base_path), mutations)
+    if base_path == "corpus.json":
+        return _validate_corpus_policy(mutated)
     if base_path.startswith("manifests/"):
         return validate_manifest(mutated)
     return validate_case(mutated)
@@ -2277,6 +2290,7 @@ def _validate_index_and_closure(analysis):
         diagnostics.append("FIXTURE_SCHEMA_AUTHORITY")
     if corpus["clock"] != {"tickEpoch": EPOCH, "tickDurationMs": TICK_MS}:
         diagnostics.append("FIXTURE_CLOCK_POLICY")
+    diagnostics.extend(_validate_corpus_policy(corpus))
     if corpus["casePaths"] != EXPECTED_CASE_PATHS:
         diagnostics.append("FIXTURE_SCHEMA_CASE_INDEX")
     if corpus["schemaPaths"] != SCHEMA_PATHS or corpus["manifestPaths"] != MANIFEST_PATHS:

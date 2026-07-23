@@ -24,6 +24,11 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
+        with:
+          # Full history: tools/docs/check.py verifies each ExecPlan's
+          # base_commit / last_verified_commit exists in the repository, which a
+          # shallow checkout cannot satisfy.
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5

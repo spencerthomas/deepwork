@@ -1,7 +1,7 @@
 {
   "authority": "validator-source-inspection-only",
   "claimLimit": "Does not prove isolation for API, browser, provider, or future consumers.",
-  "corpusDigest": "7bfca89fa15f7dbca547141eef0fbc139d63de3db5d5bef2ff60009f1ca1d352",
+  "corpusDigest": "b21e4fe57f573f27f103b8c5eed81af9cf1b4bcb190e0a050a842804b9c02521",
   "evidenceClass": "fixture",
   "externalUrlHostCount": 0,
   "reportVersion": "1.0.0",

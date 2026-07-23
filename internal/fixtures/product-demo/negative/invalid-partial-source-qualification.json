@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_partial_source_qualification",
+  "declaredRuleCode": "FIXTURE_EXPECTATION_PARTIAL_FAILURE",
+  "basePath": "cases/partial-failure.json",
+  "mutation": {"operation": "replace", "path": "/records/1/runId", "value": "fx_run_partial_other"}
+}

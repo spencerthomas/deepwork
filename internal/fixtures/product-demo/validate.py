@@ -54,15 +54,29 @@ EXPECTED_NEGATIVE_PATHS = [
     "negative/invalid-schema-semantic-required.json",
     "negative/invalid-schema-clock-range.json",
     "negative/invalid-id.json",
+    "negative/invalid-record-source-scope.json",
+    "negative/invalid-record-thread-scope.json",
+    "negative/invalid-record-run-scope.json",
     "negative/invalid-clock.json",
     "negative/invalid-order.json",
     "negative/invalid-capability.json",
+    "negative/invalid-tool-trust.json",
+    "negative/invalid-tool-bounded.json",
+    "negative/invalid-tool-correlation.json",
+    "negative/invalid-tool-expected-correlation.json",
+    "negative/invalid-tool-raw-expectation.json",
+    "negative/invalid-tool-raw-body.json",
     "negative/invalid-interrupt.json",
     "negative/invalid-interrupt-decisions-present.json",
     "negative/invalid-interrupt-resume-payload.json",
     "negative/invalid-interrupt-accepted.json",
+    "negative/invalid-interrupt-approved-alias.json",
+    "negative/invalid-interrupt-selected-option.json",
     "negative/invalid-interrupt-decision.json",
+    "negative/invalid-interrupt-decision-order.json",
+    "negative/invalid-interrupt-decision-split.json",
     "negative/invalid-source-collision.json",
+    "negative/invalid-partial-source-qualification.json",
     "negative/invalid-hash.json",
     "negative/invalid-scrub.json",
     "negative/invalid-scrub-endpoint.json",
@@ -82,6 +96,8 @@ EXPECTED_NEGATIVE_PATHS = [
     "negative/invalid-network-host.json",
     "negative/invalid-network-ip.json",
     "negative/invalid-network-exempt-descendant.json",
+    "negative/invalid-network-exempt-case-path.json",
+    "negative/invalid-network-exempt-schema-enum.json",
     "negative/invalid-expectation.json",
     "negative/invalid-logical-delay.json",
     "negative/invalid-logical-delay-visibility.json",
@@ -95,15 +111,29 @@ EXPECTED_RULE_CODES = [
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_ID_PREFIX",
+    "FIXTURE_ID_QUALIFICATION",
+    "FIXTURE_ID_QUALIFICATION",
+    "FIXTURE_ID_QUALIFICATION",
     "FIXTURE_CLOCK_DERIVATION",
     "FIXTURE_ORDER_SEQUENCE",
     "FIXTURE_CAPABILITY_EVIDENCE",
+    "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+    "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+    "FIXTURE_EXPECTATION_TOOL_CORRELATION",
+    "FIXTURE_EXPECTATION_TOOL_CORRELATION",
+    "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+    "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+    "FIXTURE_INTERRUPT_ALIGNMENT",
+    "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_DECISION_VALUE",
+    "FIXTURE_INTERRUPT_DECISION_VALUE",
+    "FIXTURE_INTERRUPT_DECISION_VALUE",
     "FIXTURE_ID_SOURCE_COLLISION",
+    "FIXTURE_EXPECTATION_PARTIAL_FAILURE",
     "FIXTURE_HASH_MISMATCH",
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
@@ -119,6 +149,8 @@ EXPECTED_RULE_CODES = [
     "FIXTURE_SCRUB_REAL_IDENTITY",
     "FIXTURE_SCRUB_REAL_IDENTITY",
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_NETWORK_EXTERNAL_URL",
+    "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
@@ -287,26 +319,42 @@ def scrub_diagnostics(value):
     return diagnostics
 
 
+def _expected_hashed_assets():
+    return {
+        "corpus.json",
+        "negative/matrix.json",
+        *SCHEMA_PATHS,
+        *MANIFEST_PATHS,
+        *EXPECTED_CASE_PATHS,
+        *EXPECTED_NEGATIVE_PATHS,
+    }
+
+
+def _is_allowed_internal_reference(path, value):
+    if path == "/negativeMatrixPath":
+        return value == "negative/matrix.json"
+    if path == "/capabilityManifestRef":
+        return value in MANIFEST_PATHS
+    indexed_references = (
+        (r"/casePaths/[0-9]+", EXPECTED_CASE_PATHS),
+        (r"/schemaPaths/[0-9]+", SCHEMA_PATHS),
+        (r"/manifestPaths/[0-9]+", MANIFEST_PATHS),
+        (r"/hashedAssets/[0-9]+", _expected_hashed_assets()),
+        (r"/negativePaths/[0-9]+", EXPECTED_NEGATIVE_PATHS),
+        (r"/properties/capabilityManifestRef/enum/[0-9]+", MANIFEST_PATHS),
+    )
+    return any(
+        re.fullmatch(pattern, path) is not None and value in allowed
+        for pattern, allowed in indexed_references
+    )
+
+
 def network_diagnostics(value):
     diagnostics = []
     for path, item in _walk(value):
         if not isinstance(item, str):
             continue
-        internal_reference = (
-            path == "/negativeMatrixPath"
-            or path == "/capabilityManifestRef"
-            or re.fullmatch(
-                r"/(?:casePaths|schemaPaths|manifestPaths|hashedAssets|negativePaths)/[0-9]+",
-                path,
-            )
-            is not None
-            or re.fullmatch(
-                r"/properties/capabilityManifestRef/enum/[0-9]+",
-                path,
-            )
-            is not None
-        )
-        if internal_reference:
+        if _is_allowed_internal_reference(path, item):
             continue
         if (
             EXTERNAL_SCHEME_RE.search(item)
@@ -528,45 +576,119 @@ def _validate_logical_delay(case):
     return []
 
 
+def _validate_tool_case(case):
+    records = case["records"]
+    expected = case["expected"]
+    if (
+        len(records) != 2
+        or [record["kind"] for record in records]
+        != ["fixture-tool-start", "fixture-tool-result"]
+        or set(expected)
+        != {
+            "orderedRecordIds",
+            "correlatedToolCallId",
+            "rawToolBodyPresent",
+        }
+    ):
+        return ["FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY"]
+    start_payload = records[0]["payload"]
+    result_payload = records[1]["payload"]
+    if (
+        not isinstance(start_payload, dict)
+        or set(start_payload) != {"toolCallId", "displayName", "trust"}
+        or not isinstance(result_payload, dict)
+        or set(result_payload)
+        != {"toolCallId", "summary", "trust", "bounded"}
+        or not isinstance(start_payload["displayName"], str)
+        or not start_payload["displayName"]
+        or not isinstance(result_payload["summary"], str)
+        or not result_payload["summary"]
+        or start_payload["trust"] != "untrusted"
+        or result_payload["trust"] != "untrusted"
+        or result_payload["bounded"] is not True
+        or expected["rawToolBodyPresent"] is not False
+    ):
+        return ["FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY"]
+    correlation_ids = (
+        start_payload["toolCallId"],
+        result_payload["toolCallId"],
+        expected["correlatedToolCallId"],
+    )
+    if (
+        any(
+            not isinstance(value, str) or not value.startswith("fx_")
+            for value in correlation_ids
+        )
+        or len(set(correlation_ids)) != 1
+    ):
+        return ["FIXTURE_EXPECTATION_TOOL_CORRELATION"]
+    return []
+
+
 def _semantic_diagnostics(case):
     category = case["category"]
     expected = case["expected"]
     records = case["records"]
+    if category == "tool":
+        return _validate_tool_case(case)
     if category == "ordered-interrupt":
         if len(records) != 1 or records[0]["kind"] != "fixture-interrupt":
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         payload = records[0]["payload"]
-        requests = payload.get("actionRequests", [])
-        configs = payload.get("reviewConfigs", [])
-        if any(
-            (
-                "resume" in normalized
-                or "accepted" in normalized
-                or ("decision" in normalized and normalized != "alloweddecisions")
+        expected_fields = {
+            "orderedRecordIds",
+            "actionRequestOrder",
+            "reviewConfigOrder",
+            "positionalAlignment",
+            "repeatedActionNamesPreserved",
+            "documentedDecisionVocabulary",
+            "acceptedDecisionPresent",
+            "resumePayloadPresent",
+            "submissionCapabilityState",
+        }
+        payload_fields = {
+            "interruptId",
+            "version",
+            "actionRequests",
+            "reviewConfigs",
+        }
+        if (
+            not isinstance(payload, dict)
+            or not payload_fields.issubset(payload)
+            or not isinstance(expected, dict)
+            or not expected_fields.issubset(expected)
+        ):
+            return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+        if (
+            set(payload) != payload_fields
+            or set(expected) != expected_fields
+            or any(
+                not isinstance(payload[field], str)
+                or not payload[field].startswith("fx_")
+                for field in ("interruptId", "version")
             )
-            for record in records
-            for _, item in _walk(record["payload"])
-            if isinstance(item, dict)
-            for key in item
-            for normalized in (re.sub(r"[^a-z0-9]", "", key.lower()),)
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+        requests = payload["actionRequests"]
+        configs = payload["reviewConfigs"]
+        if not isinstance(requests, list) or not isinstance(configs, list):
+            return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
         if any(
             not isinstance(request, dict)
-            or set(request) not in (
-                {"name", "args"},
-                {"name", "args", "description"},
-            )
-            or not isinstance(request.get("args"), dict)
+            or set(request) != {"name", "args", "description"}
+            or not isinstance(request["name"], str)
+            or not isinstance(request["description"], str)
+            or not request["description"]
+            or not isinstance(request["args"], dict)
+            or set(request["args"]) != {"subject"}
+            or not isinstance(request["args"]["subject"], str)
+            or not request["args"]["subject"].startswith("fx_")
             for request in requests
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         if any(
             not isinstance(config, dict)
-            or set(config) not in (
-                {"actionName", "allowedDecisions"},
-                {"actionName", "allowedDecisions", "argsSchema"},
-            )
+            or set(config) != {"actionName", "allowedDecisions"}
             for config in configs
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
@@ -587,20 +709,17 @@ def _semantic_diagnostics(case):
             or expected["repeatedActionNamesPreserved"] != request_names
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
-        observed_decisions = []
         for config in configs:
-            decisions = config.get("allowedDecisions")
+            decisions = config["allowedDecisions"]
             if (
                 not isinstance(decisions, list)
-                or not decisions
-                or len(decisions) != len(set(decisions))
-                or any(decision not in VALID_HITL_DECISIONS for decision in decisions)
+                or any(not isinstance(decision, str) for decision in decisions)
             ):
+                return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+            if decisions != list(VALID_HITL_DECISIONS):
                 return ["FIXTURE_INTERRUPT_DECISION_VALUE"]
-            observed_decisions.extend(decisions)
         if (
-            sorted(set(observed_decisions)) != sorted(VALID_HITL_DECISIONS)
-            or expected["documentedDecisionVocabulary"]
+            expected["documentedDecisionVocabulary"]
             != list(VALID_HITL_DECISIONS)
         ):
             return ["FIXTURE_INTERRUPT_DECISION_VALUE"]
@@ -679,7 +798,55 @@ def _semantic_diagnostics(case):
         if expected["envelopeValid"] is not True or expected["safeErrorCode"] != "FIXTURE_INPUT_MALFORMED":
             return ["FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION"]
     elif category == "partial-failure":
-        if expected["aggregateUsable"] is not True or len(expected["partialErrorRecordIds"]) != 1:
+        expected_fields = {
+            "orderedRecordIds",
+            "healthyRecordIds",
+            "partialErrorRecordIds",
+            "aggregateUsable",
+            "failedSourceId",
+            "failedThreadId",
+            "failedRunId",
+            "failedQualifiedThreadKey",
+            "failedQualifiedRunKey",
+        }
+        if len(records) != 2 or set(expected) != expected_fields:
+            return ["FIXTURE_EXPECTATION_PARTIAL_FAILURE"]
+        healthy, failed = records
+        failed_thread_key = f"{failed['sourceId']}:{failed['threadId']}"
+        failed_run_key = f"{failed_thread_key}:{failed['runId']}"
+        if (
+            healthy["kind"] != "fixture-source-result"
+            or (
+                healthy["sourceId"],
+                healthy["threadId"],
+                healthy["runId"],
+            )
+            != (
+                case["scope"]["sourceId"],
+                case["scope"]["threadId"],
+                case["scope"]["runId"],
+            )
+            or healthy["payload"]
+            != {
+                "result": "Synthetic healthy source result.",
+                "trust": "untrusted",
+            }
+            or failed["kind"] != "fixture-source-error"
+            or failed["sourceId"] != expected["failedSourceId"]
+            or failed["threadId"] != expected["failedThreadId"]
+            or failed["runId"] != expected["failedRunId"]
+            or failed_thread_key != expected["failedQualifiedThreadKey"]
+            or failed_run_key != expected["failedQualifiedRunKey"]
+            or failed["payload"]
+            != {
+                "safeErrorCode": "SOURCE_UNAVAILABLE",
+                "safeSummary": "Synthetic source is unavailable.",
+                "sourceQualified": True,
+            }
+            or expected["healthyRecordIds"] != [healthy["recordId"]]
+            or expected["partialErrorRecordIds"] != [failed["recordId"]]
+            or expected["aggregateUsable"] is not True
+        ):
             return ["FIXTURE_EXPECTATION_PARTIAL_FAILURE"]
     elif category == "unknown":
         if expected["classification"] != "unknown" or expected["promotedDiscriminator"] is not False:
@@ -746,6 +913,20 @@ def _validate_case(case):
         prior_tick = record["tick"]
         if record["observedAt"] != tick_timestamp(record["tick"]):
             diagnostics.append("FIXTURE_CLOCK_DERIVATION")
+    if case["category"] not in {"partial-failure", "source-collision"} and any(
+        (
+            record["sourceId"],
+            record["threadId"],
+            record["runId"],
+        )
+        != (
+            case["scope"]["sourceId"],
+            case["scope"]["threadId"],
+            case["scope"]["runId"],
+        )
+        for record in records
+    ):
+        diagnostics.append("FIXTURE_ID_QUALIFICATION")
     if len(record_ids) != len(set(record_ids)):
         diagnostics.append("FIXTURE_ID_DUPLICATE_RECORD")
     if sequences != list(range(1, len(records) + 1)):
@@ -948,14 +1129,7 @@ def _validate_index_and_closure(analysis):
         diagnostics.append("FIXTURE_SCHEMA_NEGATIVE_INDEX")
     if matrix["expectedRuleCodes"] != EXPECTED_RULE_CODES:
         diagnostics.append("FIXTURE_SCHEMA_RULE_INDEX")
-    expected_assets = sorted(
-        ["corpus.json"]
-        + SCHEMA_PATHS
-        + MANIFEST_PATHS
-        + EXPECTED_CASE_PATHS
-        + ["negative/matrix.json"]
-        + EXPECTED_NEGATIVE_PATHS
-    )
+    expected_assets = sorted(_expected_hashed_assets())
     if sorted(corpus["hashedAssets"]) != expected_assets or len(corpus["hashedAssets"]) != len(set(corpus["hashedAssets"])):
         diagnostics.append("FIXTURE_HASH_CLOSURE")
     categories = [case["category"] for case in analysis["cases"]]
@@ -998,6 +1172,14 @@ def validate_all(require_evidence=True):
     for schema_path in SCHEMA_PATHS:
         schema = read_json(schema_path)
         if schema.get("schemaDialect") != "json-schema-2020-12" or schema.get("description", "").find("not") < 0:
+            diagnostics.append("FIXTURE_SCHEMA_DOCUMENT")
+        if (
+            schema_path == "schema/fixture-envelope.json"
+            and schema.get("properties", {})
+            .get("capabilityManifestRef", {})
+            .get("enum")
+            != MANIFEST_PATHS
+        ):
             diagnostics.append("FIXTURE_SCHEMA_DOCUMENT")
     for manifest_path in MANIFEST_PATHS:
         diagnostics.extend(validate_manifest(read_json(manifest_path)))

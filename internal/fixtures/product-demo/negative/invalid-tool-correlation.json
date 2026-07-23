@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_tool_correlation",
+  "declaredRuleCode": "FIXTURE_EXPECTATION_TOOL_CORRELATION",
+  "basePath": "cases/tool.json",
+  "mutation": {"operation": "replace", "path": "/records/1/payload/toolCallId", "value": "fx_tool_call_other"}
+}

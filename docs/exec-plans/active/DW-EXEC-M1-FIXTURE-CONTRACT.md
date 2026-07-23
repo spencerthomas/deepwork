@@ -470,13 +470,15 @@ Acceptance:
   reconnect/replay/logical delay/completion/unknown/malformed-input
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
-  `negative/matrix.json` indexes exactly 39 single-code negative files covering
+  `negative/matrix.json` indexes exactly 55 single-code negative files covering
   all stable rule-code families, the two mandatory logical-delay negatives,
-  unknown HITL decisions, actual decision/resume/accepted-data presence, false
-  source-collision evidence, nested structural and semantic-shape failures,
-  endpoint/Bearer/long-short-unpadded-Basic-secret/path/actor-and-identity-key
-  scrub bypasses, a generic bare external host, and a nested-host attempt below
-  an otherwise exempt machine-index pointer;
+  tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
+  decision arrays, actual decision/resume/accepted-data presence, ordinary and
+  multi-source qualification failures, false source-collision evidence, nested
+  structural and semantic-shape failures, endpoint/Bearer/
+  long-short-unpadded-Basic-secret/path/actor-and-identity-key scrub bypasses,
+  generic bare external hosts, and external values in or below machine-reference
+  positions;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
@@ -612,6 +614,16 @@ Acceptance:
   key variants escaped field-name scrubbing; the same rework now validates
   actual HITL payload absence and those key variants. The matrix expands from
   26 to 39 exact negatives.
+- [x] 2026-07-23 AEST — Converging fresh reviews rejected exact candidate
+  `8ee2347e595c685be8d799f106aaf806937efc3e`: tool trust, boundedness,
+  correlation, and raw-body expectations were encoded but not semantically
+  enforced, while reordered or split HITL decision arrays passed a sorted-union
+  check. Coordinator review also found payload aliases, ordinary record/scope
+  drift, incomplete partial-failure qualification, and arbitrary external
+  values in scalar machine-reference positions. Rework now uses exact private
+  fixture shapes, exact ordered per-action decision arrays, category-aware
+  source qualification, and value-qualified internal-reference exemptions. The
+  matrix expands from 39 to 55 exact negatives before a new clean review.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -999,7 +1011,8 @@ register itself in the index, or start consumer implementation.
 
 Bounded implementation rework is complete and fresh independent implementation
 review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`
-and `8291218590e3f6a91a5383ae91d6e909e71b1fbe` remain rejected and must not be
+and `8291218590e3f6a91a5383ae91d6e909e71b1fbe`, and
+`8ee2347e595c685be8d799f106aaf806937efc3e` remain rejected and must not be
 integrated.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
@@ -1008,12 +1021,16 @@ The corpus contains exactly these ordered positive categories:
 
 The exact ordered negative rule inventory is seven
 `FIXTURE_SCHEMA_REQUIRED_FIELD` cases, `FIXTURE_ID_PREFIX`,
-`FIXTURE_CLOCK_DERIVATION`, `FIXTURE_ORDER_SEQUENCE`,
-`FIXTURE_CAPABILITY_EVIDENCE`, four `FIXTURE_INTERRUPT_ALIGNMENT` cases,
-`FIXTURE_INTERRUPT_DECISION_VALUE`, `FIXTURE_ID_SOURCE_COLLISION`,
-`FIXTURE_HASH_MISMATCH`, four `FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, four
+three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
+`FIXTURE_ORDER_SEQUENCE`, `FIXTURE_CAPABILITY_EVIDENCE`, four
+`FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY` cases, two
+`FIXTURE_EXPECTATION_TOOL_CORRELATION` cases, six
+`FIXTURE_INTERRUPT_ALIGNMENT` cases, three
+`FIXTURE_INTERRUPT_DECISION_VALUE` cases, `FIXTURE_ID_SOURCE_COLLISION`,
+`FIXTURE_EXPECTATION_PARTIAL_FAILURE`, `FIXTURE_HASH_MISMATCH`, four
+`FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, four
 `FIXTURE_SCRUB_SECRET_VALUE` cases, `FIXTURE_SCRUB_UNSAFE_PATH`, five
-`FIXTURE_SCRUB_REAL_IDENTITY` cases, four
+`FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
 `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. Every negative produced exactly its one
@@ -1021,8 +1038,8 @@ declared code.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`7bfca89fa15f7dbca547141eef0fbc139d63de3db5d5bef2ff60009f1ca1d352`.
-The generated validation and isolation reports record 13 cases, 39 intentional
+`b21e4fe57f573f27f103b8c5eed81af9cf1b4bcb190e0a050a842804b9c02521`.
+The generated validation and isolation reports record 13 cases, 55 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
 reads, zero waits, and zero writes.
@@ -1031,8 +1048,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=7bfca89...1d352; validation-report=5bc8a3...1226b6;
-no-external-network=ba0af5...ccc38d; first updated_files contained all 3 targets
+exit 0; hashes.sha256=b21e4fe...02521; validation-report=ca1076...57794;
+no-external-network=547f18...677b8; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1041,7 +1058,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=7bfca89...1d352; 13 case IDs; 39 single-code negatives;
+exit 0; corpus_digest=b21e4fe...02521; 13 case IDs; 55 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator subprocess/environment/wall-clock/write counts=0
 

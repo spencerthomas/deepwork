@@ -542,6 +542,15 @@ async def test_invalid_event_cursor_and_input_bounds() -> None:
         assert invalid.status_code == 409
         assert invalid.json()["code"] == "event_cursor_invalid"
 
+        # An over-long digit string exceeds Python's int(str) 4300-digit limit;
+        # it must map to the sanitized 409, not an unhandled 500.
+        overlong = await client.get(
+            f"/api/v1/tasks/{created['taskId']}/events",
+            headers={"Last-Event-ID": "1" * 5_000},
+        )
+        assert overlong.status_code == 409
+        assert overlong.json()["code"] == "event_cursor_invalid"
+
 
 async def test_maximum_objective_completes_with_bounded_result_and_stream() -> None:
     async with _client() as client:

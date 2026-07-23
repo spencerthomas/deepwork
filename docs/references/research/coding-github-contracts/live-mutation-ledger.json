@@ -1,0 +1,10 @@
+{
+  "authoritative_link": null,
+  "credentials_observed": 0,
+  "draft_pr_create_attempts": 0,
+  "draft_pr_identities": [],
+  "merge_mutations": 0,
+  "reason": "no mutation grant, GitHub App, disposable repository, or accepted upstream evidence supplied",
+  "state": "not-run",
+  "workflow_mutations": 0
+}

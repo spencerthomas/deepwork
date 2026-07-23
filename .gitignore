@@ -26,3 +26,4 @@ src-tauri/target/
 *.log
 coverage/
 .vercel/
+*.tsbuildinfo

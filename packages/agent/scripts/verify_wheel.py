@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,14 +20,53 @@ if TYPE_CHECKING:
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_PATH = PACKAGE_ROOT / "evidence" / "DW-M1-AGENT-001" / "artifacts.json"
 EXPECTED_EXPORTS = {
-    "CONFIG_CONTRACT_GATE",
-    "AgentPackageConfig",
-    "RuntimeAvailability",
-    "RuntimeCapabilityUnavailable",
-    "UnavailableAgentState",
+    "DEEP_WORK_SYSTEM_PROMPT",
+    "HARD_VERIFICATION_ITERATION_CAP",
+    "PROTECTED_ACTION",
+    "RUNTIME_MODE",
+    "VERIFIER_REF",
+    "AgentConfig",
+    "AgentInput",
+    "AgentOutput",
+    "AgentState",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalResponse",
+    "ArtifactClaim",
+    "ArtifactKind",
+    "ClaimBasis",
+    "CriterionResult",
+    "EvidenceReference",
+    "JourneyArtifact",
+    "JourneyArtifactDraft",
+    "JourneyCapabilities",
+    "JourneyKind",
+    "JourneyOutput",
+    "JourneyProfile",
+    "JourneyState",
+    "JourneySubagent",
+    "RubricCriterion",
+    "RubricSpec",
+    "RuntimeCapabilities",
+    "VerificationRecord",
+    "VerificationVerdict",
     "create_graph",
-    "initial_unavailable_state",
-    "runtime_availability",
+    "create_journey_graph",
+    "initial_state",
+    "journey_capabilities",
+    "render_rubric",
+    "research_profile",
+    "runtime_capabilities",
+    "validate_approval_response",
+    "validate_artifact",
+    "validate_plan_edit",
+    "writing_profile",
+}
+EXPECTED_REQUIREMENTS = {
+    "deepagents==0.6.12",
+    "langchain-core==1.5.0",
+    "langgraph==1.2.9",
+    "typing-extensions==4.16.0",
 }
 
 
@@ -63,8 +103,11 @@ def _manifest(wheel: Path, source_distribution: Path) -> dict[str, Any]:
         "reproducible_builds": 2,
         "py_typed": True,
         "public_exports": sorted(EXPECTED_EXPORTS),
-        "runtime_available": False,
-        "contract_gate": "SPIKE-CONFIG-001",
+        "runtime_mode": "local-runtime",
+        "runtime_available": True,
+        "managed_external_providers": "unavailable",
+        "model_injection_required": True,
+        "runtime_dependencies": sorted(EXPECTED_REQUIREMENTS),
         "install_index": "disabled",
     }
 
@@ -73,9 +116,22 @@ def _verify_wheel_contents(wheel: Path) -> None:
     """Verify required package data is present in the wheel."""
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
+        metadata_names = [name for name in names if name.endswith(".dist-info/METADATA")]
+        if len(metadata_names) != 1:
+            msg = f"built wheel must contain one METADATA file; found {len(metadata_names)}"
+            raise RuntimeError(msg)
+        metadata = archive.read(metadata_names[0]).decode()
     marker = "deepwork_agent/py.typed"
     if marker not in names:
         msg = f"built wheel does not contain {marker}"
+        raise RuntimeError(msg)
+    requirements = {
+        line.removeprefix("Requires-Dist: ")
+        for line in metadata.splitlines()
+        if line.startswith("Requires-Dist: ")
+    }
+    if requirements != EXPECTED_REQUIREMENTS:
+        msg = f"wheel requirements {sorted(requirements)} != {sorted(EXPECTED_REQUIREMENTS)}"
         raise RuntimeError(msg)
 
 
@@ -83,15 +139,41 @@ def _verify_clean_consumer(wheel: Path) -> None:
     """Install the wheel without an index and exercise its public API."""
     with tempfile.TemporaryDirectory(prefix="deepwork-agent-consumer-") as temporary:
         environment_root = Path(temporary) / "venv"
-        _run([sys.executable, "-m", "venv", str(environment_root)])
-        python = environment_root / "bin" / "python"
-        pip = environment_root / "bin" / "pip"
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)
         environment["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
         environment["PIP_NO_CACHE_DIR"] = "1"
+        environment["UV_PROJECT_ENVIRONMENT"] = str(environment_root)
+        uv = shutil.which("uv")
+        if uv is None:
+            msg = "uv is required for the offline clean-wheel consumer"
+            raise RuntimeError(msg)
         _run(
-            [str(pip), "install", "--no-index", "--no-deps", str(wheel)],
+            [
+                uv,
+                "sync",
+                "--project",
+                str(PACKAGE_ROOT),
+                "--frozen",
+                "--offline",
+                "--no-dev",
+                "--no-install-project",
+            ],
+            environment=environment,
+        )
+        python = environment_root / "bin" / "python"
+        _run(
+            [
+                uv,
+                "pip",
+                "install",
+                "--offline",
+                "--no-deps",
+                "--reinstall",
+                "--python",
+                str(python),
+                str(wheel),
+            ],
             environment=environment,
         )
         consumer = (
@@ -99,11 +181,22 @@ def _verify_clean_consumer(wheel: Path) -> None:
             "from importlib.resources import files; "
             "assert files('deepwork_agent').joinpath('py.typed').is_file(); "
             f"assert set(package.__all__) == {EXPECTED_EXPORTS!r}; "
-            "availability = package.runtime_availability(); "
-            "assert availability.available is False; "
-            "assert availability.contract_gate == 'SPIKE-CONFIG-001'; "
+            "capabilities = package.runtime_capabilities(); "
+            "assert capabilities.available is True; "
+            "assert capabilities.runtime_mode == 'local-runtime'; "
+            "assert capabilities.managed_external_providers == 'unavailable'; "
+            "assert capabilities.model_injection_required is True; "
+            "assert capabilities.hosted_deployment is False; "
+            "journeys = package.journey_capabilities(); "
+            "assert journeys.journeys == ('research', 'writing'); "
+            "assert journeys.coding_journey == 'unavailable'; "
+            "assert journeys.async_subagents == 'unavailable'; "
+            "assert journeys.hosted_artifact_storage is False; "
+            "assert journeys.artifact_transfer == 'unavailable'; "
+            "assert journeys.verification_ground_truth is False; "
+            "assert journeys.provider_credentials_managed is False; "
             "print(json.dumps({'exports': sorted(package.__all__), "
-            "'gate': availability.contract_gate, 'network': 'not-used'}))"
+            "'runtime': capabilities.runtime_mode, 'network': 'not-used'}))"
         )
         _run([str(python), "-I", "-c", consumer], environment=environment)
 

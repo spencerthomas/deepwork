@@ -1,0 +1,32 @@
+[project]
+name = "deepwork-langchain-contract-spikes"
+version = "0.1.0"
+description = "Isolated, non-production contract probes for Deep Work LangChain integration research"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[tool.uv]
+package = true
+
+[tool.deepwork.contract-pins]
+deepagents = "0.6.12"
+langchain = "1.3.14"
+langgraph = "1.2.9"
+langgraph-sdk = "0.4.2"
+pytest-runner = "9.0.2 (workspace interpreter; not locked as contract evidence)"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "live_contract: opt-in tests requiring an explicitly supplied non-production classic sandbox",
+]
+
+[project.scripts]
+pytest = "langchain_contract_spikes.pytest_runner:main"
+
+[build-system]
+requires = []
+build-backend = "build_backend"
+backend-path = ["."]

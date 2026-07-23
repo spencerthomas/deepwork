@@ -1,7 +1,4 @@
-import type {
-  UnavailableCapabilitySummary,
-  ViewStateKind,
-} from "@deepwork/domain";
+import type { UnavailableCapabilitySummary, ViewStateKind } from "@deepwork/domain";
 import { useId } from "react";
 
 interface StatusPanelBaseProps {
@@ -45,25 +42,23 @@ export type StatusPanelProps =
   | ErrorStatusPanelProps
   | UnavailableStatusPanelProps;
 
-const STATE_LABELS: Readonly<Record<ViewStateKind, string>> = {
+const STATE_LABELS: Readonly<Record<ViewStateKind, string>> = Object.freeze({
   loading: "Loading",
   empty: "No results",
   success: "Available",
   error: "Error",
   unavailable: "Unavailable",
-};
+});
 
-const REASON_LABELS = {
+const REASON_LABELS = Object.freeze({
   "contract-not-verified": "Support has not been verified.",
   "not-supported": "This source does not support the capability.",
   "permission-required": "Additional permission is required.",
   "source-unavailable": "The source is currently unavailable.",
   "adapter-disabled": "The adapter is currently disabled.",
-} as const;
+} as const);
 
-function capabilityDescription(
-  capability: UnavailableCapabilitySummary,
-): string {
+function capabilityDescription(capability: UnavailableCapabilitySummary): string {
   if (capability.state === "unknown") {
     return "Availability is unknown. No request will be attempted.";
   }
@@ -75,14 +70,8 @@ function capabilityDescription(
   return "This capability is unavailable.";
 }
 
-function actionFor(
-  props: StatusPanelProps,
-): StatusPanelAction | undefined {
-  if (
-    props.state === "empty" ||
-    props.state === "success" ||
-    props.state === "error"
-  ) {
+function actionFor(props: StatusPanelProps): StatusPanelAction | undefined {
+  if (props.state === "empty" || props.state === "success" || props.state === "error") {
     return props.action;
   }
 
@@ -95,15 +84,8 @@ export function StatusPanel(props: StatusPanelProps) {
   const detailId = `${id}-detail`;
   const action = actionFor(props);
   const isUnavailable = props.state === "unavailable";
-  const detail = isUnavailable
-    ? capabilityDescription(props.capability)
-    : props.description;
-  const role =
-    props.state === "error"
-      ? "alert"
-      : props.state === "loading"
-        ? "status"
-        : undefined;
+  const detail = isUnavailable ? capabilityDescription(props.capability) : props.description;
+  const role = props.state === "error" ? "alert" : props.state === "loading" ? "status" : undefined;
 
   return (
     <section
@@ -121,9 +103,9 @@ export function StatusPanel(props: StatusPanelProps) {
           </span>
           {STATE_LABELS[props.state]}
         </p>
-        <h2 className="dw-status-panel__title" id={titleId}>
+        <p className="dw-status-panel__title" id={titleId}>
           {props.title}
-        </h2>
+        </p>
         {detail === undefined ? null : (
           <p className="dw-status-panel__detail" id={detailId}>
             {detail}
@@ -131,11 +113,7 @@ export function StatusPanel(props: StatusPanelProps) {
         )}
       </div>
       {action === undefined ? null : (
-        <button
-          className="dw-status-panel__action"
-          onClick={action.onAction}
-          type="button"
-        >
+        <button className="dw-status-panel__action" onClick={action.onAction} type="button">
           {action.label}
         </button>
       )}

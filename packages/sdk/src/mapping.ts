@@ -5,17 +5,11 @@ export interface ContractMapper<WireValue, DomainValue> {
 }
 
 export interface GeneratedQueryTransport<Request, WireResponse> {
-  execute(
-    request: Request,
-    options?: { readonly signal?: AbortSignal },
-  ): Promise<WireResponse>;
+  execute(request: Request, options?: { readonly signal?: AbortSignal }): Promise<WireResponse>;
 }
 
 export interface GeneratedMutationTransport<Request, WireResponse> {
-  execute(
-    request: Request,
-    options?: { readonly signal?: AbortSignal },
-  ): Promise<WireResponse>;
+  execute(request: Request, options?: { readonly signal?: AbortSignal }): Promise<WireResponse>;
 }
 
 export interface GeneratedStreamTransport<Request, WireEvent> {

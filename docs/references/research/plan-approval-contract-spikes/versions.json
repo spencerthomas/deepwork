@@ -1,0 +1,141 @@
+{
+  "collected_at": "2026-07-23",
+  "evidence_class": "deterministic-offline-harness",
+  "installed_public_generated_contracts": {
+    "distributions": {},
+    "status": "not-present-on-offline-base"
+  },
+  "package": "0.1.0",
+  "packet": {
+    "base_commit": "fff1bfd278d550d01de6e8d74f553f45c4003a8c",
+    "seed_commit": "886f6b12d812b1e34df2e45da3d839a0853d72e8"
+  },
+  "pytest": "8.4.2",
+  "python": "3.12.11",
+  "runtime": {
+    "account_tier": null,
+    "live_profile": null,
+    "region": null,
+    "server": null,
+    "status": "not-run-no-sanctioned-sandbox"
+  },
+  "scenario_catalog": [
+    "initial_proposal",
+    "approve_unchanged",
+    "edit_then_approve",
+    "reject_without_reason",
+    "reject_with_reason",
+    "respond_permitted",
+    "local_abandonment",
+    "explicit_restart_after_rejection",
+    "wrong_request",
+    "wrong_plan",
+    "wrong_task",
+    "wrong_run",
+    "wrong_actor",
+    "stale_revision",
+    "superseded_revision",
+    "expired_actor",
+    "cross_workspace_replay",
+    "permission_widening",
+    "side_effect_widening",
+    "reconnect_before_decision",
+    "reconnect_after_decision_before_resume",
+    "reconnect_after_resume",
+    "process_restart",
+    "deployment_restart",
+    "model_text_claims_approved",
+    "tool_output_imitates_decision",
+    "direct_resume",
+    "repeated_delivery",
+    "retry_after_timeout",
+    "config_template_drift",
+    "cancellation_not_a_decision",
+    "unsupported_capability_false"
+  ],
+  "schema_version": "plan-approval-inventory.v1",
+  "source_revisions": {
+    "SRC-DA": "7794b61a6e76230e8c7a49bdce808b3728305914",
+    "SRC-LC": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+    "SRC-LCPY": "592055e15e138f5369dce95dd049ce22430996e2",
+    "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+  },
+  "starter_templates": [
+    {
+      "config_version": "synthetic-v1",
+      "source": "deterministic-fake",
+      "template": "research",
+      "template_version": "synthetic-v1"
+    },
+    {
+      "config_version": "synthetic-v1",
+      "source": "deterministic-fake",
+      "template": "writing",
+      "template_version": "synthetic-v1"
+    },
+    {
+      "config_version": "synthetic-v1",
+      "source": "deterministic-fake",
+      "template": "coding",
+      "template_version": "synthetic-v1"
+    },
+    {
+      "config_version": "synthetic-v1",
+      "source": "deterministic-fake",
+      "template": "blank",
+      "template_version": "synthetic-v1"
+    }
+  ],
+  "target_gates": [
+    {
+      "gate": "SPIKE-PLAN-001",
+      "status": "unaccepted"
+    },
+    {
+      "gate": "SPIKE-HITL-002",
+      "status": "unaccepted"
+    }
+  ],
+  "upstream_contracts": [
+    {
+      "accepted_artifact": null,
+      "gate": "SPIKE-HITL-001",
+      "status": "blocked-live-evidence"
+    },
+    {
+      "accepted_artifact": null,
+      "gate": "SPIKE-COMPOSE-001",
+      "status": "blocked-live-evidence"
+    },
+    {
+      "accepted_artifact": null,
+      "gate": "SPIKE-CONFIG-001",
+      "status": "blocked-live-evidence"
+    }
+  ],
+  "upstream_provenance": {
+    "artifacts": [
+      {
+        "gate": "SPIKE-HITL-001",
+        "path": "docs/references/research/langchain-contract-spikes/fixtures/hitl-ordered-batch.json",
+        "sha256": "bcbb3f0e0e5cd745795e3687271f03e0a91061089841aa4f22837f08c18b062d",
+        "status": "provenance-only-blocked-live-evidence"
+      },
+      {
+        "gate": "SPIKE-COMPOSE-001",
+        "path": "docs/references/research/langchain-contract-spikes/matrix.json",
+        "sha256": "682241e63d76f8507b41efec38f5d4b911704a27f951b3c40d9639c7adc93629",
+        "status": "provenance-only-blocked-live-evidence"
+      },
+      {
+        "gate": "SPIKE-CONFIG-001",
+        "path": "docs/references/research/langchain-contract-spikes/matrix.json",
+        "sha256": "682241e63d76f8507b41efec38f5d4b911704a27f951b3c40d9639c7adc93629",
+        "status": "provenance-only-blocked-live-evidence"
+      }
+    ],
+    "integrated": false,
+    "research_commit": "758c1d4a2230b7c4261fcfbd0f3008634509e096"
+  },
+  "uv": "uv 0.11.8 (Homebrew 2026-04-27 aarch64-apple-darwin)"
+}

@@ -1,0 +1,27 @@
+{
+  "mutation_count": 0,
+  "reviewed_commit": null,
+  "reviews": {
+    "product": {
+      "findings": [],
+      "reviewer": null,
+      "verdict": "pending"
+    },
+    "runtime-contracts": {
+      "findings": [],
+      "reviewer": null,
+      "verdict": "pending"
+    },
+    "security": {
+      "findings": [],
+      "reviewer": null,
+      "verdict": "pending"
+    }
+  },
+  "spikes": {
+    "SPIKE-GITHUB-001": "blocked-live-evidence",
+    "SPIKE-GITHUB-CI-001": "blocked-live-evidence",
+    "SPIKE-GITHUB-PROXY-001": "blocked-live-evidence"
+  },
+  "state": "pending-independent-review"
+}

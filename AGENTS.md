@@ -25,17 +25,31 @@ not authority. Historical `docs/plan/`, `docs/research/`, and uncertain untracke
 `docs/plans/` are preserved evidence; do not edit, delete, normalize, or silently
 promote them.
 
-## Commands that exist in Wave 0
+## Commands that exist
+
+The root `Makefile` is the stable command contract; each target delegates to the
+reviewed per-workspace command:
+
+```bash
+make doctor              # report API env + Node/pnpm prerequisites
+make bootstrap           # install API and web dependencies
+make dev-demo            # start the credential-free local product (./dev)
+make check               # pnpm check + apps/api check
+make check-architecture  # architecture import/boundary checks
+make check-docs          # tools/docs generate --check + check.py
+make test-unit           # TypeScript and Python unit suites
+make test-contract       # API contract suite
+```
+
+Documentation sources are still edited directly, then regenerated:
 
 ```bash
 python3 tools/docs/generate.py --write  # only after changing a source
-python3 tools/docs/generate.py --check
-python3 tools/docs/check.py
 ```
 
-The active scaffold ExecPlan will add root `doctor`, `bootstrap`, `dev-demo`,
-architecture, and package checks. Until they exist, report the gap; do not invent a
-passing substitute.
+`make test-e2e-demo` is declared but not yet implemented; it reports the gap and
+fails rather than inventing a passing substitute (see DEBT-002). Report any other
+missing command the same way; do not fake it.
 
 ## Evidence precedence
 

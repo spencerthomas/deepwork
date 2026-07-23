@@ -1,28 +1,53 @@
 """FastAPI composition root and local CLI."""
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from deepwork_api.adapters.fixture import FixtureStatusProvider
-from deepwork_api.application import StatusService
-from deepwork_api.transport import build_router
+from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
+from deepwork_api.application import DeterministicFixtureRunner, StatusService, TaskService
+from deepwork_api.transport import build_router, build_task_router
+
+_WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 
 
 def create_app() -> FastAPI:
     """Create the fixture-only application without import-time side effects."""
 
-    service = StatusService(provider=FixtureStatusProvider())
+    status_service = StatusService(provider=FixtureStatusProvider())
+    task_repository = InMemoryTaskRepository()
+    task_runner = DeterministicFixtureRunner(repository=task_repository)
+    task_service = TaskService(repository=task_repository, runner=task_runner)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        await task_runner.close()
+
     app = FastAPI(
         title="Deep Work API fixture scaffold",
         version="0.0.0",
-        description="Credential-free fixture behavior; no live provider contract.",
+        description=("Credential-free local task and fixture behavior; no live provider contract."),
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
     )
-    app.include_router(build_router(service))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(_WEB_ORIGINS),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Last-Event-ID"],
+    )
+    app.include_router(build_router(status_service))
+    app.include_router(build_task_router(task_service))
+    app.state.task_repository = task_repository
+    app.state.task_runner = task_runner
+    app.state.task_service = task_service
     return app
 
 

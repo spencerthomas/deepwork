@@ -1,0 +1,104 @@
+"""Pure task, run, event, interrupt, and decision values."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+EventDataValue = str | int | bool | tuple[str, ...] | None
+EventData = tuple[tuple[str, EventDataValue], ...]
+MAX_TASK_OBJECTIVE_LENGTH = 8_000
+
+
+class TaskStatus(StrEnum):
+    """Application-owned task/run state for the local fixture loop."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    WAITING_APPROVAL = "waiting_approval"
+    COMPLETED = "completed"
+    REJECTED = "rejected"
+    FAILED = "failed"
+
+    @property
+    def is_terminal(self) -> bool:
+        """Return whether no more events may be appended to the run."""
+
+        return self in {self.COMPLETED, self.REJECTED, self.FAILED}
+
+
+class DecisionValue(StrEnum):
+    """Supported decisions for the bounded approval interrupt."""
+
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
+class TaskEventName(StrEnum):
+    """Normalized event names exposed by the application stream."""
+
+    TASK_CREATED = "task.created"
+    RUN_STARTED = "run.started"
+    CONTENT_DELTA = "content.delta"
+    PLAN_PROPOSED = "plan.proposed"
+    INTERRUPT_REQUESTED = "interrupt.requested"
+    DECISION_RECORDED = "decision.recorded"
+    RUN_COMPLETED = "run.completed"
+
+
+@dataclass(frozen=True, slots=True)
+class TaskEvent:
+    """One replayable normalized event."""
+
+    event_id: int
+    name: TaskEventName
+    data: EventData
+
+
+@dataclass(frozen=True, slots=True)
+class TaskSnapshot:
+    """Immutable application view of one local task."""
+
+    task_id: str
+    run_id: str
+    title: str
+    objective: str
+    status: TaskStatus
+    last_event_id: int
+    pending_interrupt_id: str | None
+    result: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionRecord:
+    """Accepted decision result, including idempotent replay state."""
+
+    task_id: str
+    run_id: str
+    interrupt_id: str
+    decision: DecisionValue
+    duplicate: bool
+
+
+class TaskDomainError(Exception):
+    """Base error mapped safely at the transport boundary."""
+
+
+class TaskNotFoundError(TaskDomainError):
+    """The task is absent or cannot be disclosed."""
+
+
+class InvalidEventCursorError(TaskDomainError):
+    """The requested replay cursor is outside the task event history."""
+
+
+class InterruptMismatchError(TaskDomainError):
+    """The supplied interrupt does not match the pending task interrupt."""
+
+
+class StaleInterruptError(TaskDomainError):
+    """The supplied interrupt is no longer actionable."""
+
+
+class DecisionConflictError(TaskDomainError):
+    """A different decision was already recorded for the interrupt."""

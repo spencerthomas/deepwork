@@ -129,6 +129,7 @@ class TransferIntent:
     """A short-lived, destination-bound fake transfer authority."""
 
     intent_id: str
+    store_id: str
     object_id: str
     actor_id: str
     workspace_id: str
@@ -155,7 +156,11 @@ class TransferReceipt:
 class FakeObjectStore:
     """An in-memory object store that never exposes quarantined bytes."""
 
+    _instance_sequence = 0
+
     def __init__(self) -> None:
+        type(self)._instance_sequence += 1
+        self.store_id = f"deep-work-store-{type(self)._instance_sequence:04d}"
         self._bytes: dict[str, bytes] = {}
         self._objects: dict[str, Attachment] = {}
         self._sequence = 0
@@ -208,6 +213,30 @@ class FakeObjectStore:
 
     def metadata(self, object_id: str) -> Attachment:
         return self._objects[object_id]
+
+    def canonical_attachment(self, candidate: Attachment) -> Attachment:
+        """Resolve and compare durable metadata before authorization decisions."""
+        canonical = self.metadata(candidate.object_id)
+        fields = (
+            "object_id",
+            "actor_id",
+            "workspace_id",
+            "task_id",
+            "media_class",
+            "filename",
+            "declared_type",
+            "detected_type",
+            "sha256",
+            "size",
+            "state",
+            "agent_visible",
+        )
+        if any(
+            getattr(candidate, field_name) != getattr(canonical, field_name)
+            for field_name in fields
+        ):
+            raise ContractError("canonical-metadata-mismatch")
+        return canonical
 
     def bytes_for_scanner(self, object_id: str) -> bytes:
         attachment = self.metadata(object_id)
@@ -342,11 +371,14 @@ class FakeClassicRuntime:
             if supported_representations is not None
             else self.DEFAULT_REPRESENTATIONS
         )
+        if not self.supported_representations <= self.DEFAULT_REPRESENTATIONS:
+            raise ContractError("capability-configuration")
         self.available = available
         self.failure_mode = failure_mode
 
     def create_intent(
         self,
+        store: FakeObjectStore,
         attachment: Attachment,
         *,
         actor_id: str,
@@ -362,10 +394,11 @@ class FakeClassicRuntime:
             raise ContractError("source-unavailable")
         if self.failure_mode is not None:
             raise ContractError(f"source-error-{self.failure_mode}")
+        canonical = store.canonical_attachment(attachment)
         if (
-            actor_id != attachment.actor_id
-            or workspace_id != attachment.workspace_id
-            or task_id != attachment.task_id
+            actor_id != canonical.actor_id
+            or workspace_id != canonical.workspace_id
+            or task_id != canonical.task_id
         ):
             raise ContractError("binding-mismatch")
         if destination != self.DESTINATION:
@@ -377,14 +410,15 @@ class FakeClassicRuntime:
         if ttl < 1 or ttl > 300:
             raise ContractError("expiry")
         fingerprint: tuple[object, ...] = (
-            attachment.object_id,
+            store.store_id,
+            canonical.object_id,
             actor_id,
             workspace_id,
             task_id,
             destination,
             representation,
-            attachment.sha256,
-            attachment.size,
+            canonical.sha256,
+            canonical.size,
             ttl,
         )
         existing = self._intents.get(idempotency_key)
@@ -393,22 +427,23 @@ class FakeClassicRuntime:
             if fingerprint != prior_fingerprint:
                 raise ContractError("idempotency-conflict")
             return prior_intent
-        if attachment.state is not State.CLEAN:
+        if canonical.state is not State.CLEAN:
             raise ContractError("not-clean")
         self._sequence += 1
-        attachment.state = State.TRANSFER_READY
-        attachment.audit.append("transfer-intent")
+        canonical.state = State.TRANSFER_READY
+        canonical.audit.append("transfer-intent")
         intent = TransferIntent(
             intent_id=f"intent-{self._sequence:04d}",
-            object_id=attachment.object_id,
+            store_id=store.store_id,
+            object_id=canonical.object_id,
             actor_id=actor_id,
             workspace_id=workspace_id,
             task_id=task_id,
             destination=destination,
             representation=representation,
             idempotency_key=idempotency_key,
-            sha256=attachment.sha256,
-            size=attachment.size,
+            sha256=canonical.sha256,
+            size=canonical.size,
             expires_at=now + ttl,
         )
         self._intents[idempotency_key] = (fingerprint, intent)
@@ -438,6 +473,8 @@ class FakeClassicRuntime:
         _issued_fingerprint, issued_intent = issued
         if intent != issued_intent:
             raise ContractError("intent-mutation")
+        if intent.store_id != store.store_id:
+            raise ContractError("store-boundary-mismatch")
         if now >= intent.expires_at:
             raise ContractError("stale-grant")
         if (
@@ -447,18 +484,19 @@ class FakeClassicRuntime:
             or destination != intent.destination
         ):
             raise ContractError("intent-binding-mismatch")
+        canonical = store.canonical_attachment(attachment)
         if (
-            attachment.object_id != intent.object_id
-            or attachment.actor_id != intent.actor_id
-            or attachment.workspace_id != intent.workspace_id
-            or attachment.task_id != intent.task_id
+            canonical.object_id != intent.object_id
+            or canonical.actor_id != intent.actor_id
+            or canonical.workspace_id != intent.workspace_id
+            or canonical.task_id != intent.task_id
         ):
             raise ContractError("intent-object-binding-mismatch")
         if intent.representation not in self.supported_representations:
             raise ContractError("capability-mismatch")
-        if attachment.state not in {State.TRANSFER_READY, State.TRANSFERRED}:
+        if canonical.state not in {State.TRANSFER_READY, State.TRANSFERRED}:
             raise ContractError("transfer-state")
-        content = store.bytes_for_transfer(attachment.object_id)
+        content = store.bytes_for_transfer(canonical.object_id)
         if hashlib.sha256(content).hexdigest() != intent.sha256:
             raise ContractError("hash-mismatch")
         if len(content) != intent.size:
@@ -468,12 +506,12 @@ class FakeClassicRuntime:
         receipt = TransferReceipt(
             receipt_id=f"receipt-{intent.intent_id}",
             intent_id=intent.intent_id,
-            object_id=attachment.object_id,
+            object_id=canonical.object_id,
             sha256=intent.sha256,
             size=intent.size,
         )
         self._receipts[intent.intent_id] = receipt
-        attachment.state = State.TRANSFERRED
-        attachment.agent_visible = True
-        attachment.audit.append("transfer-receipt")
+        canonical.state = State.TRANSFERRED
+        canonical.agent_visible = True
+        canonical.audit.append("transfer-receipt")
         return receipt

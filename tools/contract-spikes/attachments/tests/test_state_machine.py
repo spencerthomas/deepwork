@@ -198,6 +198,7 @@ def test_clean_verdict_alone_cannot_transfer() -> None:
 def test_transfer_binding_receipt_and_idempotent_replay() -> None:
     store, attachment, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store,
         attachment,
         actor_id=attachment.actor_id,
         workspace_id=attachment.workspace_id,
@@ -245,6 +246,7 @@ def test_transfer_binding_receipt_and_idempotent_replay() -> None:
 def test_transfer_rejects_binding_mismatch(field: str, value: str, reason: str) -> None:
     store, attachment, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store,
         attachment,
         actor_id=attachment.actor_id,
         workspace_id=attachment.workspace_id,
@@ -279,6 +281,7 @@ def test_transfer_rejects_stale_redirect_and_partial(
 ) -> None:
     store, attachment, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store,
         attachment,
         actor_id=attachment.actor_id,
         workspace_id=attachment.workspace_id,
@@ -317,7 +320,7 @@ def test_remove_delete_retry_and_recovery_preserve_safety() -> None:
 
 
 def test_intent_creation_is_idempotent_and_rejects_changed_payload() -> None:
-    _store, attachment, runtime = clean_attachment()
+    store, attachment, runtime = clean_attachment()
     arguments = {
         "actor_id": attachment.actor_id,
         "workspace_id": attachment.workspace_id,
@@ -327,21 +330,28 @@ def test_intent_creation_is_idempotent_and_rejects_changed_payload() -> None:
         "idempotency_key": "intent-key-1",
         "now": 100,
     }
-    first = runtime.create_intent(attachment, **arguments)
-    replay = runtime.create_intent(attachment, **arguments)
+    first = runtime.create_intent(store, attachment, **arguments)
+    replay = runtime.create_intent(store, attachment, **arguments)
     assert replay == first
     assert attachment.audit.count("transfer-intent") == 1
     with pytest.raises(ContractError, match="idempotency-conflict"):
         runtime.create_intent(
+            store,
             attachment,
             **{**arguments, "representation": "standard-content-url-reference"},
         )
 
 
 def test_runtime_rejects_capability_mismatch_and_source_failure() -> None:
-    _store, attachment, runtime = clean_attachment()
+    with pytest.raises(ContractError, match="capability-configuration"):
+        FakeClassicRuntime(
+            supported_representations={"fleet-arbitrary-unsupported"}
+        )
+
+    store, attachment, runtime = clean_attachment()
     with pytest.raises(ContractError, match="capability-mismatch"):
         runtime.create_intent(
+            store,
             attachment,
             actor_id=attachment.actor_id,
             workspace_id=attachment.workspace_id,
@@ -352,10 +362,11 @@ def test_runtime_rejects_capability_mismatch_and_source_failure() -> None:
             now=100,
         )
 
-    _store, attachment, unavailable = clean_attachment()
+    store, attachment, unavailable = clean_attachment()
     unavailable.available = False
     with pytest.raises(ContractError, match="source-unavailable"):
         unavailable.create_intent(
+            store,
             attachment,
             actor_id=attachment.actor_id,
             workspace_id=attachment.workspace_id,
@@ -366,10 +377,11 @@ def test_runtime_rejects_capability_mismatch_and_source_failure() -> None:
             now=100,
         )
 
-    _store, attachment, failed = clean_attachment()
+    store, attachment, failed = clean_attachment()
     failed.failure_mode = "synthetic"
     with pytest.raises(ContractError, match="source-error-synthetic"):
         failed.create_intent(
+            store,
             attachment,
             actor_id=attachment.actor_id,
             workspace_id=attachment.workspace_id,
@@ -384,6 +396,7 @@ def test_runtime_rejects_capability_mismatch_and_source_failure() -> None:
 def test_transfer_rejects_cross_object_and_cross_workspace_substitution() -> None:
     store_a, attachment_a, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store_a,
         attachment_a,
         actor_id=attachment_a.actor_id,
         workspace_id=attachment_a.workspace_id,
@@ -441,6 +454,70 @@ def test_transfer_rejects_cross_object_and_cross_workspace_substitution() -> Non
         )
 
 
+def test_canonical_metadata_and_store_boundary_cannot_be_relabelled() -> None:
+    store_a, attachment_a, runtime = clean_attachment()
+    detached = replace(attachment_a, workspace_id="workspace-b")
+    with pytest.raises(ContractError, match="canonical-metadata-mismatch"):
+        runtime.create_intent(
+            store_a,
+            detached,
+            actor_id=detached.actor_id,
+            workspace_id=detached.workspace_id,
+            task_id=detached.task_id,
+            destination=runtime.DESTINATION,
+            representation="standard-content-inline-base64",
+            idempotency_key="detached-key",
+            now=100,
+        )
+
+    intent = runtime.create_intent(
+        store_a,
+        attachment_a,
+        actor_id=attachment_a.actor_id,
+        workspace_id=attachment_a.workspace_id,
+        task_id=attachment_a.task_id,
+        destination=runtime.DESTINATION,
+        representation="standard-content-inline-base64",
+        idempotency_key="intent-key-1",
+        now=100,
+    )
+    detached_ready = replace(attachment_a, workspace_id="workspace-b")
+    with pytest.raises(ContractError, match="canonical-metadata-mismatch"):
+        runtime.transfer(
+            store_a,
+            detached_ready,
+            intent,
+            now=101,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+    store_b = FakeObjectStore()
+    attachment_b = store_b.create(
+        actor_id=attachment_a.actor_id,
+        workspace_id=attachment_a.workspace_id,
+        task_id=attachment_a.task_id,
+        media_class="bounded-text-file",
+        filename="collision.txt",
+        declared_type="text/plain",
+        content=TEXT,
+    )
+    apply_scanner_result(attachment_b, Verdict.CLEAN)
+    with pytest.raises(ContractError, match="store-boundary-mismatch"):
+        runtime.transfer(
+            store_b,
+            attachment_b,
+            intent,
+            now=101,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -452,6 +529,7 @@ def test_transfer_rejects_cross_object_and_cross_workspace_substitution() -> Non
 def test_transfer_rejects_mutated_issued_intent(changes: dict[str, object]) -> None:
     store, attachment, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store,
         attachment,
         actor_id=attachment.actor_id,
         workspace_id=attachment.workspace_id,
@@ -479,6 +557,7 @@ def test_transfer_rejects_mutated_issued_intent(changes: dict[str, object]) -> N
 def test_transfer_rejects_unissued_intent_key() -> None:
     store, attachment, runtime = clean_attachment()
     intent = runtime.create_intent(
+        store,
         attachment,
         actor_id=attachment.actor_id,
         workspace_id=attachment.workspace_id,

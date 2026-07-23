@@ -53,11 +53,13 @@ retention, deletion state, and audit. Bytes remain in quarantine with agent
 visibility denied until all required conditions are independently satisfied.
 
 A scanner verdict is untrusted input. `clean` is necessary but not sufficient:
-the transfer intent must separately bind actor, workspace, task, object,
-destination, representation, expiry, idempotency key, hash, and size. Receipt
-processing rechecks hash and size. Unsafe, error, timeout, unavailable, expired,
-mismatched, replayed, redirected, or partial behavior fails closed. Restart and
-retry preserve the prior unsafe or unknown verdict and never broaden authority.
+the transfer intent must separately bind actor, workspace, task, store boundary,
+object, destination, representation, expiry, idempotency key, hash, and size.
+Intent creation and receipt handling reload canonical store metadata; detached
+records cannot relabel stored bytes. Receipt processing rechecks hash and size.
+Unsafe, error, timeout, unavailable, expired, mismatched, replayed, redirected,
+or partial behavior fails closed. Restart and retry preserve the prior unsafe or
+unknown verdict and never broaden authority.
 
 Local deletion and provider deletion are recorded separately. A provider
 deletion failure remains unverified and retryable rather than being presented as

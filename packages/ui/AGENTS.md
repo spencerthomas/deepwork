@@ -47,3 +47,7 @@ Package scripts are declarations for the downstream lock and executable
 verification cells. Until the shared lock exists, run only the install-free
 static checks authorized by the active ExecPlan and report executable package
 checks as unexecuted.
+
+Keep `check-architecture` and `package-check` distinct. The former proves green
+source plus intentional negative fixtures; the latter proves packed UI/domain
+archives, CSS/token/preset exports, and an offline empty-consumer import.

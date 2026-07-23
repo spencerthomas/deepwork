@@ -19,6 +19,9 @@
     "tests/**/*.ts",
     "tests/**/*.tsx"
   ],
+  "exclude": [
+    "tests/fixtures/negative/**"
+  ],
   "references": [
     {
       "path": "../domain"

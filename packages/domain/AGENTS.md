@@ -11,6 +11,9 @@
 - Keep local ESM imports explicit with `.js` runtime extensions.
 - Test public entry points and source-collision behavior. Test records must be
   synthetic and contain no credentials or raw customer content.
+- Keep `check-architecture` and `package-check` distinct. The former proves green
+  source plus intentional negative fixtures; the latter proves the built archive
+  and an offline empty-consumer import.
 
 After the shared lock exists, the verification cell may run the package scripts.
 Until then, use only the static checks authorized by the active ExecPlan.

@@ -292,6 +292,14 @@ Acceptance:
 - [x] 2026-07-23 AEST — Milestone 4 author static review complete: every permitted
   JSON/inventory/import/scope/whitespace command exited zero. Independent review
   and downstream handoff acceptance remain pending.
+- [x] 2026-07-23 AEST — Independent implementation review returned three bounded
+  findings: `package-check` duplicated architecture checking instead of proving a
+  packed consumer; forbidden-import coverage lacked intentional failing fixtures;
+  and the component stylesheet introduced a parallel raw geometry scale.
+- [x] 2026-07-23 AEST — Bounded rework authored distinct pack/offline-consumer
+  scripts, stable rule-coded negative fixtures/tests, and canonical UI geometry
+  tokens with intrinsic wrapping. The permitted static suite was rerun cleanly;
+  every executable check remains unexecuted pending fresh independent re-review.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -318,10 +326,16 @@ Acceptance:
 - 2026-07-23 AEST — The shared compiler base deliberately excludes DOM globals.
   Consequence: SDK and UI opt into `DOM` locally while domain retains `ES2022`
   only; tests and Vitest aliases remain package-local and unexecuted.
-- 2026-07-23 AEST — The existing `tokens.css` and `tailwind.preset.mjs` already
-  provide the allowed visual constants. Consequence: both files remain unchanged,
-  and the first component stylesheet consumes those token variables rather than
-  creating a replacement token source.
+- 2026-07-23 AEST — Initial authoring left `tokens.css` and
+  `tailwind.preset.mjs` byte-unchanged, but independent review found raw component
+  geometry in `status-panel.css`. Consequence: the rework adds shared spacing,
+  type, measure, touch-target, border, and focus tokens to the canonical sources;
+  the component now consumes them and uses intrinsic flex wrapping without a raw
+  viewport breakpoint.
+- 2026-07-23 AEST — Initial `package-check` scripts aliased architecture checks,
+  and green scans alone did not prove forbidden examples fail. Consequence: each
+  package now owns separate unexecuted clean-archive/offline-consumer and
+  rule-coded green-plus-negative-fixture checks.
 
 ## Decision Log
 
@@ -465,11 +479,16 @@ packages/domain/AGENTS.md
 packages/domain/README.md
 packages/domain/package.json
 packages/domain/scripts/check-boundaries.mjs
+packages/domain/scripts/package-check.mjs
 packages/domain/src/capability.ts
 packages/domain/src/identity.ts
 packages/domain/src/index.ts
 packages/domain/src/view-state.ts
+packages/domain/tests/boundaries.test.mjs
 packages/domain/tests/capability.test.ts
+packages/domain/tests/fixtures/negative/browser-network.fixture.ts
+packages/domain/tests/fixtures/negative/framework-side-effect.fixture.ts
+packages/domain/tests/fixtures/negative/provider-network-side-effect.fixture.ts
 packages/domain/tests/identity.test.ts
 packages/domain/tests/view-state.test.ts
 packages/domain/tsconfig.json
@@ -479,11 +498,16 @@ packages/sdk/AGENTS.md
 packages/sdk/README.md
 packages/sdk/package.json
 packages/sdk/scripts/check-boundaries.mjs
+packages/sdk/scripts/package-check.mjs
 packages/sdk/src/index.ts
 packages/sdk/src/mapping.ts
 packages/sdk/src/ports.ts
 packages/sdk/src/result.ts
 packages/sdk/src/unavailable.ts
+packages/sdk/tests/boundaries.test.mjs
+packages/sdk/tests/fixtures/negative/provider-side-effect.fixture.ts
+packages/sdk/tests/fixtures/negative/raw-network.fixture.ts
+packages/sdk/tests/fixtures/negative/ui-side-effect.fixture.ts
 packages/sdk/tests/public-api.test.ts
 packages/sdk/tests/unavailable.test.ts
 packages/sdk/tsconfig.json
@@ -493,11 +517,15 @@ packages/ui/AGENTS.md
 packages/ui/README.md
 packages/ui/package.json
 packages/ui/scripts/check-boundaries.mjs
+packages/ui/scripts/package-check.mjs
 packages/ui/src/index.ts
 packages/ui/src/status-panel.tsx
-packages/ui/src/styles.d.ts
 packages/ui/status-panel.css
 packages/ui/tailwind.preset.mjs
+packages/ui/tests/boundaries.test.mjs
+packages/ui/tests/fixtures/negative/provider-side-effect.fixture.ts
+packages/ui/tests/fixtures/negative/raw-network.fixture.ts
+packages/ui/tests/fixtures/negative/sdk-side-effect.fixture.ts
 packages/ui/tests/status-panel.test.tsx
 packages/ui/tokens.css
 packages/ui/tsconfig.json
@@ -508,14 +536,19 @@ packages/ui/vitest.config.ts
 Static import findings:
 
 - Domain shipped source imports only explicit local `.js` modules. Node imports
-  occur only in its package-local structural script and Vitest alias config.
+  occur only in package-local checks, the negative-test harness, and Vitest alias
+  config. Intentional excluded fixtures cover React, browser/raw-network, Axios,
+  and LangGraph SDK failures with stable rule codes.
 - SDK shipped source imports `@deepwork/domain` and explicit local `.js` modules;
   it has no UI, React, Next.js, Node, provider, or network import. Its Node imports
-  are confined to the package-local structural script and Vitest alias config.
-- UI shipped source imports `@deepwork/domain`, React, its named CSS file, and an
-  explicit local `.js` module. It has no SDK, Next.js, provider, route, generated,
-  environment, or network import. Node imports are confined to the package-local
-  structural script and Vitest alias config.
+  are confined to package-local checks, the negative-test harness, and Vitest
+  config. Intentional excluded fixtures cover UI, LangGraph SDK, Axios, fetch,
+  and EventSource failures with stable rule codes.
+- UI shipped source imports `@deepwork/domain`, React, and an explicit local `.js`
+  module. It has no SDK, Next.js, provider, route, generated, environment, network,
+  or runtime CSS-loader import. Node imports are confined to package-local checks,
+  the negative-test harness, and Vitest config. Intentional excluded fixtures
+  cover SDK, LangGraph SDK, Axios, fetch, and WebSocket failures.
 - Tests import named package entry points rather than implementation paths.
 
 Source-level UI review:
@@ -523,9 +556,9 @@ Source-level UI review:
 - `StatusPanel` uses a labelled native `section`, native heading and button,
   polite loading status, assertive error role, explicit visible state text, and a
   non-color mark. Unknown/unavailable variants cannot accept an action.
-- Styles use existing token variables, `:focus-visible`, forced-colors support,
-  no animation, a reduced-motion safeguard, overflow wrapping, a single-column
-  narrow layout, and progressive wider reflow.
+- Styles use canonical token variables for product geometry, `:focus-visible`,
+  forced-colors support, no animation, overflow wrapping, and intrinsic flex-wrap
+  reflow without a raw viewport breakpoint.
 - Display inputs are strings rendered as React text; no raw-HTML API exists. The
   authored test covers markup-shaped input and long localized content.
 
@@ -536,9 +569,40 @@ scripts also reject network primitives from shipped source. Neither the test nor
 those Node scripts ran in this cell.
 
 Changed-file scope is exactly the three package inventories above plus this
-living plan. The existing UI token and Tailwind preset files are present in the
-inventory but byte-for-byte unchanged. No root/shared/index/generated/app path,
-lock, external system, or credential changed.
+living plan. Rework deliberately updates the canonical UI token and Tailwind
+preset sources to absorb component geometry; no second token source was created.
+No root/shared/index/generated/app path, lock, external system, or credential
+changed.
+
+Distinct `package-check` scripts are authored, not executed. Each packs built
+output, inspects non-empty public files and export targets, rejects private-source,
+lock, and `workspace:` leakage, installs only packed local archives into an empty
+temporary consumer with pnpm offline mode, and imports the public JavaScript
+entry. SDK/UI include the packed domain archive; UI additionally verifies the
+token, status CSS, and Tailwind preset entries and uses the pinned React already
+expected in the offline store. Temporary paths come from `mkdtemp` and only that
+exact directory is removed in `finally`.
+
+Author rework static evidence on 2026-07-23 AEST:
+
+```text
+six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
+rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
+  inventory above, including 3 clean-package scripts, 3 negative-test harnesses,
+  and 9 intentional negative fixtures
+rg manifest exports/type/scripts/dependencies -> exit 0; all packages retain ESM,
+  named exports, and distinct script declarations
+rg package/framework imports -> exit 0; shipped edges remain sdk -> domain and
+  ui -> domain + React; reported sdk/ui cross-imports are intentional fixtures or
+  rule/check text, not shipped source
+git diff --check -> exit 0; no output
+git status --short -> exit 0; only the three governed packages and this living
+  plan changed
+```
+
+No `check-architecture`, `package-check`, Vitest, formatter, linter, compiler,
+build, pack, pnpm, install, lock, consumer, accessibility, or network command was
+executed during rework.
 
 Executable format, lint, typecheck, unit, build, pack, package structural,
 network-denial, accessibility, and clean-consumer proof remains explicitly
@@ -579,18 +643,22 @@ to draft review.
 
 ## Outcomes & Retrospective
 
-Authored the bounded package surfaces from the reviewed base: source-qualified
-domain identities, safe capability summaries and state guards; distinct browser-
-safe SDK query/mutation/stream ports and explicit unavailable factories; and one
-semantic React status primitive consuming the domain public surface while
-preserving the existing token sources. Package-local public-entry, collision,
+Authored and reworked the bounded package surfaces from the reviewed base:
+source-qualified domain identities, safe capability summaries and state guards;
+distinct browser-safe SDK query/mutation/stream ports and explicit unavailable
+factories; and one semantic React status primitive consuming the domain public
+surface and canonical token sources. Package-local public-entry, collision,
 unknown-capability, network-denial, unsafe-content, and accessibility-oriented
-tests plus structural boundary scripts are present.
+tests are present. Architecture checks retain green-source scans and prove
+intentional forbidden side-effect imports/raw APIs produce stable rule codes.
+Package checks are separate clean-archive/offline-consumer harnesses rather than
+aliases for architecture checking.
 
 The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. `SPIKE-HARNESS-ARCH-001` remains open, independent implementation
-review is still required, and sequential proof remains with
+deviations. The initial independent findings were addressed, but fresh independent
+implementation review is still required. `SPIKE-HARNESS-ARCH-001` remains open,
+and sequential proof remains with
 `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

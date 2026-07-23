@@ -9,14 +9,27 @@ Public entry points:
 - `@deepwork/ui/status-panel.css` — status primitive styles; and
 - `@deepwork/ui/tailwind-preset` — the existing token-consuming Tailwind preset.
 
+Consumers import `@deepwork/ui/tokens.css` and
+`@deepwork/ui/status-panel.css` explicitly alongside the component entry point.
+The JavaScript entry does not rely on a runtime CSS loader.
+
 `StatusPanel` receives normalized domain values, display text, and callbacks
 through props. It does not fetch, infer capabilities, authorize actions, or
 render raw HTML. Its unavailable variant has no action prop, so an unknown
 capability cannot look enabled.
 
 The token and preset sources remain the single source for product color,
-typography, radii, and layout. Heading font ships as Inter (OFL); do not commit
+typography, spacing, measures, touch targets, radii, and layout. `StatusPanel`
+uses those variables and intrinsic wrapping rather than a parallel component
+scale or viewport breakpoint. Heading font ships as Inter (OFL); do not commit
 commercial font files.
 
-The package scripts are reserved for the downstream lock and executable
+`check-architecture` scans shipped source and verifies intentional failing
+fixtures for SDK, provider, raw-network, Next.js, Node, environment, and raw-HTML
+boundaries. `package-check` packs UI and domain output, inspects every JavaScript,
+CSS, token, and preset export, rejects workspace-protocol leakage, installs the
+archives and React offline into an empty temporary consumer, and imports or
+resolves every public UI entry point.
+
+These package scripts are reserved for the downstream lock and executable
 verification cells and have not been run by the authoring cell.

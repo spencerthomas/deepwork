@@ -12,6 +12,9 @@
   request.
 - Keep local ESM imports explicit with `.js` runtime extensions and test through
   named public entry points.
+- Keep `check-architecture` and `package-check` distinct. The former proves green
+  source plus intentional negative fixtures; the latter proves packed SDK/domain
+  archives and an offline empty-consumer import.
 
 After the shared lock exists, the verification cell may run the package scripts.
 Until then, use only the static checks authorized by the active ExecPlan.

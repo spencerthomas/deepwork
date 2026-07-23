@@ -4,8 +4,6 @@ import type {
 } from "@deepwork/domain";
 import { useId } from "react";
 
-import "../status-panel.css";
-
 interface StatusPanelBaseProps {
   readonly title: string;
   readonly description?: string;

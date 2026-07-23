@@ -29,7 +29,7 @@
     "format": "oxfmt .",
     "format-check": "oxfmt --check .",
     "lint": "oxlint .",
-    "package-check": "node scripts/check-boundaries.mjs",
+    "package-check": "node scripts/package-check.mjs",
     "test": "vitest run --environment jsdom",
     "typecheck": "tsc --project tsconfig.test.json"
   },

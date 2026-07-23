@@ -66,6 +66,24 @@
   --content-pad-left: 5.5rem; /* 88px at lg+ */
   --chat-max-width: 900px;    /* thread column (deep-agents-ui convention) */
 
+  /* Shared component geometry */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --font-size-sm: 0.875rem;
+  --font-size-lg: 1.125rem;
+  --font-weight-emphasis: 600;
+  --line-height-heading: 1.35;
+  --line-height-body: 1.5;
+  --measure-readable: 70ch;
+  --measure-status-body-min: 16rem;
+  --touch-target-min: 2.75rem;
+  --border-width-default: 1px;
+  --border-width-control: 2px;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
+
   /* Code blocks (catppuccin) */
   --code-bg: #eff1f5;         /* latte */
   --code-bg-dark: #1e1e2e;    /* mocha */

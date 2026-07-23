@@ -32,7 +32,8 @@ describe("AppHeader product navigation", () => {
     expect(markup).toContain('href="/agents"');
     expect(markup).toContain('href="/schedules"');
     expect(markup).toContain('href="/activity"');
-    expect(markup.match(/>Soon</g)).toHaveLength(2);
+    expect(markup).not.toContain(">Observability<");
+    expect(markup.match(/>Soon</g)).toHaveLength(1);
     expect(markup).toContain('aria-label="Use dark theme"');
     expect(markup).toContain('aria-pressed="false"');
   });

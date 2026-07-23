@@ -29,6 +29,13 @@ describe("decodeTaskEvent", () => {
     );
     expect(() =>
       decodeTaskEvent("decision.recorded", "2", '{"interruptId":"interrupt-1","decision":"skip"}'),
-    ).toThrow("approve or reject");
+    ).toThrow("approve, reject, or respond");
+    expect(
+      decodeTaskEvent(
+        "decision.recorded",
+        "3",
+        '{"interruptId":"interrupt-1","decision":"respond","responseProvided":true}',
+      ),
+    ).toMatchObject({ data: { decision: "respond" } });
   });
 });

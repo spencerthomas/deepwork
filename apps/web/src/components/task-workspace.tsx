@@ -9,14 +9,22 @@ import { TaskList } from "./task-list";
 import {
   getActiveInterrupt,
   getCompletionResultText,
+  getEvidenceRecords,
+  getLatestPlan,
+  interruptAfterEvent,
   isTerminalStatus,
   reduceEventsIntoDetail,
   statusAfterEvent,
 } from "../lib/task-normalizers";
 import { taskClient } from "../lib/task-client";
+import {
+  recoverCurrentTaskAfterDecisionProblem,
+  recoverCurrentTaskAfterPlanProblem,
+} from "../lib/plan-recovery";
 import type {
   ConnectionState,
   DecisionInput,
+  PlanUpdateInput,
   TaskDetail as TaskDetailType,
   TaskEvent,
   TaskSummary,
@@ -45,9 +53,11 @@ export function TaskWorkspace() {
   const [streamError, setStreamError] = useState<string>();
   const [createError, setCreateError] = useState<string>();
   const [actionError, setActionError] = useState<string>();
+  const [planError, setPlanError] = useState<string>();
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [creating, setCreating] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [updatingPlan, setUpdatingPlan] = useState(false);
   const [submittedDecision, setSubmittedDecision] = useState<DecisionInput["decision"]>();
   const [listAttempt, setListAttempt] = useState(0);
   const detailRef = useRef<HTMLElement | null>(null);
@@ -120,6 +130,7 @@ export function TaskWorkspace() {
     setSubmittedDecision(undefined);
     setSubmittingDecision(false);
     setActionError(undefined);
+    setPlanError(undefined);
     decisionRequestRef.current += 1;
     pendingDecisionRef.current = undefined;
 
@@ -160,6 +171,8 @@ export function TaskWorkspace() {
       },
       onError: setStreamError,
       onEvent: (event) => {
+        const eventsBeforeEvent = eventsByTaskRef.current[selectedTaskId] ?? [];
+        const activeBeforeEvent = getActiveInterrupt(eventsBeforeEvent);
         setEventsByTask((current) => {
           const taskEvents = current[selectedTaskId] ?? [];
           const next = taskEvents.some((candidate) => candidate.id === event.id)
@@ -182,7 +195,8 @@ export function TaskWorkspace() {
             ...current,
             [selectedTaskId]: {
               ...task,
-              status: statusAfterEvent(task.status, event),
+              pendingInterrupt: interruptAfterEvent(task.pendingInterrupt, event),
+              status: statusAfterEvent(task.status, event, task.pendingInterrupt),
               result: eventResult ?? task.result,
             },
           };
@@ -190,7 +204,7 @@ export function TaskWorkspace() {
         setTasks((current) =>
           replaceTask(current, selectedTaskId, (task) => ({
             ...task,
-            status: statusAfterEvent(task.status, event),
+            status: statusAfterEvent(task.status, event, activeBeforeEvent),
           })),
         );
         if (event.name === "decision.recorded") {
@@ -198,7 +212,9 @@ export function TaskWorkspace() {
           if (
             pending?.taskId === selectedTaskId &&
             event.data.interruptId === pending.interruptId &&
-            (event.data.decision === "approve" || event.data.decision === "reject")
+            (event.data.decision === "approve" ||
+              event.data.decision === "reject" ||
+              event.data.decision === "respond")
           ) {
             pendingDecisionRef.current = undefined;
             setSubmittedDecision(undefined);
@@ -266,7 +282,18 @@ export function TaskWorkspace() {
   const selected = tasks.find((task) => task.taskId === selectedTaskId);
   const detail = selectedTaskId ? detailsByTask[selectedTaskId] : undefined;
   const events = selectedTaskId ? (eventsByTask[selectedTaskId] ?? []) : [];
-  const activeInterrupt = useMemo(() => getActiveInterrupt(events), [events]);
+  const activeInterrupt = useMemo(
+    () => (detail ? detail.pendingInterrupt : getActiveInterrupt(events)),
+    [detail, events],
+  );
+  const plan = useMemo(
+    () => getLatestPlan(detail?.proposedPlan, events),
+    [detail?.proposedPlan, events],
+  );
+  const evidence = useMemo(
+    () => getEvidenceRecords(detail?.evidence, events),
+    [detail?.evidence, events],
+  );
 
   async function createTask(prompt: string): Promise<boolean> {
     setCreating(true);
@@ -314,7 +341,19 @@ export function TaskWorkspace() {
     setSubmittingDecision(true);
     setActionError(undefined);
     try {
-      await taskClient.decide(taskId, input);
+      const receipt = await taskClient.decide(taskId, input);
+      const expectedRunId =
+        detailsByTask[taskId]?.runId ?? tasks.find((task) => task.taskId === taskId)?.runId;
+      if (
+        receipt.taskId !== taskId ||
+        receipt.interruptId !== input.interruptId ||
+        receipt.decision !== input.decision ||
+        (expectedRunId !== undefined && receipt.runId !== expectedRunId)
+      ) {
+        throw new Error(
+          "The decision receipt did not match the selected task, run, and interrupt.",
+        );
+      }
       if (
         pendingDecisionRef.current?.requestId === requestId &&
         selectedTaskIdRef.current === taskId
@@ -326,7 +365,29 @@ export function TaskWorkspace() {
         pendingDecisionRef.current?.requestId === requestId &&
         selectedTaskIdRef.current === taskId
       ) {
-        setActionError(messageFrom(error));
+        try {
+          const currentTask = await recoverCurrentTaskAfterDecisionProblem(
+            taskClient,
+            taskId,
+            error,
+          );
+          if (currentTask) {
+            setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
+            setTasks((current) => replaceTask(current, taskId, () => currentTask));
+            pendingDecisionRef.current = undefined;
+            setSubmittedDecision(undefined);
+            setSubmittingDecision(false);
+            setActionError(
+              `${messageFrom(error)} The current task and interruption were reloaded. Review the available actions before deciding again.`,
+            );
+          } else {
+            setActionError(messageFrom(error));
+          }
+        } catch (refreshError) {
+          setActionError(
+            `${messageFrom(error)} Deep Work could not reload the current interruption: ${messageFrom(refreshError)}`,
+          );
+        }
       }
     } finally {
       if (
@@ -334,6 +395,68 @@ export function TaskWorkspace() {
         selectedTaskIdRef.current === taskId
       ) {
         setSubmittingDecision(false);
+      }
+    }
+  }
+
+  async function updatePlan(input: PlanUpdateInput): Promise<boolean> {
+    if (!selectedTaskId) {
+      return false;
+    }
+    const taskId = selectedTaskId;
+    setUpdatingPlan(true);
+    setPlanError(undefined);
+    try {
+      const updated = await taskClient.updatePlan(taskId, input);
+      const expectedRunId =
+        detailsByTask[taskId]?.runId ?? tasks.find((task) => task.taskId === taskId)?.runId;
+      if (
+        updated.taskId !== taskId ||
+        updated.interruptId !== input.interruptId ||
+        updated.plan.revision !== input.expectedRevision + 1 ||
+        (expectedRunId !== undefined && updated.runId !== expectedRunId)
+      ) {
+        throw new Error("The plan receipt did not match the selected task, run, and revision.");
+      }
+      if (selectedTaskIdRef.current === taskId) {
+        setDetailsByTask((current) => {
+          const task = current[taskId];
+          return task
+            ? {
+                ...current,
+                [taskId]: { ...task, proposedPlan: updated.plan },
+              }
+            : current;
+        });
+      }
+      return true;
+    } catch (error) {
+      if (selectedTaskIdRef.current === taskId) {
+        try {
+          const currentTask = await recoverCurrentTaskAfterPlanProblem(taskClient, taskId, error);
+          if (currentTask) {
+            if (selectedTaskIdRef.current === taskId) {
+              setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
+              setTasks((current) => replaceTask(current, taskId, () => currentTask));
+              setPlanError(
+                `${messageFrom(error)} The current task, plan revision, and interrupt were reloaded. Review them before trying again.`,
+              );
+            }
+          } else {
+            setPlanError(messageFrom(error));
+          }
+        } catch (refreshError) {
+          if (selectedTaskIdRef.current === taskId) {
+            setPlanError(
+              `${messageFrom(error)} Deep Work could not reload the current task: ${messageFrom(refreshError)}`,
+            );
+          }
+        }
+      }
+      return false;
+    } finally {
+      if (selectedTaskIdRef.current === taskId) {
+        setUpdatingPlan(false);
       }
     }
   }
@@ -369,6 +492,7 @@ export function TaskWorkspace() {
             selected={selected}
             detail={detail}
             events={events}
+            evidence={evidence}
             connectionState={connectionState}
             detailError={detailError}
             streamError={streamError}
@@ -377,6 +501,10 @@ export function TaskWorkspace() {
             submittedDecision={submittedDecision}
             actionError={actionError}
             onDecide={decide}
+            plan={plan}
+            planError={planError}
+            updatingPlan={updatingPlan}
+            onUpdatePlan={updatePlan}
           />
         </div>
       </main>

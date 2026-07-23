@@ -6,6 +6,8 @@ const eventLabels: Record<TaskEvent["name"], string> = {
   "run.started": "Run started",
   "content.delta": "Agent update",
   "plan.proposed": "Plan proposed",
+  "plan.updated": "Plan updated",
+  "evidence.recorded": "Evidence recorded",
   "interrupt.requested": "Approval requested",
   "decision.recorded": "Decision recorded",
   "run.completed": "Run completed",
@@ -23,12 +25,12 @@ function EventBody({ event }: { event: TaskEvent }) {
         ? "Approved"
         : event.data.decision === "reject"
           ? "Rejected"
-          : undefined;
-    const comment = typeof event.data.comment === "string" ? event.data.comment : undefined;
+          : event.data.decision === "respond"
+            ? "Response sent"
+            : undefined;
     return (
       <>
         <p>{decision ? `${decision} by a reviewer.` : "Malformed decision record ignored."}</p>
-        {comment ? <blockquote>{comment}</blockquote> : null}
       </>
     );
   }

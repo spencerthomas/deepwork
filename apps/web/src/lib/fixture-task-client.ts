@@ -1,6 +1,11 @@
 import type {
   CreateTaskResult,
   DecisionInput,
+  DecisionResult,
+  EvidenceRecord,
+  PlanUpdateInput,
+  PlanUpdateResult,
+  ProposedPlan,
   TaskClient,
   TaskDetail,
   TaskEvent,
@@ -8,11 +13,12 @@ import type {
   TaskStatus,
   TaskSummary,
 } from "./task-types";
-import { validateDecisionComment, validatePrompt } from "./task-normalizers";
+import { validateDecisionInput, validatePlanSteps, validatePrompt } from "./task-normalizers";
 
 interface FixtureTask extends TaskDetail {
   events: TaskEvent[];
   interruptId: string;
+  responseNumber: number;
 }
 
 const tasks = new Map<string, FixtureTask>();
@@ -49,12 +55,34 @@ function scheduleRun(task: FixtureTask) {
       },
     ],
     [
+      300,
+      () => {
+        const evidence: EvidenceRecord = {
+          evidenceId: `${task.taskId}:request`,
+          kind: "fixture",
+          summary: "The deterministic local runner inspected the sanitized task request.",
+          source: "deterministic-local-runner",
+          verified: false,
+        };
+        task.evidence = [evidence];
+        emit(task, "evidence.recorded", { ...evidence });
+      },
+    ],
+    [
       420,
-      () =>
+      () => {
+        const plan: ProposedPlan = {
+          revision: 1,
+          title: "Review the proposed local plan",
+          steps: ["Inspect the request", "Execute the bounded work", "Verify the result"],
+          evidenceRefs: [`${task.taskId}:request`],
+        };
+        task.proposedPlan = plan;
         emit(task, "plan.proposed", {
-          summary: "Inspect the request, prepare the work, then verify the result.",
-          steps: ["Inspect", "Execute", "Verify"],
-        }),
+          ...plan,
+          evidenceClass: "fixture",
+        });
+      },
     ],
     [
       680,
@@ -71,7 +99,9 @@ function scheduleRun(task: FixtureTask) {
           interruptId: task.interruptId,
           title: "Approve the proposed action",
           question:
-            "The run is ready to continue. Approve the plan, or reject it with an optional note.",
+            "Review or edit the plan, approve it, reject it, or respond with requested changes.",
+          decisions: ["approve", "reject", "respond"],
+          planRevision: task.proposedPlan?.revision,
         });
       },
     ],
@@ -92,6 +122,8 @@ function publicTask(task: FixtureTask): TaskDetail {
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     result: task.result,
+    proposedPlan: task.proposedPlan,
+    evidence: task.evidence,
   };
 }
 
@@ -128,6 +160,7 @@ export function createFixtureTaskClient(): TaskClient {
         updatedAt: createdAt,
         events: [],
         interruptId: `fixture-interrupt-${sequence}`,
+        responseNumber: 0,
       };
       tasks.set(taskId, task);
       emit(task, "task.created", { taskId, runId, status: "queued" });
@@ -135,8 +168,8 @@ export function createFixtureTaskClient(): TaskClient {
       return { taskId, runId, status: "queued" };
     },
 
-    async decide(taskId: string, input: DecisionInput): Promise<void> {
-      const comment = validateDecisionComment(input.comment);
+    async decide(taskId: string, input: DecisionInput): Promise<DecisionResult> {
+      const decision = validateDecisionInput(input);
       const task = tasks.get(taskId);
       if (!task) {
         throw new Error("The fixture task could not be found.");
@@ -151,8 +184,48 @@ export function createFixtureTaskClient(): TaskClient {
       emit(task, "decision.recorded", {
         interruptId: input.interruptId,
         decision: input.decision,
-        commentProvided: comment !== undefined,
+        commentProvided: decision.comment !== undefined,
+        responseProvided: input.decision === "respond",
       });
+
+      if (input.decision === "respond") {
+        updateStatus(task, "running");
+        globalThis.setTimeout(() => {
+          task.responseNumber += 1;
+          const currentPlan = task.proposedPlan;
+          if (!currentPlan) {
+            throw new Error("The fixture task has no plan to revise.");
+          }
+          const plan: ProposedPlan = {
+            ...currentPlan,
+            revision: currentPlan.revision + 1,
+            title: "Revised local plan",
+          };
+          task.proposedPlan = plan;
+          task.interruptId = `fixture-interrupt-${task.taskId}-${task.responseNumber + 1}`;
+          emit(task, "content.delta", {
+            text: "The local runner recorded the response without exposing its text.",
+            evidenceClass: "fixture",
+          });
+          emit(task, "plan.updated", { ...plan, evidenceClass: "fixture" });
+          updateStatus(task, "waiting-approval");
+          emit(task, "interrupt.requested", {
+            interruptId: task.interruptId,
+            title: "Review the revised plan",
+            question: "The response was applied safely. Review the revised plan before continuing.",
+            decisions: ["approve", "reject", "respond"],
+            planRevision: plan.revision,
+          });
+        }, 300);
+        return {
+          taskId: task.taskId,
+          runId: task.runId ?? "",
+          interruptId: input.interruptId,
+          decision: input.decision,
+          status: "accepted",
+          duplicate: false,
+        };
+      }
 
       globalThis.setTimeout(() => {
         const status = input.decision === "approve" ? "completed" : "rejected";
@@ -167,6 +240,42 @@ export function createFixtureTaskClient(): TaskClient {
           summary: task.result,
         });
       }, 420);
+      return {
+        taskId: task.taskId,
+        runId: task.runId ?? "",
+        interruptId: input.interruptId,
+        decision: input.decision,
+        status: "accepted",
+        duplicate: false,
+      };
+    },
+
+    async updatePlan(taskId: string, input: PlanUpdateInput): Promise<PlanUpdateResult> {
+      const steps = validatePlanSteps(input.steps);
+      const task = tasks.get(taskId);
+      if (!task) {
+        throw new Error("The fixture task could not be found.");
+      }
+      if (task.status !== "waiting-approval" || input.interruptId !== task.interruptId) {
+        throw new Error("The plan edit does not match the active interrupt.");
+      }
+      if (!task.proposedPlan || input.expectedRevision !== task.proposedPlan.revision) {
+        throw new Error("The plan changed. Reload the current revision before editing again.");
+      }
+
+      const plan: ProposedPlan = {
+        ...task.proposedPlan,
+        revision: task.proposedPlan.revision + 1,
+        steps,
+      };
+      task.proposedPlan = plan;
+      emit(task, "plan.updated", { ...plan, evidenceClass: "fixture" });
+      return {
+        taskId: task.taskId,
+        runId: task.runId ?? "",
+        interruptId: task.interruptId,
+        plan,
+      };
     },
 
     subscribe(taskId: string, handlers: TaskEventHandlers): () => void {

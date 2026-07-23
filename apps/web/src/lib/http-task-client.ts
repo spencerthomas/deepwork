@@ -1,14 +1,20 @@
 import {
   normalizeCreateTaskResult,
+  normalizeDecisionResult,
+  normalizePlanUpdateResult,
   normalizeTaskDetail,
   normalizeTaskList,
-  validateDecisionComment,
+  validateDecisionInput,
+  validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
 import { subscribeToTaskEvents } from "./sse";
 import type {
   CreateTaskResult,
   DecisionInput,
+  DecisionResult,
+  PlanUpdateInput,
+  PlanUpdateResult,
   TaskClient,
   TaskDetail,
   TaskEventHandlers,
@@ -16,6 +22,42 @@ import type {
 } from "./task-types";
 
 export const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+const RECOVERABLE_PLAN_PROBLEM_CODES = new Set([
+  "plan_revision_conflict",
+  "interrupt_stale",
+  "interrupt_mismatch",
+]);
+const RECOVERABLE_DECISION_PROBLEM_CODES = new Set([
+  "interrupt_stale",
+  "interrupt_mismatch",
+  "decision_conflict",
+]);
+
+class TaskApiError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = "TaskApiError";
+    this.code = code;
+  }
+}
+
+export function isRecoverablePlanProblem(error: unknown): boolean {
+  return (
+    error instanceof TaskApiError &&
+    error.code !== undefined &&
+    RECOVERABLE_PLAN_PROBLEM_CODES.has(error.code)
+  );
+}
+
+export function isRecoverableDecisionProblem(error: unknown): boolean {
+  return (
+    error instanceof TaskApiError &&
+    error.code !== undefined &&
+    RECOVERABLE_DECISION_PROBLEM_CODES.has(error.code)
+  );
+}
 
 function normalizeBaseUrl(value: string | undefined): string {
   const candidate = value?.trim() || DEFAULT_API_BASE_URL;
@@ -69,6 +111,14 @@ function errorMessage(status: number, body: unknown): string {
   return `The API returned HTTP ${status}.`;
 }
 
+function errorCode(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") {
+    return undefined;
+  }
+  const code = Reflect.get(body, "code");
+  return typeof code === "string" && code.trim() !== "" ? code : undefined;
+}
+
 async function request(url: string, init: RequestInit, expectedStatus: number): Promise<unknown> {
   let response: Response;
   try {
@@ -81,7 +131,7 @@ async function request(url: string, init: RequestInit, expectedStatus: number): 
 
   const body = await readResponseBody(response);
   if (response.status !== expectedStatus) {
-    throw new Error(errorMessage(response.status, body));
+    throw new TaskApiError(errorMessage(response.status, body), errorCode(body));
   }
   return body;
 }
@@ -123,21 +173,64 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
       return normalizeCreateTaskResult(body);
     },
 
-    async decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<void> {
-      const comment = validateDecisionComment(input.comment);
-      await request(
+    async decide(
+      taskId: string,
+      input: DecisionInput,
+      signal?: AbortSignal,
+    ): Promise<DecisionResult> {
+      const decision = validateDecisionInput(input);
+      const body = await request(
         `${taskUrl}/${encodeURIComponent(taskId)}/decisions`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            ...input,
-            ...(comment ? { comment } : {}),
+            ...decision,
+            ...(decision.comment ? { comment: decision.comment } : {}),
           }),
           signal,
         },
         202,
       );
+      const receipt = normalizeDecisionResult(body);
+      if (
+        receipt.taskId !== taskId ||
+        receipt.interruptId !== decision.interruptId ||
+        receipt.decision !== decision.decision
+      ) {
+        throw new Error("The decision receipt did not match the requested task and interrupt.");
+      }
+      return receipt;
+    },
+
+    async updatePlan(
+      taskId: string,
+      input: PlanUpdateInput,
+      signal?: AbortSignal,
+    ): Promise<PlanUpdateResult> {
+      if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1) {
+        throw new Error("The plan revision must be a positive integer.");
+      }
+      const steps = validatePlanSteps(input.steps);
+      const body = await request(
+        `${taskUrl}/${encodeURIComponent(taskId)}/plan`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...input, steps }),
+          signal,
+        },
+        200,
+      );
+      const receipt = normalizePlanUpdateResult(body);
+      if (
+        receipt.taskId !== taskId ||
+        receipt.interruptId !== input.interruptId ||
+        receipt.plan.revision !== input.expectedRevision + 1
+      ) {
+        throw new Error("The plan update receipt did not match the requested task and revision.");
+      }
+      return receipt;
     },
 
     subscribe(taskId: string, handlers: TaskEventHandlers): () => void {

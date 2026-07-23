@@ -3,6 +3,8 @@ export const TASK_EVENT_NAMES = [
   "run.started",
   "content.delta",
   "plan.proposed",
+  "plan.updated",
+  "evidence.recorded",
   "interrupt.requested",
   "decision.recorded",
   "run.completed",
@@ -10,6 +12,8 @@ export const TASK_EVENT_NAMES = [
 
 export const PROMPT_MAX_LENGTH = 8_000;
 export const DECISION_COMMENT_MAX_LENGTH = 1_000;
+export const PLAN_STEP_MAX_LENGTH = 1_000;
+export const PLAN_STEP_MAX_COUNT = 8;
 
 export type TaskEventName = (typeof TASK_EVENT_NAMES)[number];
 
@@ -38,6 +42,9 @@ export interface TaskSummary {
 }
 
 export interface TaskDetail extends TaskSummary {
+  evidence?: EvidenceRecord[];
+  pendingInterrupt?: ActiveInterrupt;
+  proposedPlan?: ProposedPlan;
   result?: string;
 }
 
@@ -55,8 +62,30 @@ export interface TaskEvent {
 
 export interface DecisionInput {
   interruptId: string;
-  decision: "approve" | "reject";
+  decision: "approve" | "reject" | "respond";
   comment?: string;
+}
+
+export interface DecisionResult {
+  decision: DecisionInput["decision"];
+  duplicate: boolean;
+  interruptId: string;
+  runId: string;
+  status: "accepted";
+  taskId: string;
+}
+
+export interface PlanUpdateInput {
+  interruptId: string;
+  expectedRevision: number;
+  steps: string[];
+}
+
+export interface PlanUpdateResult {
+  taskId: string;
+  runId: string;
+  interruptId: string;
+  plan: ProposedPlan;
 }
 
 export interface TaskEventHandlers {
@@ -69,14 +98,36 @@ export interface TaskClient {
   readonly mode: ClientMode;
   readonly apiBaseUrl: string;
   createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult>;
-  decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<void>;
+  decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<DecisionResult>;
   getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail>;
   listTasks(signal?: AbortSignal): Promise<TaskSummary[]>;
   subscribe(taskId: string, handlers: TaskEventHandlers): () => void;
+  updatePlan(
+    taskId: string,
+    input: PlanUpdateInput,
+    signal?: AbortSignal,
+  ): Promise<PlanUpdateResult>;
 }
 
 export interface ActiveInterrupt {
+  decisions: DecisionInput["decision"][];
   interruptId: string;
+  planRevision?: number;
   title: string;
   question: string;
+}
+
+export interface ProposedPlan {
+  evidenceRefs: string[];
+  revision: number;
+  steps: string[];
+  title: string;
+}
+
+export interface EvidenceRecord {
+  evidenceId: string;
+  kind: string;
+  source: string;
+  summary: string;
+  verified: boolean;
 }

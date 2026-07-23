@@ -39,9 +39,10 @@ export function decodeTaskEvent(name: string, id: string, rawData: string): Task
   if (
     name === "decision.recorded" &&
     parsed.decision !== "approve" &&
-    parsed.decision !== "reject"
+    parsed.decision !== "reject" &&
+    parsed.decision !== "respond"
   ) {
-    throw new Error("The decision.recorded event must contain approve or reject.");
+    throw new Error("The decision.recorded event must contain approve, reject, or respond.");
   }
 
   return {

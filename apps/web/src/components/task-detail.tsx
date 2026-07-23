@@ -2,12 +2,17 @@ import type { RefObject } from "react";
 
 import { ApprovalCard } from "./approval-card";
 import { ConnectionState } from "./connection-state";
+import { EvidencePanel } from "./evidence-panel";
+import { PlanReviewCard } from "./plan-review-card";
 import { RunTimeline } from "./run-timeline";
 import { StatusPill } from "./status-pill";
 import type {
   ActiveInterrupt,
   ConnectionState as StreamConnectionState,
   DecisionInput,
+  EvidenceRecord,
+  PlanUpdateInput,
+  ProposedPlan,
   TaskDetail as TaskDetailType,
   TaskEvent,
   TaskSummary,
@@ -22,10 +27,15 @@ interface TaskDetailProps {
   detailRef: RefObject<HTMLElement | null>;
   events: readonly TaskEvent[];
   onDecide: (input: DecisionInput) => Promise<void>;
+  onUpdatePlan: (input: PlanUpdateInput) => Promise<boolean>;
+  plan?: ProposedPlan;
+  planError?: string;
+  evidence: readonly EvidenceRecord[];
   selected?: TaskSummary;
   streamError?: string;
   submittedDecision?: DecisionInput["decision"];
   submittingDecision: boolean;
+  updatingPlan: boolean;
 }
 
 export function TaskDetail({
@@ -36,11 +46,16 @@ export function TaskDetail({
   detailError,
   detailRef,
   events,
+  evidence,
   onDecide,
+  onUpdatePlan,
+  plan,
+  planError,
   selected,
   streamError,
   submittedDecision,
   submittingDecision,
+  updatingPlan,
 }: TaskDetailProps) {
   const task = detail ?? selected;
 
@@ -108,15 +123,16 @@ export function TaskDetail({
         </div>
       ) : null}
 
-      <div className="run-section-heading">
-        <div>
-          <p className="eyebrow">Live activity</p>
-          <h2>Run timeline</h2>
-        </div>
-        <span>{events.length} events</span>
-      </div>
-
-      <RunTimeline events={events} />
+      {plan ? (
+        <PlanReviewCard
+          key={`${activeInterrupt?.interruptId ?? "readonly"}:${plan.revision}`}
+          plan={plan}
+          activeInterrupt={activeInterrupt}
+          saving={updatingPlan}
+          error={planError}
+          onUpdate={onUpdatePlan}
+        />
+      ) : null}
 
       {activeInterrupt && !terminal ? (
         <ApprovalCard
@@ -128,6 +144,18 @@ export function TaskDetail({
           error={actionError}
         />
       ) : null}
+
+      <div className="run-section-heading">
+        <div>
+          <p className="eyebrow">Live activity</p>
+          <h2>Run timeline</h2>
+        </div>
+        <span>{events.length} events</span>
+      </div>
+
+      <RunTimeline events={events} />
+
+      <EvidencePanel evidence={evidence} />
 
       {terminal ? (
         <div className={`terminal-card terminal-${task.status}`} role="status" aria-live="polite">

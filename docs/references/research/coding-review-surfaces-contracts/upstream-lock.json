@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-07-23",
+  "dependencies": [
+    {
+      "packet_id": "DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH",
+      "observed_commit": "5a518c40fb44b5d64b8eb36f618c8ecd58bad188",
+      "packet_sha256": "1be58ef83f6fbc9f903099b4c57ae3f856b37741a3b28372e9b88f943be2f232",
+      "review_verdict": "missing",
+      "consumable": false,
+      "required_outputs": {
+        "matrix_hash": null,
+        "scope_hash": null,
+        "versions_hash": null,
+        "fixture_manifest_hash": null,
+        "reviewed_commit": null
+      },
+      "consumed_rows": [],
+      "blocker": "The observed branch contains only the dispatch packet; no independently reviewed sandbox outputs exist."
+    },
+    {
+      "packet_id": "DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH",
+      "observed_commit": "cb8c6eebcb01f4974709c3851119499c27818335",
+      "packet_sha256": "967a616d889080869d4669d1a5f7c99bbd1a854ae8078fca56e54670ed8a4027",
+      "review_verdict": "missing",
+      "consumable": false,
+      "required_outputs": {
+        "matrix_hash": null,
+        "scope_hash": null,
+        "versions_hash": null,
+        "fixture_manifest_hash": null,
+        "mutation_ledger_hash": null,
+        "reviewed_commit": null
+      },
+      "consumed_rows": [],
+      "blocker": "The observed branch contains only the dispatch packet; no independently reviewed GitHub outputs exist."
+    }
+  ],
+  "current_read_grant": {
+    "present": false,
+    "grant_hash": null,
+    "expires_at": null
+  },
+  "current_terminal_grant": {
+    "present": false,
+    "grant_hash": null,
+    "expires_at": null
+  },
+  "live_profile_allowed": false,
+  "lock_hash": "7f71e0a4196a895618d00c070f90366b9e81b086884919cf68f46626bbd7dfdb"
+}

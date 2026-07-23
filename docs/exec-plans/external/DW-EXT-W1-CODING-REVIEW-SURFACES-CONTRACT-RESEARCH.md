@@ -427,3 +427,66 @@ application/runtime/UI code, capability manifest, program/index, or release stat
 No worktree creation outside the assigned branch, push, merge, deployment,
 publication, production mutation, credential collection, or self-approval is
 authorized.
+
+## Progress
+
+- [x] 2026-07-23 16:20 AEST — Verified the assigned worktree, named branch,
+      exact seed, exact base ancestry, clean initial state, root/scoped
+      instructions, and checkout-local authorities.
+- [x] 2026-07-23 16:31 AEST — Inspected both dependency branches read-only and
+      froze exact seed commits and dispatch-packet hashes in `upstream-lock.json`.
+- [x] 2026-07-23 16:45 AEST — Completed the isolated dependency-free uv package,
+      schemas, deterministic adapters, negative corpus, exact fake diff,
+      immutable scope, matrix, inventory, scrubber, and scope validator.
+- [x] 2026-07-23 16:47 AEST — Offline unit suite passed: 34 passed and 2
+      opt-in live tests deselected. Matrix, exact diff, scrub, and scope
+      validators passed.
+- [ ] 2026-07-23 16:49 AEST — Independent runtime-contract, security, and product
+      reviews plus final clean-commit validation remain.
+
+## Surprises and discoveries
+
+- 2026-07-23 16:31 AEST — Observation: the sandbox dependency branch is clean at
+  `5a518c40fb44b5d64b8eb36f618c8ecd58bad188` and contains only its dispatch
+  packet; the GitHub dependency branch is clean at
+  `cb8c6eebcb01f4974709c3851119499c27818335` and likewise contains only its
+  dispatch packet. Consequence: both are recorded as non-consumable with missing
+  reviewed hashes and every dependent live row stays blocked.
+- 2026-07-23 16:35 AEST — Observation: no current read-only grant or separate
+  terminal grant exists in the assigned checkout or dispatch. Consequence: no
+  live file, GitHub, terminal, service-URL, or browser read was attempted.
+- 2026-07-23 16:46 AEST — Observation: the managed sandbox initially denied uv's
+  existing cache path. Consequence: the same exact uv commands were rerun with
+  approved cache access; no package-index dependency was introduced.
+
+## Decision log
+
+- 2026-07-23 16:32 AEST — Decision: freeze the assigned base/seed pair only as
+  checkout-validation metadata, never as accepted sandbox or GitHub authority.
+  Rationale: a local Git pair cannot replace the missing reviewed upstream
+  contracts. Consequence: live file/diff capabilities remain `none`.
+- 2026-07-23 16:38 AEST — Decision: use a dependency-free PEP 517 package and
+  delegate only to the pinned workspace `pytest 9.0.2`, while denying network in
+  every offline test. Rationale: this produces a frozen isolated probe without
+  claiming an installed provider SDK contract. Consequence: installed public
+  distributions remain empty in `versions.json`.
+- 2026-07-23 16:44 AEST — Decision: model transcript plus
+  `discrete_reviewed` as deterministic schema evidence but accept
+  `terminal: none`, `commandInput: none` for this packet. Rationale: no provider
+  command/session evidence or terminal grant exists. Consequence: no PTY,
+  keystroke, resize, shell prompt, or live-terminal claim is retained.
+- 2026-07-23 16:45 AEST — Decision: accept `browser: none` only. Rationale:
+  browser control is unauthorized and neither verified evidence nor an
+  authorized expiring service binding exists. Consequence: the corpus retains no
+  placeholder screenshot or model-authored timeline; ordinary destinations stay
+  external links.
+
+## Outcomes and retrospective
+
+The packet has produced the requested deterministic offline research corpus and
+fail-closed live profiles without modifying application code, shared authorities,
+upstream outputs, CI, external repositories, or runtime services. All three
+spikes remain `blocked-live-evidence`; the corpus supports only the bounded
+contract evidence described for `AC-DW-CODE-003-01..05` and contributes zero E2E
+credit. Final independent review, finding resolution, exact commit proof, and
+clean handoff SHA are completed in the remaining steps.

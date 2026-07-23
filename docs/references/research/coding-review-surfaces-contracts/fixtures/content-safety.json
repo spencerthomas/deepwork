@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "limits": {
+    "decode_bytes": 1048576,
+    "image_pixels": 16000000,
+    "pdf_pages": 200,
+    "decompressed_bytes": 8388608,
+    "parse_milliseconds": 2000
+  },
+  "cases": [
+    {"id": "mime-mismatch", "representation": "digest-only", "expected": "metadata-only"},
+    {"id": "polyglot", "representation": "digest-only", "expected": "metadata-only"},
+    {"id": "active-html", "representation": "escaped-description-only", "expected": "no-inline-render"},
+    {"id": "active-svg", "representation": "escaped-description-only", "expected": "no-inline-render"},
+    {"id": "malformed-pdf", "representation": "digest-only", "expected": "parse-failed"},
+    {"id": "malformed-image", "representation": "digest-only", "expected": "parse-failed"},
+    {"id": "decompression-amplification", "representation": "metadata-only", "expected": "limit-before-decode"},
+    {"id": "oversized-dimensions", "representation": "metadata-only", "expected": "limit-before-parse"}
+  ]
+}

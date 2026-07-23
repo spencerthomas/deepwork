@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeCommandTranscriptSession",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant_ref", "task_ref", "sandbox_ref", "session_ref", "terminal", "command_input", "events", "expiry", "audit_ref"],
+  "properties": {
+    "tenant_ref": {"type": "string"},
+    "task_ref": {"type": "string"},
+    "sandbox_ref": {"type": "string"},
+    "session_ref": {"type": "string"},
+    "terminal": {"enum": ["interactive", "transcript", "none"]},
+    "command_input": {"enum": ["pty", "discrete_reviewed", "none"]},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sequence", "stream", "text"],
+        "properties": {
+          "sequence": {"type": "integer", "minimum": 0},
+          "stream": {"enum": ["stdout", "stderr", "system"]},
+          "text": {"type": "string"}
+        }
+      }
+    },
+    "expiry": {"type": "string"},
+    "audit_ref": {"type": "string"}
+  }
+}

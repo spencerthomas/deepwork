@@ -1,0 +1,17 @@
+{
+  "files_scanned": 22,
+  "finding_counts": {
+    "active_content": 0,
+    "control_character": 0,
+    "credential": 0,
+    "credential_reference_value": 0,
+    "host_path": 0,
+    "reusable_signed_url": 0,
+    "root_escape": 0,
+    "symlink": 0
+  },
+  "findings": [],
+  "passed": true,
+  "root": ".",
+  "schema_version": "1.0"
+}

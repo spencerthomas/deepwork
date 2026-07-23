@@ -1,0 +1,41 @@
+{
+  "installed_public_distributions": {},
+  "interpreter": {
+    "executable_class": "isolated-uv-environment",
+    "implementation": "CPython",
+    "version": "3.12.11"
+  },
+  "inventory_hash": "6e66a337be981de738bffd75ee20bb4cb270cd033a394c0d23c27550c1751d87",
+  "network_policy": "offline tests deny network; no live profile was run",
+  "observed_at": "2026-07-23",
+  "probe_package": "deepwork-coding-review-surface-spikes==0.1.0",
+  "provider": {
+    "account_tier": null,
+    "auth_class": "none",
+    "github_api_version": null,
+    "region": null,
+    "sandbox_version": null
+  },
+  "python_hexversion": 51121136,
+  "schema_version": "1.0",
+  "source_pins": {
+    "SRC-DA": "7794b61a6e76230e8c7a49bdce808b3728305914",
+    "SRC-LC": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+    "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+  },
+  "tools": {
+    "git": "git version 2.45.2",
+    "pytest_runner": "pytest 9.0.2",
+    "uv": "uv 0.11.8 (Homebrew 2026-04-27 aarch64-apple-darwin)"
+  },
+  "upstream_packets": {
+    "github": {
+      "observed_commit": "cb8c6eebcb01f4974709c3851119499c27818335",
+      "reviewed_output": "missing"
+    },
+    "sandbox": {
+      "observed_commit": "5a518c40fb44b5d64b8eb36f618c8ecd58bad188",
+      "reviewed_output": "missing"
+    }
+  }
+}

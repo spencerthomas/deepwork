@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "repository_binding": "synthetic-repository",
+  "authority": "deterministic-fake",
+  "base_sha": "1111111111111111111111111111111111111111",
+  "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "merge_base_sha": "1111111111111111111111111111111111111111",
+  "merge_base_assumption": "base-is-ancestor",
+  "patch_sha256": "130305b3d4920a53b73b6ca5ac4461f9b7769218b5483d85dac5c0070d49bc2b",
+  "files": [
+    {
+      "path": "docs/new-name.txt",
+      "previous_path": "docs/old-name.txt",
+      "status": "renamed",
+      "additions": 0,
+      "deletions": 0,
+      "binary": false,
+      "hunks": [],
+      "old_checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "new_checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "path": "fixtures/blob.bin",
+      "previous_path": null,
+      "status": "added",
+      "additions": null,
+      "deletions": null,
+      "binary": true,
+      "hunks": [],
+      "old_checksum": null,
+      "new_checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "path": "src/removed.txt",
+      "previous_path": null,
+      "status": "deleted",
+      "additions": 0,
+      "deletions": 1,
+      "binary": false,
+      "hunks": [
+        {
+          "header": "@@ -1 +0,0 @@",
+          "old_start": 1,
+          "old_lines": 1,
+          "new_start": 0,
+          "new_lines": 0,
+          "no_newline_old": true,
+          "lines": [{"kind": "deletion", "text": "removed without final newline"}]
+        }
+      ],
+      "old_checksum": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "new_checksum": null
+    },
+    {
+      "path": "src/review.py",
+      "previous_path": null,
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "binary": false,
+      "hunks": [
+        {
+          "header": "@@ -1,2 +1,3 @@",
+          "old_start": 1,
+          "old_lines": 2,
+          "new_start": 1,
+          "new_lines": 3,
+          "no_newline_old": false,
+          "lines": [
+            {"kind": "context", "text": "def result():"},
+            {"kind": "deletion", "text": "    return \"old\""},
+            {"kind": "addition", "text": "    value = \"new\""},
+            {"kind": "addition", "text": "    return value"}
+          ]
+        }
+      ],
+      "old_checksum": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "new_checksum": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "unsupported_statuses": ["copied", "type-change", "submodule"],
+  "large_diff": {
+    "summary_first": true,
+    "hunk_limit": 2000,
+    "overflow": "authorized-patch-download-only"
+  },
+  "document_sha256": "92c29255073e1b4e19f32242873a6e5b7d7fa97aff58dc56ec3a966daaad6655"
+}

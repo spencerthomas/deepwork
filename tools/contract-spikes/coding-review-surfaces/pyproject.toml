@@ -1,0 +1,35 @@
+[project]
+name = "deepwork-coding-review-surface-spikes"
+version = "0.1.0"
+description = "Offline contract probes for exact files, diffs, terminal, and browser review surfaces"
+requires-python = ">=3.11,<3.15"
+dependencies = ["pytest==9.0.2"]
+
+[tool.uv]
+package = true
+
+[tool.deepwork.contract-pins]
+python-minimum = "3.11"
+uv = "0.11.8"
+git = "system-read-only"
+pytest = "9.0.2"
+langsmith-docs = "7b9215d708e0b57e6fbae7b5d0762c4118b8e309"
+deepagents = "7794b61a6e76230e8c7a49bdce808b3728305914"
+langgraph = "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "live_contract: opt-in read-only tests requiring accepted upstream evidence and an exact current read grant",
+  "terminal_live_contract: opt-in bounded synthetic terminal tests requiring a separate terminal grant",
+]
+
+[project.scripts]
+pytest = "coding_review_surface_spikes.pytest_runner:main"
+
+[build-system]
+requires = []
+build-backend = "build_backend"
+backend-path = ["."]

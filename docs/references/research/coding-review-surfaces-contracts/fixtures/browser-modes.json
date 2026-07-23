@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "evidence": {
+    "mode": "none",
+    "reason": "no accepted session, screenshot provenance, actor, capture time, or current authority"
+  },
+  "service_url": {
+    "mode": "none",
+    "reason": "no accepted provider binding, audience, allowed origin, grant, expiry, or revocation proof"
+  },
+  "external_link": {
+    "kind": "external_link",
+    "label": "Open external link",
+    "browser_capability": "none",
+    "auto_open": false
+  },
+  "replay_cases": [
+    {"id": "expired", "expected": "denied"},
+    {"id": "wrong-actor", "expected": "denied"},
+    {"id": "wrong-task", "expected": "denied"},
+    {"id": "wrong-sandbox", "expected": "denied"},
+    {"id": "redirect-origin-change", "expected": "denied"},
+    {"id": "permission-revoked", "expected": "denied"}
+  ],
+  "placeholder_screenshot": null,
+  "model_authored_timeline": null
+}

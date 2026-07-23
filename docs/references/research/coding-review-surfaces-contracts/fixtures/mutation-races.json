@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "file_read": {
+    "path": "README.txt",
+    "metadata_version": "version-a",
+    "content_version": "version-b",
+    "expected": "stale-no-bytes-combined"
+  },
+  "diff_anchor": {
+    "base_sha": "1111111111111111111111111111111111111111",
+    "reviewed_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "current_head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expected": "mutation-blocked-remap-required"
+  },
+  "sandbox_expiry": {
+    "mutable_files": "unavailable",
+    "immutable_commit_evidence": "separately-authorized-only",
+    "expected": "never-merge-authorities"
+  }
+}

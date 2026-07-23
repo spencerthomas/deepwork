@@ -47,9 +47,9 @@ Documentation sources are still edited directly, then regenerated:
 python3 tools/docs/generate.py --write  # only after changing a source
 ```
 
-`make test-e2e-demo` is declared but not yet implemented; it reports the gap and
-fails rather than inventing a passing substitute (see DEBT-002). Report any other
-missing command the same way; do not fake it.
+`make test-e2e-demo` starts the reviewed credential-free stack and exercises the
+API-backed browser task journey. Report any missing command rather than inventing
+a passing substitute.
 
 ## Evidence precedence
 

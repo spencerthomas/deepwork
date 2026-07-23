@@ -145,6 +145,7 @@ def main() -> int:
                 str(node),
                 str(NEXT_EXECUTABLE),
                 "dev",
+                "--webpack",
                 "--hostname",
                 "127.0.0.1",
                 "--port",

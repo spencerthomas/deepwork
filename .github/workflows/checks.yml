@@ -42,6 +42,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
+          # pnpm is provided by corepack in the next step, so it is not on PATH
+          # yet; disable setup-node@v5's default package-manager cache probe,
+          # which would otherwise fail trying to run pnpm here.
+          package-manager-cache: false
 
       - name: Enable pnpm via corepack
         run: corepack enable

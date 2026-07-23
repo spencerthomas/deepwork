@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { runtimeDisclosure } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
 import { cn } from "@/lib/utils";
 
@@ -56,11 +57,7 @@ function RuntimeBanner() {
   const fixture = taskClient.mode === "fixture";
   return (
     <div className="flex min-h-10 items-center justify-center gap-2 bg-brand px-4 text-center text-[13px] text-brand-foreground">
-      <span className="font-medium">
-        {fixture
-          ? "Demo fixture mode — deterministic local data, no external providers."
-          : "Local runtime — tasks run in the embedded deterministic runner. External providers are unavailable."}
-      </span>
+      <span className="font-medium">{runtimeDisclosure(taskClient.mode)}</span>
       <span
         className="hidden rounded-md bg-white/15 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
         title={taskClient.apiBaseUrl}
@@ -87,6 +84,13 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background">
       <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
+
+      <a
+        href="#main-content"
+        className="fixed left-4 top-4 z-50 -translate-y-20 rounded-lg bg-background px-3 py-2 text-sm font-medium text-foreground shadow-lg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
 
       <RuntimeBanner />
 
@@ -137,7 +141,10 @@ export function AppShell({
           </Link>
         </div>
 
-        <nav className="mx-auto flex h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6">
+        <nav
+          aria-label="Primary navigation"
+          className="mx-auto flex h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6"
+        >
           {tabs.map((tab) => {
             const isActive = active === tab.label;
             return (
@@ -170,7 +177,9 @@ export function AppShell({
           </aside>
         )}
 
-        <main className="min-w-0 flex-1 py-8 lg:pl-2">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 py-8 lg:pl-2">
+          {children}
+        </main>
 
         {rail && (
           <aside className="hidden w-72 shrink-0 py-8 pl-8 xl:block">

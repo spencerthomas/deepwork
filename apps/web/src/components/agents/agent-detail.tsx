@@ -8,6 +8,7 @@ import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
+import { agentRuntimeCopy } from "@/lib/agent-cards";
 import { PLAN_STEP_MAX_COUNT, PLAN_STEP_MAX_LENGTH } from "@/lib/task-types";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
@@ -22,25 +23,27 @@ type TabKey = (typeof panelTabs)[number]["key"];
 
 const DECISION_VERBS = ["approve", "reject", "respond"] as const;
 
-const behaviorContract = [
-  {
-    title: "Creates a plan",
-    detail: `Proposes up to ${PLAN_STEP_MAX_COUNT} steps of at most ${PLAN_STEP_MAX_LENGTH.toLocaleString("en-US")} characters each. The plan stays editable until it is approved.`,
-  },
-  {
-    title: "Waits for approval",
-    detail: "Every run pauses at an interrupt. Nothing executes until a reviewer decides.",
-  },
-  {
-    title: "Executes deterministically",
-    detail:
-      "Work runs in the credential-free local runner embedded in the API process. No external providers or models are involved.",
-  },
-  {
-    title: "Records evidence",
-    detail: "Each run produces an evidence-backed brief tied to the recorded events.",
-  },
-];
+function behaviorContract(mode: "api" | "fixture") {
+  const runtimeCopy = agentRuntimeCopy(mode);
+  return [
+    {
+      title: "Creates a plan",
+      detail: `Proposes up to ${PLAN_STEP_MAX_COUNT} steps of at most ${PLAN_STEP_MAX_LENGTH.toLocaleString("en-US")} characters each. The plan stays editable until it is approved.`,
+    },
+    {
+      title: "Waits for approval",
+      detail: "Every run pauses at an interrupt. Nothing executes until a reviewer decides.",
+    },
+    {
+      title: runtimeCopy.executionTitle,
+      detail: runtimeCopy.executionDetail,
+    },
+    {
+      title: "Records evidence",
+      detail: "Each run produces an evidence-backed brief tied to the recorded events.",
+    },
+  ];
+}
 
 function CapabilitiesPanel() {
   const { status, loading } = useDemoStatus();
@@ -125,6 +128,7 @@ function RecentTasksPanel() {
 export function AgentDetail() {
   const [tab, setTab] = useState<TabKey>("capabilities");
   const { mode, apiBaseUrl } = useTasksStore();
+  const runtimeCopy = agentRuntimeCopy(mode);
 
   const sidebar = (
     <div className="flex flex-col gap-1">
@@ -155,7 +159,7 @@ export function AgentDetail() {
         </span>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">Agent</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Local deterministic runner</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{runtimeCopy.name}</h1>
         </div>
       </div>
 
@@ -164,12 +168,10 @@ export function AgentDetail() {
         <div className="flex flex-col rounded-2xl border border-border bg-card lg:min-h-[32rem]">
           <div className="border-b border-border px-4 py-2.5">
             <p className="text-[13px] font-medium text-crisp">About this agent</p>
-            <p className="text-[11px] text-muted-foreground">
-              The behavior contract of the embedded runner. It is fixed, not configurable.
-            </p>
+            <p className="text-[11px] text-muted-foreground">{runtimeCopy.contractDescription}</p>
           </div>
           <ol className="flex-1 space-y-4 overflow-auto p-4">
-            {behaviorContract.map((step, index) => (
+            {behaviorContract(mode).map((step, index) => (
               <li key={step.title} className="flex gap-3">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-[12px] font-medium text-brand">
                   {index + 1}
@@ -203,7 +205,7 @@ export function AgentDetail() {
           </ol>
           <div className="border-t border-border px-4 py-2.5">
             <span className="font-mono text-[11px] text-muted-foreground">
-              read-only contract · runs embedded in the local API
+              {runtimeCopy.contractFooter}
             </span>
           </div>
         </div>

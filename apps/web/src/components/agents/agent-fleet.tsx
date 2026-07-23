@@ -7,7 +7,12 @@ import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
-import { activeAgentCount, type AgentCardModel, deriveAgentCards } from "@/lib/agent-cards";
+import {
+  activeAgentCount,
+  agentRuntimeCopy,
+  type AgentCardModel,
+  deriveAgentCards,
+} from "@/lib/agent-cards";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
@@ -38,10 +43,11 @@ function CardStateIndicator({ card }: { card: AgentCardModel }) {
 }
 
 export function AgentFleet() {
-  const { tasks, loadingTasks } = useTasksStore();
+  const { mode, tasks, loadingTasks } = useTasksStore();
   const { status, loading: statusLoading } = useDemoStatus();
 
-  const cards = deriveAgentCards(status);
+  const runtimeCopy = agentRuntimeCopy(mode);
+  const cards = deriveAgentCards(status, mode);
   const activeCount = activeAgentCount(cards);
   const availableCapabilities =
     status?.capabilities.filter((capability) => capability.state === "available") ?? [];
@@ -53,19 +59,15 @@ export function AgentFleet() {
       <SidebarItem icon={Bot} label="Active" count={activeCount} />
       <div className="my-3 h-px bg-border" />
       <p className="px-3 text-[12px] leading-relaxed text-muted-foreground">
-        Templates and an org library are coming with the packaged agent. Nothing else runs here
-        today.
+        Templates and an org library are coming with the packaged agent. No additional runner
+        configuration is exposed to this browser.
       </p>
     </nav>
   );
 
   return (
     <AppShell active="Agents" sidebar={sidebar}>
-      <PageHeader
-        eyebrow="Fleet"
-        title="Agents"
-        description="The agents this workspace can actually run. The local deterministic runner is embedded in the API; external deployments stay gated until they are explicitly configured and reviewed."
-      />
+      <PageHeader eyebrow="Fleet" title="Agents" description={runtimeCopy.fleetDescription} />
 
       {!statusLoading && status === undefined && (
         <p className="mb-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
@@ -80,7 +82,7 @@ export function AgentFleet() {
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Local deterministic runner — the only agent that actually runs. */}
+        {/* The current task runner, labeled only from browser-known evidence. */}
         <div className="group flex flex-col rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand/40">
           <div className="flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">

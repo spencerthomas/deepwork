@@ -15,6 +15,11 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 - [Feature ExecPlan template](templates/feature.md)
 - [Technical debt tracker](tech-debt-tracker.md)
 
+## External dispatch packets
+
+- [Worktree isolation and architecture harness](external/DW-EXT-W1-WORKTREE-ARCH-HARNESS.md)
+- [LangChain contract-spike research](external/DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH.md)
+
 Symphony is not active. A maintainer manually creates one worktree per reviewed
 ExecPlan and keeps external credentials and provider integration out unless the
 plan explicitly authorizes them.

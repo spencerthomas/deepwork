@@ -1,7 +1,7 @@
 ---
 exec_plan_id: DW-EXEC-M1-API-SCAFFOLD
 title: Wave 1 independently installable fixture-only API scaffold
-status: reviewed
+status: completed
 superseded_by: null
 owner: api
 reviewed_by: [ts-package-reviewer]
@@ -12,9 +12,9 @@ issue: local:DW-M1-API-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
-last_verified_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
+last_verified_commit: 3fbdb01be06152cc39e50f6378dfb625daed8998
 risk: medium
-governed_paths: [apps/api/**, docs/exec-plans/active/DW-EXEC-M1-API-SCAFFOLD.md]
+governed_paths: [apps/api/**, docs/exec-plans/completed/DW-EXEC-M1-API-SCAFFOLD.md]
 contract_gates: [SPIKE-AUTH-002, SPIKE-SOURCE-001, SPIKE-STREAM-001]
 decision_gates: [DEC-002, DEC-023, DEC-026, DEC-031, DEC-033, DEC-035]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/SECURITY.md]
 scenario_ids: [AC-DW-FND-001-01, AC-DW-FND-001-03, AC-DW-FND-001-07, AC-DW-FND-003-05, AC-DW-FND-003-08]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: []
 blockers: []
@@ -266,11 +266,13 @@ Acceptance:
   dependencies, implicit uv network eligibility outside bootstrap, and incomplete
   installed-launcher/artifact proof. The three findings are addressed by a lazy
   public factory wrapper, enforced offline commands with cold-state failure, and
-  exact installed-wheel launcher/content/process checks. Fresh re-review remains
-  pending.
+  exact installed-wheel launcher/content/process checks.
+- [x] 2026-07-23 AEST — Fresh independent re-review accepted all three repairs,
+  the complete offline validation, truthful sandbox `EPERM` qualification, and
+  the governed integrated commit `3fbdb01be06152cc39e50f6378dfb625daed8998`.
 
-Implementation is complete and stopped at the required independent-review handoff.
-This author has not approved the implementation or changed review metadata.
+Implementation is complete and independently accepted. The coordinator integrated
+the exact reviewed lineage without broadening its governed paths.
 
 ## Surprises & Discoveries
 
@@ -574,6 +576,6 @@ limitation is explicit and no server-running claim is made.
 `SPIKE-AUTH-002`, `SPIKE-SOURCE-001`, and `SPIKE-STREAM-001` remain open with the
 reviewed unavailable fallbacks intact. Durable application state, auth, sources,
 outbox/jobs, object storage, streaming, generated clients, web composition, and
-full scenario evidence remain deferred. Fresh independent review and coordinator
-integration are pending; this implementation does not claim full `DW-FND-003`, a
-release scenario, deployment, or production readiness.
+full scenario evidence remain deferred. Independent re-review accepted this
+bounded cell; it does not claim full `DW-FND-003`, a release scenario, deployment,
+or production readiness.

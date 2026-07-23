@@ -8,3 +8,5 @@ execution evidence; do not rewrite it into a product specification.
   Node/pnpm/Turbo/tool declarations and strict shared compiler profiles.
 - [Wave 1 independent Python agent package scaffold](DW-EXEC-M1-AGENT-SCAFFOLD.md)
   — typed, independently locked package boundary with immutable artifact proof.
+- [Wave 1 independently installable fixture-only API scaffold](DW-EXEC-M1-API-SCAFFOLD.md)
+  — offline-verified FastAPI and worker package with fixture-only behavior.

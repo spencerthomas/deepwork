@@ -47,6 +47,20 @@ function statusDot(status: TaskStatus): string {
   return "bg-status-neutral";
 }
 
+export function TaskThreadMarker({ label, detail }: { label: string; detail?: string }) {
+  return (
+    <div className="ml-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground sm:flex-nowrap">
+      <span className="size-1.5 shrink-0 rounded-full bg-border" aria-hidden />
+      <span className="min-w-0 sm:shrink-0">{label}</span>
+      {detail && (
+        <span className="basis-full break-words pl-3.5 opacity-70 sm:min-w-0 sm:flex-1 sm:truncate sm:pl-0">
+          · {detail}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function TaskDetailView({ taskId }: { taskId: string }) {
   const store = useActiveTask(taskId);
   const {
@@ -283,16 +297,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                   );
                 }
                 if (item.kind === "marker") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="ml-10 flex items-center gap-2 text-[13px] text-muted-foreground"
-                    >
-                      <span className="size-1.5 rounded-full bg-border" aria-hidden />
-                      <span>{item.label}</span>
-                      {item.detail && <span className="truncate opacity-70">· {item.detail}</span>}
-                    </div>
-                  );
+                  return <TaskThreadMarker key={item.id} label={item.label} detail={item.detail} />;
                 }
                 return null;
               })}

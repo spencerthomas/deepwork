@@ -1,29 +1,104 @@
 {
   "schema_version": "1.0",
-  "review_status": "pending-independent-review",
-  "reviewed_commit": null,
+  "review_status": "round-1-findings-resolved-pending-fresh-review",
+  "reviewed_commit": "ee3bcd851d6decb94da875ad5ecefb4fcccd4250",
   "reviewed_scope_sha256": "3b52de1224cdd46183ed35a3be2e9410b3f3985a921bc94be652ffed1f07ff6e",
   "reviews": [
     {
       "role": "runtime-contract",
-      "reviewer": null,
-      "verdict": "pending",
-      "findings": []
+      "reviewer": "independent-runtime-contract-reviewer",
+      "verdict": "changes-required",
+      "findings": [
+        "RUNTIME-001",
+        "VALIDATION-005",
+        "EVIDENCE-007"
+      ]
     },
     {
       "role": "security",
-      "reviewer": null,
-      "verdict": "pending",
-      "findings": []
+      "reviewer": "independent-security-reviewer",
+      "verdict": "changes-required",
+      "findings": [
+        "RUNTIME-001",
+        "SECURITY-002",
+        "RUNTIME-003",
+        "VALIDATION-005",
+        "SCRUB-008",
+        "EXPIRY-009"
+      ]
     },
     {
       "role": "product",
-      "reviewer": null,
-      "verdict": "pending",
-      "findings": []
+      "reviewer": "independent-product-reviewer",
+      "verdict": "changes-required",
+      "findings": [
+        "FIXTURE-004",
+        "IDEMPOTENCY-006"
+      ]
     }
   ],
-  "finding_resolutions": [],
+  "finding_resolutions": [
+    {
+      "id": "RUNTIME-001",
+      "severity": "high",
+      "resolution": "Transfer verifies intent object, actor, workspace, and task against the supplied attachment; cross-object and cross-workspace substitutions are regression-tested.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "SECURITY-002",
+      "severity": "high",
+      "resolution": "The fake object store enforces per-workspace/task count and duplicate-hash policy during creation.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "RUNTIME-003",
+      "severity": "high",
+      "resolution": "Transfer intent and receipt enforce an explicit representation capability set and reject unrecognized or Fleet-like values.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "FIXTURE-004",
+      "severity": "high",
+      "resolution": "Accepted fixture operations are now an explicit allowlist backed by executable count, duplicate, capability, orphan, source unavailable/error, retry, and recovery behavior.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "VALIDATION-005",
+      "severity": "high",
+      "resolution": "The validator derives each expected row and rejects any semantic field mismatch, including versions, expected conclusion, transitions, schemas, authorization, and integrity.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "IDEMPOTENCY-006",
+      "severity": "medium",
+      "resolution": "Transfer intents bind an idempotency key, return the original intent for identical replay, and reject changed-payload reuse.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "EVIDENCE-007",
+      "severity": "medium",
+      "resolution": "The LangGraph SDK observation is classified as pinned-reference rather than installed-public.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "SCRUB-008",
+      "severity": "medium",
+      "resolution": "The scrubber scans its retained report and separately detects authRef, customer/tenant identifiers, email, public IP, credential, endpoint, header, binary, and absolute-path categories.",
+      "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "EXPIRY-009",
+      "severity": "low",
+      "resolution": "A transfer is stale at, not only after, the expiry instant and the exact boundary is tested.",
+      "status": "resolved-pending-fresh-review"
+    }
+  ],
+  "fresh_review": {
+    "candidate_commit": null,
+    "runtime_contract": "pending",
+    "security": "pending",
+    "product": "pending"
+  },
   "per_conclusion_disposition": {
     "accepted-fixture-only": "pending",
     "blocked-live-evidence": "pending",

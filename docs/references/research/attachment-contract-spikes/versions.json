@@ -21,7 +21,7 @@
   "fixture_sha256": {
     "expected-transitions.json": "d6a2c30869718f93d73e2935e725afef92d3eff704b92579e3db525b19e2f481",
     "media-fixtures.json": "e3ebe90118fe8b67e2adee566d417154661274875b82b28c2ff1de49590a4d13",
-    "public-observations.json": "b0167a01044f8662a7d8f5869459460c408f30c134b9a96b598ccf0d1dd257e7"
+    "public-observations.json": "025c095144f8dc7263ff52eaf8ec5ed0ef9b6ca7e00b72adea555715c8e56851"
   },
   "live_dependencies": {
     "account_tier": "unknown",

@@ -32,6 +32,34 @@ HOSTED_OBJECT_OR_SCANNER = {
     "scan-unavailable",
     "retention-expiry",
 }
+FIXTURE_ENFORCED = {
+    "preflight-accept",
+    "preflight-reject-count",
+    "preflight-reject-declared-type",
+    "preflight-reject-size",
+    "preflight-reject-empty",
+    "preflight-reject-unsafe-filename",
+    "preflight-reject-traversal-name",
+    "preflight-reject-duplicate",
+    "preflight-reject-hash-mismatch",
+    "preflight-reject-unsupported-media",
+    "detected-type-mismatch",
+    "transfer-reject-stale-grant",
+    "transfer-reject-wrong-actor",
+    "transfer-reject-wrong-workspace",
+    "transfer-reject-wrong-task",
+    "transfer-reject-wrong-destination",
+    "transfer-reject-replay",
+    "transfer-reject-redirect",
+    "transfer-reject-range-partial",
+    "transfer-reject-capability-mismatch",
+    "remove-before-transfer",
+    "orphan-cleanup",
+    "retry",
+    "restart-recovery",
+    "source-unavailable",
+    "unavailable-or-error",
+}
 FIXTURE_BYTES = {
     "bounded-text-file": b"Synthetic bounded text attachment.\n",
     "image": b"\x89PNG\r\n\x1a\n",
@@ -95,7 +123,13 @@ def conclusion_for(identity: dict[str, str]) -> tuple[str, str, str | None]:
             "deterministic-fake",
             f"real {dependency} behavior requires sanctioned non-production proof",
         )
-    return ("accepted-fixture-only", "deterministic-fake", None)
+    if operation in FIXTURE_ENFORCED:
+        return ("accepted-fixture-only", "deterministic-fake", None)
+    return (
+        "unknown",
+        "unknown",
+        "operation lacks an independently accepted evidence path",
+    )
 
 
 def transition_for(operation: str) -> list[str]:
@@ -201,11 +235,11 @@ def build_row(
             ),
         },
         {
-            "evidence_tier": "installed-public",
+            "evidence_tier": "pinned-reference",
             "source_ref": "langgraph-sdk==0.4.2",
             "observation": (
-                "Classic run creation accepts graph-defined JSON input and exposes no "
-                "source-independent attachment upload schema in the examined public client."
+                "The pinned public client source sends graph-defined JSON input and "
+                "exposes no source-independent attachment upload schema."
             ),
         },
     ]

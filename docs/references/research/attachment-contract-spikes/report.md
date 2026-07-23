@@ -70,9 +70,9 @@ Evidence precedence was applied as follows:
 1. `SRC-LC` at `7b9215d708e0b57e6fbae7b5d0762c4118b8e309`
    documents standard image/file content blocks using inline base64, URL
    reference, and provider-managed file ID.
-2. `langgraph-sdk==0.4.2` at `SRC-LG`
+2. Pinned public `langgraph-sdk==0.4.2` source at `SRC-LG`
    `31f90df3e6b0268fa77fd2d118a917d420b84a68` sends graph-defined JSON input
-   to Classic runs. The examined public client does not define a generic
+   to Classic runs. The examined pinned client source does not define a generic
    attachment upload, scanner, media-acceptance, retention, or deletion schema.
 3. `deepagents==0.6.12` at `SRC-DA`
    `7794b61a6e76230e8c7a49bdce808b3728305914` is pinned reference behavior,
@@ -90,9 +90,11 @@ The retained tests cover count, declared type, size, empty content, unsafe and
 traversal-like filenames, duplicate/hash mismatch, unsupported media, detected
 type mismatch, every scanner verdict, pre-agent visibility, wrong
 actor/workspace/task/destination, stale grants, redirect, range/partial behavior,
-idempotent replay, remove-before-transfer, provider deletion failure, retry, and
-restart recovery. The test plugin confines the exact root-invoked pytest command
-to this isolated project, and its ordinary suite denies socket access.
+idempotent intent and receipt replay, changed-payload conflict, object
+substitution, capability mismatch, source unavailable/error, remove-before-
+transfer, orphan cleanup, provider deletion failure, retry, and restart recovery.
+The test plugin confines the exact root-invoked pytest command to this isolated
+project, and its ordinary suite denies socket access.
 
 Harmless media metadata, public observations, expected transitions, fixture
 hashes, package versions, command outcomes, and the evidence scrub are retained
@@ -116,5 +118,14 @@ attachment capability.
 
 ## Independent review
 
-Runtime-contract, security, and product review are required before handoff. Their
-verdicts and any resolved findings are retained in `review.json`.
+The first fixed-SHA runtime-contract, security, and product review requested
+changes. The implementation now binds transfer authority back to the supplied
+object and tenant/task metadata; enforces store-level count/duplicate and runtime
+representation policy; models intent idempotency, orphan cleanup, and source
+failure; validates every row's exact semantics; classifies the public client
+source as pinned reference evidence; strengthens private-data scrubbing; and
+expires grants at the boundary instant.
+
+The first-round findings, resolutions, and fresh-review disposition are retained
+in `review.json`. Fresh acceptance from all three roles remains required before
+handoff.

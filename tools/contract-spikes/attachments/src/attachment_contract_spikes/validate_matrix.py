@@ -8,6 +8,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from attachment_contract_spikes.generate_matrix import build_row
 from attachment_contract_spikes.scope import (
     derive_identities,
     load_json,
@@ -96,6 +97,18 @@ def validate(
         _require(row_key not in seen, f"{prefix}: duplicate row_id {row_key}", errors)
         seen[row_key] = row
         _require(expected.get(row_key) == identity, f"{prefix}: unscoped identity", errors)
+        if expected.get(row_key) == identity:
+            expected_row = build_row(scope, identity, digest)
+            mismatched_fields = sorted(
+                field
+                for field in set(row) | set(expected_row)
+                if row.get(field) != expected_row.get(field)
+            )
+            _require(
+                not mismatched_fields,
+                f"{prefix}: semantic mismatch fields {mismatched_fields}",
+                errors,
+            )
         _require(row.get("scope_sha256") == digest, f"{prefix}: scope hash", errors)
         _require(
             row.get("scope_revision") == scope["scope_revision"],

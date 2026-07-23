@@ -21,7 +21,36 @@ FORBIDDEN_PATTERNS = {
     ),
     "reusable-endpoint": re.compile(r"https?://"),
     "private-key": re.compile(r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    "authref-value": re.compile(
+        r"(?i)[\"']?authref[\"']?\s*[=:]\s*[\"']"
+        r"(?!synthetic|unknown|none|not-supplied)[^\"']+[\"']"
+    ),
+    "customer-or-tenant-value": re.compile(
+        r"(?i)[\"']?(customer_id|tenant_id|customer_name|customer_email)[\"']?"
+        r"\s*[=:]\s*[\"'](?!synthetic|unknown|none|not-supplied)[^\"']+[\"']"
+    ),
+    "email-address": re.compile(
+        r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
+    ),
+    "public-ipv4": re.compile(
+        r"\b(?!10\.|127\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)"
+        r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+    ),
 }
+SECRET_KINDS = {
+    "credential-assignment",
+    "authorization-value",
+    "private-key",
+    "authref-value",
+}
+PRIVATE_DATA_KINDS = {
+    "customer-or-tenant-value",
+    "email-address",
+    "public-ipv4",
+}
+ENDPOINT_KINDS = {"signed-query", "reusable-endpoint"}
+HEADER_KINDS = {"authorization-value", "cookie-value"}
+BINARY_KINDS = {"unsafe-binary-nul", "non-utf8-content"}
 
 
 def scan(root: Path) -> dict[str, object]:
@@ -30,7 +59,7 @@ def scan(root: Path) -> dict[str, object]:
     files_scanned = 0
     bytes_scanned = 0
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.name == "scrub-report.json":
+        if not path.is_file():
             continue
         files_scanned += 1
         raw = path.read_bytes()
@@ -47,6 +76,7 @@ def scan(root: Path) -> dict[str, object]:
         for kind, pattern in FORBIDDEN_PATTERNS.items():
             if pattern.search(text):
                 findings.append({"file": relative, "kind": kind})
+    finding_kinds = {finding["kind"] for finding in findings}
     return {
         "schema_version": "1.0",
         "scan_date": "2026-07-23",
@@ -54,12 +84,12 @@ def scan(root: Path) -> dict[str, object]:
         "bytes_scanned": bytes_scanned,
         "findings": findings,
         "finding_count": len(findings),
-        "zero_secrets": len(findings) == 0,
-        "zero_customer_or_tenant_data": len(findings) == 0,
-        "zero_reusable_endpoints_or_grants": len(findings) == 0,
-        "zero_raw_headers_or_cookies": len(findings) == 0,
-        "zero_unsafe_binary_content": len(findings) == 0,
-        "zero_unsanitized_absolute_paths": len(findings) == 0,
+        "zero_secrets": finding_kinds.isdisjoint(SECRET_KINDS),
+        "zero_customer_or_tenant_data": finding_kinds.isdisjoint(PRIVATE_DATA_KINDS),
+        "zero_reusable_endpoints_or_grants": finding_kinds.isdisjoint(ENDPOINT_KINDS),
+        "zero_raw_headers_or_cookies": finding_kinds.isdisjoint(HEADER_KINDS),
+        "zero_unsafe_binary_content": finding_kinds.isdisjoint(BINARY_KINDS),
+        "zero_unsanitized_absolute_paths": "absolute-user-path" not in finding_kinds,
     }
 
 

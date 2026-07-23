@@ -116,6 +116,51 @@ def test_quarantine_binds_identity_and_denies_agent_bytes() -> None:
         store.bytes_for_transfer(attachment.object_id)
 
 
+def test_store_enforces_per_task_count_and_duplicate_hash() -> None:
+    store = FakeObjectStore()
+    for index in range(4):
+        store.create(
+            actor_id="actor-synthetic",
+            workspace_id="workspace-synthetic",
+            task_id="task-synthetic",
+            media_class="bounded-text-file",
+            filename=f"notes-{index}.txt",
+            declared_type="text/plain",
+            content=f"synthetic content {index}\n".encode(),
+        )
+    with pytest.raises(ContractError, match="count"):
+        store.create(
+            actor_id="actor-synthetic",
+            workspace_id="workspace-synthetic",
+            task_id="task-synthetic",
+            media_class="bounded-text-file",
+            filename="notes-5.txt",
+            declared_type="text/plain",
+            content=b"fifth synthetic content\n",
+        )
+
+    duplicate_store = FakeObjectStore()
+    duplicate_store.create(
+        actor_id="actor-synthetic",
+        workspace_id="workspace-synthetic",
+        task_id="task-synthetic",
+        media_class="bounded-text-file",
+        filename="notes-a.txt",
+        declared_type="text/plain",
+        content=TEXT,
+    )
+    with pytest.raises(ContractError, match="duplicate"):
+        duplicate_store.create(
+            actor_id="actor-synthetic",
+            workspace_id="workspace-synthetic",
+            task_id="task-synthetic",
+            media_class="bounded-text-file",
+            filename="notes-b.txt",
+            declared_type="text/plain",
+            content=TEXT,
+        )
+
+
 @pytest.mark.parametrize(
     ("verdict", "state"),
     [
@@ -158,6 +203,7 @@ def test_transfer_binding_receipt_and_idempotent_replay() -> None:
         task_id=attachment.task_id,
         destination=runtime.DESTINATION,
         representation="standard-content-inline-base64",
+        idempotency_key="intent-key-1",
         now=100,
     )
     receipt = runtime.transfer(
@@ -204,6 +250,7 @@ def test_transfer_rejects_binding_mismatch(field: str, value: str, reason: str) 
         task_id=attachment.task_id,
         destination=runtime.DESTINATION,
         representation="standard-content-url-reference",
+        idempotency_key="intent-key-1",
         now=100,
     )
     args = {
@@ -221,7 +268,7 @@ def test_transfer_rejects_binding_mismatch(field: str, value: str, reason: str) 
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
-        ({"now": 1000}, "stale-grant"),
+        ({"now": 160}, "stale-grant"),
         ({"redirect": True}, "redirect"),
         ({"partial": True}, "range-partial"),
     ],
@@ -237,6 +284,7 @@ def test_transfer_rejects_stale_redirect_and_partial(
         task_id=attachment.task_id,
         destination=runtime.DESTINATION,
         representation="standard-content-url-reference",
+        idempotency_key="intent-key-1",
         now=100,
     )
     args: dict[str, object] = {
@@ -265,6 +313,164 @@ def test_remove_delete_retry_and_recovery_preserve_safety() -> None:
     assert clean.state is State.DELETION_PENDING
     store.retry_delete(clean.object_id)
     assert clean.state is State.DELETED
+
+
+def test_intent_creation_is_idempotent_and_rejects_changed_payload() -> None:
+    _store, attachment, runtime = clean_attachment()
+    arguments = {
+        "actor_id": attachment.actor_id,
+        "workspace_id": attachment.workspace_id,
+        "task_id": attachment.task_id,
+        "destination": runtime.DESTINATION,
+        "representation": "standard-content-inline-base64",
+        "idempotency_key": "intent-key-1",
+        "now": 100,
+    }
+    first = runtime.create_intent(attachment, **arguments)
+    replay = runtime.create_intent(attachment, **arguments)
+    assert replay == first
+    assert attachment.audit.count("transfer-intent") == 1
+    with pytest.raises(ContractError, match="idempotency-conflict"):
+        runtime.create_intent(
+            attachment,
+            **{**arguments, "representation": "standard-content-url-reference"},
+        )
+
+
+def test_runtime_rejects_capability_mismatch_and_source_failure() -> None:
+    _store, attachment, runtime = clean_attachment()
+    with pytest.raises(ContractError, match="capability-mismatch"):
+        runtime.create_intent(
+            attachment,
+            actor_id=attachment.actor_id,
+            workspace_id=attachment.workspace_id,
+            task_id=attachment.task_id,
+            destination=runtime.DESTINATION,
+            representation="fleet-arbitrary-unsupported",
+            idempotency_key="intent-key-1",
+            now=100,
+        )
+
+    _store, attachment, unavailable = clean_attachment()
+    unavailable.available = False
+    with pytest.raises(ContractError, match="source-unavailable"):
+        unavailable.create_intent(
+            attachment,
+            actor_id=attachment.actor_id,
+            workspace_id=attachment.workspace_id,
+            task_id=attachment.task_id,
+            destination=unavailable.DESTINATION,
+            representation="standard-content-inline-base64",
+            idempotency_key="intent-key-2",
+            now=100,
+        )
+
+    _store, attachment, failed = clean_attachment()
+    failed.failure_mode = "synthetic"
+    with pytest.raises(ContractError, match="source-error-synthetic"):
+        failed.create_intent(
+            attachment,
+            actor_id=attachment.actor_id,
+            workspace_id=attachment.workspace_id,
+            task_id=attachment.task_id,
+            destination=failed.DESTINATION,
+            representation="standard-content-inline-base64",
+            idempotency_key="intent-key-3",
+            now=100,
+        )
+
+
+def test_transfer_rejects_cross_object_and_cross_workspace_substitution() -> None:
+    store_a, attachment_a, runtime = clean_attachment()
+    intent = runtime.create_intent(
+        attachment_a,
+        actor_id=attachment_a.actor_id,
+        workspace_id=attachment_a.workspace_id,
+        task_id=attachment_a.task_id,
+        destination=runtime.DESTINATION,
+        representation="standard-content-inline-base64",
+        idempotency_key="intent-key-1",
+        now=100,
+    )
+    store_b = FakeObjectStore()
+    attachment_b = store_b.create(
+        actor_id="actor-synthetic",
+        workspace_id="workspace-b",
+        task_id="task-synthetic",
+        media_class="bounded-text-file",
+        filename="other.txt",
+        declared_type="text/plain",
+        content=TEXT,
+    )
+    apply_scanner_result(attachment_b, Verdict.CLEAN)
+    attachment_b.state = State.TRANSFER_READY
+    with pytest.raises(ContractError, match="intent-object-binding-mismatch"):
+        runtime.transfer(
+            store_b,
+            attachment_b,
+            intent,
+            now=101,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+    attachment_c = store_a.create(
+        actor_id=attachment_a.actor_id,
+        workspace_id=attachment_a.workspace_id,
+        task_id=attachment_a.task_id,
+        media_class="bounded-text-file",
+        filename="different.txt",
+        declared_type="text/plain",
+        content=b"different synthetic content\n",
+    )
+    apply_scanner_result(attachment_c, Verdict.CLEAN)
+    attachment_c.state = State.TRANSFER_READY
+    with pytest.raises(ContractError, match="intent-object-binding-mismatch"):
+        runtime.transfer(
+            store_a,
+            attachment_c,
+            intent,
+            now=101,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+
+def test_orphan_cleanup_is_scoped_and_idempotent() -> None:
+    store = FakeObjectStore()
+    orphan = store.create(
+        actor_id="actor-synthetic",
+        workspace_id="workspace-synthetic",
+        task_id="task-orphan",
+        media_class="bounded-text-file",
+        filename="orphan.txt",
+        declared_type="text/plain",
+        content=b"orphan synthetic content\n",
+    )
+    active = store.create(
+        actor_id="actor-synthetic",
+        workspace_id="workspace-synthetic",
+        task_id="task-active",
+        media_class="bounded-text-file",
+        filename="active.txt",
+        declared_type="text/plain",
+        content=b"active synthetic content\n",
+    )
+    assert store.cleanup_orphans(
+        workspace_id="workspace-synthetic", active_task_ids={"task-active"}
+    ) == [orphan.object_id]
+    assert orphan.state is State.DELETED
+    assert active.state is State.QUARANTINED
+    assert (
+        store.cleanup_orphans(
+            workspace_id="workspace-synthetic", active_task_ids={"task-active"}
+        )
+        == []
+    )
 
 
 def test_network_is_denied() -> None:

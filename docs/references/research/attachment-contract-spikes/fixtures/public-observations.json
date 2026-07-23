@@ -8,8 +8,8 @@
     },
     {
       "source": "SRC-LG-RUNS",
-      "tier": "installed-public",
-      "result": "The examined public Classic client sends graph-defined JSON input and does not establish a generic attachment upload or acceptance schema."
+      "tier": "pinned-reference",
+      "result": "The pinned public Classic client source sends graph-defined JSON input and does not establish a generic attachment upload or acceptance schema."
     },
     {
       "source": "non-production-live-profile",

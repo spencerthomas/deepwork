@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from attachment_contract_spikes.generate_matrix import generate
+from attachment_contract_spikes.generate_matrix import FIXTURE_ENFORCED, generate
 from attachment_contract_spikes.scope import derive_identities, load_json, scope_sha256
 from attachment_contract_spikes.validate_matrix import validate
 
@@ -36,6 +36,12 @@ def test_generated_matrix_is_complete(tmp_path: Path) -> None:
     assert summary["conclusions"]["unsupported"] > 0
     assert summary["conclusions"]["unknown"] > 0
     assert summary["conclusions"].get("accepted-live", 0) == 0
+    accepted_operations = {
+        row["identity"]["lifecycle_operations"]
+        for row in payload["rows"]
+        if row["conclusion"] == "accepted-fixture-only"
+    }
+    assert accepted_operations == FIXTURE_ENFORCED
 
 
 def test_validator_rejects_missing_row(tmp_path: Path) -> None:
@@ -73,6 +79,56 @@ def test_validator_rejects_precedence_conflict(tmp_path: Path) -> None:
     payload["rows"][0]["precedence_conflict"] = True
     output.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="precedence conflict"):
+        validate(
+            output,
+            SCOPE,
+            require_complete_cross_product=True,
+            reject_unresolved_precedence_conflicts=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "mutate", "match"),
+    [
+        (
+            "versions",
+            lambda row: row["versions"].__setitem__("langgraph-sdk", "999.0.0"),
+            "semantic mismatch",
+        ),
+        (
+            "authorization",
+            lambda row: row["authorization"].__setitem__("object_bound", False),
+            "semantic mismatch",
+        ),
+        (
+            "expected_conclusion_class",
+            lambda row: row.__setitem__("expected_conclusion_class", "tampered"),
+            "semantic mismatch",
+        ),
+        (
+            "conclusion",
+            lambda row: row.__setitem__("conclusion", "accepted-fixture-only"),
+            "semantic mismatch",
+        ),
+    ],
+)
+def test_validator_rejects_semantic_tampering(
+    tmp_path: Path,
+    field: str,
+    mutate: object,
+    match: str,
+) -> None:
+    del field
+    output = tmp_path / "matrix.json"
+    payload = generate(SCOPE, output)
+    target = next(
+        row
+        for row in payload["rows"]
+        if row["conclusion"] == "blocked-live-evidence"
+    )
+    mutate(target)  # type: ignore[operator]
+    output.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match=match):
         validate(
             output,
             SCOPE,

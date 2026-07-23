@@ -299,6 +299,11 @@ destructive cleanup is authorized by this packet.
 - The exact root-invoked pytest command initially selected the repository test
   configuration. A project-owned pytest plugin now confines collection to the
   isolated spike tests without modifying shared configuration.
+- First-round independent review reproduced object-substitution, semantic
+  validator bypass, unimplemented fixture claims, missing intent idempotency,
+  store count/duplicate gaps, arbitrary representation acceptance, evidence-tier
+  overclaim, scrub-category gaps, and an inclusive-expiry error. Each finding was
+  corrected with a regression before requesting fresh review.
 
 ## Decision log
 
@@ -318,6 +323,9 @@ destructive cleanup is authorized by this packet.
 - 2026-07-23: Treat deterministic `clean` as necessary but insufficient. Only a
   separately bound transfer intent can move a fake object to transfer-ready, and
   hosted behavior remains unaccepted.
+- 2026-07-23: Do not infer row semantics from field presence. Derive each exact
+  expected row from immutable scope and reject any version, conclusion,
+  transition, schema, integrity, authorization, provenance, or fallback mismatch.
 
 ## Outcomes and retrospective
 

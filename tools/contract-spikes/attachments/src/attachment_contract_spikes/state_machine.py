@@ -135,6 +135,7 @@ class TransferIntent:
     task_id: str
     destination: str
     representation: str
+    idempotency_key: str
     sha256: str
     size: int
     expires_at: int
@@ -158,6 +159,8 @@ class FakeObjectStore:
         self._bytes: dict[str, bytes] = {}
         self._objects: dict[str, Attachment] = {}
         self._sequence = 0
+        self._task_hashes: dict[tuple[str, str], set[str]] = {}
+        self._task_counts: dict[tuple[str, str], int] = {}
 
     def create(
         self,
@@ -172,11 +175,16 @@ class FakeObjectStore:
     ) -> Attachment:
         if not actor_id or not workspace_id or not task_id:
             raise ContractError("missing-binding")
+        task_binding = (workspace_id, task_id)
+        count = self._task_counts.get(task_binding, 0) + 1
+        existing_hashes = self._task_hashes.get(task_binding, set())
         digest = validate_preflight(
             media_class=media_class,
             filename=filename,
             declared_type=declared_type,
             content=content,
+            count=count,
+            existing_hashes=existing_hashes,
         )
         self._sequence += 1
         object_id = f"obj-{self._sequence:04d}"
@@ -194,6 +202,8 @@ class FakeObjectStore:
         )
         self._bytes[object_id] = bytes(content)
         self._objects[object_id] = attachment
+        self._task_counts[task_binding] = count
+        self._task_hashes.setdefault(task_binding, set()).add(digest)
         return attachment
 
     def metadata(self, object_id: str) -> Attachment:
@@ -257,6 +267,25 @@ class FakeObjectStore:
             recovered.agent_visible = False
         return recovered
 
+    def cleanup_orphans(
+        self,
+        *,
+        workspace_id: str,
+        active_task_ids: set[str],
+    ) -> list[str]:
+        """Delete nonterminal objects whose task is no longer active."""
+        cleaned: list[str] = []
+        for object_id, attachment in sorted(self._objects.items()):
+            if (
+                attachment.workspace_id == workspace_id
+                and attachment.task_id not in active_task_ids
+                and attachment.state not in {State.DELETED, State.TRANSFERRED}
+            ):
+                self.delete(object_id)
+                attachment.audit.append("orphan-cleanup")
+                cleaned.append(object_id)
+        return cleaned
+
 
 class FakeScanner:
     """Return a configured untrusted verdict without network access."""
@@ -290,9 +319,31 @@ class FakeClassicRuntime:
 
     DESTINATION = "classic:assistant-synthetic"
 
-    def __init__(self) -> None:
+    DEFAULT_REPRESENTATIONS = frozenset(
+        {
+            "standard-content-inline-base64",
+            "standard-content-url-reference",
+            "standard-content-provider-file-id",
+        }
+    )
+
+    def __init__(
+        self,
+        *,
+        supported_representations: set[str] | None = None,
+        available: bool = True,
+        failure_mode: str | None = None,
+    ) -> None:
         self._sequence = 0
         self._receipts: dict[str, TransferReceipt] = {}
+        self._intents: dict[str, tuple[tuple[object, ...], TransferIntent]] = {}
+        self.supported_representations = (
+            frozenset(supported_representations)
+            if supported_representations is not None
+            else self.DEFAULT_REPRESENTATIONS
+        )
+        self.available = available
+        self.failure_mode = failure_mode
 
     def create_intent(
         self,
@@ -303,11 +354,14 @@ class FakeClassicRuntime:
         task_id: str,
         destination: str,
         representation: str,
+        idempotency_key: str,
         now: int,
         ttl: int = 60,
     ) -> TransferIntent:
-        if attachment.state is not State.CLEAN:
-            raise ContractError("not-clean")
+        if not self.available:
+            raise ContractError("source-unavailable")
+        if self.failure_mode is not None:
+            raise ContractError(f"source-error-{self.failure_mode}")
         if (
             actor_id != attachment.actor_id
             or workspace_id != attachment.workspace_id
@@ -316,12 +370,35 @@ class FakeClassicRuntime:
             raise ContractError("binding-mismatch")
         if destination != self.DESTINATION:
             raise ContractError("destination")
+        if representation not in self.supported_representations:
+            raise ContractError("capability-mismatch")
+        if not idempotency_key:
+            raise ContractError("idempotency-key")
         if ttl < 1 or ttl > 300:
             raise ContractError("expiry")
+        fingerprint: tuple[object, ...] = (
+            attachment.object_id,
+            actor_id,
+            workspace_id,
+            task_id,
+            destination,
+            representation,
+            attachment.sha256,
+            attachment.size,
+            ttl,
+        )
+        existing = self._intents.get(idempotency_key)
+        if existing is not None:
+            prior_fingerprint, prior_intent = existing
+            if fingerprint != prior_fingerprint:
+                raise ContractError("idempotency-conflict")
+            return prior_intent
+        if attachment.state is not State.CLEAN:
+            raise ContractError("not-clean")
         self._sequence += 1
         attachment.state = State.TRANSFER_READY
         attachment.audit.append("transfer-intent")
-        return TransferIntent(
+        intent = TransferIntent(
             intent_id=f"intent-{self._sequence:04d}",
             object_id=attachment.object_id,
             actor_id=actor_id,
@@ -329,10 +406,13 @@ class FakeClassicRuntime:
             task_id=task_id,
             destination=destination,
             representation=representation,
+            idempotency_key=idempotency_key,
             sha256=attachment.sha256,
             size=attachment.size,
             expires_at=now + ttl,
         )
+        self._intents[idempotency_key] = (fingerprint, intent)
+        return intent
 
     def transfer(
         self,
@@ -352,7 +432,7 @@ class FakeClassicRuntime:
             raise ContractError("redirect")
         if partial:
             raise ContractError("range-partial")
-        if now > intent.expires_at:
+        if now >= intent.expires_at:
             raise ContractError("stale-grant")
         if (
             actor_id != intent.actor_id
@@ -361,6 +441,15 @@ class FakeClassicRuntime:
             or destination != intent.destination
         ):
             raise ContractError("intent-binding-mismatch")
+        if (
+            attachment.object_id != intent.object_id
+            or attachment.actor_id != intent.actor_id
+            or attachment.workspace_id != intent.workspace_id
+            or attachment.task_id != intent.task_id
+        ):
+            raise ContractError("intent-object-binding-mismatch")
+        if intent.representation not in self.supported_representations:
+            raise ContractError("capability-mismatch")
         if attachment.state not in {State.TRANSFER_READY, State.TRANSFERRED}:
             raise ContractError("transfer-state")
         content = store.bytes_for_transfer(attachment.object_id)

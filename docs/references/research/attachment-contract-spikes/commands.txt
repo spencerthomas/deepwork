@@ -22,7 +22,7 @@ result: isolated CPython 3.12.11 environment synchronized
 required command 03
 command: uv run --project tools/contract-spikes/attachments --frozen pytest -m 'not live_contract'
 exit: 0
-result: 36 passed, 1 live-contract test deselected
+result: 45 passed, 1 live-contract test deselected after independent-review regressions
 
 retained-output command
 command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.generate_matrix docs/references/research/attachment-contract-spikes/matrix-scope.json docs/references/research/attachment-contract-spikes/matrix.json
@@ -57,7 +57,7 @@ result: resolved 7 packages from local offline state
 required command 09
 command: UV_OFFLINE=true uv run --project tools/contract-spikes/attachments --frozen pytest -m 'not live_contract'
 exit: 0
-result: 36 passed, 1 live-contract test deselected
+result: 45 passed, 1 live-contract test deselected after independent-review fixes
 
 required command 10
 command: python3 tools/docs/generate.py --check

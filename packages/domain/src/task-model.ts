@@ -57,7 +57,7 @@ export const EVIDENCE_SOURCES = Object.freeze([
 ] as const);
 export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
 
-export const EVIDENCE_CLASSES = Object.freeze(["fixture"] as const);
+export const EVIDENCE_CLASSES = Object.freeze(["fixture", "local-source"] as const);
 export type EvidenceClass = (typeof EVIDENCE_CLASSES)[number];
 
 declare const objectiveTextBrand: unique symbol;
@@ -207,13 +207,13 @@ export interface RunStartedEvent extends EventBase<"run.started"> {
 export interface ContentDeltaEvent extends EventBase<"content.delta"> {
   readonly run: SourceRunKey;
   readonly text: ResultText;
-  readonly evidenceClass: "fixture";
+  readonly evidenceClass: EvidenceClass;
 }
 
 export interface PlanChangedEvent extends EventBase<"plan.proposed" | "plan.updated"> {
   readonly run: SourceRunKey;
   readonly plan: ProposedPlan;
-  readonly evidenceClass: "fixture";
+  readonly evidenceClass: EvidenceClass;
 }
 
 export interface EvidenceRecordedEvent extends EventBase<"evidence.recorded"> {

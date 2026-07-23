@@ -1,9 +1,9 @@
 "use client";
 
 import { ListChecks, PencilLine, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { validatePlanSteps } from "@/lib/task-normalizers";
+import { planStepIssue, unicodeLength, validatePlanSteps } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, PlanUpdateInput, ProposedPlan } from "@/lib/task-types";
 import { PLAN_STEP_MAX_COUNT, PLAN_STEP_MAX_LENGTH } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,9 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
   const [editing, setEditing] = useState(false);
   const [steps, setSteps] = useState<string[]>([...plan.steps]);
   const [validationError, setValidationError] = useState<string>();
+  const fieldId = useId();
+  const errorId = `${fieldId}-error`;
+  const shownError = validationError ?? error;
 
   function startEdit() {
     setSteps([...plan.steps]);
@@ -96,34 +99,64 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
         </ol>
       ) : (
         <div className="space-y-2 px-4 py-3">
-          {steps.map((step, index) => (
-            <div key={String(index)} className="flex items-start gap-2">
-              <span className="mt-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                {index + 1}.
-              </span>
-              <textarea
-                value={step}
-                rows={2}
-                maxLength={PLAN_STEP_MAX_LENGTH * 2}
-                aria-label={`Plan step ${String(index + 1)}`}
-                onChange={(event) =>
-                  setSteps((current) =>
-                    current.map((value, i) => (i === index ? event.target.value : value)),
-                  )
-                }
-                className="min-w-0 flex-1 resize-y rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring"
-              />
-              <button
-                type="button"
-                aria-label={`Remove step ${String(index + 1)}`}
-                disabled={steps.length <= 1}
-                onClick={() => setSteps((current) => current.filter((_, i) => i !== index))}
-                className="mt-1.5 flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
-          ))}
+          {steps.map((step, index) => {
+            // Same rules validatePlanSteps enforces. The length overflow shows
+            // live (it is unambiguous); blank/unsafe steps are only marked once a
+            // save has failed, so a freshly added empty step is not pre-flagged.
+            const issue = planStepIssue(step);
+            const stepOverLimit = issue === "too-long";
+            const stepInvalid =
+              stepOverLimit || (validationError !== undefined && issue !== undefined);
+            const stepCountId = `${fieldId}-step-${String(index)}-count`;
+            const stepDescribedBy =
+              [stepOverLimit ? stepCountId : null, shownError !== undefined ? errorId : null]
+                .filter((id): id is string => id !== null)
+                .join(" ") || undefined;
+            return (
+              <div key={String(index)} className="flex items-start gap-2">
+                <span className="mt-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {index + 1}.
+                </span>
+                <div className="min-w-0 flex-1">
+                  <textarea
+                    value={step}
+                    rows={2}
+                    maxLength={PLAN_STEP_MAX_LENGTH * 2}
+                    aria-label={`Plan step ${String(index + 1)}`}
+                    aria-invalid={stepInvalid}
+                    aria-describedby={stepDescribedBy}
+                    onChange={(event) =>
+                      setSteps((current) =>
+                        current.map((value, i) => (i === index ? event.target.value : value)),
+                      )
+                    }
+                    className={cn(
+                      "w-full resize-y rounded-lg border bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring",
+                      stepInvalid ? "border-status-failed" : "border-input",
+                    )}
+                  />
+                  {stepOverLimit && (
+                    <p
+                      id={stepCountId}
+                      className="mt-1 text-[11px] tabular-nums text-status-failed"
+                    >
+                      {unicodeLength(step).toLocaleString()} /{" "}
+                      {PLAN_STEP_MAX_LENGTH.toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove step ${String(index + 1)}`}
+                  disabled={steps.length <= 1}
+                  onClick={() => setSteps((current) => current.filter((_, i) => i !== index))}
+                  className="mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            );
+          })}
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
@@ -159,12 +192,13 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
         </div>
       )}
 
-      {(validationError ?? error) && (
+      {shownError !== undefined && (
         <div
+          id={errorId}
           className="border-t border-status-failed/30 bg-status-failed-bg px-4 py-2.5"
           role="alert"
         >
-          <p className="text-[13px] text-status-failed">{validationError ?? error}</p>
+          <p className="text-[13px] text-status-failed">{shownError}</p>
         </div>
       )}
     </div>

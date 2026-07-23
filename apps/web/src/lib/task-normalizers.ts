@@ -74,24 +74,38 @@ function hasUnsafeControls(value: string): boolean {
   });
 }
 
+export type PlanStepIssue = "blank" | "too-long" | "unsafe";
+
+/**
+ * The first rule a single plan step violates, or undefined when it is
+ * acceptable. {@link validatePlanSteps} applies these same per-step checks; the
+ * plan editor uses this to mark exactly the offending step for assistive tech.
+ */
+export function planStepIssue(step: string): PlanStepIssue | undefined {
+  if (step.trim() === "") return "blank";
+  if (unicodeLength(step) > PLAN_STEP_MAX_LENGTH) return "too-long";
+  if (hasUnsafeControls(step)) return "unsafe";
+  return undefined;
+}
+
 export function validatePlanSteps(steps: readonly string[]): string[] {
   if (steps.length < 1 || steps.length > PLAN_STEP_MAX_COUNT) {
     throw new ContractError(`A plan must contain between 1 and ${PLAN_STEP_MAX_COUNT} steps.`);
   }
 
   return steps.map((step, index) => {
-    if (step.trim() === "") {
-      throw new ContractError(`Plan step ${index + 1} cannot be blank.`);
+    switch (planStepIssue(step)) {
+      case "blank":
+        throw new ContractError(`Plan step ${index + 1} cannot be blank.`);
+      case "too-long":
+        throw new ContractError(
+          `Plan step ${index + 1} cannot exceed ${PLAN_STEP_MAX_LENGTH.toLocaleString("en-US")} characters.`,
+        );
+      case "unsafe":
+        throw new ContractError(`Plan step ${index + 1} contains unsupported control characters.`);
+      default:
+        return step;
     }
-    if (unicodeLength(step) > PLAN_STEP_MAX_LENGTH) {
-      throw new ContractError(
-        `Plan step ${index + 1} cannot exceed ${PLAN_STEP_MAX_LENGTH.toLocaleString("en-US")} characters.`,
-      );
-    }
-    if (hasUnsafeControls(step)) {
-      throw new ContractError(`Plan step ${index + 1} contains unsupported control characters.`);
-    }
-    return step;
   });
 }
 

@@ -851,6 +851,12 @@
       "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "api。vendor。com/path"}
     },
     {
+      "negativeId": "fx_probe_corpus_id_policy_missing",
+      "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+      "basePath": "corpus.json",
+      "mutation": {"operation": "remove", "path": "/idPolicy"}
+    },
+    {
       "negativeId": "fx_probe_validator_purity_write",
       "declaredRuleCode": "FIXTURE_SCHEMA_VALIDATOR_PURITY",
       "probe": {

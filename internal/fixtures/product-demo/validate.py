@@ -25,9 +25,9 @@ EXPECTED_ID_POLICY = {
     "qualifiedRunTemplate": "{sourceId}:{threadId}:{runId}",
 }
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
-EXPECTED_SEMANTIC_PROBE_COUNT = 142
+EXPECTED_SEMANTIC_PROBE_COUNT = 143
 SEMANTIC_MATRIX_SHA256 = (
-    "bbdeec9121c0baeda653ba9ad84aea66801daf32cde3a10300f6c80f24b3da8c"
+    "709280a222fe59ada0829199b85454bf790d119fc3026643f9bd054b3eb8709b"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
@@ -197,6 +197,24 @@ EXPECTED_CAPABILITY_NAMES = {
         "fleet-runtime",
         "browser-direct-stream",
         "permission-probe-example",
+    ],
+}
+EXPECTED_CAPABILITY_STATES = {
+    "fx_manifest_fixture_source": [
+        "available",
+        "available",
+        "gated",
+        "gated",
+        "gated",
+        "unavailable",
+        "unavailable",
+    ],
+    "fx_manifest_gated_runtimes": [
+        "unknown",
+        "gated",
+        "unknown",
+        "unavailable",
+        "permission-denied",
     ],
 }
 VALID_CAPABILITY_STATES = {
@@ -784,6 +802,13 @@ def _validate_manifest(manifest):
     ]
     if observed_names != expected_names:
         diagnostics.append("FIXTURE_SCHEMA_REQUIRED_FIELD")
+    expected_states = EXPECTED_CAPABILITY_STATES.get(manifest["manifestId"])
+    observed_states = [
+        capability.get("state") if isinstance(capability, dict) else None
+        for capability in manifest["capabilities"]
+    ]
+    if observed_states != expected_states:
+        diagnostics.append("FIXTURE_CAPABILITY_STATE")
     seen = set()
     capability_required = {
         "name",

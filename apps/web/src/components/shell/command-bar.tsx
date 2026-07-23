@@ -64,11 +64,17 @@ export function CommandBar({
 
   useEffect(() => setIndex(0), [query]);
 
-  // Keep the highlighted row in view as arrow/Home/End move it through an
-  // overflowing result list.
+  // Reopening the palette remounts the list with its scroll reset, so start the
+  // highlight back at the top each time it opens.
+  useEffect(() => {
+    if (open) setIndex(0);
+  }, [open]);
+
+  // Keep the highlighted row in view as the arrow keys move it — or as a new
+  // query re-filters the list under a held index — through an overflowing list.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest" });
-  }, [index]);
+  }, [filtered, index]);
 
   if (!open) return null;
 
@@ -94,14 +100,6 @@ export function CommandBar({
           if (event.key === "ArrowUp") {
             event.preventDefault();
             setIndex((current) => Math.max(current - 1, 0));
-          }
-          if (event.key === "Home" && filtered.length > 0) {
-            event.preventDefault();
-            setIndex(0);
-          }
-          if (event.key === "End" && filtered.length > 0) {
-            event.preventDefault();
-            setIndex(filtered.length - 1);
           }
           const selected = filtered[index];
           if (event.key === "Enter" && selected) run(selected.href);

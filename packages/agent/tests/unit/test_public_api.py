@@ -5,19 +5,25 @@ from importlib.resources import files
 import deepwork_agent
 
 EXPECTED_EXPORTS = {
-    "CONFIG_CONTRACT_GATE",
-    "AgentPackageConfig",
-    "RuntimeAvailability",
-    "RuntimeCapabilityUnavailable",
-    "UnavailableAgentState",
+    "DEEP_WORK_SYSTEM_PROMPT",
+    "PROTECTED_ACTION",
+    "RUNTIME_MODE",
+    "AgentConfig",
+    "AgentInput",
+    "AgentOutput",
+    "AgentState",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalResponse",
+    "RuntimeCapabilities",
     "create_graph",
-    "initial_unavailable_state",
-    "runtime_availability",
+    "initial_state",
+    "runtime_capabilities",
 }
 
 
 def test_public_exports_are_deliberate() -> None:
-    """The package root exposes only the reviewed scaffold API."""
+    """The package root exposes only the reviewed local-runtime API."""
     assert set(deepwork_agent.__all__) == EXPECTED_EXPORTS
 
 

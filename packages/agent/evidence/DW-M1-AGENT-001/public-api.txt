@@ -1,15 +1,27 @@
 Distribution: deepwork-agent 0.0.0
 Import root: deepwork_agent
 Public exports:
-- AgentPackageConfig
-- CONFIG_CONTRACT_GATE
-- RuntimeAvailability
-- RuntimeCapabilityUnavailable
-- UnavailableAgentState
+- AgentConfig
+- AgentInput
+- AgentOutput
+- AgentState
+- ApprovalDecision
+- ApprovalRequest
+- ApprovalResponse
+- DEEP_WORK_SYSTEM_PROMPT
+- PROTECTED_ACTION
+- RUNTIME_MODE
+- RuntimeCapabilities
 - create_graph
-- initial_unavailable_state
-- runtime_availability
+- initial_state
+- runtime_capabilities
 
-Importing the package has no network, environment, model, graph, provider, or
-application-service side effect. create_graph() always raises the typed unavailable
-error while SPIKE-CONFIG-001 remains open.
+create_graph requires an injected BaseChatModel and accepts optional LangChain
+tools plus an optional caller-owned checkpointer. Its public flow is plan,
+LangGraph approval interrupt, Deep Agents execution or rejection, and terminal
+output. The default checkpointer is in-memory only.
+
+Importing the package performs no network call, reads no environment variable,
+and does not create a model, graph, provider client, deployment, application
+session, or durable persistence. runtime_capabilities reports only
+local-runtime availability.

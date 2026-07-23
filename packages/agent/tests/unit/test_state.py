@@ -1,13 +1,18 @@
-"""Tests for the deterministic unavailable state."""
+"""Tests for deterministic graph input construction."""
 
-from deepwork_agent import initial_unavailable_state
+import pytest
+
+from deepwork_agent import initial_state
 
 
-def test_initial_state_is_safe_and_unavailable() -> None:
-    """State reports the gate without endpoint, provider, or credential data."""
-    state = initial_unavailable_state()
+def test_initial_state_normalizes_task_without_runtime_side_effects() -> None:
+    """Input construction is deterministic and contains no provider data."""
+    state = initial_state("  Research and write a short note.  ")
 
-    assert state["status"] == "unavailable"
-    assert state["contract_gate"] == "SPIKE-CONFIG-001"
-    assert "unavailable" in state["reason"]
-    assert set(state) == {"status", "contract_gate", "reason"}
+    assert state == {"task": "Research and write a short note."}
+
+
+def test_initial_state_rejects_empty_task() -> None:
+    """An empty task cannot enter the graph."""
+    with pytest.raises(ValueError, match="non-whitespace"):
+        initial_state(" \n ")

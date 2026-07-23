@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_network_ip",
+  "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/externalAddress", "value": "203.0.113.1"}
+}

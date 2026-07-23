@@ -1,0 +1,23 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_malformed_input",
+  "category": "malformed-input",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 34, "observedAt": "2026-07-23T00:00:08.500Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_malformed",
+    "runId": "fx_run_malformed",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_malformed",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_malformed:fx_run_malformed"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_malformed", "durableEventId": "fx_event_malformed", "sequence": 1, "tick": 34, "observedAt": "2026-07-23T00:00:08.500Z", "kind": "fixture-malformed-input", "sourceId": "fx_source_alpha", "threadId": "fx_thread_malformed", "runId": "fx_run_malformed", "payload": {"input": {"upstreamLikeValue": ["unexpected", 7, false]}, "safeClassification": "malformed-input", "safeErrorCode": "FIXTURE_INPUT_MALFORMED", "rawBodyRetained": false}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_malformed"], "classification": "malformed-input", "safeErrorCode": "FIXTURE_INPUT_MALFORMED", "envelopeValid": true},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

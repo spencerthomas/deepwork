@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_api_key",
+  "declaredRuleCode": "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/apiKey", "value": "synthetic-but-forbidden"}
+}

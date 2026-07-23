@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_schema_clock_range",
+  "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "replace", "path": "/clock/observedTick", "value": 400000}
+}

@@ -1,0 +1,6 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_network_exempt_schema_enum",
+  "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+  "probe": {"kind": "network-diagnostic", "value": {"properties": {"capabilityManifestRef": {"enum": ["manifests/fixture-source.json", "service.vendor.co"]}}}}
+}

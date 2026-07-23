@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_capability",
+  "declaredRuleCode": "FIXTURE_CAPABILITY_EVIDENCE",
+  "basePath": "manifests/fixture-source.json",
+  "mutation": {"operation": "replace", "path": "/capabilities/2/evidenceClass", "value": "live-contract"}
+}

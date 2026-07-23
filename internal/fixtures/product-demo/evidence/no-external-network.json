@@ -1,0 +1,22 @@
+{
+  "authority": "validator-ast-and-corpus-source-inspection-only",
+  "claimLimit": "Does not prove isolation for API, browser, provider, or future consumers.",
+  "corpusDigest": "1aa88f00bdb2287f75e73c80ec34673552e068ded0507ed8aebdbeb1346935c4",
+  "evidenceClass": "fixture",
+  "externalUrlHostCount": 0,
+  "reportVersion": "1.0.0",
+  "scannedAssetCount": 19,
+  "validatorDynamicAccesses": 0,
+  "validatorEnvironmentReads": 0,
+  "validatorImportViolations": 0,
+  "validatorNetworkCalls": 0,
+  "validatorNetworkImports": 0,
+  "validatorProcessImports": 0,
+  "validatorPurityDerivedBy": "stdlib-ast-source-inspection",
+  "validatorSocketImports": 0,
+  "validatorSourceSha256": "ce5aa28550a8e06f40c60dbeac955b806c039e22fe76ffa11d69adc49b982b3b",
+  "validatorSubprocessCalls": 0,
+  "validatorWallClockOrWaitCalls": 0,
+  "validatorWriteReferences": 0,
+  "validatorWrites": 0
+}

@@ -1,0 +1,23 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_checkpoint",
+  "category": "checkpoint",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 12, "observedAt": "2026-07-23T00:00:03.000Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_checkpoint",
+    "runId": "fx_run_checkpoint",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_checkpoint",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_checkpoint:fx_run_checkpoint"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_checkpoint", "durableEventId": "fx_event_checkpoint", "sequence": 1, "tick": 12, "observedAt": "2026-07-23T00:00:03.000Z", "kind": "fixture-checkpoint-observed", "sourceId": "fx_source_alpha", "threadId": "fx_thread_checkpoint", "runId": "fx_run_checkpoint", "payload": {"checkpointId": "fx_checkpoint_alpha", "qualifiedCheckpointKey": "fx_source_alpha:fx_thread_checkpoint:fx_checkpoint_alpha"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_checkpoint"], "checkpointId": "fx_checkpoint_alpha", "forkCapabilityState": "gated", "forkPerformed": false},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

@@ -304,8 +304,10 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   provider create call.
 - Content proves stable chunk/order data without exposing private reasoning.
 - Tool proves start/result correlation and bounded untrusted content.
-- Ordered interrupt contains repeated action names, aligned request/config arrays,
-  stable interrupt version, and no accepted decision or resume payload.
+- Ordered interrupt contains repeated action names, positionally aligned
+  request/config arrays with no invented request IDs, only the normalized
+  `approve`, `edit`, `reject`, and `respond` decision vocabulary, a stable
+  interrupt version, and no accepted decision or resume payload.
 - Checkpoint preserves source/thread/checkpoint identity while fork remains gated.
 - Reconnect preserves the last durable projection and a fixture recovery boundary;
   disconnect never means cancel or fail.
@@ -338,8 +340,9 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   with their declared validator rule code.
 - Partial failure keeps healthy synthetic source results and a source-qualified
   safe error for the failed source.
-- Source collision reuses external thread/run strings across two sources and
-  proves distinct source-qualified fixture keys.
+- Source collision reuses the exact same external thread/run strings across two
+  records with different sources and derives every expected and payload-qualified
+  key from `sourceId:threadId[:runId]`.
 
 ### Capability-manifest invariants
 
@@ -354,22 +357,38 @@ operations remain non-callable even when the corpus contains a presentation case
 
 ### Pure corpus validator and stable diagnostics
 
-`validate.py` uses only the Python standard library, reads only this corpus, emits
-stable sorted output, and performs no Git inspection, socket, subprocess,
-environment read, or wall-clock access. It validates:
+`validate.py` uses only the Python standard library, reads only this corpus, and
+emits stable sorted output. Its exact bytes are included in the corpus hash
+closure. A fail-closed stdlib AST pass derives import, filesystem-write, process,
+dynamic-access, network, environment, and wall-clock/wait findings from those
+same bytes; any finding fails validation with
+`FIXTURE_SCHEMA_VALIDATOR_PURITY`. This is static proof about the exact hashed
+validator source, not a runtime sandbox claim. It validates:
 
-- corpus/schema/index integrity and exact version support;
-- unique/normalized IDs, fixed clock derivation, sequence/order, and case coverage;
+- corpus/schema/index integrity, exact version support, and application of both
+  structural schema documents to every governed case/manifest;
+- unique/normalized IDs, exact plan-owned case/tenant/workspace identities,
+  corpus-wide record-ID uniqueness, fixed clock derivation, sequence/order, and
+  case coverage;
 - source qualification and collision behavior;
 - capability metadata and fixture/live evidence separation;
-- ordered interrupt array alignment and repeated-name preservation;
-- expected replay dedupe, terminal authority, unknown/malformed handling, and
-  partial-failure assertions;
+- ordered interrupt positional array alignment, repeated-name preservation,
+  canonical decision vocabulary, and rejection of unknown decision values;
+- type-exact JSON comparisons and immutable plan-owned semantic signatures for
+  every required case category,
+  including exact start/content/checkpoint/reconnect behavior, expected replay
+  dedupe, terminal authority, unknown/malformed handling, distinct partial-failure
+  scope, and actual logical-delay record binding;
+- a maximum JSON nesting depth before recursive schema evaluation, iterative
+  scrub/network traversal, and stable fail-closed handling of malformed shapes;
 - exact sorted SHA-256 hashes for all governed data/schema assets;
 - scrub rules for credential-shaped field names/content, `authRef`, authorization
   material, private keys, token-like values, operational endpoints, external URLs,
-  real-looking repositories/actors, and unsafe path content;
-- zero external host/URL entries and an allow-listed standard-library import set;
+  real-looking repositories/actors, Unicode-confusable field names, and unsafe
+  path content;
+- zero external host/URL entries, normalized generic/local/abbreviated/octal/
+  Unicode-dot host detection, an exact standard-library import surface, and
+  rejection of reflective/dynamic source escapes;
 - positive cases pass, each negative case fails with exactly its declared stable
   rule code, and no expected diagnostic disappears.
 
@@ -388,10 +407,12 @@ must fail with exactly `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. These are
 logical-clock contract checks and must never sample or wait for wall time.
 
 The deterministic validation report records corpus version/digest, sorted case
-IDs, rule-code coverage, scrub match count, external URL/host count, and validator
-import allow-list. It contains no runtime timestamp. The no-external-network
-evidence states only what this read-only validator proves; it cannot be reused as
-evidence that future API, browser, or provider consumers made no network calls.
+IDs, rule-code coverage, scrub match count, external URL/host count, validator
+source SHA-256, exact import surface, and every AST-derived purity counter. It
+contains no runtime timestamp. The no-external-network evidence states only what
+the active-corpus scan and static inspection of this exact hash-bound validator
+source prove; it cannot be reused as evidence that the evidence writer, scope
+runner, future API, browser, provider, or other consumer made no network call.
 
 ### Linked-worktree-safe Git scope runner and proof scopes
 
@@ -465,13 +486,27 @@ Acceptance:
   reconnect/replay/logical delay/completion/unknown/malformed-input
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
-  `negative/matrix.json` indexes exactly 12 single-code negative files: one for
-  each of the 10 stable rule-code families plus the two mandatory logical-delay
-  negatives;
+  `negative/matrix.json` indexes exactly 55 single-code negative files and one
+  immutable 144-probe semantic matrix, for 199 exact single-code checks covering
+  all stable rule-code families, the two mandatory logical-delay negatives,
+  tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
+  decision arrays, actual decision/resume/accepted-data presence, ordinary and
+  multi-source qualification failures, false source-collision evidence, nested
+  structural and semantic-shape failures, endpoint/Bearer/
+  long-short-unpadded-Basic-secret/path/actor-and-identity-key scrub bypasses,
+  generic bare external hosts, and external values in or below machine-reference
+  positions, plus every required positive-case semantic, generic schemes,
+  local/abbreviated/octal/numeric/Unicode-dot hosts, maximum nesting,
+  Unicode-confusable keys, all 39 fixed case/tenant/workspace identity mutations,
+  coordinated interrupt and corpus-wide record-ID collisions, type-exact
+  boolean/integer/float semantics, closed logical-delay expectations, and an
+  adversarial validator-purity source mutation;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
   has the exact clock-mismatch and early-visibility negative diagnostics;
+- both structural schema documents are applied to every positive case and
+  capability manifest before the handwritten semantic checks;
 - the positive malformed-input case has a schema-valid envelope and expected safe
   classification, while raw schema-invalid fixtures stay only under `negative/`;
   and
@@ -492,7 +527,11 @@ Acceptance:
   twice in memory, proves those byte sets identical, and proves they match disk;
 - each negative fixture fails only with its declared rule code;
 - hash, scrub, and no-external-network checks are part of the required command;
-- corpus validation invokes no subprocess and reads no Git or environment state;
+- `validate.py` is hash-closed, both evidence reports contain its exact source
+  SHA-256, the AST-derived purity counters are zero, and the retained reflection/
+  write probe fails with exactly `FIXTURE_SCHEMA_VALIDATOR_PURITY`;
+- corpus validation invokes no subprocess and its hashed source contains no Git,
+  network, filesystem-write, environment, or wall-clock/wait capability;
 - the explicit evidence writer is the only corpus helper that may update hashes
   and deterministic reports;
 - the Git scope runner resolves linked-worktree metadata through fixed Git
@@ -559,9 +598,134 @@ Acceptance:
   `verified 6 generated documents`, docs validation exits 0, range whitespace
   and scope checks exit 0, `internal/fixtures/product-demo` remains absent, and
   the committed handoff is clean.
-- [ ] Milestone 1 complete; exact fixture contract and inventory retained.
-- [ ] Milestone 2 complete; positive and negative corpus retained.
-- [ ] Milestone 3 complete; deterministic validator and evidence retained.
+- [x] 2026-07-23 AEST — Milestone 1 complete. The machine index closes over two
+  structural schemas, two capability manifests, and the exact 13-case ordered
+  inventory. All runtime/provider capability entries retain fixture evidence and
+  gated, unknown, unavailable, or permission-denied fallback where applicable.
+- [x] 2026-07-23 AEST — Initial Milestone 2 implementation complete. The 13
+  positive cases and initial 12 single-code negatives validated, including exact
+  delay arithmetic
+  `41 + 3 = 44`, absence through tick 43, one-time visibility from tick 44,
+  completion at tick 45, `FIXTURE_CLOCK_DELAY_MISMATCH`, and
+  `FIXTURE_EXPECTATION_DELAY_VISIBILITY`.
+- [x] 2026-07-23 AEST — Milestone 3 complete. The standard-library-only
+  read-only validator, sole deterministic evidence writer, and separate
+  linked-worktree-safe Git scope runner are retained. Two write invocations
+  produced identical target hashes with an empty second `updated_files`; the
+  following two-pass check reported in-memory and disk byte identity.
+- [x] 2026-07-23 AEST — Independent implementation review rejected exact
+  candidate `47c1cee121a9b3105f00f37404cd29114b6d04d5`. It found invented HITL
+  request IDs and `accept`, incomplete source-collision assertions, scrub/network
+  false greens, and structural schemas that were not applied to governed data.
+- [x] 2026-07-23 AEST — Bounded rework removed request IDs, uses only
+  `approve/edit/reject/respond`, validates positional alignment and unknown
+  decisions, derives both source-collision keys, applies the structural schemas,
+  broadens scrub/network enforcement, and initially expanded the matrix to 23
+  exact single-code negatives.
+- [x] 2026-07-23 AEST — Coordinator pre-commit review found two remaining false
+  greens: malformed nested types could reach handwritten semantics before the
+  structural result, while Basic authorization content and generic `.ai`/`.co`
+  bare hosts escaped scrub/network detection. Rework now fails closed on unsafe
+  structural shapes before semantics and expands the matrix to 26 exact
+  single-code negatives. Deterministic evidence is regenerated before handoff.
+- [x] 2026-07-23 AEST — Fresh review rejected exact candidate
+  `8291218590e3f6a91a5383ae91d6e909e71b1fbe`: additional malformed semantic
+  members could still raise `TypeError`, `KeyError`, or `ValueError`, and short
+  valid Basic credentials escaped the scrub expression. The validator now maps
+  malformed case/manifest evaluation exceptions to the stable schema diagnostic,
+  restricts machine-index host exemptions to exact scalar pointers rather than
+  descendants, and covers exception classes plus long, short-padded, and
+  short-unpadded Basic credentials. A converging external review also found that
+  decision/resume/accepted payload fields were not inspected and actor/identity
+  key variants escaped field-name scrubbing; the same rework now validates
+  actual HITL payload absence and those key variants. The matrix expands from
+  26 to 39 exact negatives.
+- [x] 2026-07-23 AEST — Converging fresh reviews rejected exact candidate
+  `8ee2347e595c685be8d799f106aaf806937efc3e`: tool trust, boundedness,
+  correlation, and raw-body expectations were encoded but not semantically
+  enforced, while reordered or split HITL decision arrays passed a sorted-union
+  check. Coordinator review also found payload aliases, ordinary record/scope
+  drift, incomplete partial-failure qualification, and arbitrary external
+  values in scalar machine-reference positions. Rework now uses exact private
+  fixture shapes, exact ordered per-action decision arrays, category-aware
+  source qualification, and value-qualified internal-reference exemptions. The
+  matrix expands from 39 to 55 exact negatives before a new clean review.
+- [x] 2026-07-23 AEST — Fresh independent reviews rejected exact candidate
+  `75228c07dfa867f677fc176c1bb2423c7113aff8`. An 81-probe adversarial review
+  found that 75 invalid plan-semantic mutations still passed: start, content,
+  checkpoint, and reconnect had no semantic branch; completion, unknown, and
+  malformed-input checked only fragments. Additional review found self-declared
+  replay, logical-delay, partial-failure, and tool-boundedness assertions,
+  repeated-action subject-order loss, generic scheme/local/numeric host bypasses,
+  recursion escape, and Unicode-confusable identity keys.
+- [x] 2026-07-23 AEST — Consolidated successor candidate
+  `dfa4498baf4cc892fffc2ebdb009a73b62bff701` added immutable
+  plan-owned semantics for all 13 categories, exact repeated-action subject order,
+  replay-only durable-ID duplication, bounded non-JSON tool summaries, distinct
+  failed-source scope, iterative traversal plus maximum nesting, generic
+  scheme/local/numeric host detection, and fail-closed confusable-key scrubbing.
+  The original 55 file negatives are retained and joined by a SHA-pinned
+  66-probe semantic matrix; all 121 checks produce exactly their declared single
+  code. Deterministic evidence was rendered twice with an empty second update and
+  then matched disk byte-for-byte.
+- [x] 2026-07-23 AEST — Fresh exact-candidate reviews rejected
+  `dfa4498baf4cc892fffc2ebdb009a73b62bff701`. They found an open logical-delay
+  expected object, mutable fixed case/tenant/workspace identifiers, coordinated
+  interrupt and corpus-wide record-ID drift, Python boolean/integer equality
+  aliases, token/path/abbreviated-octal-Unicode-host scrub gaps, and evidence that
+  hard-coded purity zeros while leaving `validate.py` outside hash closure.
+- [x] 2026-07-23 AEST — Bounded successor rework pins the entire logical-delay
+  object, all plan-owned identities and interrupt signatures, uses type-exact
+  JSON comparison, enforces corpus-wide record-ID uniqueness, normalizes the
+  reviewed token/path/host forms, and hash-closes `validate.py`. A stdlib AST
+  gate derives source purity counters and a reflection/replace mutation proves
+  the gate fails closed. The retained matrix now contains all 39 fixed-ID
+  mutations and 139 semantic probes; all 194 combined negatives must produce
+  exactly their declared single code before a new exact-SHA review.
+- [x] 2026-07-23 AEST — Fresh independent implementation review rejected exact
+  candidate `e827c5e57fa20a7e95a822b851b4641aad00ade4`. The required
+  reviewed-dispatch-to-candidate scope proof from
+  `dff977bfd43a9744cf88690b7aa08b6f65876eac` includes unrelated repository
+  changes after `origin/main` was merged into the implementation branch, so the
+  candidate cannot satisfy the fixture/plan allow-list. The reviewer also
+  reproduced three in-memory false greens: removing the corpus `idPolicy`,
+  renaming an available fixture capability to `provider-create`, and duplicating
+  a file-negative ID/probe all returned zero diagnostics. Corpus rendering,
+  evidence hashes, both validator passes, and docs checks otherwise reproduced
+  successfully; Milestone 4 remains open and no implementation SHA is accepted.
+- [x] 2026-07-23 AEST — Bounded rework closes the first reproduced false green:
+  the corpus ID policy is now compared with the exact fixture prefix and
+  qualified thread/run templates, while a SHA-pinned semantic probe removes the
+  whole `idPolicy` and requires `FIXTURE_SCHEMA_REQUIRED_FIELD`. Deterministic
+  evidence was regenerated twice with an empty second update; fresh exact-SHA
+  review remains required, and the capability-name, duplicate-negative, and Git
+  scope blockers remain open.
+- [x] 2026-07-23 AEST — Bounded rework closes the second reproduced false green:
+  the available capabilities in both manifests now require their exact ordered
+  names, while a SHA-pinned semantic probe renames `normalized-presentation` to
+  `provider-create` and requires `FIXTURE_SCHEMA_REQUIRED_FIELD`. Deterministic
+  evidence was regenerated twice with an empty second update; fresh exact-SHA
+  review remains required, and the duplicate-negative and Git scope blockers
+  remain open.
+- [x] 2026-07-23 AEST — Bounded rework closes the third reproduced false green:
+  all file-negative and semantic-probe IDs now form one unique inventory before
+  result-map lookup, while a SHA-pinned semantic probe duplicates a file-negative
+  ID and requires `FIXTURE_SCHEMA_NEGATIVE_INDEX`. Deterministic evidence was
+  regenerated twice with an empty second update. Fresh exact-SHA review remains
+  required; the newly reproduced manifest state/path-identity false greens and
+  the Git scope blocker remain open.
+- [x] 2026-07-23 AEST — Bounded rework closes the manifest state false green:
+  both capability manifests now require the exact ordered state inventory, while
+  a SHA-pinned semantic probe changes gated `interrupt-submission` to `available`
+  and requires `FIXTURE_CAPABILITY_STATE`. Deterministic evidence was regenerated
+  twice with an empty second update. Fresh exact-SHA review remains required;
+  the manifest path-identity false green and Git scope blocker remain open.
+- [x] 2026-07-23 AEST — Bounded rework closes the manifest path-identity false
+  green: each governed manifest path now requires its exact `manifestId` and
+  `runtimeKind`, while a SHA-pinned semantic probe swaps the two valid documents
+  and requires `FIXTURE_SCHEMA_ASSET_INDEX`. Deterministic evidence was
+  regenerated twice with an empty second update. Fresh exact-SHA review remains
+  required; the Git scope blocker remains open.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -603,6 +767,18 @@ Acceptance:
   Consequence: the author keeps truthful draft metadata and
   `dispatch_ready: false`; every diagnostic must be cleared by the independent
   review/coordinator transition below before dispatch.
+- 2026-07-23 AEST — Intentional scrub and network negatives necessarily contain
+  the forbidden field/URL that they test. Consequence: deterministic evidence
+  reports zero matches across the active corpus index, schemas, manifests,
+  positive cases, and negative matrix, while each negative is independently
+  mutated/evaluated and must emit exactly its declared code. Negative payloads
+  remain hashed and manifest-closed rather than being silently excluded from
+  integrity proof.
+- 2026-07-23 AEST — Reviewed LangChain evidence and `DW-HITL-001` use positional
+  arrays with no upstream action ID and the normalized decisions
+  `approve/edit/reject/respond`. Consequence: the neutral corpus must not invent a
+  request-ID alignment contract or use UI-like `accept`; submission and resume
+  remain gated.
 
 ## Decision Log
 
@@ -613,8 +789,10 @@ Acceptance:
 - 2026-07-23 AEST — Decision: separate corpus validation from Git scope
   enforcement. Rationale: a deterministic content validator must not acquire
   subprocess/repository authority, while linked worktrees require Git-aware scope
-  inspection. Consequence: `validate.py` is pure and `verify_scope.py` invokes
-  only fixed, NUL-delimited Git queries without a shell.
+  inspection. Consequence: `validate.py` is hash-bound and statically AST-checked
+  for the forbidden capability surface, while `verify_scope.py` invokes only
+  fixed, NUL-delimited Git queries without a shell. This source proof is not a
+  runtime sandbox proof for either helper.
 - 2026-07-23 AEST — Decision: use a schema-valid positive envelope for malformed
   input classification. Rationale: a positive corpus case cannot simultaneously
   be schema-invalid and expected to pass. Consequence: raw invalid envelopes exist
@@ -664,8 +842,10 @@ Acceptance:
    documents only through the negative rule-code matrix, including
    `invalid-logical-delay.json`. Do not derive payloads from provider docs,
    external research fixtures, prototype network captures, or live services.
-4. Implement `validate.py` as a pure read-only standard-library checker that
-   never writes or invokes a subprocess.
+4. Implement `validate.py` as a read-only standard-library checker, include its
+   exact bytes in `hashedAssets`, derive its forbidden-capability counters by AST
+   inspection, and fail closed if its source acquires a write, process, dynamic,
+   network, environment, or wall-clock/wait surface.
 5. Implement `update_evidence.py` as the explicit maintainer-only deterministic
    writer for the hash manifest and two evidence reports. It performs no Git,
    network, environment-secret, or wall-clock access. `--write` renders target
@@ -749,7 +929,9 @@ Required observations:
   and byte identity with all on-disk evidence targets, then writes nothing;
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
-  no writes or subprocess invocation;
+  the exact validator source SHA plus zero AST-derived import violations, writes,
+  process calls/imports, dynamic accesses, network calls/imports, environment
+  reads, and wall-clock/wait calls;
 - validator output proves the logical-delay release equation `41 + 3 = 44`,
   absence through tick `43`, one-time visibility at tick `44`, completion at tick
   `45`, exact `FIXTURE_CLOCK_DELAY_MISMATCH` and
@@ -935,7 +1117,91 @@ register itself in the index, or start consumer implementation.
 
 ## Outcomes & Retrospective
 
-Pending implementation and independent review. At completion, compare the actual
-case/rule inventory and corpus digest with this purpose, list every deviation and
-deferred consumer, record the exact accepted commit, and leave all live runtime
-gates visibly open unless independently accepted elsewhere.
+Bounded implementation rework is complete and fresh independent implementation
+review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`,
+`8291218590e3f6a91a5383ae91d6e909e71b1fbe`,
+`8ee2347e595c685be8d799f106aaf806937efc3e`, and
+`75228c07dfa867f677fc176c1bb2423c7113aff8`, and
+`dfa4498baf4cc892fffc2ebdb009a73b62bff701` remain rejected and must not be
+integrated. This successor is not accepted until a new exact-SHA review
+converges.
+The corpus contains exactly these ordered positive categories:
+`start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
+`replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
+`partial-failure`, and `source-collision`.
+
+The exact ordered negative rule inventory is seven
+`FIXTURE_SCHEMA_REQUIRED_FIELD` cases, `FIXTURE_ID_PREFIX`,
+three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
+`FIXTURE_ORDER_SEQUENCE`, `FIXTURE_CAPABILITY_EVIDENCE`, four
+`FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY` cases, two
+`FIXTURE_EXPECTATION_TOOL_CORRELATION` cases, six
+`FIXTURE_INTERRUPT_ALIGNMENT` cases, three
+`FIXTURE_INTERRUPT_DECISION_VALUE` cases, `FIXTURE_ID_SOURCE_COLLISION`,
+`FIXTURE_EXPECTATION_PARTIAL_FAILURE`, `FIXTURE_HASH_MISMATCH`, four
+`FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, four
+`FIXTURE_SCRUB_SECRET_VALUE` cases, `FIXTURE_SCRUB_UNSAFE_PATH`, five
+`FIXTURE_SCRUB_REAL_IDENTITY` cases, six
+`FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
+`FIXTURE_CLOCK_DELAY_MISMATCH`, and
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 144
+single-code probes. It retains the prior 66 category-semantic, depth,
+confusable-key, and generic-network probes, then adds two coherent delay-drift
+cases, seven abbreviated/octal/local/scheme host forms, six JSON type-alias
+cases, corpus-wide record-ID collision, closed delay-object coverage, all 39
+case/tenant/workspace fixed-ID mutations, coordinated interrupt-signature
+mutation, three token forms, tilde-path content, two normalized direct-host
+forms, three case-integrated host forms, and the adversarial validator-purity
+source probe, the exact missing-ID-policy probe, the exact available
+capability-name inventory probe, the exact capability-state inventory probe,
+the exact manifest path-identity probe, and the cross-matrix negative-ID
+collision probe. Every one of the 199 combined negatives produced exactly its
+declared code. The semantic matrix SHA-256 is
+`aa4b2bb1cf213c124697ad52b8e4659f3bd078528a4c07cb79045478feb49eee`.
+
+The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
+bytes, is
+`1aa88f00bdb2287f75e73c80ec34673552e068ded0507ed8aebdbeb1346935c4`.
+The 76-entry hash closure includes validator source SHA-256
+`ce5aa28550a8e06f40c60dbeac955b806c039e22fe76ffa11d69adc49b982b3b`.
+The generated validation and isolation reports record 13 cases, 199 intentional
+negative rules, zero active-corpus scrub matches, zero active-corpus external
+URLs/hosts, and AST-derived zero counts for import violations, filesystem-write
+calls/references, process calls/imports, dynamic accesses, network calls/imports,
+environment reads, and wall-clock/wait calls. These are hash-bound static-source
+and active-corpus facts, not consumer runtime isolation.
+
+Validation from the repository root:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
+exit 0; hashes.sha256=1aa88f...935c4; validation-report=5117ec...dd4e1;
+no-external-network=e2c241...e6918; first updated_files contained all 3 targets
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
+exit 0; identical target hashes; updated_files=[]
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --check
+exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
+exit 0; corpus_digest=1aa88f...935c4; 13 case IDs; 199 single-code negatives;
+scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
+validator import-violation/process/dynamic/network/environment/wall-clock-wait/
+write-call/write-reference counts=0
+
+git diff --check
+exit 0
+
+git diff --quiet dff977bfd43a9744cf88690b7aa08b6f65876eac -- docs/plans
+exit 0
+```
+
+No API, agent, TypeScript consumer, application integration, product-demo
+service, provider contract, live parity, external network, credential,
+`docs/exec-plans/index.md`, or `docs/plans/**` change occurred. Scenario
+contribution remains limited to the fixture-corpus and isolation input slice of
+`AC-DW-FND-004-05` plus bounded inputs for the other front-matter scenarios; no
+complete application scenario is claimed. Every named runtime/provider spike
+remains open, and API/domain/SDK consumers plus product-demo integration remain
+separate reviewed cells.

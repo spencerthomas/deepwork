@@ -1,0 +1,10 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_hash",
+  "declaredRuleCode": "FIXTURE_HASH_MISMATCH",
+  "probe": {
+    "kind": "claimed-asset-hash",
+    "assetPath": "cases/start.json",
+    "claimedSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_requested_actor",
+  "declaredRuleCode": "FIXTURE_SCRUB_REAL_IDENTITY",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/requested_actor_id", "value": "real-person"}
+}

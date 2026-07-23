@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_source_collision",
+  "declaredRuleCode": "FIXTURE_ID_SOURCE_COLLISION",
+  "basePath": "cases/source-collision.json",
+  "mutation": {"operation": "replace", "path": "/records/1/runId", "value": "fx_run_not_shared"}
+}

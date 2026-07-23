@@ -8,6 +8,9 @@ from deepwork_api.domain import (
     DecisionRecord,
     DecisionValue,
     EventData,
+    EvidenceRecord,
+    PlanUpdateRecord,
+    ProposedPlan,
     TaskEvent,
     TaskEventName,
     TaskSnapshot,
@@ -40,6 +43,32 @@ class TaskRepository(Protocol):
     ) -> TaskEvent:
         """Append one event and atomically update its related task state."""
 
+    async def record_evidence(
+        self,
+        task_id: str,
+        evidence: EvidenceRecord,
+    ) -> TaskEvent:
+        """Store and replay one evidence record."""
+
+    async def set_plan(
+        self,
+        task_id: str,
+        *,
+        plan: ProposedPlan,
+        event_name: TaskEventName,
+    ) -> TaskEvent:
+        """Store and replay a runner-owned proposed or revised plan."""
+
+    async def update_plan(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: tuple[str, ...],
+    ) -> PlanUpdateRecord:
+        """Edit the current plan for an exact pending interrupt/revision."""
+
     async def events_after(self, task_id: str, event_id: int) -> tuple[TaskEvent, ...]:
         """Return replay events strictly after a validated cursor."""
 
@@ -53,6 +82,7 @@ class TaskRepository(Protocol):
         interrupt_id: str,
         decision: DecisionValue,
         comment_provided: bool,
+        response_digest: str | None,
     ) -> DecisionRecord:
         """Atomically record or idempotently replay one interrupt decision."""
 

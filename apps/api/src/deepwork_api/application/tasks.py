@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -11,6 +12,11 @@ from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     DecisionRecord,
     DecisionValue,
+    EvidenceKind,
+    EvidenceRecord,
+    EvidenceSource,
+    PlanUpdateRecord,
+    ProposedPlan,
     TaskEvent,
     TaskEventName,
     TaskSnapshot,
@@ -62,15 +68,14 @@ def _build_task_title(objective: str) -> str:
     return f"{title[: _MAX_TASK_TITLE_LENGTH - 1].rstrip()}…"
 
 
-def _build_task_brief(objective: str) -> str:
+def _build_task_brief(objective: str, plan: ProposedPlan) -> str:
     risk = _risk_for(objective)
-    plan = _plan_for(objective)
     return "\n".join(
         (
             "Task brief",
             f"Objective: {objective}",
             "Plan:",
-            *(f"{index}. {step}" for index, step in enumerate(plan, start=1)),
+            *(f"{index}. {step}" for index, step in enumerate(plan.steps, start=1)),
             "Risks:",
             f"- {risk}",
             "Next actions:",
@@ -161,7 +166,6 @@ class DeterministicFixtureRunner:
         self._tasks.clear()
 
     async def _run(self, task: TaskSnapshot) -> None:
-        interrupt_id = task.task_id.replace("task_", "interrupt_", 1)
         try:
             await self.repository.append_event(
                 task.task_id,
@@ -182,76 +186,124 @@ class DeterministicFixtureRunner:
                 ),
             )
             await asyncio.sleep(0)
-            await self.repository.append_event(
-                task.task_id,
-                name=TaskEventName.PLAN_PROPOSED,
-                data=(
-                    ("title", "Safe local fixture plan"),
-                    (
-                        "steps",
-                        (
-                            f"Confirm the outcome: {task.objective}",
-                            "Pause before any protected work",
-                            "Produce and validate a bounded local task brief",
-                        ),
-                    ),
-                    ("evidenceClass", "fixture"),
+            evidence = EvidenceRecord(
+                evidence_id=task.task_id.replace("task_", "evidence_", 1),
+                kind=EvidenceKind.FIXTURE,
+                summary=(
+                    "The deterministic local runner classified the objective and "
+                    "prepared a bounded plan; no external source was consulted."
                 ),
+                source=EvidenceSource.LOCAL_RUNNER,
+                verified=False,
             )
-            await asyncio.sleep(0)
+            await self.repository.record_evidence(task.task_id, evidence)
+            plan = ProposedPlan(
+                revision=1,
+                title="Safe local fixture plan",
+                steps=_plan_for(task.objective),
+                evidence_refs=(evidence.evidence_id,),
+            )
+            await self.repository.set_plan(
+                task.task_id,
+                plan=plan,
+                event_name=TaskEventName.PLAN_PROPOSED,
+            )
+            await self._run_interrupt_loop(task, plan)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            await self._record_safe_failure(task)
+
+    async def _run_interrupt_loop(self, task: TaskSnapshot, plan: ProposedPlan) -> None:
+        generation = 0
+        while True:
+            interrupt_id = _interrupt_id(task.task_id, generation)
             await self.repository.append_event(
                 task.task_id,
                 name=TaskEventName.INTERRUPT_REQUESTED,
                 data=(
                     ("interruptId", interrupt_id),
-                    ("question", "Approve this local fixture plan?"),
-                    ("decisions", ("approve", "reject")),
+                    ("question", "Approve this local fixture plan or provide guidance?"),
+                    ("decisions", ("approve", "reject", "respond")),
+                    ("planRevision", plan.revision),
                 ),
                 status=TaskStatus.WAITING_APPROVAL,
                 pending_interrupt_id=interrupt_id,
             )
-
             decision = await self.repository.wait_for_decision(task.task_id, interrupt_id)
+            if decision is DecisionValue.REJECT:
+                await self._complete_rejected(task)
+                return
             if decision is DecisionValue.APPROVE:
-                result = _build_task_brief(task.objective)
-                await self.repository.append_event(
-                    task.task_id,
-                    name=TaskEventName.CONTENT_DELTA,
-                    data=(
-                        ("text", result),
-                        ("evidenceClass", "fixture"),
-                    ),
-                )
-                await self.repository.append_event(
-                    task.task_id,
-                    name=TaskEventName.RUN_COMPLETED,
-                    data=(
-                        ("runId", task.run_id),
-                        ("status", TaskStatus.COMPLETED.value),
-                        ("safeReason", "Completed by the deterministic local fixture runner."),
-                        ("resultAvailable", True),
-                    ),
-                    status=TaskStatus.COMPLETED,
-                    clear_pending_interrupt=True,
-                    result=result,
-                )
-            else:
-                await self.repository.append_event(
-                    task.task_id,
-                    name=TaskEventName.RUN_COMPLETED,
-                    data=(
-                        ("runId", task.run_id),
-                        ("status", TaskStatus.REJECTED.value),
-                        ("safeReason", "The pending local fixture plan was rejected."),
-                        ("resultAvailable", False),
-                    ),
-                    status=TaskStatus.REJECTED,
-                    clear_pending_interrupt=True,
-                )
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            await self._record_safe_failure(task)
+                current = await self.repository.get_task(task.task_id)
+                approved_plan = current.proposed_plan
+                if approved_plan is None:
+                    raise RuntimeError("approved task has no proposed plan")
+                await self._complete_approved(task, approved_plan)
+                return
+
+            generation += 1
+            current = await self.repository.get_task(task.task_id)
+            current_plan = current.proposed_plan
+            if current_plan is None:
+                raise RuntimeError("responded task has no proposed plan")
+            response_evidence = EvidenceRecord(
+                evidence_id=f"{task.task_id.replace('task_', 'evidence_', 1)}_{generation:02d}",
+                kind=EvidenceKind.FIXTURE,
+                summary=(
+                    "Additional reviewer guidance was recorded locally. Its text is "
+                    "intentionally excluded from replayable evidence."
+                ),
+                source=EvidenceSource.REVIEWER_RESPONSE,
+                verified=False,
+            )
+            await self.repository.record_evidence(task.task_id, response_evidence)
+            plan = ProposedPlan(
+                revision=current_plan.revision + 1,
+                title="Safe local fixture plan (guidance recorded)",
+                steps=current_plan.steps,
+                evidence_refs=(*current_plan.evidence_refs, response_evidence.evidence_id),
+            )
+            await self.repository.set_plan(
+                task.task_id,
+                plan=plan,
+                event_name=TaskEventName.PLAN_PROPOSED,
+            )
+
+    async def _complete_approved(self, task: TaskSnapshot, plan: ProposedPlan) -> None:
+        result = _build_task_brief(task.objective, plan)
+        await self.repository.append_event(
+            task.task_id,
+            name=TaskEventName.CONTENT_DELTA,
+            data=(("text", result), ("evidenceClass", "fixture")),
+        )
+        await self.repository.append_event(
+            task.task_id,
+            name=TaskEventName.RUN_COMPLETED,
+            data=(
+                ("runId", task.run_id),
+                ("status", TaskStatus.COMPLETED.value),
+                ("safeReason", "Completed by the deterministic local fixture runner."),
+                ("resultAvailable", True),
+            ),
+            status=TaskStatus.COMPLETED,
+            clear_pending_interrupt=True,
+            result=result,
+        )
+
+    async def _complete_rejected(self, task: TaskSnapshot) -> None:
+        await self.repository.append_event(
+            task.task_id,
+            name=TaskEventName.RUN_COMPLETED,
+            data=(
+                ("runId", task.run_id),
+                ("status", TaskStatus.REJECTED.value),
+                ("safeReason", "The pending local fixture plan was rejected."),
+                ("resultAvailable", False),
+            ),
+            status=TaskStatus.REJECTED,
+            clear_pending_interrupt=True,
+        )
 
     async def _record_safe_failure(self, task: TaskSnapshot) -> None:
         try:
@@ -310,11 +362,35 @@ class TaskService:
     ) -> DecisionRecord:
         """Record one bounded interrupt decision without replaying comment text."""
 
+        response_digest = (
+            hashlib.sha256(comment.encode()).hexdigest()
+            if decision is DecisionValue.RESPOND and comment is not None
+            else None
+        )
         return await self.repository.record_decision(
             task_id,
             interrupt_id=interrupt_id,
             decision=decision,
             comment_provided=bool(comment),
+            response_digest=response_digest,
+        )
+
+    async def update_plan(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: tuple[str, ...],
+    ) -> PlanUpdateRecord:
+        """Edit the current plan before resuming its exact interrupt."""
+
+        sanitized_steps = tuple(sanitize_objective(step) for step in steps)
+        return await self.repository.update_plan(
+            task_id,
+            interrupt_id=interrupt_id,
+            expected_revision=expected_revision,
+            steps=sanitized_steps,
         )
 
     async def validate_event_cursor(self, task_id: str, event_id: int) -> None:
@@ -336,3 +412,11 @@ class TaskService:
             if task.status.is_terminal and cursor >= task.last_event_id:
                 return
             await self.repository.wait_for_events(task_id, cursor)
+
+
+def _interrupt_id(task_id: str, generation: int) -> str:
+    task_number = int(task_id.removeprefix("task_"))
+    value = task_number + generation * 10_000_000
+    if value > 99_999_999:
+        raise RuntimeError("local fixture interrupt bound exceeded")
+    return f"interrupt_{value:08d}"

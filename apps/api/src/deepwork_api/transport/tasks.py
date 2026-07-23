@@ -12,6 +12,8 @@ from deepwork_api.application import (
     DecisionConflictError,
     InterruptMismatchError,
     InvalidEventCursorError,
+    PlanRevisionConflictError,
+    PlanUnavailableError,
     StaleInterruptError,
     TaskEvent,
     TaskNotFoundError,
@@ -21,6 +23,8 @@ from deepwork_api.application import (
 from deepwork_api.contracts import (
     DecisionAcceptedResponse,
     DecisionRequest,
+    PlanUpdateRequest,
+    PlanUpdateResponse,
     ProblemResponse,
     TaskAcceptedResponse,
     TaskCreateRequest,
@@ -128,6 +132,41 @@ def build_task_router(service: TaskService) -> APIRouter:
                 "A different decision was already recorded.",
             )
         return DecisionAcceptedResponse.from_domain(decision)
+
+    @router.patch(
+        "/{task_id}/plan",
+        response_model=PlanUpdateResponse,
+    )
+    async def update_plan(
+        task_id: TaskPath,
+        request: PlanUpdateRequest,
+    ) -> PlanUpdateResponse | JSONResponse:
+        try:
+            update = await service.update_plan(
+                task_id,
+                interrupt_id=request.interrupt_id,
+                expected_revision=request.expected_revision,
+                steps=request.steps,
+            )
+        except TaskNotFoundError:
+            return _problem(404, "task_not_found", "Task was not found.")
+        except InterruptMismatchError:
+            return _problem(
+                409,
+                "interrupt_mismatch",
+                "Interrupt does not match the pending task decision.",
+            )
+        except StaleInterruptError:
+            return _problem(409, "interrupt_stale", "Interrupt is no longer actionable.")
+        except PlanUnavailableError:
+            return _problem(409, "plan_unavailable", "Task has no editable proposed plan.")
+        except PlanRevisionConflictError:
+            return _problem(
+                409,
+                "plan_revision_conflict",
+                "Plan revision is stale or conflicting.",
+            )
+        return PlanUpdateResponse.from_domain(update)
 
     return router
 

@@ -11,6 +11,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 - [Wave 1 TypeScript package scaffold rework](active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md)
 - [Wave 1 deterministic product-demo fixture contract](active/DW-EXEC-M1-FIXTURE-CONTRACT.md)
 - [Outcome 3 shared task domain and client contract](active/DW-EXEC-OUTCOME3-SHARED-TASK-CONTRACT.md)
+- [LangChain-shaped OSS integration and repository gates](active/DW-EXEC-M1-OSS-ALIGNMENT.md)
 
 ## Other records
 

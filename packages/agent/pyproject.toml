@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.31.0"]
+requires = ["hatchling>=1.31,<2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,29 +7,40 @@ name = "deepwork-agent"
 version = "0.0.0"
 description = "Injected-model local Deep Work agent graph"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.11,<4.0"
 license = { text = "MIT" }
 authors = [{ name = "Deep Work contributors" }]
+keywords = ["agents", "deepagents", "langchain", "langgraph"]
 dependencies = [
-  "deepagents==0.6.12",
-  "langchain-core==1.5.0",
-  "langgraph==1.2.9",
-  "typing-extensions==4.16.0",
+  "deepagents>=0.6.12,<0.7.0",
+  "langchain-core>=1.5.0,<2.0.0",
+  "langgraph>=1.2.9,<2.0.0",
+  "typing-extensions>=4.16.0,<5.0.0",
 ]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
 
+[project.urls]
+Documentation = "https://github.com/spencerthomas/deepwork#readme"
+Issues = "https://github.com/spencerthomas/deepwork/issues"
+Repository = "https://github.com/spencerthomas/deepwork"
+
 [dependency-groups]
 dev = [
-  "hatchling==1.31.0",
-  "pytest==9.1.1",
-  "pytest-socket==0.8.0",
-  "ruff==0.15.22",
-  "ty==0.0.62",
+  "hatchling>=1.31,<2",
+  "pytest>=9.1,<10",
+  "pytest-benchmark>=5.2,<6",
+  "pytest-cov>=7.0,<8",
+  "pytest-socket>=0.8,<0.9",
+  "ruff>=0.15.22,<0.16",
+  "ty>=0.0.62,<0.1",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -40,10 +51,10 @@ packages = ["src/deepwork_agent"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-config --strict-markers --disable-socket"
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit_tests"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py311"
 line-length = 100
 
 [tool.ruff.format]

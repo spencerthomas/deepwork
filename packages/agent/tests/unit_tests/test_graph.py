@@ -91,6 +91,8 @@ def test_runtime_capabilities_are_truthful_and_local_only() -> None:
     assert capabilities.model_injection_required is True
     assert capabilities.plan_first is True
     assert capabilities.human_in_the_loop == "langgraph-interrupt"
+    assert capabilities.tool_authorization == "deepagents-interrupt-on"
+    assert capabilities.nested_execution_streaming is True
     assert capabilities.checkpointing == "in-memory-only"
     assert capabilities.hosted_deployment is False
     assert capabilities.provider_credentials_managed is False
@@ -179,7 +181,7 @@ def test_approval_can_be_explicitly_disabled_for_local_automation() -> None:
     model = _model("Draft the response.", "A concise completed response.")
     graph = create_graph(
         model=model,
-        config=AgentConfig(require_plan_approval=False),
+        config=AgentConfig(require_plan_approval=False, require_tool_approval=False),
     )
 
     result = graph.invoke(
@@ -191,6 +193,14 @@ def test_approval_can_be_explicitly_disabled_for_local_automation() -> None:
     assert result["approval"] == "not-required"
     assert result["status"] == "completed"
     assert result["final_answer"] == "A concise completed response."
+
+
+def test_unnamed_tools_fail_closed_when_approval_is_required() -> None:
+    """An ambiguous tool cannot silently bypass the default authorization gate."""
+    model = _model("Draft the response.")
+
+    with pytest.raises(ValueError, match="every tool must expose a name"):
+        create_graph(model=model, tools=[cast("Callable[..., Any]", object())])
 
 
 def test_invalid_resume_is_rejected_before_command_and_does_not_poison_checkpoint() -> None:

@@ -17,6 +17,13 @@ export const PLAN_STEP_MAX_COUNT = 8;
 
 export type TaskEventName = (typeof TASK_EVENT_NAMES)[number];
 
+/**
+ * Presentation statuses used by the current task-workspace adapter.
+ *
+ * This remains an application type until the workspace is migrated as a whole
+ * to the canonical `@deepwork/sdk` task services. New domain or transport
+ * behavior must not be added here.
+ */
 export type TaskStatus =
   | "queued"
   | "running"

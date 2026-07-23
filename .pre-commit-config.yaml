@@ -1,0 +1,22 @@
+minimum_pre_commit_version: "4.0.0"
+default_install_hook_types: [pre-commit, pre-push]
+repos:
+  - repo: local
+    hooks:
+      - id: docs
+        name: canonical documentation
+        entry: make docs
+        language: system
+        pass_filenames: false
+        files: ^(docs/|tools/docs/|AGENTS\.md|ARCHITECTURE\.md)
+      - id: format-check
+        name: repository formatting
+        entry: make format-check
+        language: system
+        pass_filenames: false
+      - id: full-check
+        name: full repository check
+        entry: make check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

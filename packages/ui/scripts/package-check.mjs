@@ -88,8 +88,12 @@ async function inspectArchive(archive, extractionRoot) {
   const statusCss = await readFile(join(packedRoot, "status-panel.css"), "utf8");
   const tokensCss = await readFile(join(packedRoot, "tokens.css"), "utf8");
   assert.ok(
-    statusCss.includes("var(--space-4)"),
-    "Packed status styles must consume canonical spacing tokens.",
+    statusCss.includes("var(--dw-status-space-4"),
+    "Packed status styles must use collision-safe component tokens.",
+  );
+  assert.ok(
+    tokensCss.includes("--dw-status-space-4: var(--space-4);"),
+    "Packed status tokens must derive from the canonical spacing scale.",
   );
   assert.ok(
     tokensCss.includes("--touch-target-min:"),
@@ -97,6 +101,7 @@ async function inspectArchive(archive, extractionRoot) {
   );
 }
 
+const offlineStore = runPnpm(["store", "path"], packageRoot).trim();
 const temporaryRoot = await mkdtemp(join(tmpdir(), "deepwork-ui-package-check-"));
 
 try {
@@ -118,11 +123,24 @@ try {
     join(consumer, "pnpm-workspace.yaml"),
     `packages:\n  - "."\noverrides:\n  "@deepwork/domain": "file:${domainArchive}"\n`,
   );
-  runPnpm(["add", "--offline", "--ignore-scripts", "--save-exact", domainArchive], consumer);
   runPnpm(
     [
       "add",
       "--offline",
+      "--store-dir",
+      offlineStore,
+      "--ignore-scripts",
+      "--save-exact",
+      domainArchive,
+    ],
+    consumer,
+  );
+  runPnpm(
+    [
+      "add",
+      "--offline",
+      "--store-dir",
+      offlineStore,
       "--ignore-scripts",
       "--save-exact",
       uiArchive,

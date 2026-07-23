@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose an evidence-backed product or developer outcome.
+title: "feat: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: Describe who benefits and what becomes possible.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and current limitation
+      description: Separate observed behavior from assumptions or proposed design.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security and compatibility boundaries
+      description: Note credentials, external contracts, public APIs, migrations, or accessibility impact.
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Contribution readiness
+      options:
+        - label: I am willing to help implement this after maintainer scope review.

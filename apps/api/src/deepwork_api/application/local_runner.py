@@ -36,6 +36,7 @@ class LocalRun(Protocol):
 
     @property
     def thread_id(self) -> str: ...
+
     @property
     def run_id(self) -> str: ...
 
@@ -45,6 +46,7 @@ class LocalPlanUpdate(LocalRun, Protocol):
 
     @property
     def interrupt_id(self) -> str: ...
+
     @property
     def plan_revision(self) -> int: ...
 
@@ -52,8 +54,10 @@ class LocalPlanUpdate(LocalRun, Protocol):
 class LocalInterruptValue(Protocol):
     @property
     def interrupt_id(self) -> str: ...
+
     @property
     def plan(self) -> tuple[str, ...]: ...
+
     @property
     def plan_revision(self) -> int: ...
 
@@ -61,12 +65,16 @@ class LocalInterruptValue(Protocol):
 class LocalState(Protocol):
     @property
     def status(self) -> str | None: ...
+
     @property
     def plan(self) -> tuple[str, ...]: ...
+
     @property
     def plan_revision(self) -> int | None: ...
+
     @property
     def final_answer(self) -> str | None: ...
+
     @property
     def interrupt(self) -> LocalInterruptValue | None: ...
 

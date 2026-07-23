@@ -11,6 +11,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -70,6 +71,8 @@ class RuntimeCapabilities:
     model_injection_required: Literal[True]
     plan_first: Literal[True]
     human_in_the_loop: Literal["langgraph-interrupt"]
+    tool_authorization: Literal["deepagents-interrupt-on"]
+    nested_execution_streaming: Literal[True]
     checkpointing: Literal["in-memory-only"]
     hosted_deployment: Literal[False]
     provider_credentials_managed: Literal[False]
@@ -84,10 +87,40 @@ def runtime_capabilities() -> RuntimeCapabilities:
         model_injection_required=True,
         plan_first=True,
         human_in_the_loop="langgraph-interrupt",
+        tool_authorization="deepagents-interrupt-on",
+        nested_execution_streaming=True,
         checkpointing="in-memory-only",
         hosted_deployment=False,
         provider_credentials_managed=False,
     )
+
+
+def _tool_name(candidate: ToolLike) -> str | None:
+    """Return a public tool name without depending on LangChain internals."""
+    if isinstance(candidate, BaseTool):
+        return candidate.name
+    if isinstance(candidate, dict):
+        name = candidate.get("name")
+        function = candidate.get("function")
+        if not isinstance(name, str) and isinstance(function, dict):
+            name = function.get("name")
+        return name if isinstance(name, str) and name else None
+    name = getattr(candidate, "__name__", None)
+    return name if isinstance(name, str) and name else None
+
+
+def _approval_policy(tools: Sequence[ToolLike], *, required: bool) -> dict[str, bool] | None:
+    """Build the public Deep Agents approval policy and fail closed on ambiguity."""
+    if not required:
+        return None
+    names: list[str] = []
+    for candidate in tools:
+        name = _tool_name(candidate)
+        if name is None:
+            msg = "every tool must expose a name when tool approval is required"
+            raise ValueError(msg)
+        names.append(name)
+    return dict.fromkeys(names, True) or None
 
 
 def create_graph(
@@ -118,20 +151,43 @@ def create_graph(
         msg = "model must be an initialized BaseChatModel"
         raise TypeError(msg)
     settings = config or AgentConfig()
+    approval_policy = _approval_policy(tools, required=settings.require_tool_approval)
     executor = create_deep_agent(
         model=model,
         tools=list(tools),
         system_prompt=DEEP_WORK_SYSTEM_PROMPT,
         name="deep-work-executor",
+        interrupt_on=cast("Any", approval_policy),
     )
 
     def execute(state: AgentState) -> dict[str, object]:
+        writer = get_stream_writer()
         execution_request = numbered_plan_request(
             state["task"],
             list(state["plan"]),
             closing="Execute the approved plan and provide the final answer.",
         )
-        result = executor.invoke({"messages": [HumanMessage(content=execution_request)]})
+        writer({"kind": "deepwork-execution", "phase": "started"})
+        result: dict[str, Any] | None = None
+        for mode, payload in executor.stream(
+            {"messages": [HumanMessage(content=execution_request)]},
+            stream_mode=["updates", "values"],
+        ):
+            if mode == "values" and isinstance(payload, dict):
+                result = payload
+            elif mode == "updates" and isinstance(payload, dict):
+                for node in payload:
+                    if node != "__interrupt__":
+                        writer(
+                            {
+                                "kind": "deepwork-execution",
+                                "phase": "node-finished",
+                                "node": node,
+                            }
+                        )
+        if result is None:
+            msg = "deep agent completed without a final state"
+            raise ValueError(msg)
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),
@@ -140,6 +196,7 @@ def create_graph(
         if final_message is None:
             msg = "deep agent completed without a final AI message"
             raise ValueError(msg)
+        writer({"kind": "deepwork-execution", "phase": "completed"})
         return {
             "status": "completed",
             "final_answer": message_text(final_message),

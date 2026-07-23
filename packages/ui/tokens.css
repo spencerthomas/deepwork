@@ -91,6 +91,36 @@
   --focus-ring-width: 3px;
   --focus-ring-offset: 3px;
 
+  /* StatusPanel aliases keep the standalone component stylesheet insulated
+     from host-app token names while preserving this package's canonical scale. */
+  --dw-status-space-2: var(--space-2);
+  --dw-status-space-4: var(--space-4);
+  --dw-status-foreground: rgb(var(--foreground));
+  --dw-status-background: rgb(var(--background));
+  --dw-status-border: var(--border);
+  --dw-status-border-width: var(--border-width-default);
+  --dw-status-radius: var(--radius-frame);
+  --dw-status-font-body: var(--font-body);
+  --dw-status-font-heading: var(--font-heading);
+  --dw-status-body-min: var(--measure-status-body-min);
+  --dw-status-muted: rgb(var(--gray-600));
+  --dw-status-detail: rgb(var(--gray-700));
+  --dw-status-accent: rgb(var(--primary-dark));
+  --dw-status-error: rgb(var(--error));
+  --dw-status-warning: rgb(var(--warning));
+  --dw-status-action-foreground: rgb(var(--background));
+  --dw-status-font-size-sm: var(--font-size-sm);
+  --dw-status-font-size-lg: var(--font-size-lg);
+  --dw-status-font-weight-emphasis: var(--font-weight-emphasis);
+  --dw-status-line-height-heading: var(--line-height-heading);
+  --dw-status-line-height-body: var(--line-height-body);
+  --dw-status-measure-readable: var(--measure-readable);
+  --dw-status-touch-target-min: var(--touch-target-min);
+  --dw-status-control-border-width: var(--border-width-control);
+  --dw-status-action-radius: var(--radius-interactive);
+  --dw-status-focus-ring-width: var(--focus-ring-width);
+  --dw-status-focus-ring-offset: var(--focus-ring-offset);
+
   /* Code blocks (catppuccin) */
   --code-bg: #eff1f5; /* latte */
   --code-bg-dark: #1e1e2e; /* mocha */

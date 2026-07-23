@@ -63,10 +63,10 @@ EXPECTED_EXPORTS = {
     "writing_profile",
 }
 EXPECTED_REQUIREMENTS = {
-    "deepagents==0.6.12",
-    "langchain-core==1.5.0",
-    "langgraph==1.2.9",
-    "typing-extensions==4.16.0",
+    "deepagents<0.7.0,>=0.6.12",
+    "langchain-core<2.0.0,>=1.5.0",
+    "langgraph<2.0.0,>=1.2.9",
+    "typing-extensions<5.0.0,>=4.16.0",
 }
 
 

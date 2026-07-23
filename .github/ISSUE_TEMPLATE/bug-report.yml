@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible Deep Work defect.
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private repository content, customer data, or vulnerability details.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Agent package
+        - API
+        - Web
+        - Domain or SDK
+        - UI
+        - Developer experience or CI
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Include the exact safe error text and the smallest reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      placeholder: Full commit SHA or package version
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Relevant checks
+      description: List commands run and whether fixture or live behavior was involved.

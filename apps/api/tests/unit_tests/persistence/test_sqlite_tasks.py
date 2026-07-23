@@ -20,6 +20,7 @@ from deepwork_api.adapters.persistence import (
     SQLiteTaskRepositorySchemaError,
 )
 from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
@@ -95,6 +96,17 @@ def _repository_is_closed(repository: SQLiteTaskRepository) -> bool:
 
 def _repository_has_process_state(repository: SQLiteTaskRepository) -> bool:
     return repository._process_state is not None
+
+
+def _unchecked_plan_with_revision(revision: int) -> ProposedPlan:
+    """Build corrupt input solely to prove the adapter's defense-in-depth guard."""
+
+    plan = object.__new__(ProposedPlan)
+    object.__setattr__(plan, "revision", revision)
+    object.__setattr__(plan, "title", "Invalid revision")
+    object.__setattr__(plan, "steps", ("Never reach SQLite.",))
+    object.__setattr__(plan, "evidence_refs", ())
+    return plan
 
 
 async def test_create_list_and_detail_survive_repository_reopen(tmp_path: Path) -> None:
@@ -387,7 +399,7 @@ async def test_plan_revision_bounds_fail_safely_before_sqlite_and_on_decode(
     database = tmp_path / "tasks.sqlite"
     repository = SQLiteTaskRepository(database)
     task = await repository.create_task(title="Bound", objective="Revision bound")
-    maximum_revision = 2_147_483_647
+    maximum_revision = MAX_PLAN_REVISION
     maximum_plan = ProposedPlan(
         revision=maximum_revision,
         title="Maximum revision",
@@ -405,12 +417,7 @@ async def test_plan_revision_bounds_fail_safely_before_sqlite_and_on_decode(
         with pytest.raises(PlanRevisionConflictError) as error:
             await repository.set_plan(
                 "task_99999999",
-                plan=ProposedPlan(
-                    revision=invalid_revision,
-                    title="Invalid revision",
-                    steps=("Never reach SQLite.",),
-                    evidence_refs=(),
-                ),
+                plan=_unchecked_plan_with_revision(invalid_revision),
                 event_name=TaskEventName.PLAN_PROPOSED,
             )
         assert str(error.value) == ""

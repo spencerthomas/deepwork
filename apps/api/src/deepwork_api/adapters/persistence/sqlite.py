@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TypeVar, cast
 
 from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
@@ -49,7 +50,6 @@ _MAX_TASK_NUMBER = 99_999_999
 _MAX_TASK_TITLE_LENGTH = 80
 _MAX_PLAN_TITLE_LENGTH = 100
 _MAX_EVIDENCE_SUMMARY_LENGTH = 300
-_MAX_PLAN_REVISION = 2_147_483_647
 _SHA256_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 _T = TypeVar("_T")
 
@@ -923,7 +923,7 @@ class SQLiteTaskRepository:
                 raise PlanUnavailableError
             if current.revision != expected_revision:
                 raise PlanRevisionConflictError
-            if current.revision >= _MAX_PLAN_REVISION:
+            if current.revision >= MAX_PLAN_REVISION:
                 raise PlanRevisionConflictError
             updated = ProposedPlan(
                 revision=current.revision + 1,
@@ -1264,7 +1264,7 @@ class SQLiteTaskRepository:
             not isinstance(revision, int)
             or isinstance(revision, bool)
             or revision < 1
-            or revision > _MAX_PLAN_REVISION
+            or revision > MAX_PLAN_REVISION
         ):
             raise SQLiteTaskRepositoryDataError("stored plan revision is invalid")
         title = _bounded_stored_string(
@@ -1336,7 +1336,7 @@ def _validate_plan_revision(revision: int) -> None:
         not isinstance(revision, int)
         or isinstance(revision, bool)
         or revision < 1
-        or revision > _MAX_PLAN_REVISION
+        or revision > MAX_PLAN_REVISION
     ):
         raise PlanRevisionConflictError
 

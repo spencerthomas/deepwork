@@ -177,13 +177,20 @@ def scope_document() -> dict[str, object]:
             "auth_class": "github-app-installation-only",
         },
         "app_permissions": {
-            "contents": "write",
-            "pull_requests": "write",
-            "checks": "read",
+            "administration": "read",
             "actions": "read",
+            "checks": "read",
+            "commit_statuses": "read",
+            "contents": "write",
             "metadata": "read",
+            "pull_requests": "write",
         },
-        "forbidden_permissions": ["administration", "members", "secrets", "workflows:write"],
+        "forbidden_permissions": {
+            "administration": "write",
+            "members": "any",
+            "secrets": "any",
+            "workflows": "write",
+        },
         "branch_policy": {
             "prefix": "deep-work/",
             "immutable_base_sha": True,
@@ -224,4 +231,3 @@ def scope_document() -> dict[str, object]:
             "credential-bearing-remote",
         ],
     }
-

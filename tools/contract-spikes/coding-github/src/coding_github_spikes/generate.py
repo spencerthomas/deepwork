@@ -26,6 +26,162 @@ OFFICIAL = {
     "status_checks": "https://docs.github.com/en/pull-requests/reference/status-checks",
 }
 
+FIXTURE_FOR_ROW = {
+    "github.branch-name-sanitization": "wrong-binding",
+    "github.branch-collision-unknown": "fake-git-clone-fetch-push",
+    "github.create-ref-idempotency-no-overwrite": "fake-git-clone-fetch-push",
+    "github.force-push-denied": "fake-git-clone-fetch-push",
+    "github.draft-pr-timeout-reconcile": "ambiguous-remote-create",
+    "github.draft-pr-duplicate-prevention": "ambiguous-remote-create",
+    "github.mutation-ledger-zero-without-authority": "unsafe-grant-file",
+    "github.mutation-ledger-one-and-read-only-after": "two-worker-race",
+    "proxy.nonce-replay": "grant-replay",
+    "proxy.callback-binding": "wrong-binding",
+    "proxy.redirect-denial": "wrong-binding",
+    "proxy.alternate-host-port-denial": "wrong-binding",
+    "proxy.credential-helper-denial": "proxy-leak-negative",
+    "proxy.no-pat-ssh-token-fallback": "proxy-leak-negative",
+    "ci.webhook-signature-raw-bytes": "webhook-valid",
+    "ci.webhook-delivery-dedupe": "webhook-valid",
+    "ci.webhook-retry-duplicate-out-of-order": "webhook-invalid-signature",
+    "ci.webhook-cross-binding-rejected": "webhook-cross-installation",
+    "ci.stale-head-rejected": "stale-head-check",
+    "ci.workflow-rerun-contract-no-mutation": "workflow-rerun-contract",
+    "ci.workflow-cancel-contract-no-mutation": "workflow-cancel-contract",
+    "ci.merge-timeout-reconciliation-no-second-request": "merge-timeout-reconciliation",
+}
+
+FIXTURE_CASES: dict[str, dict[str, object]] = {
+    "two-worker-race": {
+        "kind": "mutation-grant",
+        "request": {"workers": ["worker-a", "worker-b"], "grant_id": "GRANT_TEST"},
+        "transcript": [
+            {"worker": "worker-a", "operation": "atomic-create", "result": "claimed"},
+            {"worker": "worker-b", "operation": "atomic-create", "result": "already-exists"},
+        ],
+        "observed": {"claims": 1, "create_budget_holders": 1},
+        "expected": {"decision": "one-claim-only", "draft_pr_create_count_max": 1},
+    },
+    "grant-replay": {
+        "kind": "mutation-grant",
+        "request": {"grant_id": "GRANT_TEST", "attempts": 2},
+        "transcript": [
+            {"attempt": 1, "result": "claimed"},
+            {"attempt": 2, "result": "denied-replay"},
+        ],
+        "observed": {"claims": 1, "replays_denied": 1},
+        "expected": {"decision": "deny-replay", "claims": 1},
+    },
+    "wrong-binding": {
+        "kind": "proxy",
+        "request": {
+            "expected_repository": "owner/repository",
+            "requested_repository": "other/repository",
+            "audience": "wrong-installation",
+        },
+        "transcript": [{"operation": "authorize", "result": "denied-binding-path-audience"}],
+        "observed": {"network_calls": 0, "credential_issues": 0},
+        "expected": {"decision": "deny", "network_calls": 0},
+    },
+    "unsafe-grant-file": {
+        "kind": "mutation-grant",
+        "request": {"file_type": "symlink", "mode": "0644"},
+        "transcript": [{"operation": "lstat-mode-owner", "result": "denied-before-claim"}],
+        "observed": {"claims": 0, "mutations": 0},
+        "expected": {"decision": "deny-unsafe-file", "mutations": 0},
+    },
+    "ambiguous-remote-create": {
+        "kind": "github-api",
+        "request": {"operation": "create-draft-pr", "simulated_result": "timeout-after-remote"},
+        "transcript": [
+            {"operation": "create", "result": "ambiguous", "budget_spent": True},
+            {"operation": "authoritative-read", "result": "matching-PR_1"},
+            {"operation": "retry-create", "result": "not-attempted"},
+        ],
+        "observed": {"create_attempts": 1, "pr_identities": ["PR_1"]},
+        "expected": {"decision": "reconcile-read-only", "create_attempts_max": 1},
+    },
+    "workflow-rerun-contract": {
+        "kind": "github-api",
+        "request": {"operation": "workflow-rerun", "method": "POST"},
+        "transcript": [{"operation": "inventory-only", "required_permission": "actions:write"}],
+        "observed": {"requests_sent": 0, "workflow_mutations": 0},
+        "expected": {"decision": "contract-only", "workflow_mutations": 0},
+    },
+    "workflow-cancel-contract": {
+        "kind": "github-api",
+        "request": {"operation": "workflow-cancel", "method": "POST"},
+        "transcript": [{"operation": "inventory-only", "required_permission": "actions:write"}],
+        "observed": {"requests_sent": 0, "workflow_mutations": 0},
+        "expected": {"decision": "contract-only", "workflow_mutations": 0},
+    },
+    "merge-timeout-reconciliation": {
+        "kind": "github-api",
+        "request": {"operation": "merge", "simulated_result": "timeout"},
+        "transcript": [
+            {"operation": "merge", "result": "not-authorized-not-sent"},
+            {"operation": "read-pr-state", "result": "fixture-open"},
+        ],
+        "observed": {"merge_requests": 0, "second_merge_requests": 0},
+        "expected": {"decision": "contract-only-read-before-retry", "merge_requests": 0},
+    },
+    "webhook-valid": {
+        "kind": "webhook",
+        "request": {"event": "pull_request", "delivery": "D_VALID", "raw_body_hash": "sha256:fixture-valid"},
+        "transcript": [
+            {"operation": "verify-raw-HMAC", "result": "valid"},
+            {"operation": "parse-signed-bytes", "result": "valid-json"},
+            {"operation": "trusted-binding-compare", "result": "match"},
+        ],
+        "observed": {"projected": 1, "duplicates": 0},
+        "expected": {"decision": "project-once", "projected": 1},
+    },
+    "webhook-invalid-signature": {
+        "kind": "webhook",
+        "request": {"event": "pull_request", "delivery": "D_BAD", "signature": "invalid-fixture"},
+        "transcript": [{"operation": "verify-raw-HMAC", "result": "denied"}],
+        "observed": {"parsed": 0, "projected": 0},
+        "expected": {"decision": "deny-before-parse", "projected": 0},
+    },
+    "webhook-cross-installation": {
+        "kind": "webhook",
+        "request": {"signed_installation": "I_OTHER", "expected_installation": "I_TEST"},
+        "transcript": [
+            {"operation": "verify-raw-HMAC", "result": "valid"},
+            {"operation": "trusted-binding-compare", "result": "denied-installation"},
+        ],
+        "observed": {"projected": 0},
+        "expected": {"decision": "deny-cross-installation", "projected": 0},
+    },
+    "stale-head-check": {
+        "kind": "ci",
+        "request": {"check_sha": "SHA_OLD", "current_head_sha": "SHA_CURRENT", "conclusion": "success"},
+        "transcript": [{"operation": "normalize-check", "result": "stale"}],
+        "observed": {"normalized_state": "stale", "green": False},
+        "expected": {"decision": "not-green", "state": "stale"},
+    },
+    "proxy-leak-negative": {
+        "kind": "proxy",
+        "request": {"surfaces": ["env", "filesystem", "argv", "git-config", "output", "snapshot"]},
+        "transcript": [{"operation": "scrub", "result": "zero-credential-markers"}],
+        "observed": {"credential_markers": 0, "fallback_credentials": 0},
+        "expected": {"decision": "clean", "credential_markers": 0},
+    },
+    "fake-git-clone-fetch-push": {
+        "kind": "git",
+        "request": {"repository": "owner/repository", "head_ref": "deep-work/task"},
+        "transcript": [
+            {"operation": "clone", "result": "fixture-ok"},
+            {"operation": "fetch", "result": "fixture-ok"},
+            {"operation": "push-fast-forward", "result": "fixture-ok"},
+            {"operation": "force-push", "result": "denied"},
+            {"operation": "unknown-ref-overwrite", "result": "denied"},
+        ],
+        "observed": {"force_pushes": 0, "unknown_overwrites": 0},
+        "expected": {"decision": "bounded-fast-forward-only", "force_pushes": 0},
+    },
+}
+
 
 def dump(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,44 +189,28 @@ def dump(path: Path, value: object) -> None:
 
 
 def row(prefix: str, name: str) -> dict[str, object]:
-    fixture = name in {
-        "branch-name-sanitization",
-        "branch-collision-unknown",
-        "create-ref-idempotency-no-overwrite",
-        "force-push-denied",
-        "draft-pr-timeout-reconcile",
-        "draft-pr-duplicate-prevention",
-        "mutation-ledger-zero-without-authority",
-        "nonce-replay",
-        "redirect-denial",
-        "alternate-host-port-denial",
-        "credential-helper-denial",
-        "no-pat-ssh-token-fallback",
-        "webhook-signature-raw-bytes",
-        "webhook-delivery-dedupe",
-        "webhook-cross-binding-rejected",
-        "stale-head-rejected",
-        "merge-timeout-reconciliation-no-second-request",
-    }
+    row_id = f"{prefix}.{name}"
+    fixture_name = FIXTURE_FOR_ROW.get(row_id)
+    official_source = {
+        "github": OFFICIAL["pull_requests"] if "pr" in name else OFFICIAL["git_refs"],
+        "proxy": OFFICIAL["installation_tokens"],
+        "ci": OFFICIAL["status_checks"],
+    }[prefix]
     return {
-        "id": f"{prefix}.{name}",
+        "id": row_id,
         "spike_id": {
             "github": "SPIKE-GITHUB-001",
             "proxy": "SPIKE-GITHUB-PROXY-001",
             "ci": "SPIKE-GITHUB-CI-001",
         }[prefix],
         "operation": name,
-        "evidence_tier": "deterministic-fake" if fixture else "official-documented",
+        "evidence_tier": "deterministic-fake" if fixture_name else "official-documented",
         "state": "blocked-live-evidence",
         "versions": {"github_rest_api": "2026-03-10", "probe": "0.1.0"},
         "account_tier": "not-supplied",
         "region": "not-supplied",
         "observed_at": "2026-07-23",
-        "evidence": (
-            f"fixtures/{'merge-timeout-reconciliation' if name.startswith('merge-timeout') else 'manifest'}.json"
-            if fixture
-            else list(OFFICIAL.values())
-        ),
+        "evidence": f"fixtures/{fixture_name}.json" if fixture_name else official_source,
         "schema_hash": canonical_hash({"prefix": prefix, "operation": name}),
         "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
         "contradiction": None,
@@ -86,20 +226,16 @@ def row(prefix: str, name: str) -> dict[str, object]:
 
 
 def fixture(name: str) -> dict[str, object]:
-    return {
+    case = {
+        "schema_version": 1,
         "fixture_id": name,
         "deterministic": True,
         "network": "denied",
         "credentials": "none",
-        "input": {"case": name, "repository": "R_TEST", "task": "T_TEST"},
-        "expected": {
-            "decision": "deny-or-reconcile-read-only",
-            "draft_pr_create_count_max": 1,
-            "merge_count": 0,
-            "workflow_mutation_count": 0,
-            "secret_persistence_count": 0,
-        },
+        **FIXTURE_CASES[name],
     }
+    case["case_hash"] = canonical_hash(case)
+    return case
 
 
 SCHEMAS = {
@@ -179,8 +315,15 @@ def main() -> int:
             "reason": "no mutation grant, GitHub App, disposable repository, or accepted upstream evidence supplied",
             "draft_pr_create_attempts": 0,
             "draft_pr_identities": [],
+            "ready_mutations": 0,
+            "review_mutations": 0,
+            "approval_mutations": 0,
             "workflow_mutations": 0,
+            "workflow_cancel_mutations": 0,
             "merge_mutations": 0,
+            "force_push_mutations": 0,
+            "branch_delete_mutations": 0,
+            "deployment_mutations": 0,
             "credentials_observed": 0,
             "authoritative_link": None,
         },
@@ -218,9 +361,10 @@ evidence is never promoted to live acceptance.
 
 ## Minimum GitHub App manifest
 
-Repository permissions are Contents write, Pull requests write, Checks read,
-Actions read, and Metadata read, restricted to one selected disposable private
-repository. Administration, Members, Secrets, and Workflows write are forbidden.
+Repository permissions are Contents write, Pull requests write, Administration
+read, Commit statuses read, Checks read, Actions read, and Metadata read,
+restricted to one selected disposable private repository. Administration write,
+Members, Secrets, and Workflows write are forbidden.
 Installation tokens must be repository- and permission-scoped and are never
 delivered to the sandbox. GitHub documents that installation tokens expire after
 one hour; this probe treats expiry/revocation and token-format changes as opaque
@@ -238,7 +382,7 @@ the sandbox packet and remain blocked.
 ## Exactly-one draft PR result
 
 Live draft PR count: **0**. This is the only safe result without the external
-grant and reviewed upstream evidence. The fake ledger atomically claims once,
+grant and reviewed upstream evidence. The durable claim model atomically claims once,
 spends the create budget on an ambiguous remote result, reconciles before retry,
 and rejects a second identity. Ready, review, approval, workflow rerun/cancel,
 merge, force-push, branch deletion, and deploy budgets are zero.
@@ -246,10 +390,12 @@ merge, force-push, branch deletion, and deploy budgets are zero.
 ## CI authority
 
 Webhook signatures are verified over raw bytes with HMAC-SHA256 before projection.
-Delivery ID and installation/repository/tenant/workspace/base/head bindings are
-required. Polling/refetch is authoritative after gaps or disagreement. A check for
-a stale SHA is never green. Workflow rerun/cancel and merge endpoints are retained
-as contract-only rows and are never invoked.
+Delivery timestamp/ID and trusted App, installation, account, repository,
+current-authorization, PR, base, and current-head bindings are required.
+Tenant/workspace/task/sandbox/actor remain in trusted application binding rather
+than provider payload. Polling/refetch is authoritative after gaps or
+disagreement. A check for a stale SHA is never green. Workflow rerun/cancel and
+merge endpoints are retained as contract-only rows and are never invoked.
 
 ## Spike dispositions
 
@@ -278,4 +424,3 @@ merge, release, or deployment.
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

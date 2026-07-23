@@ -5,6 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def pytest_addoption(parser: object) -> None:
+    group = parser.getgroup("coding-github-live")
+    group.addoption("--live-profile", action="store", default=None)
+    group.addoption("--mutation-grant", action="store", default=None)
+    group.addoption("--evidence-dir", action="store", default=None)
+
+
 def pytest_configure(config: object) -> None:
     config.addinivalue_line(
         "markers",

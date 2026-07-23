@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from coding_github_spikes.catalog import canonical_hash
+from coding_github_spikes.catalog import FIXTURES, canonical_hash
 
 
 class ValidationError(ValueError):
@@ -43,21 +43,106 @@ def validate(matrix: dict, scope: dict, upstream: dict, fixtures_root: Path) -> 
             raise ValidationError(f"{item['id']}: fallback/owner missing")
         if item.get("contradiction"):
             raise ValidationError(f"{item['id']}: unresolved precedence conflict")
+        prefix, operation = item["id"].split(".", 1)
+        if item.get("schema_hash") != canonical_hash({"prefix": prefix, "operation": operation}):
+            raise ValidationError(f"{item['id']}: row schema hash mismatch")
+        evidence = item.get("evidence")
+        if not isinstance(evidence, str):
+            raise ValidationError(f"{item['id']}: evidence must be one exact source")
+        if evidence.startswith("fixtures/"):
+            evidence_path = fixtures_root.parent / evidence
+            if not evidence_path.is_file():
+                raise ValidationError(f"{item['id']}: fixture evidence missing")
+            if item["evidence_tier"] != "deterministic-fake":
+                raise ValidationError(f"{item['id']}: fixture tier mismatch")
+        elif not evidence.startswith("https://docs.github.com/"):
+            raise ValidationError(f"{item['id']}: unsupported evidence source")
     if upstream.get("state") != "accepted-live":
         promoted = [row["id"] for row in rows if row["state"] == "accepted-live"]
         if promoted:
             raise ValidationError(f"blocked dependency promoted: {promoted}")
+        if upstream.get("reviewed_commit") is not None or any(upstream.get("hashes", {}).values()):
+            raise ValidationError("blocked upstream contains unaccepted reviewed hashes")
+    else:
+        hashes = upstream.get("hashes", {})
+        if (
+            upstream.get("review_verdict") != "accepted"
+            or not upstream.get("reviewed_commit")
+            or not all(hashes.get(name) for name in ("matrix_scope", "matrix", "versions", "fixtures"))
+            or not upstream.get("consumed_rows")
+        ):
+            raise ValidationError("accepted upstream lock is incomplete")
     if scope["mutation_budget"]["draft_pull_requests"] != 1:
         raise ValidationError("draft PR budget must equal one")
     forbidden = ("ready", "reviews", "approvals", "workflow_reruns", "workflow_cancels", "merges", "force_pushes", "deployments")
     if any(scope["mutation_budget"][key] != 0 for key in forbidden):
         raise ValidationError("forbidden mutation budget is nonzero")
-    if scope["app_permissions"].get("workflows") == "write":
-        raise ValidationError("excessive workflow permission")
+    exact_permissions = {
+        "administration": "read",
+        "actions": "read",
+        "checks": "read",
+        "commit_statuses": "read",
+        "contents": "write",
+        "metadata": "read",
+        "pull_requests": "write",
+    }
+    if scope.get("app_permissions") != exact_permissions:
+        raise ValidationError("GitHub App permissions differ from reviewed minimum")
+    exact_forbidden = {
+        "administration": "write",
+        "members": "any",
+        "secrets": "any",
+        "workflows": "write",
+    }
+    if scope.get("forbidden_permissions") != exact_forbidden:
+        raise ValidationError("forbidden permission ceiling changed")
     expected_fixtures = set(scope["required_fixtures"])
+    if expected_fixtures != set(FIXTURES):
+        raise ValidationError("required fixture scope changed")
     present = {path.stem for path in fixtures_root.glob("*.json")} - {"manifest"}
-    if not expected_fixtures.issubset(present):
-        raise ValidationError(f"missing fixtures: {sorted(expected_fixtures - present)}")
+    if expected_fixtures != present:
+        raise ValidationError(
+            f"fixture set mismatch: missing={sorted(expected_fixtures - present)}, "
+            f"extra={sorted(present - expected_fixtures)}"
+        )
+    manifest = load(fixtures_root / "manifest.json")
+    if set(manifest.get("fixtures", [])) != expected_fixtures:
+        raise ValidationError("fixture manifest membership mismatch")
+    for name in sorted(expected_fixtures):
+        value = load(fixtures_root / f"{name}.json")
+        if (
+            value.get("fixture_id") != name
+            or value.get("deterministic") is not True
+            or value.get("network") != "denied"
+            or value.get("credentials") != "none"
+            or not isinstance(value.get("request"), dict)
+            or not isinstance(value.get("transcript"), list)
+            or not value["transcript"]
+            or not isinstance(value.get("observed"), dict)
+            or not isinstance(value.get("expected"), dict)
+        ):
+            raise ValidationError(f"{name}: fixture semantics incomplete")
+        unhashed_fixture = dict(value)
+        case_hash = unhashed_fixture.pop("case_hash", None)
+        if case_hash != canonical_hash(unhashed_fixture):
+            raise ValidationError(f"{name}: case hash mismatch")
+        if manifest.get("hashes", {}).get(name) != canonical_hash(value):
+            raise ValidationError(f"{name}: manifest hash mismatch")
+    required_schemas = {
+        "installation",
+        "repository-ref",
+        "proxy-intent",
+        "pull-request",
+        "ci",
+        "webhook",
+        "mutation-ledger",
+        "evidence",
+    }
+    schemas_root = fixtures_root.parent / "schemas"
+    for name in required_schemas:
+        schema = load(schemas_root / f"{name}.schema.json")
+        if schema.get("type") != "object" or not schema.get("required"):
+            raise ValidationError(f"{name}: schema missing or incomplete")
     if not any(row["id"] == "ci.merge-timeout-reconciliation-no-second-request" for row in rows):
         raise ValidationError("merge timeout contract row absent")
     for workflow_row in ("ci.workflow-rerun-contract-no-mutation", "ci.workflow-cancel-contract-no-mutation"):
@@ -78,6 +163,14 @@ def main() -> int:
     args = parser.parse_args()
     if args.max_draft_prs != 1:
         raise ValidationError("CLI max draft PRs must equal one")
+    required_flags = (
+        args.require_complete_cross_product,
+        args.require_workflow_and_merge_timeout_fixtures,
+        args.reject_blocked_dependency_promotion,
+        args.reject_unresolved_precedence_conflicts,
+    )
+    if not all(required_flags):
+        raise ValidationError("all strict validator flags are required")
     validate(
         load(args.matrix),
         load(args.scope),
@@ -90,4 +183,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

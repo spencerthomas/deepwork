@@ -9,7 +9,9 @@ from pathlib import Path
 import re
 
 PATTERNS = {
-    "github_tokens": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|ghs_[A-Za-z0-9_]{20,})\b"),
+    "github_tokens": re.compile(
+        r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|ghs_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"
+    ),
     "private_keys": re.compile(r"BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY"),
     "authorization_headers": re.compile(r"(?im)^\s*authorization\s*:\s*(?:bearer|token)\s+\S+"),
     "credential_remotes": re.compile(r"https://[^/\s:@]+:[^@\s]+@(?:github\.com|api\.github\.com)"),
@@ -53,4 +55,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -37,7 +37,17 @@ class FakeGitHub:
     ) -> dict[str, object]:
         key = (base, head)
         if key in self.prs:
-            return self.prs[key]
+            existing = self.prs[key]
+            if (
+                existing.get("draft") is not True
+                or existing.get("head_sha") != head_sha
+                or existing.get("grant_hash") != ledger.grant_hash
+            ):
+                raise ContractDenied("existing PR does not match exact draft/grant/head tuple")
+            if ledger.grant_hash is None:
+                raise ContractDenied("matching PR reconciliation requires claimed grant")
+            ledger.record_remote_result(str(existing["node_id"]))
+            return existing
         ledger.before_create()
         identity = f"PR_{len(self.prs) + 1}"
         pr = {
@@ -47,9 +57,9 @@ class FakeGitHub:
             "base": base,
             "head": head,
             "head_sha": head_sha,
+            "grant_hash": ledger.grant_hash,
         }
         self.prs[key] = pr
         ledger.record_remote_result(identity)
         self.calls.append({"operation": "create_draft_pr", "identity": identity})
         return pr
-

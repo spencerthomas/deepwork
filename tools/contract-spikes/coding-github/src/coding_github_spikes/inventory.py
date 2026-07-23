@@ -43,11 +43,13 @@ def main() -> int:
             "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
         },
         "app_permission_manifest": {
-            "contents": "write",
-            "pull_requests": "write",
-            "checks": "read",
+            "administration": "read",
             "actions": "read",
+            "checks": "read",
+            "commit_statuses": "read",
+            "contents": "write",
             "metadata": "read",
+            "pull_requests": "write",
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -57,4 +59,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

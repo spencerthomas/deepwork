@@ -34,8 +34,12 @@ class Binding:
     actor: str
     task: str
     sandbox: str
+    app_id: str
     installation: str
+    account_node: str
     repository_node: str
+    repository_owner: str
+    repository_name: str
     base_ref: str
     base_sha: str
     head_ref: str
@@ -111,28 +115,40 @@ class ProxyPolicy:
     """Exact destination/use allow-list with nonce replay protection."""
 
     now: int
-    expected_binding_hash: str
+    expected_binding: Binding
+    max_ttl_seconds: int = 900
     used_nonces: set[str] = field(default_factory=set)
 
     def authorize(self, intent: ProxyIntent) -> None:
-        if intent.binding_hash != self.expected_binding_hash:
+        binding = self.expected_binding
+        binding.validate()
+        if intent.binding_hash != binding.digest():
             raise ContractDenied("binding mismatch")
         if intent.expires_at <= self.now:
             raise ContractDenied("intent expired")
+        if intent.expires_at > self.now + self.max_ttl_seconds:
+            raise ContractDenied("intent TTL exceeds policy")
         if intent.nonce in self.used_nonces:
             raise ContractDenied("nonce replay")
+        expected_audience = f"github-installation:{binding.installation}"
+        if intent.audience != expected_audience:
+            raise ContractDenied("audience mismatch")
         if intent.host not in {"github.com", "api.github.com"}:
             raise ContractDenied("host denied")
         if ":" in intent.host or intent.path.startswith("//") or ".." in intent.path:
             raise ContractDenied("alternate port or unsafe path denied")
+        repository_path = f"/{binding.repository_owner}/{binding.repository_name}.git"
+        api_root = f"/repos/{binding.repository_owner}/{binding.repository_name}"
         allowed = {
-            ("github.com", "git-upload-pack", "fetch"),
-            ("github.com", "git-receive-pack", "push"),
-            ("api.github.com", "GET", "read"),
-            ("api.github.com", "POST", "create-draft-pr"),
+            ("github.com", repository_path, "git-upload-pack", "fetch"),
+            ("github.com", repository_path, "git-receive-pack", "push"),
+            ("api.github.com", api_root, "GET", "read"),
+            ("api.github.com", f"{api_root}/pulls", "GET", "read"),
+            ("api.github.com", f"{api_root}/pulls", "POST", "create-draft-pr"),
+            ("api.github.com", f"{api_root}/commits", "GET", "read"),
         }
-        if (intent.host, intent.method, intent.use) not in allowed:
-            raise ContractDenied("method/use denied")
+        if (intent.host, intent.path, intent.method, intent.use) not in allowed:
+            raise ContractDenied("path/method/use denied")
         self.used_nonces.add(intent.nonce)
 
 
@@ -147,45 +163,80 @@ def verify_webhook(
     raw_body: bytes,
     signature: str,
     delivery_id: str,
+    event_name: str,
+    delivered_at: int,
+    now: int,
     seen_deliveries: set[str],
-    payload: dict[str, Any],
-    expected: Binding,
-) -> None:
+    expected: "WebhookExpectation",
+    current_authorized_actor: str,
+) -> dict[str, Any]:
     """Verify raw bytes, delivery dedupe, and full projection binding."""
     if not hmac.compare_digest(sign_webhook(secret, raw_body), signature):
         raise ContractDenied("webhook signature mismatch")
+    try:
+        payload = json.loads(raw_body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContractDenied("invalid signed webhook JSON") from exc
     if delivery_id in seen_deliveries:
         raise ContractDenied("duplicate delivery")
+    if delivered_at > now or now - delivered_at > expected.max_age_seconds:
+        raise ContractDenied("webhook timestamp outside freshness window")
+    if event_name != expected.event_name:
+        raise ContractDenied("event type denied")
+    binding = expected.binding
+    binding.validate()
+    if not expected.current_authorized or current_authorized_actor != binding.actor:
+        raise ContractDenied("current actor authorization denied")
     repo = payload.get("repository", {})
     installation = payload.get("installation", {})
     pull = payload.get("pull_request", {})
     base = pull.get("base", {})
     head = pull.get("head", {})
     observed = (
+        str(payload.get("hook", {}).get("app_id")),
         str(installation.get("id")),
         str(repo.get("node_id")),
-        str(payload.get("tenant")),
-        str(payload.get("workspace")),
+        str(repo.get("owner", {}).get("node_id")),
+        str(repo.get("owner", {}).get("login")),
+        str(repo.get("name")),
+        str(pull.get("node_id")),
         str(base.get("ref")),
         str(base.get("sha")),
         str(head.get("ref")),
         str(head.get("sha")),
     )
     required = (
-        expected.installation,
-        expected.repository_node,
-        expected.tenant,
-        expected.workspace,
-        expected.base_ref,
-        expected.base_sha,
-        expected.head_ref,
-        str(payload.get("expected_head_sha")),
+        binding.app_id,
+        binding.installation,
+        binding.repository_node,
+        binding.account_node,
+        binding.repository_owner,
+        binding.repository_name,
+        expected.pr_node,
+        binding.base_ref,
+        binding.base_sha,
+        binding.head_ref,
+        expected.current_head_sha,
     )
     if observed != required:
         raise ContractDenied("webhook projection binding mismatch")
-    if payload.get("action") not in {"opened", "synchronize", "reopened", "closed"}:
+    if payload.get("action") not in expected.allowed_actions:
         raise ContractDenied("event action denied")
     seen_deliveries.add(delivery_id)
+    return payload
+
+
+@dataclass(frozen=True)
+class WebhookExpectation:
+    """Trusted application state used after raw-byte signature verification."""
+
+    binding: Binding
+    pr_node: str
+    current_head_sha: str
+    event_name: str = "pull_request"
+    allowed_actions: tuple[str, ...] = ("opened", "synchronize", "reopened", "closed")
+    current_authorized: bool = True
+    max_age_seconds: int = 300
 
 
 def normalize_check_state(status: str, conclusion: str | None, observed_sha: str, head_sha: str) -> str:
@@ -201,4 +252,3 @@ def normalize_check_state(status: str, conclusion: str | None, observed_sha: str
     if conclusion in {"neutral", "skipped"}:
         return conclusion
     return "unknown"
-

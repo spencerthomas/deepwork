@@ -12,7 +12,7 @@ issue: local:DW-M1-FIXTURE-CONTRACT
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
-last_verified_commit: 7e404d96bb0c784d185b42125d477f5ab6581266
+last_verified_commit: c06bd0be48baa7bd51581d9d9f09ae529afb19e5
 branch: codex/contracts/wave1-fixture-corpus
 worktree: /Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract
 risk: medium
@@ -25,7 +25,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-API-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-AGENT-SCAFFOLD.md]
 scenario_ids: [AC-DW-FND-004-04, AC-DW-FND-004-05, AC-DW-FND-004-06, AC-DW-FND-001-07, AC-DW-FND-002-06, AC-DW-FND-003-05, AC-DW-FND-005-01]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: [local:DW-M1-API-001, local:DW-M1-AGENT-001]
 blockers: []
@@ -726,7 +726,16 @@ Acceptance:
   and requires `FIXTURE_SCHEMA_ASSET_INDEX`. Deterministic evidence was
   regenerated twice with an empty second update. Fresh exact-SHA review remains
   required; the Git scope blocker remains open.
-- [ ] Milestone 4 complete; fresh independent implementation review handed off.
+- [x] 2026-07-23 AEST — Clean implementation candidate
+  `c06bd0be48baa7bd51581d9d9f09ae529afb19e5` was reconstructed as the direct
+  child of reviewed dispatch seal
+  `dff977bfd43a9744cf88690b7aa08b6f65876eac`. Independent
+  `fixture-exact-review` accepted the exact candidate: implementation scope
+  reports 83 governed committed records, zero rejected paths, and zero
+  staged/unstaged/untracked paths; fixture/plan blobs exactly match pinned main
+  `db4cee4a359647e4ecfc57f44e1ee5f57991a8b6`; deterministic evidence,
+  validator, hashes, docs, and all five reproduced false-green attacks pass.
+- [x] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
 
@@ -1117,14 +1126,16 @@ register itself in the index, or start consumer implementation.
 
 ## Outcomes & Retrospective
 
-Bounded implementation rework is complete and fresh independent implementation
-review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`,
+Fixture implementation is independently accepted at exact candidate
+`c06bd0be48baa7bd51581d9d9f09ae529afb19e5`. Candidates
+`47c1cee121a9b3105f00f37404cd29114b6d04d5`,
 `8291218590e3f6a91a5383ae91d6e909e71b1fbe`,
 `8ee2347e595c685be8d799f106aaf806937efc3e`, and
 `75228c07dfa867f677fc176c1bb2423c7113aff8`, and
-`dfa4498baf4cc892fffc2ebdb009a73b62bff701` remain rejected and must not be
-integrated. This successor is not accepted until a new exact-SHA review
-converges.
+`dfa4498baf4cc892fffc2ebdb009a73b62bff701`, and
+`e827c5e57fa20a7e95a822b851b4641aad00ade4` remain rejected and must not be
+integrated. The accepted candidate is the only implementation SHA authorized
+for this fixture handoff.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
 `replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
@@ -1194,6 +1205,23 @@ git diff --check
 exit 0
 
 git diff --quiet dff977bfd43a9744cf88690b7aa08b6f65876eac -- docs/plans
+exit 0
+```
+
+Independent implementation acceptance:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py \
+  --repo . --scope implementation \
+  --base dff977bfd43a9744cf88690b7aa08b6f65876eac \
+  --candidate c06bd0be48baa7bd51581d9d9f09ae529afb19e5 \
+  --include-untracked
+exit 0; committed_records=83; rejected=0; staged=0; unstaged=0; untracked=0
+
+git diff --quiet c06bd0be48baa7bd51581d9d9f09ae529afb19e5 \
+  db4cee4a359647e4ecfc57f44e1ee5f57991a8b6 -- \
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md \
+  internal/fixtures/product-demo
 exit 0
 ```
 

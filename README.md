@@ -64,6 +64,18 @@ visual and interaction evidence only. Migration is one-way into the future
 
 ## Validate the repository
 
+The root `Makefile` is the stable command contract; each target delegates to the
+reviewed per-workspace command:
+
+```bash
+make check         # pnpm check + apps/api check
+make check-docs    # tools/docs generate --check + check.py
+make test-unit     # TypeScript and Python unit suites
+make test-contract # API contract suite
+```
+
+The underlying commands still run directly if preferred:
+
 ```bash
 pnpm check
 python3 tools/docs/generate.py --check

@@ -1,23 +1,26 @@
 # Deep Work agent package
 
-`deepwork-agent` is an independently installable local agent runtime with a
-caller-injected model. It composes a typed LangGraph workflow with a Deep Agents
-executor:
+`deepwork-agent` is an independently installable injected-model bridge. It
+composes a typed LangGraph workflow with a Deep Agents executor:
 
 ```text
-task -> plan -> approval interrupt -> execute or reject -> final answer
+task -> plan -> approval interrupt -> execute, reject, or revise -> final answer
 ```
 
-The caller must inject an initialized `BaseChatModel`; this package never chooses
-a provider, reads credentials, or creates an HTTP client. The default
+`create_graph(model=...)` is the explicit injected-model boundary. The package
+never selects a provider, reads credentials, or creates an HTTP client. The default
 `InMemorySaver` supports pause/resume and reopening completed state during the
 same local process. Hosted deployment, durable checkpointing, provider
 credentials, API sessions, and application persistence remain outside this
-package.
+package. `runtime_capabilities().external_providers` is explicitly
+`"unavailable"` until credentials and provider contracts exist.
 
 Model-generated plans and final answers are marked `untrusted`. Approval is
 required by default before the protected `execute_plan` action. The interrupt
-payload preserves the ordered `approve`, `reject` decision vocabulary.
+payload preserves the ordered `approve`, `reject`, `respond` decision vocabulary.
+Every resume is bound to the exact interrupt ID and plan revision. `respond`
+requires a bounded comment and may supply a bounded edited plan; a revision
+always pauses for a fresh approval before execution.
 
 ## Public factory
 
@@ -29,9 +32,19 @@ graph = create_graph(model=injected_chat_model, tools=[optional_tool])
 run = {"configurable": {"thread_id": "local-demo"}}
 
 paused = graph.invoke(initial_state("Research the topic and write a short note."), run)
-assert paused["__interrupt__"][0].value["action"] == "execute_plan"
+request = paused["__interrupt__"][0].value
+assert request["action"] == "execute_plan"
 
-completed = graph.invoke(Command(resume={"decision": "approve"}), run)
+completed = graph.invoke(
+    Command(
+        resume={
+            "interrupt_id": request["interrupt_id"],
+            "revision": request["plan_revision"],
+            "decision": "approve",
+        }
+    ),
+    run,
+)
 print(completed["final_answer"])
 ```
 
@@ -50,10 +63,10 @@ make -C packages/agent check
 make -C packages/agent package-check
 ```
 
-The test suite uses an official-compatible deterministic fake chat model, denies
-outbound sockets, and requires no API key. It proves plan production, the
-LangGraph pause/resume contract, approve and reject paths, optional tool binding,
-the final answer, and same-process state restoration.
+The test suite uses an official-compatible injected fake model with outbound
+sockets denied. It proves plan production, exact LangGraph pause/resume authority,
+approve, reject, and respond/revision paths, caller-tool binding alongside Deep
+Agents built-ins, the final answer, and same-process state restoration.
 
 `package-check` builds twice, requires matching artifact hashes, installs the
 wheel with locked dependencies from the package-local uv cache in offline mode,

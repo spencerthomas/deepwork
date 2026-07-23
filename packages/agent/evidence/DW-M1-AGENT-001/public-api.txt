@@ -24,4 +24,4 @@ output. The default checkpointer is in-memory only.
 Importing the package performs no network call, reads no environment variable,
 and does not create a model, graph, provider client, deployment, application
 session, or durable persistence. runtime_capabilities reports only
-local-runtime availability.
+local-runtime availability and reports external providers as unavailable.

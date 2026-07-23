@@ -1,8 +1,8 @@
 {
   "wheel": "deepwork_agent-0.0.0-py3-none-any.whl",
-  "wheel_sha256": "87e4ba348645c47798978d6cb24a239c51b38d71ccbbbb646249cc972880a59a",
+  "wheel_sha256": "f5b7fd42b9c37a79a404b956d1f3e6f3d5872105c03431695b1da20143423554",
   "source_distribution": "deepwork_agent-0.0.0.tar.gz",
-  "source_distribution_sha256": "dfbb469954d734428728f8623a57e65045a8f8e5a72444fbc01526e46b31dd41",
+  "source_distribution_sha256": "f5b30d049425cbfd022a67c68f769f2a5bbd526761d6e3b5b938619a2d9c5216",
   "reproducible_builds": 2,
   "py_typed": true,
   "public_exports": [
@@ -23,6 +23,7 @@
   ],
   "runtime_mode": "local-runtime",
   "runtime_available": true,
+  "external_providers": "unavailable",
   "model_injection_required": true,
   "runtime_dependencies": [
     "deepagents==0.6.12",

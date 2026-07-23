@@ -31,6 +31,7 @@ class ToolBindingFakeChatModel(GenericFakeChatModel):
     """Official fake model with the tool-binding method agents require."""
 
     bound_tool_count: int = Field(default=0)
+    bound_tool_names: tuple[str, ...] = Field(default=())
 
     def bind_tools(
         self,
@@ -42,6 +43,22 @@ class ToolBindingFakeChatModel(GenericFakeChatModel):
         """Record tool binding and remain a deterministic runnable."""
         _ = tool_choice, kwargs
         self.bound_tool_count = len(tools)
+        names: list[str] = []
+        for candidate in tools:
+            if isinstance(candidate, BaseTool):
+                names.append(candidate.name)
+            elif isinstance(candidate, dict):
+                name = candidate.get("name")
+                function = candidate.get("function")
+                if not isinstance(name, str) and isinstance(function, dict):
+                    name = function.get("name")
+                if isinstance(name, str):
+                    names.append(name)
+            else:
+                name = getattr(candidate, "__name__", None)
+                if isinstance(name, str):
+                    names.append(name)
+        self.bound_tool_names = tuple(names)
         return self
 
 
@@ -61,12 +78,32 @@ def _model(*responses: str) -> ToolBindingFakeChatModel:
     )
 
 
+def _resume_value(
+    request: dict[str, Any],
+    decision: str,
+    *,
+    comment: str | None = None,
+    edited_plan: list[str] | None = None,
+) -> dict[str, Any]:
+    value: dict[str, Any] = {
+        "interrupt_id": request["interrupt_id"],
+        "revision": request["plan_revision"],
+        "decision": decision,
+    }
+    if comment is not None:
+        value["comment"] = comment
+    if edited_plan is not None:
+        value["edited_plan"] = edited_plan
+    return value
+
+
 def test_runtime_capabilities_are_truthful_and_local_only() -> None:
     """Capability reporting does not imply hosted or credential support."""
     capabilities = runtime_capabilities()
 
     assert capabilities.runtime_mode == "local-runtime"
     assert capabilities.available is True
+    assert capabilities.external_providers == "unavailable"
     assert capabilities.model_injection_required is True
     assert capabilities.plan_first is True
     assert capabilities.human_in_the_loop == "langgraph-interrupt"
@@ -111,12 +148,14 @@ def test_research_writing_task_plans_pauses_and_completes_after_approval() -> No
             "Gather the relevant evidence.",
             "Draft a concise source-aware note.",
         ],
+        "plan_revision": 1,
+        "interrupt_id": paused["pending_interrupt_id"],
         "plan_trust": "untrusted",
-        "allowed_decisions": ["approve", "reject"],
+        "allowed_decisions": ["approve", "reject", "respond"],
     }
 
     result = graph.invoke(
-        Command(resume={"decision": "approve"}),
+        Command(resume=_resume_value(request, "approve")),
         run_config,
     )
 
@@ -127,6 +166,7 @@ def test_research_writing_task_plans_pauses_and_completes_after_approval() -> No
     )
     assert result["final_answer_trust"] == "untrusted"
     assert model.bound_tool_count > 0
+    assert "collect_research_note" in model.bound_tool_names
     restored = graph.get_state(run_config)
     assert restored.values["plan"] == result["plan"]
     assert restored.values["final_answer"] == result["final_answer"]
@@ -139,8 +179,12 @@ def test_rejection_ends_without_executing_the_deep_agent() -> None:
     graph = create_graph(model=model)
     run_config = _run_config("research-writing-rejected")
 
-    graph.invoke(initial_state("Prepare a short note."), run_config)
-    result = graph.invoke(Command(resume={"decision": "reject"}), run_config)
+    paused = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Prepare a short note."), run_config),
+    )
+    request = cast("dict[str, Any]", paused["__interrupt__"][0].value)
+    result = graph.invoke(Command(resume=_resume_value(request, "reject")), run_config)
 
     assert result["status"] == "rejected"
     assert result["approval"] == "reject"
@@ -172,10 +216,78 @@ def test_invalid_resume_payload_fails_closed() -> None:
     model = _model("Review the evidence.")
     graph = create_graph(model=model)
     run_config = _run_config("research-writing-invalid-approval")
-    graph.invoke(initial_state("Review a short note."), run_config)
+    paused = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Review a short note."), run_config),
+    )
+    request = cast("dict[str, Any]", paused["__interrupt__"][0].value)
 
-    with pytest.raises(ValueError, match="approve or reject"):
-        graph.invoke(Command(resume={"decision": "edit"}), run_config)
+    with pytest.raises(ValueError, match="approve, reject, or respond"):
+        graph.invoke(Command(resume=_resume_value(request, "edit")), run_config)
+
+
+def test_respond_with_edited_plan_creates_exact_next_review_before_execution() -> None:
+    """A reviewer edit advances one revision and requires a fresh exact approval."""
+
+    model = _model(
+        "Inspect the request.\nDraft the result.",
+        "Completed using the reviewer-edited plan.",
+    )
+    graph = create_graph(model=model)
+    run_config = _run_config("reviewer-edit")
+    first_pause = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Prepare a bounded note."), run_config),
+    )
+    first_request = cast("dict[str, Any]", first_pause["__interrupt__"][0].value)
+    edited_plan = ["Use the supplied evidence only.", "Return a two-sentence note."]
+
+    second_pause = cast(
+        "dict[str, Any]",
+        graph.invoke(
+            Command(
+                resume=_resume_value(
+                    first_request,
+                    "respond",
+                    comment="Use this tighter plan.",
+                    edited_plan=edited_plan,
+                )
+            ),
+            run_config,
+        ),
+    )
+    second_request = cast("dict[str, Any]", second_pause["__interrupt__"][0].value)
+
+    assert second_request["plan"] == edited_plan
+    assert second_request["plan_revision"] == 2
+    assert second_request["interrupt_id"] != first_request["interrupt_id"]
+    completed = graph.invoke(
+        Command(resume=_resume_value(second_request, "approve")),
+        run_config,
+    )
+    assert completed["plan"] == edited_plan
+    assert completed["plan_revision"] == 2
+    assert completed["final_answer"] == "Completed using the reviewer-edited plan."
+
+
+def test_respond_requires_comment_and_exact_interrupt_revision() -> None:
+    """Resume cannot omit feedback or target stale review authority."""
+
+    graph = create_graph(model=_model("Inspect the request."))
+    run_config = _run_config("stale-review")
+    paused = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Review a note."), run_config),
+    )
+    request = cast("dict[str, Any]", paused["__interrupt__"][0].value)
+
+    with pytest.raises(ValueError, match="non-empty comment"):
+        graph.invoke(Command(resume=_resume_value(request, "respond")), run_config)
+
+    stale = _resume_value(request, "approve")
+    stale["revision"] = 2
+    with pytest.raises(ValueError, match="stale or different plan revision"):
+        graph.invoke(Command(resume=stale), run_config)
 
 
 def test_create_graph_requires_an_initialized_chat_model() -> None:

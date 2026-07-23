@@ -78,6 +78,7 @@ def _manifest(wheel: Path, source_distribution: Path) -> dict[str, Any]:
         "public_exports": sorted(EXPECTED_EXPORTS),
         "runtime_mode": "local-runtime",
         "runtime_available": True,
+        "external_providers": "unavailable",
         "model_injection_required": True,
         "runtime_dependencies": sorted(EXPECTED_REQUIREMENTS),
         "install_index": "disabled",
@@ -156,6 +157,7 @@ def _verify_clean_consumer(wheel: Path) -> None:
             "capabilities = package.runtime_capabilities(); "
             "assert capabilities.available is True; "
             "assert capabilities.runtime_mode == 'local-runtime'; "
+            "assert capabilities.external_providers == 'unavailable'; "
             "assert capabilities.model_injection_required is True; "
             "assert capabilities.hosted_deployment is False; "
             "print(json.dumps({'exports': sorted(package.__all__), "

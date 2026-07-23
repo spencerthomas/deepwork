@@ -5,8 +5,8 @@ from typing import Literal, NotRequired
 from typing_extensions import TypedDict
 
 AgentStatus = Literal["planned", "approved", "completed", "rejected"]
-ApprovalDecision = Literal["approve", "reject"]
-ApprovalStatus = Literal["pending", "approve", "reject", "not-required"]
+ApprovalDecision = Literal["approve", "reject", "respond"]
+ApprovalStatus = Literal["pending", "approve", "reject", "respond", "not-required"]
 ContentTrust = Literal["trusted", "untrusted"]
 
 
@@ -20,8 +20,12 @@ class AgentState(AgentInput, total=False):
     """Internal deterministic state accumulated by graph nodes."""
 
     plan: list[str]
+    plan_revision: int
     plan_trust: Literal["untrusted"]
+    pending_interrupt_id: str
     approval: ApprovalStatus
+    reviewer_comment: str
+    requested_plan: list[str]
     status: AgentStatus
     final_answer: str
     final_answer_trust: ContentTrust
@@ -32,7 +36,9 @@ class AgentOutput(TypedDict):
 
     task: str
     plan: list[str]
+    plan_revision: int
     plan_trust: Literal["untrusted"]
+    pending_interrupt_id: str
     approval: ApprovalStatus
     status: AgentStatus
     final_answer: str
@@ -46,6 +52,8 @@ class ApprovalRequest(TypedDict):
     action: Literal["execute_plan"]
     task: str
     plan: list[str]
+    plan_revision: int
+    interrupt_id: str
     plan_trust: Literal["untrusted"]
     allowed_decisions: list[ApprovalDecision]
 
@@ -53,8 +61,11 @@ class ApprovalRequest(TypedDict):
 class ApprovalResponse(TypedDict):
     """Value required when resuming an interrupted graph."""
 
+    interrupt_id: str
+    revision: int
     decision: ApprovalDecision
     comment: NotRequired[str]
+    edited_plan: NotRequired[list[str]]
 
 
 def initial_state(task: str) -> AgentInput:

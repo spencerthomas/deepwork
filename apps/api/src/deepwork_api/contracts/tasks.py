@@ -4,26 +4,12 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    StringConstraints,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from deepwork_api.domain import (
-    MAX_PLAN_STEP_LENGTH,
-    MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     DecisionRecord,
     DecisionValue,
-    EvidenceKind,
-    EvidenceRecord,
-    EvidenceSource,
-    PlanUpdateRecord,
-    ProposedPlan,
     TaskEvent,
     TaskEventName,
     TaskSnapshot,
@@ -33,10 +19,6 @@ from deepwork_api.domain import (
 TaskId = Annotated[str, StringConstraints(pattern=r"^task_[0-9]{8}$")]
 RunId = Annotated[str, StringConstraints(pattern=r"^run_[0-9]{8}$")]
 InterruptId = Annotated[str, StringConstraints(pattern=r"^interrupt_[0-9]{8}$")]
-EvidenceId = Annotated[
-    str,
-    StringConstraints(pattern=r"^evidence_[0-9]{8}(?:_[0-9]{2})?$"),
-]
 type TaskWireStatus = Literal[
     "queued",
     "running",
@@ -90,50 +72,7 @@ class PendingInterruptResponse(_TaskWireModel):
     """One actionable local approval interrupt."""
 
     interrupt_id: InterruptId = Field(alias="interruptId")
-    decisions: tuple[DecisionValue, ...] = (
-        DecisionValue.APPROVE,
-        DecisionValue.REJECT,
-        DecisionValue.RESPOND,
-    )
-    plan_revision: int = Field(alias="planRevision", ge=1)
-
-
-class ProposedPlanResponse(_TaskWireModel):
-    """Current plan available for inspection and pre-execution editing."""
-
-    revision: int = Field(ge=1)
-    title: str = Field(min_length=1, max_length=100)
-    steps: tuple[str, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
-    evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
-
-    @classmethod
-    def from_domain(cls, plan: ProposedPlan) -> ProposedPlanResponse:
-        return cls(
-            revision=plan.revision,
-            title=plan.title,
-            steps=plan.steps,
-            evidence_refs=plan.evidence_refs,
-        )
-
-
-class EvidenceResponse(_TaskWireModel):
-    """Inspectable source-qualified evidence."""
-
-    evidence_id: EvidenceId = Field(alias="evidenceId")
-    kind: EvidenceKind
-    summary: str = Field(min_length=1, max_length=300)
-    source: EvidenceSource
-    verified: bool
-
-    @classmethod
-    def from_domain(cls, evidence: EvidenceRecord) -> EvidenceResponse:
-        return cls(
-            evidence_id=evidence.evidence_id,
-            kind=evidence.kind,
-            summary=evidence.summary,
-            source=evidence.source,
-            verified=evidence.verified,
-        )
+    decisions: tuple[DecisionValue, ...] = (DecisionValue.APPROVE, DecisionValue.REJECT)
 
 
 class TaskSummaryResponse(_TaskWireModel):
@@ -168,18 +107,13 @@ class TaskDetailResponse(TaskSummaryResponse):
     """Task summary plus the currently actionable interrupt."""
 
     pending_interrupt: PendingInterruptResponse | None = Field(alias="pendingInterrupt")
-    proposed_plan: ProposedPlanResponse | None = Field(alias="proposedPlan")
-    evidence: tuple[EvidenceResponse, ...]
     result: str | None = Field(default=None, max_length=_MAX_RESULT_LENGTH)
 
     @classmethod
     def from_domain(cls, task: TaskSnapshot) -> TaskDetailResponse:
         pending = (
-            PendingInterruptResponse(
-                interrupt_id=task.pending_interrupt_id,
-                plan_revision=task.proposed_plan.revision,
-            )
-            if task.pending_interrupt_id is not None and task.proposed_plan is not None
+            PendingInterruptResponse(interrupt_id=task.pending_interrupt_id)
+            if task.pending_interrupt_id is not None
             else None
         )
         return cls(
@@ -190,12 +124,6 @@ class TaskDetailResponse(TaskSummaryResponse):
             status=_wire_status(task.status),
             last_event_id=task.last_event_id,
             pending_interrupt=pending,
-            proposed_plan=(
-                ProposedPlanResponse.from_domain(task.proposed_plan)
-                if task.proposed_plan is not None
-                else None
-            ),
-            evidence=tuple(EvidenceResponse.from_domain(item) for item in task.evidence),
             result=task.result,
         )
 
@@ -216,16 +144,6 @@ class DecisionRequest(_TaskWireModel):
             _reject_unsafe_controls(value)
         return value
 
-    @model_validator(mode="after")
-    def validate_response(self) -> DecisionRequest:
-        """Require meaningful guidance only when resuming with respond."""
-
-        if self.decision is DecisionValue.RESPOND and (
-            self.comment is None or not self.comment.strip()
-        ):
-            raise ValueError("respond requires a non-blank comment")
-        return self
-
 
 class DecisionAcceptedResponse(_TaskWireModel):
     """Accepted or idempotently replayed decision receipt."""
@@ -245,43 +163,6 @@ class DecisionAcceptedResponse(_TaskWireModel):
             interrupt_id=record.interrupt_id,
             decision=record.decision,
             duplicate=record.duplicate,
-        )
-
-
-class PlanUpdateRequest(_TaskWireModel):
-    """Edit the exact pending plan revision without silently truncating it."""
-
-    interrupt_id: InterruptId = Field(alias="interruptId")
-    expected_revision: int = Field(alias="expectedRevision", ge=1)
-    steps: tuple[str, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
-
-    @field_validator("steps")
-    @classmethod
-    def validate_steps(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        for step in value:
-            _reject_unsafe_controls(step)
-            if not step.strip():
-                raise ValueError("plan steps must contain visible text")
-            if len(step) > MAX_PLAN_STEP_LENGTH:
-                raise ValueError("plan step exceeds the shared request bound")
-        return value
-
-
-class PlanUpdateResponse(_TaskWireModel):
-    """Accepted plan edit receipt."""
-
-    task_id: TaskId = Field(alias="taskId")
-    run_id: RunId = Field(alias="runId")
-    interrupt_id: InterruptId = Field(alias="interruptId")
-    plan: ProposedPlanResponse
-
-    @classmethod
-    def from_domain(cls, record: PlanUpdateRecord) -> PlanUpdateResponse:
-        return cls(
-            task_id=record.task_id,
-            run_id=record.run_id,
-            interrupt_id=record.interrupt_id,
-            plan=ProposedPlanResponse.from_domain(record.plan),
         )
 
 
@@ -332,8 +213,6 @@ class ContentDeltaEventData(_TaskWireModel):
 class PlanProposedEventData(_TaskWireModel):
     title: str = Field(min_length=1, max_length=100)
     steps: tuple[str, ...] = Field(min_length=1, max_length=8)
-    revision: int = Field(ge=1)
-    evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
     evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
 
 
@@ -341,18 +220,12 @@ class InterruptRequestedEventData(_TaskWireModel):
     interrupt_id: InterruptId = Field(alias="interruptId")
     question: str = Field(min_length=1, max_length=200)
     decisions: tuple[DecisionValue, ...]
-    plan_revision: int = Field(alias="planRevision", ge=1)
 
 
 class DecisionRecordedEventData(_TaskWireModel):
     interrupt_id: InterruptId = Field(alias="interruptId")
     decision: DecisionValue
     comment_provided: bool = Field(alias="commentProvided")
-    response_provided: bool = Field(alias="responseProvided")
-
-
-class EvidenceRecordedEventData(EvidenceResponse):
-    """Replayable evidence metadata without source content."""
 
 
 class RunCompletedEventData(_TaskWireModel):
@@ -367,8 +240,6 @@ _EVENT_MODELS: dict[TaskEventName, type[BaseModel]] = {
     TaskEventName.RUN_STARTED: RunStartedEventData,
     TaskEventName.CONTENT_DELTA: ContentDeltaEventData,
     TaskEventName.PLAN_PROPOSED: PlanProposedEventData,
-    TaskEventName.PLAN_UPDATED: PlanProposedEventData,
-    TaskEventName.EVIDENCE_RECORDED: EvidenceRecordedEventData,
     TaskEventName.INTERRUPT_REQUESTED: InterruptRequestedEventData,
     TaskEventName.DECISION_RECORDED: DecisionRecordedEventData,
     TaskEventName.RUN_COMPLETED: RunCompletedEventData,

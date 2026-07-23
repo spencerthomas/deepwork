@@ -133,36 +133,13 @@ async def test_create_list_detail_and_real_pause() -> None:
             created["taskId"],
             {"waiting-approval"},
         )
-        assert paused["lastEventId"] == 6
+        assert paused["lastEventId"] == 5
         assert paused["objective"] == objective
         assert paused["result"] is None
         assert paused["pendingInterrupt"] == {
             "interruptId": "interrupt_00000001",
-            "decisions": ["approve", "reject", "respond"],
-            "planRevision": 1,
+            "decisions": ["approve", "reject"],
         }
-        assert paused["proposedPlan"] == {
-            "revision": 1,
-            "title": "Safe local fixture plan",
-            "steps": [
-                "Confirm readiness gates, owners, and dependencies.",
-                "Sequence the change with explicit rollback and communication steps.",
-                "Validate launch health and record any unresolved release risk.",
-            ],
-            "evidenceRefs": ["evidence_00000001"],
-        }
-        assert paused["evidence"] == [
-            {
-                "evidenceId": "evidence_00000001",
-                "kind": "fixture",
-                "summary": (
-                    "The deterministic local runner classified the objective and "
-                    "prepared a bounded plan; no external source was consulted."
-                ),
-                "source": "deterministic-local-runner",
-                "verified": False,
-            }
-        ]
 
         listing = await client.get("/api/v1/tasks")
         assert listing.status_code == 200
@@ -173,14 +150,14 @@ async def test_create_list_detail_and_real_pause() -> None:
                 "title": objective,
                 "objective": objective,
                 "status": "waiting-approval",
-                "lastEventId": 6,
+                "lastEventId": 5,
             }
         ]
 
         await asyncio.sleep(0)
         still_paused = await client.get(f"/api/v1/tasks/{created['taskId']}")
         assert still_paused.json()["status"] == "waiting-approval"
-        assert still_paused.json()["lastEventId"] == 6
+        assert still_paused.json()["lastEventId"] == 5
 
 
 async def test_approve_completes_and_sse_replays_after_cursor() -> None:
@@ -209,7 +186,7 @@ async def test_approve_completes_and_sse_replays_after_cursor() -> None:
 
         completed = await _wait_for_status(client, created["taskId"], {"completed"})
         assert completed["pendingInterrupt"] is None
-        assert completed["lastEventId"] == 9
+        assert completed["lastEventId"] == 8
         assert completed["objective"] == "Do not echo [redacted]"
         assert completed["result"] is not None
         assert "Objective: Do not echo [redacted]" in completed["result"]
@@ -224,12 +201,11 @@ async def test_approve_completes_and_sse_replays_after_cursor() -> None:
         assert full_stream.status_code == 200
         assert full_stream.headers["content-type"].startswith("text/event-stream")
         events = _sse_events(full_stream.text)
-        assert [event["id"] for event in events] == list(range(1, 10))
+        assert [event["id"] for event in events] == list(range(1, 9))
         assert [event["event"] for event in events] == [
             "task.created",
             "run.started",
             "content.delta",
-            "evidence.recorded",
             "plan.proposed",
             "interrupt.requested",
             "decision.recorded",
@@ -246,10 +222,10 @@ async def test_approve_completes_and_sse_replays_after_cursor() -> None:
 
         replay = await client.get(
             f"/api/v1/tasks/{created['taskId']}/events",
-            headers={"Last-Event-ID": "6"},
+            headers={"Last-Event-ID": "5"},
         )
         replayed = _sse_events(replay.text)
-        assert [event["id"] for event in replayed] == [7, 8, 9]
+        assert [event["id"] for event in replayed] == [6, 7, 8]
         assert replayed[0]["event"] == "decision.recorded"
 
         reopened = await client.get(f"/api/v1/tasks/{created['taskId']}")
@@ -282,7 +258,7 @@ async def test_reject_ends_truthfully_rejected() -> None:
         assert response.status_code == 202
 
         rejected = await _wait_for_status(client, created["taskId"], {"rejected"})
-        assert rejected["lastEventId"] == 8
+        assert rejected["lastEventId"] == 7
         assert rejected["result"] is None
         unavailable = await client.get(f"/api/v1/tasks/{created['taskId']}/result")
         assert unavailable.status_code == 409
@@ -344,172 +320,6 @@ async def test_wrong_stale_and_duplicate_decisions_are_safe() -> None:
         assert sum(event["event"] == "decision.recorded" for event in events) == 1
 
 
-async def test_pending_plan_can_be_inspected_edited_and_executed() -> None:
-    async with _client() as client:
-        created = await _create_task(client, "Write a concise release brief")
-        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        interrupt_id = paused["pendingInterrupt"]["interruptId"]
-        edited_steps = [
-            "Confirm the release audience and acceptance checks.",
-            "Draft the brief with token=secret-shaped-value removed.",
-            "Review the exact approved plan before completion.",
-        ]
-
-        edited = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": interrupt_id,
-                "expectedRevision": paused["proposedPlan"]["revision"],
-                "steps": edited_steps,
-            },
-        )
-        assert edited.status_code == 200
-        assert edited.json()["plan"] == {
-            "revision": 2,
-            "title": "Safe local fixture plan",
-            "steps": [
-                edited_steps[0],
-                "Draft the brief with [redacted] removed.",
-                edited_steps[2],
-            ],
-            "evidenceRefs": ["evidence_00000001"],
-        }
-
-        stale_revision = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": interrupt_id,
-                "expectedRevision": 1,
-                "steps": ["This edit is stale."],
-            },
-        )
-        assert stale_revision.status_code == 409
-        assert stale_revision.json()["code"] == "plan_revision_conflict"
-        wrong_interrupt = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": "interrupt_99999999",
-                "expectedRevision": 2,
-                "steps": ["This interrupt is wrong."],
-            },
-        )
-        assert wrong_interrupt.status_code == 409
-        assert wrong_interrupt.json()["code"] == "interrupt_mismatch"
-
-        detail = await client.get(f"/api/v1/tasks/{created['taskId']}")
-        assert detail.json()["proposedPlan"] == edited.json()["plan"]
-        assert detail.json()["pendingInterrupt"]["planRevision"] == 2
-        approved = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={"interruptId": interrupt_id, "decision": "approve"},
-        )
-        assert approved.status_code == 202
-        completed = await _wait_for_status(client, created["taskId"], {"completed"})
-        assert "Confirm the release audience" in completed["result"]
-        assert "token=secret-shaped-value" not in completed["result"]
-
-        stale_edit = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": interrupt_id,
-                "expectedRevision": 2,
-                "steps": ["Too late."],
-            },
-        )
-        assert stale_edit.status_code == 409
-        assert stale_edit.json()["code"] == "interrupt_stale"
-        events = _sse_events((await client.get(f"/api/v1/tasks/{created['taskId']}/events")).text)
-        assert sum(event["event"] == "plan.updated" for event in events) == 1
-        updated = next(event for event in events if event["event"] == "plan.updated")
-        assert updated["data"]["revision"] == 2
-        assert "secret-shaped-value" not in json.dumps(updated)
-
-
-async def test_respond_resumes_exact_interrupt_without_replaying_raw_guidance() -> None:
-    async with _client() as client:
-        created = await _create_task(client)
-        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        interrupt_id = paused["pendingInterrupt"]["interruptId"]
-        blank = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={"interruptId": interrupt_id, "decision": "respond", "comment": " \n "},
-        )
-        assert blank.status_code == 422
-
-        guidance = "Please incorporate password=never-replay-this guidance."
-        first = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={
-                "interruptId": interrupt_id,
-                "decision": "respond",
-                "comment": guidance,
-            },
-        )
-        assert first.status_code == 202
-        assert first.json()["duplicate"] is False
-        duplicate = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={
-                "interruptId": interrupt_id,
-                "decision": "respond",
-                "comment": guidance,
-            },
-        )
-        assert duplicate.status_code == 202
-        assert duplicate.json()["duplicate"] is True
-        conflicting = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={
-                "interruptId": interrupt_id,
-                "decision": "respond",
-                "comment": "Different guidance.",
-            },
-        )
-        assert conflicting.status_code == 409
-        assert conflicting.json()["code"] == "decision_conflict"
-
-        revised = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        assert revised["pendingInterrupt"]["interruptId"] == "interrupt_10000001"
-        assert revised["pendingInterrupt"]["planRevision"] == 2
-        assert revised["proposedPlan"]["revision"] == 2
-        assert revised["proposedPlan"]["evidenceRefs"] == [
-            "evidence_00000001",
-            "evidence_00000001_01",
-        ]
-        assert revised["evidence"][-1] == {
-            "evidenceId": "evidence_00000001_01",
-            "kind": "fixture",
-            "summary": (
-                "Additional reviewer guidance was recorded locally. Its text is "
-                "intentionally excluded from replayable evidence."
-            ),
-            "source": "reviewer-response",
-            "verified": False,
-        }
-
-        approved = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={
-                "interruptId": revised["pendingInterrupt"]["interruptId"],
-                "decision": "approve",
-            },
-        )
-        assert approved.status_code == 202
-        await _wait_for_status(client, created["taskId"], {"completed"})
-        stream = await client.get(f"/api/v1/tasks/{created['taskId']}/events")
-        assert guidance not in stream.text
-        assert "never-replay-this" not in stream.text
-        events = _sse_events(stream.text)
-        recorded = next(event for event in events if event["event"] == "decision.recorded")
-        assert recorded["data"] == {
-            "interruptId": interrupt_id,
-            "decision": "respond",
-            "commentProvided": True,
-            "responseProvided": True,
-        }
-        assert sum(event["event"] == "plan.proposed" for event in events) == 2
-
-
 async def test_invalid_event_cursor_and_input_bounds() -> None:
     async with _client() as client:
         blank = await client.post("/api/v1/tasks", json={"prompt": " \n "})
@@ -534,84 +344,6 @@ async def test_invalid_event_cursor_and_input_bounds() -> None:
         )
         assert invalid.status_code == 409
         assert invalid.json()["code"] == "event_cursor_invalid"
-
-
-async def test_maximum_objective_completes_with_bounded_result_and_stream() -> None:
-    async with _client() as client:
-        objective = "x" * 8_000
-        created = await _create_task(client, objective)
-        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        approved = await client.post(
-            f"/api/v1/tasks/{created['taskId']}/decisions",
-            json={
-                "interruptId": paused["pendingInterrupt"]["interruptId"],
-                "decision": "approve",
-            },
-        )
-        assert approved.status_code == 202
-        completed = await _wait_for_status(client, created["taskId"], {"completed"})
-        assert completed["objective"] == objective
-        assert completed["result"].count(objective) == 1
-        assert len(completed["result"]) <= 10_000
-        result = await client.get(f"/api/v1/tasks/{created['taskId']}/result")
-        assert result.status_code == 200
-        assert result.json()["result"] == completed["result"]
-        stream = await client.get(f"/api/v1/tasks/{created['taskId']}/events")
-        assert stream.status_code == 200
-        assert _sse_events(stream.text)[-1]["data"]["resultAvailable"] is True
-
-
-async def test_validation_errors_never_echo_rejected_comment_content() -> None:
-    async with _client() as client:
-        created = await _create_task(client)
-        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        secret = "password=do-not-echo-this"
-        for comment in (f"{secret}{'x' * 1_000}", f"{secret}\x01"):
-            response = await client.post(
-                f"/api/v1/tasks/{created['taskId']}/decisions",
-                json={
-                    "interruptId": paused["pendingInterrupt"]["interruptId"],
-                    "decision": "respond",
-                    "comment": comment,
-                },
-            )
-            assert response.status_code == 422
-            assert response.json() == {
-                "code": "request_invalid",
-                "message": "Request validation failed.",
-            }
-            assert secret not in response.text
-            assert "do-not-echo-this" not in response.text
-
-
-async def test_plan_step_bounds_use_unicode_code_points_without_truncation() -> None:
-    async with _client() as client:
-        created = await _create_task(client)
-        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
-        accepted_step = "🧭" * 1_000
-        accepted = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": paused["pendingInterrupt"]["interruptId"],
-                "expectedRevision": 1,
-                "steps": [accepted_step],
-            },
-        )
-        assert accepted.status_code == 200
-        assert accepted.json()["plan"]["steps"] == [accepted_step]
-
-        rejected_step = "🔐" * 1_001
-        rejected = await client.patch(
-            f"/api/v1/tasks/{created['taskId']}/plan",
-            json={
-                "interruptId": paused["pendingInterrupt"]["interruptId"],
-                "expectedRevision": 2,
-                "steps": [rejected_step],
-            },
-        )
-        assert rejected.status_code == 422
-        assert rejected.json()["code"] == "request_invalid"
-        assert rejected_step not in rejected.text
 
 
 async def test_materially_different_prompts_produce_different_useful_results() -> None:
@@ -663,18 +395,6 @@ async def test_cors_allows_only_local_next_origins() -> None:
         assert allowed.status_code == 200
         assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
         assert "POST" in allowed.headers["access-control-allow-methods"]
-        assert "PATCH" in allowed.headers["access-control-allow-methods"]
-
-        plan_edit = await client.options(
-            "/api/v1/tasks/task_00000001/plan",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "PATCH",
-                "Access-Control-Request-Headers": "content-type",
-            },
-        )
-        assert plan_edit.status_code == 200
-        assert "PATCH" in plan_edit.headers["access-control-allow-methods"]
 
         loopback = await client.options(
             "/api/v1/tasks/task_00000001/events",

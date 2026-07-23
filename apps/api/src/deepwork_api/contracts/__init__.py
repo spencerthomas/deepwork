@@ -4,8 +4,6 @@ from deepwork_api.contracts.status import DemoStatusResponse, HealthResponse, Wo
 from deepwork_api.contracts.tasks import (
     DecisionAcceptedResponse,
     DecisionRequest,
-    PlanUpdateRequest,
-    PlanUpdateResponse,
     ProblemResponse,
     TaskAcceptedResponse,
     TaskCreateRequest,
@@ -21,8 +19,6 @@ __all__ = [
     "DecisionRequest",
     "DemoStatusResponse",
     "HealthResponse",
-    "PlanUpdateRequest",
-    "PlanUpdateResponse",
     "ProblemResponse",
     "TaskAcceptedResponse",
     "TaskCreateRequest",

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MessageSquareReply, ShieldQuestion, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { unicodeLength, validateDecisionComment } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, DecisionInput } from "@/lib/task-types";
@@ -27,9 +27,23 @@ export function ApprovalCard({
   error,
   onDecide,
 }: ApprovalCardProps) {
+  const fieldId = useId();
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string>();
   const disabled = submitting || submittedDecision !== undefined;
+  // Length is measured the same way validateDecisionComment measures it — on the
+  // trimmed value — so the visible/accessible invalid state matches what submits.
+  const commentLength = unicodeLength(comment.trim());
+  const overLimit = commentLength > DECISION_COMMENT_MAX_LENGTH;
+  const shownError = validationError ?? error;
+  // Component-generated IDs; the interrupt identity may contain characters that
+  // are unsafe inside an id / aria-describedby IDREF list.
+  const commentId = `${fieldId}-comment`;
+  const countId = `${fieldId}-count`;
+  const errorId = `${fieldId}-error`;
+  const commentDescribedBy = [countId, shownError !== undefined ? errorId : null]
+    .filter((id): id is string => id !== null)
+    .join(" ");
 
   async function decide(decision: DecisionInput["decision"]) {
     const trimmed = comment.trim() === "" ? undefined : comment;
@@ -76,7 +90,7 @@ export function ApprovalCard({
       ) : (
         <div className="border-t border-status-review/30 bg-card/60 px-4 py-3">
           <label
-            htmlFor={`comment-${interrupt.interruptId}`}
+            htmlFor={commentId}
             className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
           >
             Comment{" "}
@@ -85,12 +99,14 @@ export function ApprovalCard({
             </span>
           </label>
           <textarea
-            id={`comment-${interrupt.interruptId}`}
+            id={commentId}
             value={comment}
             rows={2}
             disabled={disabled}
             maxLength={DECISION_COMMENT_MAX_LENGTH * 2}
             placeholder="Add context for your decision…"
+            aria-invalid={validationError !== undefined || overLimit}
+            aria-describedby={commentDescribedBy}
             onChange={(event) => {
               setComment(event.target.value);
               setValidationError(undefined);
@@ -140,9 +156,14 @@ export function ApprovalCard({
                 {submittedDecision === "respond" ? "Sending…" : "Respond"}
               </button>
             )}
-            <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
-              {unicodeLength(comment).toLocaleString()} /{" "}
-              {DECISION_COMMENT_MAX_LENGTH.toLocaleString()}
+            <span
+              id={countId}
+              className={cn(
+                "ml-auto text-[11px] tabular-nums",
+                overLimit ? "text-status-failed" : "text-muted-foreground",
+              )}
+            >
+              {commentLength.toLocaleString()} / {DECISION_COMMENT_MAX_LENGTH.toLocaleString()}
             </span>
           </div>
           {submittedDecision !== undefined && (
@@ -153,12 +174,13 @@ export function ApprovalCard({
         </div>
       )}
 
-      {(validationError ?? error) && (
+      {shownError !== undefined && (
         <div
+          id={errorId}
           className="border-t border-status-failed/30 bg-status-failed-bg px-4 py-2.5"
           role="alert"
         >
-          <p className="text-[13px] text-status-failed">{validationError ?? error}</p>
+          <p className="text-[13px] text-status-failed">{shownError}</p>
         </div>
       )}
     </div>

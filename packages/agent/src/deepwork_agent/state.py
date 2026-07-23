@@ -4,6 +4,8 @@ from typing import Literal, NotRequired
 
 from typing_extensions import TypedDict
 
+from deepwork_agent.profiles import FinalArtifact, JourneyProfile
+
 AgentStatus = Literal["planned", "approved", "completed", "rejected"]
 ApprovalDecision = Literal["approve", "reject", "respond"]
 ApprovalStatus = Literal["pending", "approve", "reject", "respond", "not-required"]
@@ -27,6 +29,10 @@ class AgentState(AgentInput, total=False):
     status: AgentStatus
     final_answer: str
     final_answer_trust: ContentTrust
+    profile: JourneyProfile
+    final_artifact: FinalArtifact
+    rubric_verdict: str
+    rubric_repair_history: list[dict[str, object]]
 
 
 class AgentOutput(TypedDict):
@@ -40,6 +46,10 @@ class AgentOutput(TypedDict):
     status: AgentStatus
     final_answer: str
     final_answer_trust: ContentTrust
+    profile: JourneyProfile
+    final_artifact: FinalArtifact
+    rubric_verdict: str
+    rubric_repair_history: list[dict[str, object]]
 
 
 class ApprovalRequest(TypedDict):

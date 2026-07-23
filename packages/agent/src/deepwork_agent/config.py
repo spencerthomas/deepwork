@@ -5,6 +5,7 @@ from typing import Literal
 
 _MIN_PLAN_STEPS = 1
 _MAX_PLAN_STEPS = 12
+_MAX_RUBRIC_ITERATIONS = 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +21,7 @@ class AgentConfig:
     runtime_mode: Literal["local-runtime"] = "local-runtime"
     require_plan_approval: bool = True
     max_plan_steps: int = 6
+    max_rubric_iterations: int = 3
 
     def __post_init__(self) -> None:
         """Validate the small local-runtime configuration contract."""
@@ -31,4 +33,7 @@ class AgentConfig:
             raise ValueError(msg)
         if not _MIN_PLAN_STEPS <= self.max_plan_steps <= _MAX_PLAN_STEPS:
             msg = "max_plan_steps must be between 1 and 12"
+            raise ValueError(msg)
+        if not _MIN_PLAN_STEPS <= self.max_rubric_iterations <= _MAX_RUBRIC_ITERATIONS:
+            msg = "max_rubric_iterations must be between 1 and 20"
             raise ValueError(msg)

@@ -17,6 +17,22 @@ package. `runtime_capabilities().managed_external_providers` is explicitly
 `"unavailable"`: a caller may inject a reviewed model, but this package does not
 select providers or manage provider credentials.
 
+## Research and writing profiles
+
+`create_research_graph` and `create_writing_graph` are separate local profiles
+around the same caller-injected `BaseChatModel`. They use the pinned public
+`RubricMiddleware` through `create_deep_agent`; its returned rubric verdict,
+criteria, and repair history are retained in graph state, and
+`max_rubric_iterations` is hard-bounded to 1–20 (default 3). Plan approval is
+still the outer, authoritative LangGraph interrupt.
+
+Profile completion returns a typed `FinalArtifact`. It classifies every emitted
+claim as `evidence`, `inference`, or `unverified`, and bounds evidence and
+provenance reference lists to 12 each. This package neither fetches references
+nor claims hosted artifacts. Synchronous subagents are explicitly
+`"unavailable"` until a supported public contract is separately verified; the
+package does not recreate Deep Agents subagent orchestration.
+
 Model-generated plans and final answers are marked `untrusted`. Approval is
 required by default before the protected `execute_plan` action. The interrupt
 payload preserves the ordered `approve`, `reject`, `respond` decision vocabulary.

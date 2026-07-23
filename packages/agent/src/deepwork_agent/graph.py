@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from deepagents import create_deep_agent
+from deepagents.middleware import RubricMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
@@ -17,6 +18,14 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import interrupt
 
 from deepwork_agent.config import AgentConfig
+from deepwork_agent.profiles import (
+    PROFILE_PROMPTS,
+    PROFILE_RUBRICS,
+    ArtifactClaim,
+    ClaimKind,
+    FinalArtifact,
+    JourneyProfile,
+)
 from deepwork_agent.state import (
     AgentInput,
     AgentOutput,
@@ -68,6 +77,8 @@ class RuntimeCapabilities:
     checkpointing: Literal["in-memory-only"]
     hosted_deployment: Literal[False]
     provider_credentials_managed: Literal[False]
+    hosted_artifacts: Literal["unavailable"]
+    synchronous_subagents: Literal["unavailable"]
 
 
 def runtime_capabilities() -> RuntimeCapabilities:
@@ -82,6 +93,8 @@ def runtime_capabilities() -> RuntimeCapabilities:
         checkpointing="in-memory-only",
         hosted_deployment=False,
         provider_credentials_managed=False,
+        hosted_artifacts="unavailable",
+        synchronous_subagents="unavailable",
     )
 
 
@@ -159,12 +172,13 @@ def validate_plan_edit(value: object, *, max_plan_steps: int = 6) -> list[str]:
     return steps
 
 
-def create_graph(  # noqa: C901 - graph factory keeps node closures beside topology
+def create_graph(  # noqa: C901, PLR0915 - graph factory keeps node closures beside topology
     *,
     model: BaseChatModel,
     tools: Sequence[ToolLike] = (),
     config: AgentConfig | None = None,
     checkpointer: BaseCheckpointSaver[Any] | None = None,
+    profile: JourneyProfile | None = None,
 ) -> LocalAgentGraph:
     """Create the local plan-first graph around a public Deep Agents executor.
 
@@ -175,6 +189,7 @@ def create_graph(  # noqa: C901 - graph factory keeps node closures beside topol
         config: Local-only graph settings.
         checkpointer: Optional caller-owned checkpoint saver. The default is an
             ephemeral in-memory saver suitable for local pause/resume.
+        profile: Optional bounded research or writing journey profile.
 
     Returns:
         A compiled LangGraph that plans, requests approval, and then executes.
@@ -187,10 +202,23 @@ def create_graph(  # noqa: C901 - graph factory keeps node closures beside topol
         msg = "model must be an initialized BaseChatModel"
         raise TypeError(msg)
     settings = config or AgentConfig()
+    middleware = (
+        [
+            RubricMiddleware(
+                model=model,
+                max_iterations=settings.max_rubric_iterations,
+            )
+        ]
+        if profile is not None
+        else []
+    )
     executor = create_deep_agent(
         model=model,
         tools=list(tools),
-        system_prompt=DEEP_WORK_SYSTEM_PROMPT,
+        system_prompt=(
+            PROFILE_PROMPTS[profile] if profile is not None else DEEP_WORK_SYSTEM_PROMPT
+        ),
+        middleware=middleware,
         name="deep-work-executor",
     )
 
@@ -291,7 +319,10 @@ def create_graph(  # noqa: C901 - graph factory keeps node closures beside topol
             f"Task:\n{state['task']}\n\nApproved plan:\n{numbered_plan}\n\n"
             "Execute the approved plan and provide the final answer."
         )
-        result = executor.invoke({"messages": [HumanMessage(content=execution_request)]})
+        invocation: dict[str, object] = {"messages": [HumanMessage(content=execution_request)]}
+        if profile is not None:
+            invocation["rubric"] = PROFILE_RUBRICS[profile]
+        result = executor.invoke(invocation)
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),
@@ -300,11 +331,29 @@ def create_graph(  # noqa: C901 - graph factory keeps node closures beside topol
         if final_message is None:
             msg = "deep agent completed without a final AI message"
             raise ValueError(msg)
-        return {
+        output: dict[str, object] = {
             "status": "completed",
             "final_answer": _message_text(final_message),
             "final_answer_trust": "untrusted",
         }
+        if profile is not None:
+            final_text = _message_text(final_message)
+            evaluations = list(result.get("_rubric_evaluations", []))
+            output.update(
+                {
+                    "profile": profile,
+                    "final_artifact": FinalArtifact(
+                        profile=profile,
+                        body=final_text,
+                        claims=(ArtifactClaim(kind=ClaimKind.UNVERIFIED, text=final_text),),
+                        evidence=(),
+                        provenance=(),
+                    ),
+                    "rubric_verdict": str(result.get("_rubric_status", "unavailable")),
+                    "rubric_repair_history": evaluations,
+                }
+            )
+        return output
 
     builder = StateGraph(
         AgentState,  # ty: ignore[invalid-argument-type]  # Runtime-valid TypedDict
@@ -333,3 +382,13 @@ def create_graph(  # noqa: C901 - graph factory keeps node closures beside topol
             name="deep-work-local-agent",
         ),
     )
+
+
+def create_research_graph(**kwargs: Any) -> LocalAgentGraph:  # noqa: ANN401
+    """Create the evidence-conscious research profile around an injected model."""
+    return create_graph(profile=JourneyProfile.RESEARCH, **kwargs)
+
+
+def create_writing_graph(**kwargs: Any) -> LocalAgentGraph:  # noqa: ANN401
+    """Create the claim-classifying writing profile around an injected model."""
+    return create_graph(profile=JourneyProfile.WRITING, **kwargs)

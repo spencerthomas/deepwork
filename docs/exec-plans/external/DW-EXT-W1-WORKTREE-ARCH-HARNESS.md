@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-WORKTREE-ARCH-HARNESS
 title: External dispatch - worktree isolation and architecture harness
-status: ready-for-external-dispatch
+status: implemented-awaiting-coordinator-review
 base_commit: 85187827e018d4aeee4a4e4bd685de49cb2f5a6a
 branch: external/platform/worktree-architecture-harness
 owner: external-platform-harness-worker
@@ -166,3 +166,107 @@ coordinator integrates it. Integration, index/generated updates, root command
 wiring, CI, push, merge, deployment, and cleanup of external worktrees remain
 coordinator/human actions.
 
+## Progress
+
+- [x] 2026-07-23 — Verified the exact worktree, branch, seed
+  `7eb7900f49f8cd4e21aa72b472e3267acaf65e24`, clean status, implementation-base
+  ancestry, and an implementation-base diff containing only this ExecPlan.
+- [x] 2026-07-23 — Implemented the architecture checker, fixtures, and
+  deterministic
+  diagnostics.
+- [x] 2026-07-23 — Implemented the collision-safe worktree allocator, fixture
+  self-test, and
+  truthful product-demo gate.
+- [x] 2026-07-23 — Retained sanitized self-test and product-demo blocker
+  evidence and ran the exact validation commands.
+- [x] 2026-07-23 — Completed independent architecture, developer-experience,
+  and security cross-review; corrected the findings and received final
+  `ACCEPT` verdicts.
+
+## Surprises and discoveries
+
+- 2026-07-23 — `local:DW-M1-TS-SCAFFOLD` is not present at the prepared seed.
+  Consequence: architecture fixtures may prove the planned TypeScript boundaries,
+  but complete architecture acceptance remains dependency-gated until the real
+  domain/SDK/UI source edges are integrated and rechecked.
+- 2026-07-23 — `local:DW-M1-PRODUCT-DEMO-001` is not present at the prepared
+  seed. Consequence: the worktree harness must stop at
+  `implemented-not-accepted`; fixture self-tests cannot satisfy
+  `SPIKE-WORKTREE-001` or `AC-DW-FND-001-05`.
+- 2026-07-23 — Independent review found fail-open architecture coverage, Python
+  layer/cycle, environment, generated-view, and lexical-boundary gaps. The
+  corrected checker now requires real source coverage, preserves executable
+  template expressions, scans secret shapes in comments, enforces Python
+  edges/cycles, and gates acceptance on graph lifecycle status.
+- 2026-07-23 — Independent security review found incomplete symlink, evidence
+  provenance, schema, driver trust, reservation recovery, and cross-process
+  proof. The corrected harness now uses private atomic state, immutable Git-blob
+  driver/contract provenance, a private HMAC receipt authority, strict nested
+  evidence schemas, reviewed cleanup/recovery, transactionally resumable dual
+  release, and multiprocess collision tests.
+
+## Decision log
+
+- 2026-07-23 — The architecture and worktree implementations use only Python
+  standard-library tooling within their governed paths. Rationale: root/package
+  manifests and dependency locks are outside this packet, and the exact commands
+  must run from a credential-free checkout.
+- 2026-07-23 — The primary worker retains this ExecPlan and research evidence
+  paths while disjoint subagents own only the architecture and worktree
+  implementation paths. Rationale: this prevents write collisions and preserves
+  an independently reviewable change boundary.
+- 2026-07-23 — Product-demo `exercise` must report the missing real dependency
+  and exit non-zero rather than converting fixture evidence into acceptance.
+  Rationale: the packet explicitly forbids mock success.
+- 2026-07-23 — Architecture coverage and graph lifecycle are separate gates.
+  Rationale: empty or partial package directories cannot prove a boundary, and
+  `planned-wave-1` must not become accepted merely because fixtures pass.
+- 2026-07-23 — A real product-demo driver is executable only when a static
+  contract and driver match immutable reviewed Git blobs. Retained evidence is
+  bound to a private per-run receipt authority, and reservations remain
+  fail-closed until reviewed cleanup plus resumable dual release are proven.
+
+## Validation and retained evidence
+
+Implementation validation on 2026-07-23:
+
+```text
+architecture unit tests -> 20 passed
+clean architecture check -> exit 0; dependency-gated; implemented-not-accepted
+architecture fixtures -> 1 positive and 23 exact negative fixtures passed
+worktree unit tests -> 35 passed
+worktree doctor -> exit 0; harness ready; product demo unavailable
+worktree self-test -> exit 0; all 8 checks true; implemented-not-accepted
+product-demo exercise -> exit 3 before startup; missing peer checkout
+product-demo verify -> exit 4; blocker evidence correctly rejected
+```
+
+Retained sanitized evidence:
+
+- `docs/references/research/harness-isolation/evidence/self-test/self-test.json`
+  — SHA-256
+  `eb8b1920935e7fb0a1048925a7f4d8727fc69397f99a08af86c134a641b60ff0`;
+- `docs/references/research/harness-isolation/evidence/product-demo/exercise.json`
+  — SHA-256
+  `833cce6efb78f5484ac4aecda23809d45aae702dc58b603d6f559e116b8ba253`.
+
+The remaining documentation, diff, allowed-path, and commit evidence is recorded
+in `docs/references/research/harness-isolation/validation.md`.
+
+## Outcomes and retrospective
+
+The bounded implementation is complete and awaiting coordinator integration. It
+delivers a graph-driven architecture checker with actionable diagnostics,
+positive and intentional-negative fixtures, explicit dependency/lifecycle
+coverage, and generated-drift enforcement. It also delivers a deterministic
+namespace allocator, atomic collision store, scoped restart/teardown,
+credential-safe evidence, immutable reviewed-driver provenance, private receipt
+authority, and a future real product-demo exercise/recovery protocol.
+
+`SPIKE-HARNESS-ARCH-001` remains dependency-gated because the prepared seed does
+not contain the TypeScript scaffold and graph status remains `planned-wave-1`.
+`SPIKE-WORKTREE-001` and `AC-DW-FND-001-05` remain
+`implemented-not-accepted` because the peer checkout and reviewed real
+product-demo contract/driver are absent. The single-full-stack-worktree fallback
+therefore remains active. No merge, push, deployment, publication, live
+credential use, or external cleanup occurred.

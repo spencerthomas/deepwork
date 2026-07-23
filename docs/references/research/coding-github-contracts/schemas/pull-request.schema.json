@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "node_id",
+    "number",
+    "draft",
+    "base",
+    "head",
+    "head_sha"
+  ],
+  "title": "pull-request",
+  "type": "object"
+}

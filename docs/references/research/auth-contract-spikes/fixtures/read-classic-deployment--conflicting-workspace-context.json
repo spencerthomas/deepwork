@@ -1,0 +1,35 @@
+{
+  "context_case": "conflicting-workspace-context",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "read-classic-deployment",
+  "request": {
+    "body_schema": "deployment_id path parameter",
+    "headers": {
+      "X-Api-Key": "<redacted>",
+      "X-Tenant-Id": "<workspace-id>"
+    },
+    "host_class": "regional-langsmith-control-plane-api",
+    "method": "GET",
+    "negative_input": {
+      "workspace_contexts": [
+        "<workspace-id>",
+        "<wrong-workspace-id>"
+      ]
+    },
+    "route_template": "/v2/deployments/{deployment_id}"
+  },
+  "result": {
+    "code": "conflicting-workspace-context",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "local-policy-rejected"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

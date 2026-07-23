@@ -264,3 +264,74 @@ The coordinator alone updates the source ledger, product plans, application
 adapters, normalized contracts, capability flags, program/index, or release state.
 No worktree creation, push, merge, deployment, publication, production mutation,
 credential collection, or private-beta enablement is authorized by this packet.
+
+## Progress
+
+- [x] 2026-07-23: verified the exact worktree, branch
+  `external/research/auth-header-contract-spikes`, seed
+  `9efbca4ccb2f3eb8c291e2e507b4cf1841154f87`, and clean starting status.
+- [x] 2026-07-23: read the root and documentation agent instructions and this
+  entire packet before implementation.
+- [x] 2026-07-23: confirmed no sanctioned non-production classic account or live
+  profile was supplied; live-dependent rows will remain
+  `blocked-live-evidence`.
+- [x] Build and lock the isolated probe project.
+- [x] Retain official, installed/generated, pinned-source, synthetic-fixture,
+  matrix, version, scrub, and command evidence.
+- [x] Run every required offline/frozen validation and the base-qualified scope
+  diff.
+- [x] Obtain fresh independent runtime-contract and security review, address
+  findings, rerun validation, and commit only allowed paths.
+
+## Surprises and discoveries
+
+- The official Agent Server reference establishes `X-Api-Key` for deployment
+  requests, but does not establish forwarding `X-Tenant-Id` or
+  `X-Organization-Id` to Agent Server. Workspace selection therefore remains a
+  server-side source/deployment resolution concern unless live evidence proves a
+  per-request header.
+- The generated deployment endpoint page renders `api.example.com`, but the
+  separate official control-plane overview establishes the regional
+  `api.host.langchain.com` classes plus `X-Api-Key` and `X-Tenant-Id`. The
+  placeholder is never an allowed target.
+- The documented authenticated
+  `GET /v2/deployments/{deployment_id}` response does not define an Agent Server
+  URL field. The live runner therefore accepts no caller/profile origin and
+  leaves all data-plane rows blocked.
+- The first independent reviews exposed an undocumented tenant header on the
+  current-organization synthetic request, validator gaps, incomplete negative
+  transcripts, scrubber bypasses, and malformed-header acceptance. All findings
+  were corrected and independently re-reviewed.
+
+## Decision log
+
+- Decision: model the complete operation/key/context cross-product even when a
+  negative case is redundant for several operations.
+  Rationale: completeness is machine-checkable and reviewers can assess each
+  provenance-bearing row without hidden wildcard behavior.
+- Decision: reject caller-supplied authority, forwarding, host, cookie, tracing,
+  target, and alternate-auth inputs before synthetic dispatch.
+  Rationale: the future application boundary must not become an open proxy or
+  let browser input choose provider authority.
+- Decision: keep positive documented combinations at
+  `blocked-live-evidence`; use `rejected` only for combinations the local
+  fail-closed policy refuses.
+  Rationale: documentation and an SDK-constructed request are not accepted live
+  provider behavior.
+
+## Outcomes and retrospective
+
+The isolated probe project now retains 616 matrix rows across 14 operations,
+four key classes, and 11 context cases, backed by 154 hashed synthetic fixtures.
+The final dispositions are 432 `blocked-live-evidence`, 184 local `rejected`,
+and zero `accepted-live`.
+
+Frozen and offline validation passes with 51 tests and one intentionally
+deselected live test. Strict matrix validation, the expanded zero-finding scrub,
+documentation generation/checks, diff checks, and independent runtime-contract
+and security/compliance reviews pass. No sanctioned non-production profile was
+supplied, no live probe ran, and no capability was enabled.
+
+The packet is complete for a scoped commit and coordinator product/integration
+review. `SPIKE-AUTH-002` remains blocked on sanctioned live evidence and
+independent product/integration acceptance.

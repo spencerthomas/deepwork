@@ -1,0 +1,124 @@
+{
+  "acceptance": "implemented-not-accepted",
+  "checks": {
+    "all_dimensions_distinct": true,
+    "atomic_duplicate_rejected": true,
+    "cleanup_verified": true,
+    "invalid_namespaces_rejected": true,
+    "peer_restart_rejected": true,
+    "restart_reused_recorded_resources": true,
+    "scoped_teardown_preserved_peer": true,
+    "teardown_idempotent": true
+  },
+  "command": "self-test",
+  "dimension_comparison": {
+    "browser": true,
+    "database": true,
+    "logs_path": true,
+    "object_prefix": true,
+    "ports": true,
+    "process_identities": true,
+    "proof_path": true,
+    "schema": true,
+    "telemetry": true,
+    "workspace_path": true
+  },
+  "evidence_class": "synthetic-fixture",
+  "limitations": [
+    "synthetic fixtures do not prove product-demo isolation",
+    "dual product-demo acceptance requires the separately owned driver"
+  ],
+  "manifests": [
+    {
+      "browser": {
+        "origin": "http://127.0.0.1:21477",
+        "storage_key": "deepwork:isolation:dw-fixture-a:9507c5010ee4"
+      },
+      "database": "deepwork_dw_fixture_a_9507c5010ee4",
+      "logs_id": "synthetic-logs-dw-fixture-a",
+      "manifest_version": 1,
+      "namespace": "dw-fixture-a",
+      "object_prefix": "worktrees/dw-fixture-a/9507c5010ee4/",
+      "ports": {
+        "api": 21476,
+        "telemetry": 21479,
+        "web": 21477,
+        "worker": 21478
+      },
+      "process_identities": {
+        "api": {
+          "identity": "dw-fixture-a:api:9507c5010ee4",
+          "namespace": "dw-fixture-a"
+        },
+        "web": {
+          "identity": "dw-fixture-a:web:9507c5010ee4",
+          "namespace": "dw-fixture-a"
+        },
+        "worker": {
+          "identity": "dw-fixture-a:worker:9507c5010ee4",
+          "namespace": "dw-fixture-a"
+        }
+      },
+      "proof_id": "synthetic-proof-dw-fixture-a",
+      "restart_rule": "reuse-reserved-resources-with-exact-teardown-token",
+      "schema": "dw_dw_fixture_a_9507c5010ee4",
+      "telemetry": {
+        "resource_attributes": {
+          "deepwork.namespace": "dw-fixture-a",
+          "deployment.mode": "fixture",
+          "service.namespace": "deepwork-fixture-9507c5010ee4"
+        }
+      },
+      "workspace_id": "synthetic-workspace-dw-fixture-a"
+    },
+    {
+      "browser": {
+        "origin": "http://127.0.0.1:26661",
+        "storage_key": "deepwork:isolation:dw-fixture-b:7fcc41f9c199"
+      },
+      "database": "deepwork_dw_fixture_b_7fcc41f9c199",
+      "logs_id": "synthetic-logs-dw-fixture-b",
+      "manifest_version": 1,
+      "namespace": "dw-fixture-b",
+      "object_prefix": "worktrees/dw-fixture-b/7fcc41f9c199/",
+      "ports": {
+        "api": 26660,
+        "telemetry": 26663,
+        "web": 26661,
+        "worker": 26662
+      },
+      "process_identities": {
+        "api": {
+          "identity": "dw-fixture-b:api:7fcc41f9c199",
+          "namespace": "dw-fixture-b"
+        },
+        "web": {
+          "identity": "dw-fixture-b:web:7fcc41f9c199",
+          "namespace": "dw-fixture-b"
+        },
+        "worker": {
+          "identity": "dw-fixture-b:worker:7fcc41f9c199",
+          "namespace": "dw-fixture-b"
+        }
+      },
+      "proof_id": "synthetic-proof-dw-fixture-b",
+      "restart_rule": "reuse-reserved-resources-with-exact-teardown-token",
+      "schema": "dw_dw_fixture_b_7fcc41f9c199",
+      "telemetry": {
+        "resource_attributes": {
+          "deepwork.namespace": "dw-fixture-b",
+          "deployment.mode": "fixture",
+          "service.namespace": "deepwork-fixture-7fcc41f9c199"
+        }
+      },
+      "workspace_id": "synthetic-workspace-dw-fixture-b"
+    }
+  ],
+  "namespaces": [
+    "dw-fixture-a",
+    "dw-fixture-b"
+  ],
+  "schema_version": 1,
+  "spike": "SPIKE-WORKTREE-001",
+  "status": "passed"
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "scrub_attestation": "Generated from pinned public package source and pinned OpenAPI shapes with synthetic identifiers; it is neither installed-distribution nor live evidence.",
+  "operations": [
+    {
+      "operation": "assistant.search",
+      "request": {
+        "method": "POST",
+        "path": "/assistants/search",
+        "body": {
+          "limit": 10,
+          "offset": 0
+        }
+      },
+      "response": [
+        {
+          "assistant_id": "00000000-0000-4000-8000-000000000001",
+          "graph_id": "agent",
+          "config": {},
+          "created_at": "2026-07-23T00:00:00Z",
+          "updated_at": "2026-07-23T00:00:00Z",
+          "metadata": {
+            "fixture": true
+          }
+        }
+      ]
+    },
+    {
+      "operation": "thread.create",
+      "request": {
+        "method": "POST",
+        "path": "/threads",
+        "body": {
+          "thread_id": "00000000-0000-4000-8000-000000000002",
+          "metadata": {
+            "fixture": true
+          },
+          "if_exists": "raise"
+        }
+      },
+      "response": {
+        "thread_id": "00000000-0000-4000-8000-000000000002",
+        "created_at": "2026-07-23T00:00:00Z",
+        "updated_at": "2026-07-23T00:00:00Z",
+        "status": "idle",
+        "metadata": {
+          "fixture": true
+        },
+        "values": {},
+        "interrupts": {}
+      }
+    },
+    {
+      "operation": "run.create",
+      "request": {
+        "method": "POST",
+        "path": "/threads/00000000-0000-4000-8000-000000000002/runs",
+        "body": {
+          "assistant_id": "00000000-0000-4000-8000-000000000001",
+          "input": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "synthetic task"
+              }
+            ]
+          },
+          "stream_mode": [
+            "messages",
+            "updates"
+          ],
+          "stream_resumable": true,
+          "multitask_strategy": "enqueue"
+        }
+      },
+      "response": {
+        "run_id": "00000000-0000-4000-8000-000000000003",
+        "thread_id": "00000000-0000-4000-8000-000000000002",
+        "assistant_id": "00000000-0000-4000-8000-000000000001",
+        "created_at": "2026-07-23T00:00:00Z",
+        "updated_at": "2026-07-23T00:00:00Z",
+        "status": "pending",
+        "metadata": {
+          "fixture": true
+        },
+        "kwargs": {},
+        "multitask_strategy": "enqueue"
+      }
+    },
+    {
+      "operation": "run.cancel",
+      "request": {
+        "method": "POST",
+        "path": "/threads/00000000-0000-4000-8000-000000000002/runs/00000000-0000-4000-8000-000000000003/cancel",
+        "query": {
+          "wait": 1,
+          "action": "interrupt"
+        }
+      },
+      "response": null
+    },
+    {
+      "operation": "thread.get_state",
+      "request": {
+        "method": "GET",
+        "path": "/threads/00000000-0000-4000-8000-000000000002/state"
+      },
+      "response": {
+        "values": {},
+        "next": [],
+        "checkpoint": {
+          "thread_id": "00000000-0000-4000-8000-000000000002",
+          "checkpoint_ns": "",
+          "checkpoint_id": "00000000-0000-4000-8000-000000000004",
+          "checkpoint_map": null
+        },
+        "metadata": {},
+        "created_at": "2026-07-23T00:00:00Z",
+        "parent_checkpoint": null,
+        "tasks": [],
+        "interrupts": []
+      }
+    }
+  ]
+}

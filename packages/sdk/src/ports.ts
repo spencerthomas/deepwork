@@ -5,22 +5,13 @@ export interface OperationOptions {
 }
 
 export interface QueryPort<Request, Response> {
-  query(
-    request: Request,
-    options?: OperationOptions,
-  ): Promise<SdkResult<Response>>;
+  query(request: Request, options?: OperationOptions): Promise<SdkResult<Response>>;
 }
 
 export interface MutationPort<Request, Response> {
-  mutate(
-    request: Request,
-    options?: OperationOptions,
-  ): Promise<SdkResult<Response>>;
+  mutate(request: Request, options?: OperationOptions): Promise<SdkResult<Response>>;
 }
 
 export interface StreamPort<Request, Event> {
-  open(
-    request: Request,
-    options?: OperationOptions,
-  ): Promise<SdkResult<AsyncIterable<Event>>>;
+  open(request: Request, options?: OperationOptions): Promise<SdkResult<AsyncIterable<Event>>>;
 }

@@ -1,0 +1,17 @@
+{
+  "attestation": "pass: no prohibited values found",
+  "categories": [
+    "secret",
+    "credential-reference",
+    "customer-or-tenant-value",
+    "account-specific-reusable-instance-endpoint",
+    "raw-authorization-value",
+    "cookie",
+    "environment-dump"
+  ],
+  "collection_date": "2026-07-23",
+  "finding_count": 0,
+  "findings": [],
+  "root": "docs/references/research/auth-contract-spikes",
+  "schema_version": 1
+}

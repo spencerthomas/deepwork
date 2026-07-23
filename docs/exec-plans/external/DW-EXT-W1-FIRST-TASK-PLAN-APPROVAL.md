@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL
 title: External dispatch - require a real plan before the first task executes
-status: ready-for-external-dispatch
+status: completed
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
 branch: external/research/first-task-plan-approval
 owner: external-plan-approval-contract-researcher
@@ -13,7 +13,7 @@ dependencies: [SPIKE-HITL-001, SPIKE-COMPOSE-001, SPIKE-CONFIG-001, SRC-LC@7b921
 blockers: [accepted-SPIKE-HITL-001, accepted-SPIKE-COMPOSE-001, accepted-SPIKE-CONFIG-001, sanctioned-non-production-classic-sandbox]
 created: 2026-07-23
 reviewed_at: 2026-07-23
-review_result: accepted
+review_result: approved-offline-harness-only-blocked-upstream
 ---
 
 # External dispatch - require a real plan before the first task executes
@@ -258,3 +258,110 @@ program/index records, starter agents, application adapters, normalized
 contracts, capability flags, or release scope. No worktree creation, push, merge,
 deployment, publication, production mutation, credential collection, or
 destructive cleanup is authorized by this packet.
+
+## Progress
+
+- [x] 2026-07-23: Verified the exact worktree, clean status, branch
+  `external/research/first-task-plan-approval`, seed
+  `886f6b12d812b1e34df2e45da3d839a0853d72e8`, and base
+  `fff1bfd278d550d01de6e8d74f553f45c4003a8c` ancestry before editing.
+- [x] 2026-07-23: Read the repository and documentation instructions, this full
+  packet, the owning task/HITL/quality specifications, the decision register,
+  security/reliability boundaries, and the pinned source ledger.
+- [x] 2026-07-23: Inspected coordinator-provenance commit
+  `758c1d4a2230b7c4261fcfbd0f3008634509e096` without integrating it. Its
+  `SPIKE-HITL-001`, `SPIKE-COMPOSE-001`, and `SPIKE-CONFIG-001` conclusions are
+  all `blocked-live-evidence`.
+- [x] 2026-07-23: Implemented and validated the isolated offline plan contract
+  harness with a structurally reduced checksum-chained checkpoint,
+  current-authority checks,
+  immutable revision identity, non-widening boundaries, restart/reconnect replay,
+  local idempotent release, and explicit bypass rejection.
+- [x] 2026-07-23: Generated the complete deterministic template/scenario matrix
+  with 128 rows and retained
+  synthetic fixtures.
+- [x] 2026-07-23: Ran every required offline, matrix, bypass, scrub,
+  documentation, and base-qualified diff command. The retained command ledger
+  records exact commands and exit states; live commands were not run.
+- [x] 2026-07-23: Obtained independent runtime-contract, security, and product
+  approval of `d9c90b18f60ff4586191bee1a129057ed3e14d35` after resolving every
+  first-round finding.
+- [x] 2026-07-23: Committed only the three allowed path families and prepared
+  the reviewed evidence for coordinator handoff.
+
+## Surprises and discoveries
+
+- The exact base contains no accepted artifacts for any consumed upstream gate.
+  The later LangChain research commit is provenance only and explicitly says no
+  capability is accepted or enabled.
+- The upstream HITL fixture confirms positional alignment and the normalized
+  `approve`, `edit`, `reject`, and `respond` decision values, but exact hosted
+  stale, duplicate, permission, lost-response, and resume behavior remains live
+  blocked. This packet therefore records those inputs without reclassifying or
+  re-probing them.
+- No sanctioned non-production classic sandbox, account tier, region,
+  authentication context, or server revision was supplied. Live commands remain
+  prohibited.
+- Invoking the packet's pytest command from the repository root initially
+  selected the root pytest configuration and unrelated package tests. The
+  isolated package now owns a local pytest entry point that pins its own config
+  and test directory while preserving the packet's exact command shape.
+- The sandbox denied the shared uv cache and all package-index access. The lock,
+  sync, and test workflow passes with `UV_OFFLINE=true` using the already
+  installed local uv cache for the first sync and a task-specific cache for all
+  retained validation.
+- The first independent review of `47e00cdeff547316e1eac35560220a354b794720`
+  found that arbitrary event status could unlock the local release, abandonment
+  was not terminal, template/config drift and fallback assertions were too weak,
+  the scrubber missed required classes, and the unkeyed checksum was overstated.
+  That commit was not approved and is retained only as review provenance.
+
+## Decision log
+
+- 2026-07-23: Limit executable assertions to plan-specific proposal identity,
+  revision/supersession, current actor/workspace/task/request authority,
+  permission and side-effect bounds, append-only audit, restart recovery, and
+  bypass resistance.
+- 2026-07-23: Treat cancellation as outside the normalized decision set and
+  local abandonment as a local terminal choice that never emits provider resume.
+- 2026-07-23: Keep every target gate and live-dependent row unaccepted on this
+  base. The only eligible outcome is an offline harness blocked on upstream
+  contracts and live evidence.
+- 2026-07-23: Preserve the text-only first-task path and the deterministic
+  `planApproval: false` fallback for every template/source combination.
+- 2026-07-23: Bind the engine's original task boundary and `respond` permission
+  into the first hash-chained event so a process/redeploy reconstruction with
+  drifted runtime config fails closed.
+- 2026-07-23: Treat `respond` as awaiting a new persisted plan revision; another
+  decision on the old revision cannot release protected work.
+- 2026-07-23: Treat the fake store's unkeyed checksum as corruption detection,
+  not authenticated persistence. A closed event reducer blocks unknown event
+  types and invalid transitions; adversarial storage integrity remains
+  application evidence outside this packet.
+- 2026-07-23: Make local abandonment actor/current-authority bound, idempotent,
+  and terminal for the request. It cannot be followed by a decision, revision,
+  restart, or protected local release.
+- 2026-07-23: Require the full unavailable fallback tuple—typed reason,
+  preserved draft, text-only dispatch, and explicit alternative choices—in
+  every matrix row.
+
+## Outcomes and retrospective
+
+Completed as an offline harness blocked on upstream contracts and live evidence.
+The retained 128-row matrix and four hashed template transcripts prove only the
+local plan identity, revision, current-authority, non-widening, terminal
+abandonment, reconnect/restart, bypass, and idempotent-release invariants.
+
+The final offline suite passed 151 tests with the prohibited live-contract test
+deselected. Matrix, fixture/manifest hash, dependency, scope, scrub,
+documentation, lock, and base-qualified diff validation passed. The scrubber
+retained zero findings across all evidence categories. Independent
+runtime-contract, security, and product reviewers approved the exact
+implementation review commit recorded in `review.json`.
+
+`SPIKE-PLAN-001` and `SPIKE-HITL-002` remain unaccepted. `planApproval` remains
+false with the complete typed fallback. This packet contributes only supporting
+evidence to `AC-DW-TASK-002-02` and `AC-DW-QUAL-001-03`; it neither blocks nor
+satisfies `E2E-V1-01-FIRST-VALUE`. Accepted upstream HITL, compose, and config
+artifacts plus a sanctioned non-production classic sandbox remain required
+before any live acceptance or capability enablement.

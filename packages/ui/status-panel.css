@@ -32,11 +32,11 @@
   font-size: var(--font-size-lg);
 }
 
-.dw-status-panel[data-state='error'] .dw-status-panel__mark {
+.dw-status-panel[data-state="error"] .dw-status-panel__mark {
   color: rgb(var(--error));
 }
 
-.dw-status-panel[data-state='unavailable'] .dw-status-panel__mark {
+.dw-status-panel[data-state="unavailable"] .dw-status-panel__mark {
   color: rgb(var(--warning));
 }
 
@@ -83,8 +83,8 @@
   }
 
   .dw-status-panel__mark,
-  .dw-status-panel[data-state='error'] .dw-status-panel__mark,
-  .dw-status-panel[data-state='unavailable'] .dw-status-panel__mark {
+  .dw-status-panel[data-state="error"] .dw-status-panel__mark,
+  .dw-status-panel[data-state="unavailable"] .dw-status-panel__mark {
     color: CanvasText;
   }
 

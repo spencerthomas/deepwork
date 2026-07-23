@@ -1,25 +1,34 @@
-"""Package-local configuration for the credential-free scaffold."""
+"""Typed, package-local configuration for the Deep Work graph."""
 
 from dataclasses import dataclass
 from typing import Literal
 
+_MIN_PLAN_STEPS = 1
+_MAX_PLAN_STEPS = 12
+
 
 @dataclass(frozen=True, slots=True)
-class AgentPackageConfig:
-    """Describe the only supported configuration state in the Wave 1 scaffold.
+class AgentConfig:
+    """Configure the local graph around a caller-injected model.
 
-    This is not the portable agent-project schema governed by `SPIKE-CONFIG-001`.
-    It exists only to make the unavailable runtime boundary explicit and typed.
+    Model selection, credentials, deployment, sessions, and durable persistence are
+    deliberately outside this configuration. Callers inject an initialized chat
+    model into :func:`deepwork_agent.create_graph`.
     """
 
     schema_version: Literal[1] = 1
-    runtime_enabled: Literal[False] = False
+    runtime_mode: Literal["local-runtime"] = "local-runtime"
+    require_plan_approval: bool = True
+    max_plan_steps: int = 6
 
     def __post_init__(self) -> None:
-        """Reject attempts to enable an unverified runtime at execution time."""
+        """Validate the small local-runtime configuration contract."""
         if self.schema_version != 1:
-            msg = "unsupported agent package scaffold schema version"
+            msg = "unsupported agent configuration schema version"
             raise ValueError(msg)
-        if self.runtime_enabled is not False:
-            msg = "agent runtime cannot be enabled before SPIKE-CONFIG-001 passes"
+        if self.runtime_mode != "local-runtime":
+            msg = "only the injected-model local-runtime mode is supported"
+            raise ValueError(msg)
+        if not _MIN_PLAN_STEPS <= self.max_plan_steps <= _MAX_PLAN_STEPS:
+            msg = "max_plan_steps must be between 1 and 12"
             raise ValueError(msg)

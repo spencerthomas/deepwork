@@ -377,15 +377,6 @@ class TaskService:
                 comment_provided=bool(comment),
                 response_digest=response_digest,
             )
-        if isinstance(self.runner, LocalAgentServerRunner):
-            return await self.runner.record_decision(
-                task_id,
-                interrupt_id=interrupt_id,
-                decision=decision,
-                comment=comment,
-                comment_provided=bool(comment),
-                response_digest=response_digest,
-            )
         return await self.repository.record_decision(
             task_id,
             interrupt_id=interrupt_id,

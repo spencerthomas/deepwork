@@ -10,64 +10,17 @@ from typing import Protocol
 from deepwork_api.domain import (
     DecisionRecord,
     DecisionValue,
-class LocalPlanUpdate(LocalRun, Protocol):
-    """Confirmed source checkpoint after an accepted plan edit."""
+    PlanUpdateRecord,
+    ProposedPlan,
+    TaskEventName,
+    TaskSnapshot,
+    TaskSourceUnavailableError,
+    TaskStatus,
+)
+from deepwork_api.ports import TaskRepository
 
-    interrupt_id: str
-    plan_revision: int
 
-
-    ) -> LocalPlanUpdate: ...
-    _review_comments: dict[tuple[str, str], str] = field(default_factory=dict, init=False)
-        if updated.interrupt_id == interrupt_id or updated.plan_revision != expected_revision + 1:
-        # The source has confirmed the edit at this point.  Reconcile the known
-        # checkpoint before doing any further source I/O, so the old interrupt is
-        # never advertised after the source has advanced it.
-        if record.plan.revision != updated.plan_revision:
-            raise RuntimeError("local source plan revision does not match the task")
-                ("interruptId", updated.interrupt_id),
-                ("planRevision", updated.plan_revision),
-            pending_interrupt_id=updated.interrupt_id,
-        active = self._tasks.pop(task.task_id, None)
-        if active is not None:
-            active.cancel()
-            await asyncio.gather(active, return_exceptions=True)
-        return PlanUpdateRecord(task.task_id, updated.run_id, updated.interrupt_id, record.plan)
-
-    async def record_decision(
-        self,
-        task_id: str,
-        *,
-        interrupt_id: str,
-        decision: DecisionValue,
-        comment: str | None,
-        comment_provided: bool,
-        response_digest: str | None,
-    ) -> DecisionRecord:
-        """Retain a response comment only until its source resume is sent."""
-
-        key = (task_id, interrupt_id)
-        if decision is DecisionValue.RESPOND and comment is not None:
-            self._review_comments[key] = comment
-        try:
-            record = await self.repository.record_decision(
-                task_id,
-                interrupt_id=interrupt_id,
-                decision=decision,
-                comment_provided=comment_provided,
-                response_digest=response_digest,
-            )
-        except Exception:
-            self._review_comments.pop(key, None)
-            raise
-        return record
-            async for event in self.source.stream(run):
-                if getattr(event, "kind", None) == "error":
-                    raise RuntimeError("local source reported a run error")
-                key = (task.task_id, state.interrupt.interrupt_id)
-                    comment=self._review_comments.pop(key, None),
-        if state.status not in {"completed", "rejected"}:
-            raise RuntimeError("local source did not report a terminal status")
+class LocalRun(Protocol):
     """The narrow source-owned identity required by the application."""
 
     thread_id: str

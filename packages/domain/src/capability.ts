@@ -104,6 +104,19 @@ function requireMetadata(value: string, label: string): string {
   return value;
 }
 
+function requireEvidenceClass(value: unknown): CapabilityEvidenceClass {
+  if (
+    typeof value !== "string" ||
+    !(CAPABILITY_EVIDENCE_CLASSES as readonly string[]).includes(value)
+  ) {
+    throw new TypeError(
+      "Capability evidence class must be a declared evidence class.",
+    );
+  }
+
+  return value as CapabilityEvidenceClass;
+}
+
 const RFC3339_INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 
@@ -306,7 +319,7 @@ export function availableCapability<T extends CapabilityEvidenceValue>(
       metadata.contractVersion,
       "Contract version",
     ),
-    evidenceClass: metadata.evidenceClass,
+    evidenceClass: requireEvidenceClass(metadata.evidenceClass),
   });
 }
 
@@ -328,7 +341,7 @@ export function unavailableCapability(
       metadata.contractVersion,
       "Contract version",
     ),
-    evidenceClass: metadata.evidenceClass,
+    evidenceClass: requireEvidenceClass(metadata.evidenceClass),
   });
 }
 

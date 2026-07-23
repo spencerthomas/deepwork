@@ -15,10 +15,9 @@ const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 describe("UI negative boundary fixtures", () => {
   for (const fixture of negativeFixtures) {
     it(`reports actionable rules for ${fixture.path}`, async () => {
-      const source = await readFile(
-        join(packageRoot, fixture.path),
-        "utf8",
-      );
+      const source =
+        fixture.source ??
+        await readFile(join(packageRoot, fixture.path), "utf8");
       const inspect = fixture.path.endsWith(".css")
         ? inspectCss
         : inspectSource;
@@ -37,4 +36,19 @@ describe("UI negative boundary fixtures", () => {
       }
     });
   }
+
+  it("fails closed on malformed source with actionable help", () => {
+    let failure;
+    try {
+      inspectSource("import/* unterminated");
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(SyntaxError);
+    expect(failure.message).toContain("Legal destination:");
+    expect(failure.message).toContain("ARCHITECTURE.md#package-graph");
+    expect(failure.message).toContain(
+      "pnpm --filter @deepwork/ui check-architecture",
+    );
+  });
 });

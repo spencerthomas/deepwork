@@ -3,6 +3,9 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// TypeScript 7 has no API; the wrapper is pinned and its parser is asserted below.
+import ts from "@typescript/typescript6";
+
 const packageRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const sourceRoot = join(packageRoot, "src");
 const nodeBuiltins = new Set(
@@ -23,6 +26,33 @@ const FORBIDDEN_ZONE =
   /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
 const FORBIDDEN_PACKAGES =
   /^(?:server-only|@tauri-apps\/|pg$|postgres$|better-sqlite3$|@prisma\/client$|drizzle-orm$)/;
+
+const dynamicImportLineTerminators = [
+  ["lf", "\n"],
+  ["crlf", "\r\n"],
+  ["cr", "\r"],
+  ["line-separator", "\u2028"],
+  ["paragraph-separator", "\u2029"],
+];
+const unsafeDynamicArguments = [
+  ["computed", "moduleName"],
+  ["template", "`./${moduleName}`"],
+];
+
+function dynamicImportLineCommentFixtures(expectedCode) {
+  return dynamicImportLineTerminators.flatMap(([terminatorName, terminator]) =>
+    unsafeDynamicArguments.map(([argumentName, argument]) => ({
+      path:
+        `tests/fixtures/negative/in-memory/dynamic-import-` +
+        `${terminatorName}-${argumentName}.fixture.ts`,
+      source:
+        'const moduleName = "./ports.js"; void import// fixture' +
+        terminator +
+        `(${argument});`,
+      expectedCodes: [expectedCode],
+    })),
+  );
+}
 
 export const negativeFixtures = [
   {
@@ -71,35 +101,144 @@ export const negativeFixtures = [
     path: "tests/fixtures/negative/computed-dynamic-import.fixture.ts",
     expectedCodes: ["DW-SDK-DYNAMIC-IMPORT"],
   },
+  {
+    path: "tests/fixtures/negative/in-memory/commented-static-import.fixture.ts",
+    source: 'import/* fixture */"@deepwork/ui";',
+    expectedCodes: [
+      "DW-SDK-UI-IMPORT",
+      "DW-SDK-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  {
+    path: "tests/fixtures/negative/in-memory/commented-static-export.fixture.ts",
+    source: 'export { StatusPanel } from/* fixture */"@deepwork/ui";',
+    expectedCodes: [
+      "DW-SDK-UI-IMPORT",
+      "DW-SDK-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  {
+    path: "tests/fixtures/negative/in-memory/import-equals.fixture.ts",
+    source: 'import legacy = require("@deepwork/ui"); void legacy;',
+    expectedCodes: [
+      "DW-SDK-DYNAMIC-IMPORT",
+      "DW-SDK-UI-IMPORT",
+      "DW-SDK-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  {
+    path: "tests/fixtures/negative/in-memory/commonjs-require.fixture.ts",
+    source: 'const legacy = require("@deepwork/ui"); void legacy;',
+    expectedCodes: [
+      "DW-SDK-DYNAMIC-IMPORT",
+      "DW-SDK-UI-IMPORT",
+      "DW-SDK-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  {
+    path: "tests/fixtures/negative/in-memory/import-type.fixture.ts",
+    source: 'type Legacy = import("@deepwork/ui").StatusPanelProps; void 0;',
+    expectedCodes: [
+      "DW-SDK-UI-IMPORT",
+      "DW-SDK-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  ...dynamicImportLineCommentFixtures("DW-SDK-DYNAMIC-IMPORT"),
 ];
 
-function importSpecifiers(source) {
-  const specifiers = new Set();
-  for (const pattern of [
-    /\bfrom\s+["']([^"']+)["']/g,
-    /\bimport\s*(?:\(\s*)?["']([^"']+)["']/g,
-  ]) {
-    for (const match of source.matchAll(pattern)) specifiers.add(match[1]);
+function moduleImports(source, sourceFile) {
+  if (ts.version !== "6.0.3") {
+    throw new Error(
+      `Boundary scanner requires resolved TypeScript parser 6.0.3; found ${ts.version}. ${help}`,
+    );
   }
-  return [...specifiers];
+  const scriptKind =
+    extname(sourceFile).toLowerCase() === ".tsx"
+      ? ts.ScriptKind.TSX
+      : ts.ScriptKind.TS;
+  const transpileResult = ts.transpileModule(source, {
+    compilerOptions: {
+      jsx: ts.JsxEmit.Preserve,
+      module: ts.ModuleKind.Preserve,
+      target: ts.ScriptTarget.ESNext,
+    },
+    fileName: sourceFile,
+    reportDiagnostics: true,
+  });
+  if (
+    (transpileResult.diagnostics ?? []).some(
+      ({ category }) => category === ts.DiagnosticCategory.Error,
+    )
+  ) {
+    throw new SyntaxError(
+      `Boundary scanner cannot safely parse ${sourceFile}; fix TypeScript syntax before retrying. ${help}`,
+    );
+  }
+  const sourceNode = ts.createSourceFile(
+    sourceFile,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind,
+  );
+
+  const specifiers = new Set();
+  let unsafeDynamicImportCount = 0;
+  const addSpecifier = (node) => {
+    if (node !== undefined && ts.isStringLiteral(node)) {
+      specifiers.add(node.text);
+      return true;
+    }
+    return false;
+  };
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node)) {
+      addSpecifier(node.moduleSpecifier);
+    } else if (ts.isExportDeclaration(node)) {
+      addSpecifier(node.moduleSpecifier);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      addSpecifier(node.moduleReference.expression);
+      unsafeDynamicImportCount += 1;
+    } else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      const argument = node.arguments[0];
+      const staticString = addSpecifier(argument);
+      if (!staticString || node.arguments.length !== 1) {
+        unsafeDynamicImportCount += 1;
+      }
+    } else if (ts.isImportTypeNode(node)) {
+      const argument = node.argument;
+      if (
+        !ts.isLiteralTypeNode(argument) ||
+        !addSpecifier(argument.literal)
+      ) {
+        unsafeDynamicImportCount += 1;
+      }
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "require"
+    ) {
+      addSpecifier(node.arguments[0]);
+      unsafeDynamicImportCount += 1;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceNode);
+
+  return {
+    specifiers: [...specifiers],
+    unsafeDynamicImportCount,
+  };
 }
 
 function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
-}
-
-function unsafeDynamicImportCount(source) {
-  let count = 0;
-  const start =
-    /\bimport(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*(?:\r?\n|$))*\(\s*/g;
-  for (const match of source.matchAll(start)) {
-    const argument = source.slice((match.index ?? 0) + match[0].length);
-    const staticString =
-      !/\/[*/]/.test(match[0]) &&
-      /^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)/.test(argument);
-    if (!staticString) count += 1;
-  }
-  return count;
 }
 
 export function inspectSource(
@@ -109,15 +248,20 @@ export function inspectSource(
   const violations = [];
   const add = (code, message) =>
     violations.push({ code, message: `${message}. ${help}` });
+  const imports = moduleImports(source, sourceFile);
 
-  for (let index = 0; index < unsafeDynamicImportCount(source); index += 1) {
+  for (
+    let index = 0;
+    index < imports.unsafeDynamicImportCount;
+    index += 1
+  ) {
     add(
       "DW-SDK-DYNAMIC-IMPORT",
-      "SDK cannot use a computed or template-literal dynamic import because its destination cannot be statically enforced",
+      "SDK cannot use a computed or template-literal dynamic import or a CommonJS module load because its destination or module form cannot be safely enforced",
     );
   }
 
-  for (const specifier of importSpecifiers(source)) {
+  for (const specifier of imports.specifiers) {
     const relative = specifier.startsWith(".");
     const bare = !relative && !specifier.startsWith("/");
     const allowedBare = specifier === "@deepwork/domain";
@@ -236,7 +380,10 @@ export async function checkBoundaries() {
   for (const fixture of negativeFixtures) {
     const file = join(packageRoot, fixture.path);
     const codes = new Set(
-      inspectSource(await readFile(file, "utf8"), file).map(({ code }) => code),
+      inspectSource(
+        fixture.source ?? await readFile(file, "utf8"),
+        file,
+      ).map(({ code }) => code),
     );
     for (const expectedCode of fixture.expectedCodes) {
       if (!codes.has(expectedCode)) {

@@ -321,6 +321,22 @@ Acceptance:
   defensive retry policy, and normalized-instant revalidation. The permitted
   static suite is recorded clean; a fresh external verdict remains required
   before handoff.
+- [x] 2026-07-23 AEST — A third independent review kept the lock handoff paused:
+  comment placement and bare-CR/Unicode line terminators could bypass the
+  regex-only module scanner, and `evidenceClass` still crossed the JavaScript
+  trust boundary without runtime vocabulary validation. The separate integrated
+  architecture-tool classification finding remains coordinator-owned and does
+  not authorize edits to package Vitest configuration in this lane.
+- [x] 2026-07-23 AEST — Third bounded rework replaced all three module-reference
+  regex passes with `@typescript/typescript6@6.0.2`, asserts the resolved parser
+  is 6.0.3 while retaining TypeScript 7.0.2 as the workspace compiler, and
+  authored checker-consumed comment-separated import/re-export, import-equals,
+  import-type, CommonJS, malformed-source, and five-line-terminator by
+  computed/template matrices. Both capability constructors now validate evidence
+  class membership. Install-free JSON, inventory, import, JavaScript syntax,
+  scope, and whitespace checks are clean. Lock-resolved parser, scanner, fixture,
+  unit, and package execution remains downstream and fresh independent review is
+  required.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -373,6 +389,22 @@ Acceptance:
   boundary, and UTC offset normalization can leave the four-digit supported year
   range. Consequence: evidence constructors reject non-JSON runtime values and
   normalized instants pass the same strict validator before branding.
+- 2026-07-23 AEST — JavaScript comments may separate static module tokens, and
+  line comments terminate on LF, CRLF, bare CR, U+2028, or U+2029. A handwritten
+  regex/division-goal lexer would create another parser surface, while TypeScript
+  7.0.2 intentionally ships without a programmatic parser API. Consequence: each
+  package declares the official `@typescript/typescript6@6.0.2` compatibility
+  wrapper beside the unchanged TypeScript 7 compiler, accepts only
+  `StringLiteral` dynamic destinations, and rejects templates/computed/CommonJS
+  forms. The public package record observed on 2026-07-23 identifies wrapper
+  6.0.2 as current and documents its default API import, but that wrapper permits
+  a TypeScript 6 transitive range. The scanner therefore asserts resolved parser
+  6.0.3 and fails with repair guidance otherwise; only the downstream coordinator
+  lock can freeze and prove that resolved implementation.
+- 2026-07-23 AEST — `CapabilityEvidenceMetadata` protects typed callers but not a
+  JavaScript caller or cast. Consequence: both evidence constructors now validate
+  `evidenceClass` against the frozen runtime vocabulary without coercing or
+  interpolating an untrusted value.
 
 ## Decision Log
 
@@ -401,6 +433,16 @@ Acceptance:
   Consequence: only source/static evidence may be recorded here; enforcement and
   executable test claims remain downstream. Approved by:
   `ts-package-boundary-reviewer`.
+- 2026-07-23 AEST — Decision: use exact compatibility wrapper
+  `@typescript/typescript6@6.0.2` plus a fail-closed resolved-parser assertion for
+  6.0.3 rather than extend regex extraction, ship a handwritten
+  JavaScript/TypeScript lexer, or pretend TypeScript 7.0.2 exposes an API.
+  Rationale: comment placement, all ECMAScript line terminators, regex literals,
+  strings, and template expressions require parser context, while the wrapper's
+  transitive range is not source-level parser determinism. Consequence:
+  parser-backed checks execute only after `local:DW-M1-TS-LOCK-001` freezes the
+  resolved implementation; this authoring lane retains static syntax and matrix
+  evidence only. Fresh independent approval is pending.
 
 ## Detailed implementation approach
 
@@ -433,6 +475,9 @@ python3 -m json.tool packages/sdk/tsconfig.json >/dev/null
 python3 -m json.tool packages/ui/tsconfig.json >/dev/null
 rg --files packages/domain packages/sdk packages/ui | sort
 rg -n '"exports"|"type"|"scripts"|"dependencies"' packages/domain/package.json packages/sdk/package.json packages/ui/package.json
+rg -n '"@typescript/typescript6": "6.0.2"' packages/domain/package.json packages/sdk/package.json packages/ui/package.json
+rg -n '"typescript": "7.0.2"' package.json
+rg -n 'ts.version !== "6.0.3"' packages/domain/scripts/check-boundaries.mjs packages/sdk/scripts/check-boundaries.mjs packages/ui/scripts/check-boundaries.mjs
 rg -n -e '@deepwork/(domain|sdk|ui)' -e 'from .*\b(react|next|node:)' packages/domain packages/sdk packages/ui
 git diff --check
 git status --short
@@ -818,6 +863,38 @@ python3 tools/docs/check.py -> exit 1; sole existing coordinator-owned error:
 The documentation index is outside this cell's governed paths, so this repair
 records but does not mutate that known external gate.
 
+Third external-verdict rework static evidence on 2026-07-23 AEST:
+
+```text
+six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
+six Node syntax parses for the three scanner and three boundary-test modules
+  -> exit 0; no output
+rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
+  68-file inventory; no generated lexer or lock added
+rg manifest exports/type/scripts/dependencies plus exact parser/compiler pin
+  and resolved-version-assertion searches -> exit 0; all three packages pin
+  wrapper `@typescript/typescript6` 6.0.2, require resolved parser 6.0.3, and
+  leave the root compiler at TypeScript 7.0.2
+rg package/framework imports -> exit 0; shipped source edges remain
+  sdk -> domain and ui -> domain + React; TypeScript/Node imports are confined to
+  package tooling, tests, or intentional negative fixtures
+static matrix inspection -> 64 checker-consumed negative cases across the three
+  packages: 19 file fixtures plus independent comment import/export,
+  import-equals, import-type, CommonJS, and 5 terminators x 2 dynamic forms per
+  package; malformed-source fail-closed tests are authored separately
+git diff --check -> exit 0; no output
+git diff --name-only b1189ce7... plus the working diff -> exit 0; every path is
+  within packages/domain/**, packages/sdk/**, packages/ui/**, or this plan
+python3 tools/docs/generate.py --check -> exit 0; 6 generated documents verified
+python3 tools/docs/check.py -> exit 1; sole existing coordinator-owned error:
+  this active ExecPlan is absent from docs/exec-plans/index.md
+```
+
+The TypeScript dependency is deliberately absent before the coordinator-owned
+lock/install, so no parser-backed boundary scanner or fixture loop was executed
+or claimed in this rework. No Vitest, compiler, formatter, linter, build, pack,
+pnpm, install, lock, consumer, accessibility, network, or package command ran.
+
 Executable format, lint, typecheck, unit, build, pack, package structural,
 network-denial, accessibility, and clean-consumer proof remains explicitly
 deferred. `local:DW-M1-TS-LOCK-001` first owns dependency resolution, first-lock,
@@ -873,6 +950,6 @@ and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
 deviations. The initial independent findings were addressed, but fresh independent
-implementation review is still required. `SPIKE-HARNESS-ARCH-001` remains open,
-and sequential proof remains with
+implementation review of the third bounded remediation is still required.
+`SPIKE-HARNESS-ARCH-001` remains open, and sequential proof remains with
 `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

@@ -104,6 +104,47 @@ describe("capability evidence", () => {
     ).toThrow(TypeError);
   });
 
+  it("accepts only declared JSON-compatible evidence classes at runtime", () => {
+    for (const evidenceClass of CAPABILITY_EVIDENCE_CLASSES) {
+      const acceptedMetadata = { ...metadata, evidenceClass };
+      const available = availableCapability(true, acceptedMetadata);
+      const unavailable = unavailableCapability(
+        "unknown",
+        "contract-not-verified",
+        acceptedMetadata,
+      );
+
+      expect(JSON.parse(JSON.stringify(available))).toEqual(available);
+      expect(JSON.parse(JSON.stringify(unavailable))).toEqual(unavailable);
+    }
+
+    for (const evidenceClass of [
+      undefined,
+      null,
+      "unverified",
+      0,
+      {},
+      [],
+      Symbol("unsupported"),
+      () => "unsupported",
+    ]) {
+      const invalidMetadata = {
+        ...metadata,
+        evidenceClass,
+      } as never;
+      expect(() =>
+        availableCapability(true, invalidMetadata),
+      ).toThrow(TypeError);
+      expect(() =>
+        unavailableCapability(
+          "unknown",
+          "contract-not-verified",
+          invalidMetadata,
+        ),
+      ).toThrow(TypeError);
+    }
+  });
+
   it("rejects incoherent unavailable state and reason pairs", () => {
     expect(() =>
       unavailableCapability("permission-denied", "source-unavailable", metadata),

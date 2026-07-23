@@ -25,6 +25,7 @@
     "typecheck": "tsc --project tsconfig.test.json"
   },
   "devDependencies": {
+    "@typescript/typescript6": "6.0.2",
     "vitest": "4.1.10"
   }
 }

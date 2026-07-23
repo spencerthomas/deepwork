@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "state",
+    "grant_hash",
+    "repository_binding_hash",
+    "pr_identity",
+    "create_attempted"
+  ],
+  "title": "mutation-ledger",
+  "type": "object"
+}

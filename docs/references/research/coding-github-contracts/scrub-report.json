@@ -1,0 +1,23 @@
+{
+  "counts": {
+    "absolute_user_paths": 0,
+    "auth_refs": 0,
+    "authorization_headers": 0,
+    "cookies": 0,
+    "credential_remotes": 0,
+    "github_tokens": 0,
+    "private_keys": 0
+  },
+  "findings": {
+    "absolute_user_paths": [],
+    "auth_refs": [],
+    "authorization_headers": [],
+    "cookies": [],
+    "credential_remotes": [],
+    "github_tokens": [],
+    "private_keys": []
+  },
+  "root": "docs/references/research/coding-github-contracts",
+  "scanned_at": "2026-07-23",
+  "status": "clean"
+}

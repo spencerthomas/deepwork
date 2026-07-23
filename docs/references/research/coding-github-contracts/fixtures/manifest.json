@@ -1,0 +1,34 @@
+{
+  "fixtures": [
+    "two-worker-race",
+    "grant-replay",
+    "wrong-binding",
+    "unsafe-grant-file",
+    "ambiguous-remote-create",
+    "workflow-rerun-contract",
+    "workflow-cancel-contract",
+    "merge-timeout-reconciliation",
+    "webhook-valid",
+    "webhook-invalid-signature",
+    "webhook-cross-installation",
+    "stale-head-check",
+    "proxy-leak-negative",
+    "fake-git-clone-fetch-push"
+  ],
+  "hashes": {
+    "ambiguous-remote-create": "sha256:b112157a8d20ea4a36234d908f5dcae959363b4c317a63d115a78c0a8fb28873",
+    "fake-git-clone-fetch-push": "sha256:10e6e4153c894f9614ba5327a4216890510b8597e69ef7a7e2911f5d29b7ac37",
+    "grant-replay": "sha256:fd5d5e123775565e8634eddb5ad728ff38ab04afcda80472f15f08a45fc07138",
+    "merge-timeout-reconciliation": "sha256:acfd09b57ffee15ee85b74bff82042950f1245773f91fbe5de3580c2a916c896",
+    "proxy-leak-negative": "sha256:6414460cfcbc4180f0e9e8c98ecbb958d79bbe5d915ad325b85b49e20a29a57b",
+    "stale-head-check": "sha256:7ff584a4c936c0e81e6250e8005baeaf15decc271bfcdf5a7dc8240b8601a4e4",
+    "two-worker-race": "sha256:3af52665127615bea7f1510b1b8e84dea9c6d91b08166912ab9125f0576ae4f3",
+    "unsafe-grant-file": "sha256:57a99bdb7f08a5a8b443ba73206ca8cbbeef2719adc05c2b032fb1e5ff8f7a42",
+    "webhook-cross-installation": "sha256:fb14f902734b0aa0cd995470a02a2c5b0cc233a7ddc89ec4305edd625cd0ff7f",
+    "webhook-invalid-signature": "sha256:9ecb9677010b07e1d601fbaf8231b84e32f5a07e2f9d5772e3b44c4e844354ba",
+    "webhook-valid": "sha256:e61529dd12bccb12b9df284c4053e75ac27da3472c4e127fb51360a955abd3ea",
+    "workflow-cancel-contract": "sha256:9a2f9ab98e51ba883e42454b98fe4bc8fa0a7ecfca944328726238e62ff565b6",
+    "workflow-rerun-contract": "sha256:730461d4c33b16458bcc72b105a2550673dfc06c457fa06f4234b1e80873f403",
+    "wrong-binding": "sha256:9ed4f8e4685bce573f253d4778c5527b8d5a391f0f8e0eac0c8b70db2374b0ee"
+  }
+}

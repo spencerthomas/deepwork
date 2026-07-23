@@ -382,3 +382,61 @@ specs, application/runtime code, capability manifest, program/index, or release
 state. No unassigned worktree, push from this planning packet, merge, deployment,
 publication, production mutation, credential collection, or self-approval is
 authorized.
+
+## Progress
+
+- [x] 2026-07-23 16:36 AEST — Exact launcher worktree, branch, seed, base, and
+  allowed paths verified; repository and packet authorities read.
+- [x] 2026-07-23 16:39 AEST — Upstream sandbox worktree inspected at
+  `5a518c40fb44b5d64b8eb36f618c8ecd58bad188`; it contains only the seed packet
+  and no retained outputs or independent review. All dependent live rows remain
+  `blocked-live-evidence`.
+- [x] 2026-07-23 16:44 AEST — Isolated uv project, immutable scope, upstream
+  lock, 84-row matrix, deterministic fake Git/API/webhook models, 14 required
+  fixtures, eight schemas, zero-mutation ledger, validators, scrubber, report,
+  and version inventory completed.
+- [x] 2026-07-23 16:44 AEST — Frozen offline suite passed: 29 passed, 1 live
+  test deselected; matrix, scrub, scope, offline lock, generated-doc, and
+  documentation checks passed.
+- [ ] Independent runtime-contract, security, and product reviews complete and
+  recorded against the implementation commit.
+- [ ] Final reviewed commit and clean allowed-path validation handed to the
+  coordinator.
+
+## Surprises and discoveries
+
+- 2026-07-23 16:39 AEST — The required sandbox dependency was dispatched but
+  has not produced a reviewed artifact corpus. Consequence: offline work
+  proceeded, while accepted proxy/egress/clone/push/PR rows inherited the
+  blocker without promotion.
+- 2026-07-23 16:42 AEST — Root-invoked pytest initially discovered unrelated
+  repository suites despite `--project`. Consequence: the isolated distribution
+  now registers a pytest plugin that limits collection to this project under the
+  packet's unchanged exact command.
+- 2026-07-23 16:44 AEST — No dedicated GitHub App, test organization,
+  disposable private repository, mutation grant, or accepted upstream evidence
+  was supplied. Consequence: zero live draft pull requests were attempted, which
+  is the required fail-closed outcome.
+
+## Decision log
+
+- 2026-07-23 16:39 AEST — Record missing upstream hashes as explicit nulls and
+  a blocked verdict, rather than fabricating a lock or consuming an unreviewed
+  seed. This preserves source precedence and allows deterministic offline work.
+- 2026-07-23 16:40 AEST — Pin the official GitHub REST API version observed in
+  current GitHub documentation (`2026-03-10`) and use no credentialed GitHub
+  client in the offline probe. Installation-token behavior remains documented
+  evidence until an authorized live profile is reviewed.
+- 2026-07-23 16:44 AEST — Keep every matrix row
+  `blocked-live-evidence`, including rows with official or deterministic-fake
+  support, because the three spikes require live acceptance and the upstream
+  dependency is absent. No fake/public evidence receives live credit.
+
+## Outcomes and retrospective
+
+The offline portion is complete and deterministic. It supports only contract
+evidence for `AC-DW-CODE-002-01..04`, grants zero E2E credit, and enables no
+runtime capability. The live observable outcome is honestly zero draft pull
+requests. The remaining work in this packet is independent review and the final
+reviewed commit handoff. A future live run remains gated on all named external
+inputs and the explicit one-draft-PR mutation grant.

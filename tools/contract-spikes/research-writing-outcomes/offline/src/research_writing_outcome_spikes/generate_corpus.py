@@ -258,6 +258,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "identity": IDENTITY,
                     "evidence_id": "ev-writing-promoted",
                     "candidate_hash": sha256_bytes(writing_body),
+                    "size_bytes": len(writing_body),
                     "artifact_state": "promoted",
                     "expected_verdict": "passed",
                 },
@@ -266,6 +267,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "identity": IDENTITY,
                     "evidence_id": "ev-writing-missing",
                     "candidate_hash": None,
+                    "size_bytes": 0,
                     "artifact_state": "missing",
                     "expected_verdict": "failed",
                 },
@@ -274,6 +276,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "identity": IDENTITY,
                     "evidence_id": "ev-writing-empty",
                     "candidate_hash": sha256_bytes(b""),
+                    "size_bytes": 0,
                     "artifact_state": "promoted",
                     "expected_verdict": "failed",
                 },
@@ -282,6 +285,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "identity": IDENTITY,
                     "evidence_id": "ev-writing-stale",
                     "candidate_hash": sha256_bytes(b"Stale synthetic draft.\n"),
+                    "size_bytes": len(b"Stale synthetic draft.\n"),
                     "artifact_state": "stale",
                     "expected_verdict": "failed",
                 },
@@ -290,6 +294,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "identity": IDENTITY,
                     "evidence_id": "ev-writing-working-only",
                     "candidate_hash": sha256_bytes(b"Synthetic draft.\n"),
+                    "size_bytes": len(b"Synthetic draft.\n"),
                     "artifact_state": "working",
                     "expected_verdict": "failed",
                 },
@@ -566,6 +571,14 @@ def make_row(
 
 
 def build_matrix(evidence: list[dict[str, Any]]) -> dict[str, Any]:
+    binding_catalog = {
+        "artifact_id": "artifact-final-01",
+        "subagent_id": "subagent-sync-01",
+        "criterion_id": "criterion-provenance",
+        "candidate_hash": sha256_bytes(b"candidate-1"),
+        "template_id": "research-v1",
+        "rubric_version": "1",
+    }
     evidence_by_stream = {
         "artifact": "ev-artifact-promoted",
         "subagent": "ev-subagent-events",
@@ -654,12 +667,7 @@ def build_matrix(evidence: list[dict[str, Any]]) -> dict[str, Any]:
             expected_values = {
                 **IDENTITY,
                 "evidence_id": evidence_by_stream[stream],
-                "artifact_id": "artifact-final-01",
-                "subagent_id": "subagent-sync-01",
-                "criterion_id": "criterion-provenance",
-                "candidate_hash": sha256_bytes(b"candidate-1"),
-                "template_id": "research-v1",
-                "rubric_version": "1",
+                **binding_catalog,
             }
             row.update(
                 {
@@ -697,6 +705,7 @@ def build_matrix(evidence: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "schema_version": "dw.research-writing-matrix.v1",
         "identity_fields": list(IDENTITY_FIELDS),
+        "binding_catalog": binding_catalog,
         "upstream_dependencies": {
             spike: {
                 "state": "blocked-live-evidence",

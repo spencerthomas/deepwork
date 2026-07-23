@@ -14,7 +14,8 @@
         "task_id": "task-outcome-contract-001",
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
-      }
+      },
+      "size_bytes": 29
     },
     {
       "artifact_state": "missing",
@@ -30,7 +31,8 @@
         "task_id": "task-outcome-contract-001",
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
-      }
+      },
+      "size_bytes": 0
     },
     {
       "artifact_state": "promoted",
@@ -46,7 +48,8 @@
         "task_id": "task-outcome-contract-001",
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
-      }
+      },
+      "size_bytes": 0
     },
     {
       "artifact_state": "stale",
@@ -62,7 +65,8 @@
         "task_id": "task-outcome-contract-001",
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
-      }
+      },
+      "size_bytes": 23
     },
     {
       "artifact_state": "working",
@@ -78,7 +82,8 @@
         "task_id": "task-outcome-contract-001",
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
-      }
+      },
+      "size_bytes": 17
     }
   ],
   "identity": {

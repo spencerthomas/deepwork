@@ -17,7 +17,7 @@ PATTERNS = {
     ),
     "authorization_header": re.compile(r"(?i)authorization\s*:\s*(bearer|basic)\s+"),
     "raw_header": re.compile(
-        r"(?im)^\s*(authorization|proxy-authorization|x-api-key|set-cookie|cookie)\s*:"
+        r"(?im)^\s*[A-Za-z][A-Za-z0-9-]{1,63}\s*:\s*\S+"
     ),
     "private_key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     "hidden_reasoning": re.compile(
@@ -32,7 +32,7 @@ PATTERNS = {
         r"(?:[?&](?:token|signature|sig|key|expires)=|/signed/)"
     ),
     "customer_data": re.compile(
-        r"(?i)(customer_(?:name|email|address)|production_tenant|real_customer|customer_record)\s*[:=]"
+        r"(?i)[\"']?(customer_(?:name|email|address)|production_tenant|real_customer|customer_record)[\"']?\s*[:=]"
     ),
 }
 

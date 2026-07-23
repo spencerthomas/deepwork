@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,7 @@ SUBSTITUTION_DIMENSIONS = {
 
 ALLOWED_RESULTS = {
     "accepted-deterministic-normalization",
+    "accepted-installed-public-conformance",
     "blocked-package-index-evidence",
     "blocked-live-evidence",
     "rejected-substitution",
@@ -100,6 +102,14 @@ LIVE_BLOCKED_CAPABILITIES = {
     ("artifact", "unavailable_stale"),
     ("rubric", "interrupt"),
 }
+PUBLIC_EXPORTS = {
+    "create_deep_agent",
+    "RubricMiddleware",
+    "SubAgent",
+    "SubAgentMiddleware",
+}
+HEX_SHA256 = re.compile(r"^[a-f0-9]{64}$")
+VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){1,3}(?:[A-Za-z0-9.+-]*)$")
 
 
 def validate_matrix(
@@ -128,6 +138,7 @@ def validate_matrix(
         require(public.get("lock_created") is False, "blocked installed-public project cannot be locked")
         require(public.get("commands_run") is False, "blocked installed-public project cannot run")
     else:
+        require(evidence_root is not None, "installed-public conformance needs retained evidence root")
         require(
             public.get("state") == "accepted-installed-public-conformance",
             "installed-public conformance result missing",
@@ -136,15 +147,90 @@ def validate_matrix(
         require(public.get("commands_run") is True, "installed-public conformance commands missing")
         pins = public.get("distribution_pins")
         require(isinstance(pins, list) and pins, "installed-public distribution pins missing")
+        pin_names = [pin.get("name") for pin in pins]
+        require(len(pin_names) == len(set(pin_names)), "duplicate installed-public pin")
+        require({"deepagents", "pytest"} <= set(pin_names), "required installed-public pins missing")
         for pin in pins:
             require(isinstance(pin.get("name"), str) and pin["name"], "distribution name missing")
-            require(isinstance(pin.get("version"), str) and pin["version"], "distribution version missing")
             require(
-                isinstance(pin.get("sha256"), str) and len(pin["sha256"]) == 64,
-                "distribution hash missing",
+                isinstance(pin.get("version"), str) and VERSION.fullmatch(pin["version"]),
+                "distribution version invalid",
             )
+            require(
+                isinstance(pin.get("sha256"), str) and HEX_SHA256.fullmatch(pin["sha256"]),
+                "distribution hash invalid",
+            )
+        require(
+            isinstance(public.get("lock_sha256"), str)
+            and HEX_SHA256.fullmatch(public["lock_sha256"]),
+            "installed-public lock hash invalid",
+        )
+        lock_path = public.get("lock_path")
+        require(
+            lock_path
+            == "tools/contract-spikes/research-writing-outcomes/installed-public/uv.lock",
+            "installed-public lock path invalid",
+        )
+        repo_root = evidence_root.parents[3]
+        resolved_lock = repo_root / lock_path
+        require(resolved_lock.is_file(), "installed-public lock file missing")
+        require(sha256_file(resolved_lock) == public["lock_sha256"], "installed-public lock hash mismatch")
+        lock_text = resolved_lock.read_text()
+        for pin in pins:
+            require(f'name = "{pin["name"]}"' in lock_text, f"pin absent from lock: {pin['name']}")
+            require(f'version = "{pin["version"]}"' in lock_text, f"pin version absent from lock: {pin['name']}")
+            require(pin["sha256"] in lock_text, f"pin hash absent from lock: {pin['name']}")
+        observations = public.get("export_observations")
+        require(isinstance(observations, list), "installed-public observations missing")
+        observed_exports = {item.get("export") for item in observations}
+        require(observed_exports == PUBLIC_EXPORTS, "installed-public export observations incomplete")
+        for observation in observations:
+            require(observation.get("state") == "passed", "installed-public export observation failed")
+            require(observation.get("fake_model") == "deterministic", "installed-public fake model missing")
+            require(observation.get("provider_network") is False, "provider network used in conformance")
+        observation_path = public.get("observation_path")
+        require(
+            observation_path == "fixtures/installed-public-conformance.json",
+            "installed-public observation path invalid",
+        )
+        retained_observation = evidence_root / observation_path
+        require(retained_observation.is_file(), "installed-public observation file missing")
+        require(
+            sha256_file(retained_observation) == public.get("observation_sha256"),
+            "installed-public observation hash mismatch",
+        )
+        require(
+            load_json(retained_observation).get("export_observations") == observations,
+            "installed-public observation content drifted",
+        )
 
     evidence_items = data.get("evidence", [])
+    binding_catalog = data.get("binding_catalog")
+    require(isinstance(binding_catalog, dict), "binding catalog missing")
+    expected_binding_keys = {
+        "artifact_id",
+        "subagent_id",
+        "criterion_id",
+        "candidate_hash",
+        "template_id",
+        "rubric_version",
+    }
+    require(set(binding_catalog) == expected_binding_keys, "binding catalog drifted")
+    if evidence_root is not None:
+        artifact = load_json(evidence_root / "fixtures/artifact-manifest.json")
+        subagent = load_json(evidence_root / "fixtures/subagent-events.json")
+        rubric = load_json(evidence_root / "fixtures/rubric-history.json")
+        verdict = load_json(evidence_root / "fixtures/verdict-history.json")
+        research = load_json(evidence_root / "fixtures/research-transcript.json")
+        derived_catalog = {
+            "artifact_id": artifact["promoted"]["artifact_id"],
+            "subagent_id": subagent["subagent_id"],
+            "criterion_id": rubric["criteria"][0]["criterion_id"],
+            "candidate_hash": verdict["entries"][0]["candidate_hash"],
+            "template_id": research["template_id"],
+            "rubric_version": rubric["version"],
+        }
+        require(binding_catalog == derived_catalog, "binding catalog does not match retained fixtures")
     evidence_by_id: dict[str, dict[str, Any]] = {}
     for item in evidence_items:
         evidence_id = item.get("evidence_id")
@@ -215,6 +301,11 @@ def validate_matrix(
                 require(expected == identity[dimension], f"identity substitution target drifted in {row_id}")
             if dimension == "evidence_id":
                 require(expected in row.get("evidence_refs", []), f"evidence substitution target drifted in {row_id}")
+            if dimension in expected_binding_keys:
+                require(
+                    expected == binding_catalog[dimension],
+                    f"stream-specific substitution target drifted in {row_id}",
+                )
             require(row.get("result") == "rejected-substitution", f"substitution accepted in {row_id}")
             require(row.get("automatic_pass") is False, f"substitution auto-passed in {row_id}")
         if row.get("required_evidence_state") in {"fail", "uncertain", "not_evaluated", "missing", "invalid"}:
@@ -229,6 +320,12 @@ def validate_matrix(
         if row.get("result") == "accepted-deterministic-normalization":
             require(row.get("evidence_tier") == "deterministic-fake", f"fake tier mismatch in {row_id}")
             require(row.get("provider_proof") is False, f"fake promoted to provider proof in {row_id}")
+        if row.get("result") == "accepted-installed-public-conformance":
+            require(
+                not installed_public_blocked
+                and row.get("evidence_tier") == "installed-public",
+                f"installed-public row accepted without conformance in {row_id}",
+            )
         if row.get("result") == "blocked-live-evidence":
             require(isinstance(row.get("blocker"), str) and row["blocker"], f"live blocker missing in {row_id}")
             require(row.get("automatic_pass") is False, f"blocked live row passed in {row_id}")
@@ -252,6 +349,18 @@ def validate_matrix(
         require(not missing_capabilities, f"{stream} capabilities missing: {sorted(missing_capabilities)}")
         missing_substitutions = SUBSTITUTION_DIMENSIONS[stream] - seen_substitutions[stream]
         require(not missing_substitutions, f"{stream} substitutions missing: {sorted(missing_substitutions)}")
+    if not installed_public_blocked:
+        for export in PUBLIC_EXPORTS:
+            rows_for_export = [
+                row for row in rows
+                if row.get("capability") == f"installed_public_{export}"
+            ]
+            require(len(rows_for_export) == 1, f"installed-public row missing: {export}")
+            require(
+                rows_for_export[0].get("result")
+                == "accepted-installed-public-conformance",
+                f"installed-public row not accepted: {export}",
+            )
     orphaned = set(evidence_by_id) - referenced_evidence
     require(not orphaned, f"unreferenced evidence records: {sorted(orphaned)}")
     require(data.get("precedence_conflicts") == [], "unresolved evidence precedence conflicts")

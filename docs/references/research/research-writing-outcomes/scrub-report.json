@@ -12,9 +12,9 @@
     "unsafe_html"
   ],
   "covered_file_count": 18,
-  "covered_max_mtime_ns": 1784789137338504610,
+  "covered_max_mtime_ns": 1784789720615615884,
   "finding_count": 0,
   "findings": [],
-  "generated_at": "2026-07-23T06:45:38.319729+00:00",
+  "generated_at": "2026-07-23T06:55:20.745881+00:00",
   "schema_version": "dw.scrub-report.v1"
 }

@@ -13,6 +13,7 @@ from .common import (
     require,
 )
 from .hash_evidence import EXCLUDED, collect
+from .fake_runtime import evidence_case_verdict, project_subagent_events
 
 
 REQUIRED_FILES = {
@@ -108,9 +109,13 @@ def validate_fixture_semantics(root: Path) -> None:
     )
     for name, case in research_cases.items():
         exact_identity(case.get("identity"), label=f"research case {name}")
-        expected = "passed" if name == "valid" else "failed"
-        require(case.get("expected_verdict") == expected, f"research verdict drifted: {name}")
+        derived = evidence_case_verdict("research", case)
+        require(case.get("expected_verdict") == derived, f"research verdict not derived: {name}")
         require(case.get("required") is True, f"research required binding missing: {name}")
+    require(research_cases["valid"]["state"] == "valid", "valid research state drifted")
+    require(research_cases["missing"]["state"] == "missing", "missing research state drifted")
+    for name in ("unreachable", "mismatched", "fabricated"):
+        require(research_cases[name]["state"] == "invalid", f"invalid research state drifted: {name}")
 
     writing = load_json(root / "fixtures/writing-transcript.json")
     exact_identity(writing.get("source_attribution", {}).get("identity"), label="writing source attribution")
@@ -122,25 +127,50 @@ def validate_fixture_semantics(root: Path) -> None:
     )
     for name, case in writing_cases.items():
         exact_identity(case.get("identity"), label=f"writing case {name}")
-        expected = "passed" if name == "valid-promoted" else "failed"
-        require(case.get("expected_verdict") == expected, f"writing verdict drifted: {name}")
+        derived = evidence_case_verdict("writing", case)
+        require(case.get("expected_verdict") == derived, f"writing verdict not derived: {name}")
     require(
         writing_cases["valid-promoted"]["artifact_state"] == "promoted",
         "valid writing case is not promoted",
     )
+    require(writing_cases["valid-promoted"]["size_bytes"] > 0, "valid writing deliverable empty")
+    require(writing_cases["missing"]["candidate_hash"] is None, "missing writing candidate present")
+    require(writing_cases["empty"]["size_bytes"] == 0, "empty writing candidate nonempty")
+    require(writing_cases["stale"]["artifact_state"] == "stale", "stale writing state drifted")
+    require(writing_cases["working-only"]["artifact_state"] == "working", "working writing state drifted")
 
     coding = load_json(root / "fixtures/coding-negative-transcript.json")
     coding_cases = {item["case"]: item for item in coding.get("cases", [])}
     require(set(coding_cases) == {"failed-tests", "missing-tests"}, "coding negatives incomplete")
     for name, case in coding_cases.items():
         exact_identity(case.get("identity"), label=f"coding case {name}")
-        require(case.get("expected_verdict") == "failed", f"coding verdict drifted: {name}")
+        derived = evidence_case_verdict("coding-negative", case)
+        require(case.get("expected_verdict") == derived, f"coding verdict not derived: {name}")
+    require(
+        coding_cases["failed-tests"]["state"] == "fail"
+        and coding_cases["failed-tests"]["exit_status"] != 0,
+        "failed-test inputs drifted",
+    )
+    require(
+        coding_cases["missing-tests"]["state"] == "missing"
+        and coding_cases["missing-tests"]["exit_status"] is None,
+        "missing-test inputs drifted",
+    )
 
     subagent = load_json(root / "fixtures/subagent-events.json")
     summary = subagent.get("input_summary", {})
     require(summary.get("actual_characters") == len(summary.get("text", "")), "subagent summary length drifted")
     require(summary["actual_characters"] <= summary.get("max_characters", -1), "subagent summary bound exceeded")
-    outcomes = {(item.get("sequence"), item.get("outcome")) for item in subagent.get("normalized_outcomes", [])}
+    declared_sequence_outcomes = [
+        item for item in subagent.get("normalized_outcomes", [])
+        if "sequence" in item
+    ]
+    derived_sequence_outcomes = project_subagent_events(subagent.get("events", []))
+    require(
+        declared_sequence_outcomes == derived_sequence_outcomes,
+        "subagent normalized outcomes are not derived from events",
+    )
+    outcomes = {(item.get("sequence"), item.get("outcome")) for item in declared_sequence_outcomes}
     require((2, "ignored-duplicate") in outcomes, "subagent duplicate outcome missing")
     require((3, "ignored-out-of-order") in outcomes, "subagent ordering outcome missing")
 
@@ -156,6 +186,10 @@ def validate_fixture_semantics(root: Path) -> None:
                 or entry.get("evidence_versions") != previous.get("evidence_versions"),
                 "verdict repair bindings unchanged",
             )
+    checkpoint = load_json(root / "fixtures/verdict-history.json").get("restart_checkpoint", {})
+    require(checkpoint.get("last_iteration") == history[-1]["iteration"], "restart iteration drifted")
+    require(checkpoint.get("last_verdict_id") == history[-1]["verdict_id"], "restart verdict drifted")
+    require(history[-1].get("state") == "capped", "cap terminal state drifted")
 
 
 def validate_hashes(root: Path) -> None:

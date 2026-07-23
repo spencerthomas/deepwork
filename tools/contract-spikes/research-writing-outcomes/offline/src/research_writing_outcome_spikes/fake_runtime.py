@@ -53,6 +53,10 @@ def normalize_subagent_event(event: dict[str, Any], parent: dict[str, Any]) -> d
             raise ValidationError(f"subagent parent mismatch: {field}")
     if "hidden_reasoning" in event or "prompt" in event:
         raise ValidationError("hidden subagent content is forbidden")
+    require(
+        event.get("namespace") == f"parent/{event.get('subagent_id')}",
+        "subagent namespace does not bind subagent id",
+    )
     allowed = {"spawned", "progress", "completed", "failed", "cancelled", "reconnected"}
     if event.get("state") not in allowed:
         return {
@@ -91,6 +95,12 @@ def evaluate_required_criteria(criteria: list[dict[str, Any]]) -> tuple[str, lis
 
 def bind_verdict(candidate: dict[str, Any], evidence: list[dict[str, Any]], model: FakeModel) -> dict[str, Any]:
     identity = exact_identity(candidate.get("identity"), label="verdict candidate")
+    require(
+        candidate.get("attempt_id") == identity["attempt_id"],
+        "candidate attempt id does not bind identity",
+    )
+    require(isinstance(candidate.get("template_id"), str) and candidate["template_id"], "template id missing")
+    require(isinstance(candidate.get("rubric_version"), str) and candidate["rubric_version"], "rubric version missing")
     require(isinstance(evidence, list) and evidence, "verdict evidence must be non-empty")
     rationale = model.invoke([])[:240]
     required = [item for item in evidence if item["required"]]
@@ -161,3 +171,48 @@ def substitution_rejected(expected: str, presented: str) -> bool:
     require(isinstance(expected, str) and expected, "expected binding missing")
     require(isinstance(presented, str) and presented, "presented binding missing")
     return expected != presented
+
+
+def project_subagent_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    require(isinstance(events, list) and events, "subagent events must be non-empty")
+    seen: set[int] = set()
+    highest = -1
+    outcomes: list[dict[str, Any]] = []
+    for event in events:
+        sequence = event.get("sequence")
+        require(isinstance(sequence, int) and sequence >= 0, "subagent sequence invalid")
+        if sequence in seen:
+            outcome = "ignored-duplicate"
+        elif sequence < highest:
+            outcome = "ignored-out-of-order"
+        else:
+            outcome = "projected"
+            highest = sequence
+        seen.add(sequence)
+        outcomes.append(
+            {
+                "sequence": sequence,
+                "outcome": outcome,
+                "state": event.get("state"),
+            }
+        )
+    return outcomes
+
+
+def evidence_case_verdict(template: str, case: dict[str, Any]) -> str:
+    """Derive deterministic verdicts from case inputs, never expected labels."""
+    if template == "research":
+        return "passed" if case.get("state") == "valid" else "failed"
+    if template == "writing":
+        state = case.get("artifact_state")
+        candidate_hash = case.get("candidate_hash")
+        if state != "promoted" or not candidate_hash:
+            return "failed"
+        if case.get("size_bytes", 1) <= 0:
+            return "failed"
+        return "passed"
+    if template == "coding-negative":
+        if case.get("state") != "valid" or case.get("exit_status") != 0:
+            return "failed"
+        return "passed"
+    raise ValidationError(f"unknown fixture template: {template}")

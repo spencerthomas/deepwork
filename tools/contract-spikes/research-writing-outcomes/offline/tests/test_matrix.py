@@ -66,17 +66,93 @@ class MatrixTests(OfflineTestCase):
 
     def test_blocked_matrix_cannot_pass_installed_public_conformance(self) -> None:
         with self.assertRaisesRegex(ValidationError, "conformance result missing"):
-            validate_matrix(self.matrix, installed_public_blocked=False)
+            validate_matrix(
+                self.matrix,
+                installed_public_blocked=False,
+                evidence_root=MATRIX.parent,
+            )
+
+    def test_fabricated_installed_public_conformance_fails_closed(self) -> None:
+        mutated = deepcopy(self.matrix)
+        mutated["installed_public"] = {
+            "state": "accepted-installed-public-conformance",
+            "lock_created": True,
+            "commands_run": True,
+            "lock_sha256": "z" * 64,
+            "distribution_pins": [
+                {"name": "unrelated", "version": "0", "sha256": "z" * 64}
+            ],
+            "export_observations": [],
+        }
+        with self.assertRaisesRegex(ValidationError, "required installed-public pins"):
+            validate_matrix(
+                mutated,
+                installed_public_blocked=False,
+                evidence_root=MATRIX.parent,
+            )
+
+        mutated["installed_public"] = {
+            "state": "accepted-installed-public-conformance",
+            "lock_created": True,
+            "commands_run": True,
+            "lock_sha256": "a" * 64,
+            "distribution_pins": [
+                {"name": "deepagents", "version": "1.2.3", "sha256": "b" * 64},
+                {"name": "pytest", "version": "9.0.1", "sha256": "c" * 64},
+            ],
+            "export_observations": [
+                {
+                    "export": export,
+                    "state": "passed",
+                    "fake_model": "deterministic",
+                    "provider_network": False,
+                }
+                for export in (
+                    "create_deep_agent",
+                    "RubricMiddleware",
+                    "SubAgent",
+                    "SubAgentMiddleware",
+                )
+            ],
+        }
+        with self.assertRaisesRegex(ValidationError, "lock path invalid"):
+            validate_matrix(
+                mutated,
+                installed_public_blocked=False,
+                evidence_root=MATRIX.parent,
+            )
 
     def test_substitution_requires_changed_presented_value(self) -> None:
         mutated = deepcopy(self.matrix)
         row = next(item for item in mutated["rows"] if item["case"] == "substitution")
         row["presented_value"] = row["expected_value"]
         with self.assertRaisesRegex(ValidationError, "did not change"):
-            validate_matrix(mutated, installed_public_blocked=True)
+            validate_matrix(
+                mutated,
+                installed_public_blocked=True,
+                evidence_root=MATRIX.parent,
+            )
         del row["presented_value"]
         with self.assertRaisesRegex(ValidationError, "presented binding missing"):
-            validate_matrix(mutated, installed_public_blocked=True)
+            validate_matrix(
+                mutated,
+                installed_public_blocked=True,
+                evidence_root=MATRIX.parent,
+            )
+
+    def test_stream_specific_substitution_target_is_fixture_bound(self) -> None:
+        mutated = deepcopy(self.matrix)
+        row = next(
+            item for item in mutated["rows"]
+            if item.get("substitution_dimension") == "artifact_id"
+        )
+        row["expected_value"] = "invented-artifact"
+        with self.assertRaisesRegex(ValidationError, "stream-specific"):
+            validate_matrix(
+                mutated,
+                installed_public_blocked=True,
+                evidence_root=MATRIX.parent,
+            )
 
     def test_evidence_path_hash_and_stream_are_bound(self) -> None:
         for field, value, message in (

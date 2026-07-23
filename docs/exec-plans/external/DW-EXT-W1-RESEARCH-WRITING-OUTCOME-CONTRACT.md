@@ -428,7 +428,7 @@ destructive cleanup is authorized by this packet.
 - [x] Kept COMPOSE-001, CONFIG-001, STREAM-003, and HITL-001 blocked at reviewed
   head `758c1d4a2230b7c4261fcfbd0f3008634509e096`; no upstream row was copied,
   accepted, or reclassified.
-- [x] Completed all exact no-index validations after final corpus fixes: 24
+- [x] Completed all exact no-index validations after final corpus fixes: 31
   stdlib tests, 77 matrix rows, 12 evidence records, 19-file retained hash
   closure, zero scrub findings, fresh evidence, governed scope, offline lock,
   documentation generation/check, and diff checks.
@@ -439,8 +439,17 @@ destructive cleanup is authorized by this packet.
   identity/substitution/case negatives, truthful blocked/manual rows, exact
   command enforcement and execution-derived statuses, expanded scrub coverage,
   process-wide Python network denial, and committed-blob review validation.
-- [ ] Commit the replacement candidate, obtain three distinct final acceptances,
-  and create the review-only attestation commit.
+- [x] Froze replacement candidate
+  `49dce60574a12d58109454bafbe72c0c1fa0c654`. Product accepted it; runtime and
+  security requested further changes, so it also received no attestation.
+- [x] Resolved second-review findings by deriving every research/writing/coding
+  verdict and subagent ordering outcome from retained inputs, deriving all
+  stream-specific substitution targets from retained fixtures, enforcing exact
+  public pins/export observations/hex hashes, binding duplicated attempt and
+  subagent namespace identities, and covering quoted customer JSON/generic raw
+  headers.
+- [ ] Commit the final replacement candidate, obtain three distinct final
+  acceptances, and create the review-only attestation commit.
 - [ ] Validate the attestation, send the coordinator the reviewed SHA and exact
   evidence, then stop.
 
@@ -462,6 +471,11 @@ destructive cleanup is authorized by this packet.
   command/scrub enforcement, and a self-referential review SHA design. The first
   candidate was rejected and retained in Git history; all findings were treated
   as contract defects rather than review exceptions.
+- The second review accepted the product semantics but found that expected
+  per-case labels could still contradict mutated inputs, and that public
+  conformance/stream-specific substitution catalogs were insufficiently derived.
+  The second candidate was rejected rather than carrying forward the partial
+  product acceptance.
 
 ## Decision log
 

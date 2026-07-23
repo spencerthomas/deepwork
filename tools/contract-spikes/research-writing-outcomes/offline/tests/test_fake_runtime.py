@@ -4,8 +4,10 @@ from research_writing_outcome_spikes.fake_runtime import (
     FakeModel,
     append_repair,
     bind_verdict,
+    evidence_case_verdict,
     evaluate_required_criteria,
     normalize_subagent_event,
+    project_subagent_events,
     promote_artifact,
     substitution_rejected,
 )
@@ -51,6 +53,8 @@ class FakeRuntimeTests(OfflineTestCase):
         wrong = {**event, "identity": {**IDENTITY, "workspace_id": "wrong"}}
         with self.assertRaisesRegex(ValueError, "workspace_id"):
             normalize_subagent_event(wrong, IDENTITY)
+        with self.assertRaisesRegex(ValueError, "namespace"):
+            normalize_subagent_event({**event, "namespace": "parent/wrong"}, IDENTITY)
 
     def test_required_nonpassing_states_cannot_pass(self) -> None:
         for state in ("fail", "uncertain", "not_evaluated"):
@@ -153,3 +157,52 @@ class FakeRuntimeTests(OfflineTestCase):
     def test_substitution_requires_distinct_presented_value(self) -> None:
         self.assertTrue(substitution_rejected("tenant-1", "tenant-2"))
         self.assertFalse(substitution_rejected("tenant-1", "tenant-1"))
+
+    def test_duplicate_and_out_of_order_events_are_derived(self) -> None:
+        events = [
+            {"sequence": 1, "state": "spawned"},
+            {"sequence": 2, "state": "progress"},
+            {"sequence": 2, "state": "progress"},
+            {"sequence": 4, "state": "completed"},
+            {"sequence": 3, "state": "reconnected"},
+        ]
+        self.assertEqual(
+            ["projected", "projected", "ignored-duplicate", "projected", "ignored-out-of-order"],
+            [item["outcome"] for item in project_subagent_events(events)],
+        )
+
+    def test_fixture_verdicts_are_derived_from_inputs(self) -> None:
+        self.assertEqual("failed", evidence_case_verdict("research", {"state": "missing"}))
+        self.assertEqual(
+            "failed",
+            evidence_case_verdict(
+                "writing",
+                {"artifact_state": "promoted", "candidate_hash": "hash", "size_bytes": 0},
+            ),
+        )
+        self.assertEqual(
+            "failed",
+            evidence_case_verdict(
+                "coding-negative",
+                {"state": "missing", "exit_status": None},
+            ),
+        )
+
+    def test_candidate_attempt_must_match_identity(self) -> None:
+        candidate = {
+            "identity": IDENTITY,
+            "attempt_id": "wrong-attempt",
+            "template_id": "research-v1",
+            "rubric_version": "1",
+        }
+        evidence = [
+            {
+                "evidence_id": "ev-1",
+                "identity": IDENTITY,
+                "required": True,
+                "state": "valid",
+                "version": "1",
+            }
+        ]
+        with self.assertRaisesRegex(ValueError, "attempt id"):
+            bind_verdict(candidate, evidence, FakeModel())

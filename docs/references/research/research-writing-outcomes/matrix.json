@@ -1,4 +1,12 @@
 {
+  "binding_catalog": {
+    "artifact_id": "artifact-final-01",
+    "candidate_hash": "fed53ee6b0ddd474f9f2d93dfdb7c00321eb6538ec02a4572f6b986724403584",
+    "criterion_id": "criterion-provenance",
+    "rubric_version": "1",
+    "subagent_id": "subagent-sync-01",
+    "template_id": "research-v1"
+  },
   "e2e_ids_credited": [],
   "evidence": [
     {
@@ -189,7 +197,7 @@
       "version": "test-v1"
     },
     {
-      "content_sha256": "fe756afe278b99c538e9b6949e7c52935634db9f9a4e6612977cbc56956c654f",
+      "content_sha256": "c9ba215780ee3111c473851b8a86ffceac937636ebaf99194acc7e4d6d63ab84",
       "evidence_id": "ev-writing-transcript",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",

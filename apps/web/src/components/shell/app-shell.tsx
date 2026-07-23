@@ -196,7 +196,7 @@ export function AppShell({
 
       {/* Body: sidebar + content + rail. Extra bottom padding on phones clears
           the fixed bottom bar. */}
-      <div className="mx-auto flex max-w-[92rem] px-4 pb-24 sm:px-6 lg:pb-0">
+      <div className="mx-auto flex max-w-[92rem] px-4 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:px-6 lg:pb-0">
         {sidebar && (
           <aside className="hidden w-64 shrink-0 py-8 pr-6 lg:block xl:w-72">
             <div className="sticky top-[136px]">{sidebar}</div>
@@ -217,8 +217,11 @@ export function AppShell({
       {/* Phone bottom navigation — the primary destinations under lg. */}
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden"
+        style={{
+          height: "calc(4rem + env(safe-area-inset-bottom))",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
         {tabs.map((tab) => {
           const isActive = active === tab.label;

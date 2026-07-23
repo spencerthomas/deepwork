@@ -247,7 +247,8 @@ Acceptance:
   satisfy the source dependency.
 - [x] 2026-07-23 AEST — Initial exact three-file candidate received architecture,
   DX, and security `REWORK REQUIRED` verdicts and product/contract `ACCEPT`;
-  amendments remain limited to these three plan files.
+  the correction remains limited to those files plus the new API/SDK bridge
+  plan.
 - [ ] Independent plan review accepts the exact draft candidate.
 - [ ] Coordinator records reviewed metadata and terminal TypeScript source SHA.
 - [ ] Milestones 1-4 execute in a fresh authorized lock-only worktree.
@@ -450,8 +451,10 @@ or production state to recover.
 There is no product rollout. Hand the exact independently accepted lock commit,
 lock digest, provenance summary, full transcript, and changed-file list to the
 coordinator. The coordinator may then dispatch `local:DW-M1-TS-VERIFY-001` from
-that exact terminal lock commit. No other consumer or product-demo work starts
-from lock proof alone.
+that exact terminal lock commit. The acyclic downstream order is verification,
+then private `local:DW-M1-FIXTURE-TS-CONSUMER-001`, then generated transport
+`local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`. No consumer, bridge, web, or
+product-demo work starts from lock proof alone.
 
 ## Outcomes & Retrospective
 

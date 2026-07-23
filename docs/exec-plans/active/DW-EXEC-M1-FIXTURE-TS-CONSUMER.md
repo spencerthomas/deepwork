@@ -53,11 +53,10 @@ browser journey.
 
 The plan-authoring base is
 `9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2` on branch
-`external/planning/w1-ts-proof-consumers`. Fixture candidate
-`8291218590e3f6a91a5383ae91d6e909e71b1fbe` is under fresh independent review;
-it is not accepted and cannot satisfy `local:DW-M1-FIXTURE-CONTRACT`.
-TypeScript candidate `1bf66e1` is rework-required and likewise cannot satisfy the
-TS chain.
+`external/planning/w1-ts-proof-consumers`. Fixture successor
+`75228c07dfa867f677fc176c1bb2423c7113aff8` is `REWORK REQUIRED`; it is not
+accepted and cannot satisfy `local:DW-M1-FIXTURE-CONTRACT`. TypeScript candidate
+`1bf66e1` is also rework-required and likewise cannot satisfy the TS chain.
 
 `internal/fixtures/product-demo/**` is owned by the fixture corpus cell.
 `DEC-035` requires Python source conformance to remain with `apps/api` and
@@ -90,6 +89,9 @@ code.
 - Keep all package manifests, workspace importer metadata, dependency fields,
   peer ranges, lifecycle scripts, and `pnpm-lock.yaml` byte-identical to the
   terminal TypeScript verification input.
+- Reach independent acceptance and a Coordinator-recorded terminal handoff
+  before `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001` may generate OpenAPI or SDK
+  transport in the overlapping SDK/adapter-test paths.
 - Keep this living plan current.
 
 ### Non-goals
@@ -105,6 +107,9 @@ code.
 - Claiming Python/API conformance, full application parity, live-contract parity,
   network isolation outside this TypeScript test project, accessibility, browser
   behavior, or E2E completion.
+- Generating `docs/generated/openapi.json`, adding
+  `@deepwork/sdk/product-demo`, or implementing any public API transport. Those
+  belong only to the later API-to-SDK bridge after this cell is terminal.
 - Installing a new dependency, publishing, deploying, provider access, push,
   merge, or release.
 
@@ -130,13 +135,15 @@ code.
 ## Authoritative sources and prerequisites
 
 - `local:DW-M1-FIXTURE-CONTRACT` must be terminal-success at an exact independently
-  accepted full SHA. Candidate `8291218590e3f6a91a5383ae91d6e909e71b1fbe`
-  remains nonterminal until that review concludes.
+  accepted full SHA. Candidate `75228c07dfa867f677fc176c1bb2423c7113aff8`
+  is `REWORK REQUIRED` and remains nonterminal.
 - `local:DW-M1-TS-VERIFY-001` must be terminal-success at an exact independently
   accepted full SHA and lock digest.
 - The dependency graph is acyclic:
-  `TS source -> TS lock -> TS verification -> fixture TS consumer`, while the
-  fixture corpus independently reaches acceptance before joining at this cell.
+  `TS source -> TS lock -> TS verification -> private fixture TS consumer ->
+  API/SDK bridge`, while the fixture corpus independently reaches acceptance
+  before joining at this cell and the final-wire API consumer joins only at the
+  later bridge.
 - Product/contract authority is `DW-FND-004`; supporting constraints come from
   `DW-FND-001`, `DW-FND-005`, `DW-QUAL-001`, `DEC-022/023/025/031/035`, and the
   accepted fixture corpus.
@@ -195,6 +202,11 @@ code.
   is created from corpus JSON.
 - A passing private fixture mapper proves only that the seam can consume accepted
   language-neutral cases. It is not generated-client or live adapter parity.
+- This plan's issue is exactly
+  `local:DW-M1-FIXTURE-TS-CONSUMER-001`. The inverted
+  `local:DW-M1-TS-FIXTURE-CONSUMER-001` alias is invalid. Public generation is
+  owned by downstream `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`, never this
+  issue.
 
 ## State matrix
 
@@ -214,6 +226,7 @@ code.
 | Unknown/malformed input | Preserve unknown or reject safely as declared. | Never cast or promote it to success. |
 | Partial source failure | Keep healthy source projection and qualified error. | No whole-result collapse when separable. |
 | Generated client absent | State it explicitly. | Use private fixture decoder; claim no generated parity. |
+| API/SDK bridge starts before this cell is terminal | Block generation and path transfer. | Require exact accepted commit, independent verdict, and Coordinator terminal handoff first. |
 | All consumer proof passes | Record corpus/lock digests and exact scope. | Stop at independent review with zero E2E credit. |
 
 ## Milestones
@@ -291,18 +304,24 @@ Acceptance:
   status, and lock bytes match before and after.
 - Fresh architecture, DX, security, and product/contract review accepts the exact
   commit or returns bounded rework.
+- After acceptance, the Coordinator records this issue terminal before the
+  API/SDK bridge takes sequential ownership of overlapping
+  `packages/sdk/**` and `internal/adapter-tests/**` paths.
 
 ## Progress
 
 - [x] 2026-07-23 AEST — Drafted from the exact supplied base; no install,
   implementation, fixture mutation, or package command was run.
-- [x] 2026-07-23 AEST — Recorded fixture candidate
-  `8291218590e3f6a91a5383ae91d6e909e71b1fbe` as review-pending, not accepted.
+- [x] 2026-07-23 AEST — Recorded fixture successor
+  `75228c07dfa867f677fc176c1bb2423c7113aff8` as `REWORK REQUIRED`, not accepted.
 - [x] 2026-07-23 AEST — Recorded TS candidate `1bf66e1` as rework-required.
 - [x] 2026-07-23 AEST — Initial exact three-file candidate received architecture,
   DX, and security `REWORK REQUIRED` verdicts and product/contract `ACCEPT`;
-  amendments remain limited to these three plan files.
-- [ ] Independent plan review accepts the exact three-plan candidate.
+  the correction remains limited to those files plus the new API/SDK bridge
+  plan.
+- [x] 2026-07-23 AEST — Separated private fixture proof from downstream public
+  generation and recorded the exact consumer and bridge issue identities.
+- [ ] Independent plan review accepts the exact corrected four-plan candidate.
 - [ ] Fixture corpus and TS verification dependencies become terminal.
 - [ ] Milestones 1-5 complete in an authorized consumer worktree.
 
@@ -343,6 +362,11 @@ Acceptance:
   Consequence: the private harness supplies a standard-library digest checker
   over sorted relative paths, file types, modes, and bytes and rejects unsafe
   entries.
+- 2026-07-23 AEST — Decision: terminalize private conformance before public
+  generation. Rationale: this plan intentionally proves generated-client absence
+  and overlaps future SDK/adapter-test paths. Consequence:
+  `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001` depends on this issue's exact
+  terminal result and becomes the sole downstream generated-transport owner.
 
 ## Detailed implementation approach
 
@@ -362,6 +386,9 @@ Acceptance:
    wrapper with lifecycle scripts disabled; prove no manifest, lock, corpus,
    ignored/untracked, or generated-client mutation; commit only governed files;
    then stop for fresh independent review.
+7. After independent acceptance, hand the exact commit and proof to the
+   Coordinator for a terminal transition. Do not begin OpenAPI/SDK generation
+   before that explicit transition.
 
 ## Validation and proof
 
@@ -630,13 +657,16 @@ registry, or production state to clean up.
 
 There is no production rollout. Hand the exact independently accepted consumer
 commit, terminal input SHAs/digests, parity/failure matrices, proof transcript,
-reviewer verdicts, and changed-file list to the coordinator. API conformance,
-generated contracts, `apps/web`, the API-backed product demo, browser
-accessibility, and live parity remain separately sequenced cells.
+reviewer verdicts, and changed-file list to the Coordinator. The Coordinator
+must record `local:DW-M1-FIXTURE-TS-CONSUMER-001` terminal before dispatching
+`local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`. API conformance, generated
+contracts, `apps/web`, the API-backed product demo, browser accessibility, and
+live parity remain separately sequenced cells.
 
 ## Outcomes & Retrospective
 
 Pending terminal dependencies, execution, and independent review. Completion must
 state exact positive/negative coverage, corpus and lock immutability, generated
-client absence or separately accepted authority, deviations, remaining runtime
-gates, and zero E2E completion.
+client absence, explicit Coordinator terminal handoff, deviations, remaining
+runtime gates, and zero E2E completion. The later bridge, not this plan, records
+any separately accepted generated authority.

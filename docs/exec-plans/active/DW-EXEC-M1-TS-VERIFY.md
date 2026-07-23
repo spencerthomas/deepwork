@@ -290,7 +290,8 @@ Acceptance:
 - [x] 2026-07-23 AEST — Recorded `1bf66e1` as rework-required, not terminal.
 - [x] 2026-07-23 AEST — Initial exact three-file candidate received architecture,
   DX, and security `REWORK REQUIRED` verdicts and product/contract `ACCEPT`;
-  amendments remain limited to these three plan files.
+  the correction remains limited to those files plus the new API/SDK bridge
+  plan.
 - [ ] Independent plan review accepts the exact draft candidate.
 - [ ] Terminal lock commit is supplied and verified.
 - [ ] Milestones 1-5 complete in an authorized verification worktree.
@@ -555,8 +556,12 @@ provider, database, or registry state.
 
 There is no production rollout. Hand the exact independently accepted verification
 commit, unchanged lock digest, transcripts, archive/consumer evidence, reviewer
-verdicts, and changed-file list to the coordinator. Only then may a fixture
-consumer or product-demo cell treat TypeScript executable proof as terminal.
+verdicts, and changed-file list to the Coordinator. Only then may the private
+`local:DW-M1-FIXTURE-TS-CONSUMER-001` cell treat TypeScript executable proof as
+terminal. Public generated transport follows only after that consumer is
+terminal, in `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`; a product-demo cell may
+not consume this verification result as a substitute for either downstream
+contract.
 
 ## Outcomes & Retrospective
 

@@ -83,12 +83,14 @@ async def test_repository_decision_wait_and_idempotency() -> None:
         interrupt_id=interrupt_id,
         decision=DecisionValue.APPROVE,
         comment_provided=False,
+        response_digest=None,
     )
     duplicate = await repository.record_decision(
         task.task_id,
         interrupt_id=interrupt_id,
         decision=DecisionValue.APPROVE,
         comment_provided=True,
+        response_digest=None,
     )
 
     assert await waiter is DecisionValue.APPROVE
@@ -101,4 +103,5 @@ async def test_repository_decision_wait_and_idempotency() -> None:
             interrupt_id=interrupt_id,
             decision=DecisionValue.REJECT,
             comment_provided=False,
+            response_digest=None,
         )

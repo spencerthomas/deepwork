@@ -7,7 +7,8 @@ boundary for Deep Work. The Wave 1 scaffold provides:
 - process-only `GET /health`;
 - deterministic `GET /api/v1/demo/status` that is permanently labelled fixture;
 - in-memory task create/list/detail endpoints with a sanitized, prompt-specific result;
-- replayable normalized SSE and one real local approve/reject pause;
+- replayable normalized SSE and real local approve/reject/respond pauses;
+- inspectable fixture evidence and an editable, revision-checked pending plan;
 - separate `deepwork-api` and `deepwork-worker` entry points from one artifact; and
 - package-local format, lint, type, no-network test, build, and clean-wheel checks.
 
@@ -27,12 +28,21 @@ curl -sS -X POST http://127.0.0.1:8000/api/v1/tasks \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"Prepare a launch checklist"}'
 curl -N http://127.0.0.1:8000/api/v1/tasks/task_00000001/events
+curl -sS -X PATCH http://127.0.0.1:8000/api/v1/tasks/task_00000001/plan \
+  -H 'Content-Type: application/json' \
+  -d '{"interruptId":"interrupt_00000001","expectedRevision":1,"steps":["Review the requested outcome","Produce a bounded local result","Validate it"]}'
 curl -sS -X POST http://127.0.0.1:8000/api/v1/tasks/task_00000001/decisions \
   -H 'Content-Type: application/json' \
   -d '{"interruptId":"interrupt_00000001","decision":"approve"}'
 ```
 
-Reconnect with `Last-Event-ID: 5` to replay only later events. Task IDs are local
+`GET /api/v1/tasks/{taskId}` includes the current `proposedPlan`, its evidence
+references, source-qualified `evidence`, and the exact pending interrupt. A
+`respond` decision requires a bounded non-blank `comment`; the comment resumes the
+current interrupt but is never echoed, stored raw, or emitted in events. It produces
+a fresh interrupt around the safely revised local plan.
+
+Reconnect with `Last-Event-ID: 6` to replay only later events. Task IDs are local
 process identities, and the in-memory repository is intentionally reset on restart.
 `run.completed` is the terminal stream event, after which the server closes the SSE
 response. `GET /api/v1/tasks/{taskId}/result` returns the completed useful result.

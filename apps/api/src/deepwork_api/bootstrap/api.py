@@ -5,8 +5,10 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.application import DeterministicFixtureRunner, StatusService, TaskService
@@ -40,9 +42,23 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=list(_WEB_ORIGINS),
         allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
         allow_headers=["Content-Type", "Last-Event-ID"],
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def safe_validation_error(
+        _request: Request,
+        _error: RequestValidationError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "code": "request_invalid",
+                "message": "Request validation failed.",
+            },
+        )
+
     app.include_router(build_router(status_service))
     app.include_router(build_task_router(task_service))
     app.state.task_repository = task_repository

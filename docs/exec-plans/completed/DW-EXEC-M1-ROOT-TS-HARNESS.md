@@ -1,7 +1,7 @@
 ---
 exec_plan_id: DW-EXEC-M1-ROOT-TS-HARNESS
 title: Root TypeScript workspace baseline
-status: reviewed
+status: completed
 superseded_by: null
 owner: program-coordinator
 reviewed_by: [ts-package-planner-reviewer, root-ts-implementation-reviewer]
@@ -12,9 +12,9 @@ issue: local:DW-M1-ROOT-TS-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
-last_verified_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
+last_verified_commit: e57c4deae2cf4e2107361690e0548d36f631a1ce
 risk: medium
-governed_paths: [package.json, pnpm-workspace.yaml, turbo.json, .node-version, .npmrc, internal/tsconfig/**, docs/exec-plans/active/DW-EXEC-M1-ROOT-TS-HARNESS.md]
+governed_paths: [package.json, pnpm-workspace.yaml, turbo.json, .node-version, .npmrc, internal/tsconfig/**, docs/exec-plans/completed/DW-EXEC-M1-ROOT-TS-HARNESS.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
 decision_gates: [DEC-025, DEC-031]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/PLANS.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/SECURITY.md]
 scenario_ids: [AC-DW-FND-001-03]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: []
 blockers: []

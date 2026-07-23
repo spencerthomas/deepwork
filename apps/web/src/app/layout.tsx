@@ -24,9 +24,19 @@ export const viewport: Viewport = {
   ],
 };
 
+/**
+ * Applies the persisted (or system) theme before first paint, so dark-mode
+ * users don't see a light flash before ThemeToggle hydrates. Mirrors the same
+ * `dw-theme` storage key and precedence the toggle uses.
+ */
+const THEME_INIT = `(function(){try{var s=localStorage.getItem("dw-theme");var d=s?s==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark");}catch(e){}})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" className="bg-background">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body className="font-sans antialiased">
         <TasksProvider>{children}</TasksProvider>
       </body>

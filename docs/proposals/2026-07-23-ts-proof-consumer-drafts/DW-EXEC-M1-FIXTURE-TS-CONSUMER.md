@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: 9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2
 last_verified_commit: null
 risk: medium
-governed_paths: [packages/domain/**, packages/sdk/**, internal/adapter-tests/**, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-TS-CONSUMER.md]
+governed_paths: [packages/domain/**, packages/sdk/**, internal/adapter-tests/**, docs/proposals/2026-07-23-ts-proof-consumer-drafts/DW-EXEC-M1-FIXTURE-TS-CONSUMER.md]
 contract_gates: [SPIKE-STREAM-001]
 decision_gates: [DEC-022, DEC-023, DEC-025, DEC-031, DEC-035]
 gate_review_status: unreviewed

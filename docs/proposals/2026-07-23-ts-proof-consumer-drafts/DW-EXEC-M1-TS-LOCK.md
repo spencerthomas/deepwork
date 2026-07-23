@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: 9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2
 last_verified_commit: null
 risk: medium
-governed_paths: [pnpm-lock.yaml, docs/exec-plans/active/DW-EXEC-M1-TS-LOCK.md]
+governed_paths: [pnpm-lock.yaml, docs/proposals/2026-07-23-ts-proof-consumer-drafts/DW-EXEC-M1-TS-LOCK.md]
 contract_gates: []
 decision_gates: [DEC-025]
 gate_review_status: unreviewed

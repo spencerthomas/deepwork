@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: c9faefda05d3a6f069d93cbd0e938a31e557218b
 last_verified_commit: null
 risk: high
-governed_paths: [docs/generated/openapi.json, packages/sdk/src/generated/**, packages/sdk/src/product-demo/**, packages/sdk/package.json, packages/sdk/scripts/generate-product-demo-client.mjs, packages/sdk/scripts/check-product-demo-contract.mjs, packages/sdk/scripts/package-check.mjs, packages/sdk/tests/product-demo-client.test.ts, packages/sdk/tests/product-demo-contract-drift.test.ts, internal/adapter-tests/**, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-API-SDK-CONTRACT.md]
+governed_paths: [docs/generated/openapi.json, packages/sdk/src/generated/**, packages/sdk/src/product-demo/**, packages/sdk/package.json, packages/sdk/scripts/generate-product-demo-client.mjs, packages/sdk/scripts/check-product-demo-contract.mjs, packages/sdk/scripts/package-check.mjs, packages/sdk/tests/product-demo-client.test.ts, packages/sdk/tests/product-demo-contract-drift.test.ts, internal/adapter-tests/**, docs/proposals/2026-07-23-ts-proof-consumer-drafts/DW-EXEC-M1-FIXTURE-API-SDK-CONTRACT.md]
 contract_gates: [SPIKE-STREAM-001, SPIKE-HITL-001, SPIKE-CHECKPOINT-001]
 decision_gates: [DEC-022, DEC-023, DEC-025, DEC-031, DEC-034, DEC-035, DEC-037]
 gate_review_status: unreviewed
@@ -25,7 +25,7 @@ scenario_ids: [AC-DW-FND-001-07, AC-DW-FND-003-05, AC-DW-FND-004-04, AC-DW-FND-0
 dispatch_kind: cell
 dispatch_ready: false
 agent_review_required: true
-dependencies: [DW-EXEC-M1-FIXTURE-API-CONSUMER, local:DW-M1-FIXTURE-TS-CONSUMER-001, local:DW-M1-TS-VERIFY-001]
+dependencies: [local:DW-M1-API-001, local:DW-M1-FIXTURE-TS-CONSUMER-001, local:DW-M1-TS-VERIFY-001]
 blockers: []
 ---
 
@@ -66,9 +66,10 @@ The plan-authoring base is
   envelope as test input rather than API wire;
 - the TypeScript lock and verification cells prohibit generated transport and
   package-manifest mutation; and
-- the paired `DW-EXEC-M1-FIXTURE-API-CONSUMER` plan is not present in this
-  checkout. Its stable ExecPlan ID is therefore an intentional unresolved
-  dependency until the separately reviewed planning bundle is reconciled.
+- `local:DW-M1-API-001` is the completed API scaffold record in this
+  checkout. It establishes the API ownership boundary but does **not** provide
+  the required final-wire contract; that contract remains a review blocker until
+  an accepted successor records exact evidence.
 
 Root architecture makes FastAPI/Pydantic/OpenAPI the application-wire authority
 and `packages/sdk` the browser-safe transport/mapping owner. The accepted fixture
@@ -160,7 +161,7 @@ and `internal/adapter-tests/**` paths.
 
 | Dependency | Exact terminal evidence required | Why it is required |
 |---|---|---|
-| `DW-EXEC-M1-FIXTURE-API-CONSUMER` | Independently accepted final-wire API commit; final `/api/v1/demo/**` OpenAPI operation/status/error contract; API-owned `apps/api/scripts/export_openapi.py`, `apps/api/Makefile` targets, and `apps/api/openapi/deepwork-api-v1.json`; deterministic two-export proof | Sole source of public wire truth |
+| `local:DW-M1-API-001` | Completed API scaffold record plus a separately accepted successor commit with the final `/api/v1/demo/**` OpenAPI operation/status/error contract, API-owned `apps/api/scripts/export_openapi.py`, `apps/api/Makefile` targets, `apps/api/openapi/deepwork-api-v1.json`, and deterministic two-export proof | Establishes the API owner; successor evidence is the sole source of public wire truth |
 | `local:DW-M1-FIXTURE-TS-CONSUMER-001` | Independently accepted private corpus/domain/reducer proof; exact corpus and lock digests; explicit no-generated-client and no-manifest result; Coordinator terminal handoff | Prevents the fixture schema from being promoted and serializes overlapping SDK/adapter-test ownership |
 | `local:DW-M1-TS-VERIFY-001` | Independently accepted package verification commit and unchanged first-lock digest | Supplies accepted public package, pack, boundary, toolchain, and offline-store evidence |
 
@@ -541,25 +542,12 @@ git diff --name-only c9faefda05d3a6f069d93cbd0e938a31e557218b HEAD
 test -z "$(git status --porcelain)"
 ```
 
-Before the paired API plan and Coordinator review/index transition, the docs
-check is expected to exit `1` with exactly 33 draft diagnostics: the existing
-eight review/index diagnostics for each of the three original draft plans, plus
-these nine for this bridge and no other error:
-
-1. active ExecPlan is not indexed;
-2. unsupported active ExecPlan status `draft`;
-3. unknown dependency `DW-EXEC-M1-FIXTURE-API-CONSUMER` in this isolated
-   planning checkout;
-4. independent non-owner reviewer metadata missing;
-5. completed gate reviewer metadata missing;
-6. `reviewed_at` is not a date;
-7. `gate_reviewed_at` is not a date;
-8. `last_verified_commit` is not an existing full commit; and
-9. `gate_review_status` is not `reviewed-with-gates`.
-
-The unknown dependency must disappear when the paired final-wire API plan is
-reconciled. Review/index metadata is Coordinator-owned and must not be fabricated
-to make this draft pass.
+As an archived proposal, this draft is intentionally outside active-ExecPlan
+validation and must not be used to predict a failing documentation check. Before
+promotion, the coordinator must replace the draft metadata with independently
+reviewed active-ExecPlan metadata, register the plan in the index, and attach the
+accepted final-wire successor evidence for `local:DW-M1-API-001`. Review/index
+metadata must not be fabricated merely to make a draft pass.
 
 ### Implementation candidate
 

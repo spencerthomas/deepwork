@@ -3,7 +3,7 @@
 import { ListChecks, PencilLine, Plus, Trash2, X } from "lucide-react";
 import { useId, useState } from "react";
 
-import { unicodeLength, validatePlanSteps } from "@/lib/task-normalizers";
+import { planStepIssue, unicodeLength, validatePlanSteps } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, PlanUpdateInput, ProposedPlan } from "@/lib/task-types";
 import { PLAN_STEP_MAX_COUNT, PLAN_STEP_MAX_LENGTH } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
@@ -100,9 +100,13 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
       ) : (
         <div className="space-y-2 px-4 py-3">
           {steps.map((step, index) => {
-            // Length is measured the same way validatePlanSteps measures it — on
-            // the raw value — so the visible/accessible state matches acceptance.
-            const stepOverLimit = unicodeLength(step) > PLAN_STEP_MAX_LENGTH;
+            // Same rules validatePlanSteps enforces. The length overflow shows
+            // live (it is unambiguous); blank/unsafe steps are only marked once a
+            // save has failed, so a freshly added empty step is not pre-flagged.
+            const issue = planStepIssue(step);
+            const stepOverLimit = issue === "too-long";
+            const stepInvalid =
+              stepOverLimit || (validationError !== undefined && issue !== undefined);
             const stepCountId = `${fieldId}-step-${String(index)}-count`;
             const stepDescribedBy =
               [stepOverLimit ? stepCountId : null, shownError !== undefined ? errorId : null]
@@ -119,7 +123,7 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
                     rows={2}
                     maxLength={PLAN_STEP_MAX_LENGTH * 2}
                     aria-label={`Plan step ${String(index + 1)}`}
-                    aria-invalid={stepOverLimit}
+                    aria-invalid={stepInvalid}
                     aria-describedby={stepDescribedBy}
                     onChange={(event) =>
                       setSteps((current) =>
@@ -128,7 +132,7 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
                     }
                     className={cn(
                       "w-full resize-y rounded-lg border bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring",
-                      stepOverLimit ? "border-status-failed" : "border-input",
+                      stepInvalid ? "border-status-failed" : "border-input",
                     )}
                   />
                   {stepOverLimit && (

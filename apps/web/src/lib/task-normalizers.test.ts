@@ -15,6 +15,7 @@ import {
   terminalEventNeedsDetail,
   validateDecisionComment,
   validateDecisionInput,
+  planStepIssue,
   validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
@@ -123,6 +124,15 @@ describe("editable plan contracts", () => {
     );
     expect(() => validatePlanSteps(["  "])).toThrow("cannot be blank");
     expect(() => validatePlanSteps(["Inspect\u0000Verify"])).toThrow("control characters");
+  });
+
+  it("reports each step's first issue with the same rules validation enforces", () => {
+    expect(planStepIssue("Inspect the accepted contract")).toBeUndefined();
+    expect(planStepIssue("😀".repeat(1_000))).toBeUndefined();
+    expect(planStepIssue("   ")).toBe("blank");
+    expect(planStepIssue("😀".repeat(1_001))).toBe("too-long");
+    // Blank is reported before length, so an all-whitespace over-long value is "blank".
+    expect(planStepIssue(" ".repeat(1_001))).toBe("blank");
   });
 
   it("fails closed when an untrusted plan has a mixed steps array", () => {

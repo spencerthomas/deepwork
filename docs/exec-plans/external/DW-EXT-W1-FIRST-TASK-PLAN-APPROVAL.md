@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL
 title: External dispatch - require a real plan before the first task executes
-status: in-progress
+status: completed
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
 branch: external/research/first-task-plan-approval
 owner: external-plan-approval-contract-researcher
@@ -12,8 +12,8 @@ allowed_paths: [tools/contract-spikes/plan-approval/**, docs/references/research
 dependencies: [SPIKE-HITL-001, SPIKE-COMPOSE-001, SPIKE-CONFIG-001, SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LCPY@592055e15e138f5369dce95dd049ce22430996e2, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-sandbox]
 blockers: [accepted-SPIKE-HITL-001, accepted-SPIKE-COMPOSE-001, accepted-SPIKE-CONFIG-001, sanctioned-non-production-classic-sandbox]
 created: 2026-07-23
-reviewed_at: null
-review_result: pending-independent-review
+reviewed_at: 2026-07-23
+review_result: approved-offline-harness-only-blocked-upstream
 ---
 
 # External dispatch - require a real plan before the first task executes
@@ -280,11 +280,14 @@ destructive cleanup is authorized by this packet.
 - [x] 2026-07-23: Generated the complete deterministic template/scenario matrix
   with 128 rows and retained
   synthetic fixtures.
-- [ ] Run every required offline, matrix, bypass, scrub, documentation, and
-  base-qualified diff command.
-- [ ] Obtain fresh independent runtime-contract, security, and product review.
-- [ ] Commit only the three allowed path families and prepare coordinator
-  handoff.
+- [x] 2026-07-23: Ran every required offline, matrix, bypass, scrub,
+  documentation, and base-qualified diff command. The retained command ledger
+  records exact commands and exit states; live commands were not run.
+- [x] 2026-07-23: Obtained independent runtime-contract, security, and product
+  approval of `d9c90b18f60ff4586191bee1a129057ed3e14d35` after resolving every
+  first-round finding.
+- [x] 2026-07-23: Committed only the three allowed path families and prepared
+  the reviewed evidence for coordinator handoff.
 
 ## Surprises and discoveries
 
@@ -344,6 +347,21 @@ destructive cleanup is authorized by this packet.
 
 ## Outcomes and retrospective
 
-In progress. Final disposition, retained evidence, exact validations, independent
-review, remaining blockers, and commit identity will be recorded here before
-handoff.
+Completed as an offline harness blocked on upstream contracts and live evidence.
+The retained 128-row matrix and four hashed template transcripts prove only the
+local plan identity, revision, current-authority, non-widening, terminal
+abandonment, reconnect/restart, bypass, and idempotent-release invariants.
+
+The final offline suite passed 151 tests with the prohibited live-contract test
+deselected. Matrix, fixture/manifest hash, dependency, scope, scrub,
+documentation, lock, and base-qualified diff validation passed. The scrubber
+retained zero findings across all evidence categories. Independent
+runtime-contract, security, and product reviewers approved the exact
+implementation review commit recorded in `review.json`.
+
+`SPIKE-PLAN-001` and `SPIKE-HITL-002` remain unaccepted. `planApproval` remains
+false with the complete typed fallback. This packet contributes only supporting
+evidence to `AC-DW-TASK-002-02` and `AC-DW-QUAL-001-03`; it neither blocks nor
+satisfies `E2E-V1-01-FIRST-VALUE`. Accepted upstream HITL, compose, and config
+artifacts plus a sanctioned non-production classic sandbox remain required
+before any live acceptance or capability enablement.

@@ -1,0 +1,97 @@
+{
+  "schema_version": "plan-approval-independent-review.v1",
+  "base_commit": "fff1bfd278d550d01de6e8d74f553f45c4003a8c",
+  "reviewed_commit": "d9c90b18f60ff4586191bee1a129057ed3e14d35",
+  "reviewed_at": "2026-07-23",
+  "overall_verdict": "approved-offline-harness-only-blocked-upstream",
+  "target_spikes": [
+    {
+      "gate": "SPIKE-PLAN-001",
+      "status": "unaccepted"
+    },
+    {
+      "gate": "SPIKE-HITL-002",
+      "status": "unaccepted"
+    }
+  ],
+  "reviewers": [
+    {
+      "role": "runtime-contract",
+      "reviewer": "independent-runtime-contract-reviewer",
+      "verdict": "approve",
+      "reviewed_commit": "d9c90b18f60ff4586191bee1a129057ed3e14d35",
+      "resolved_findings": [
+        "unknown status-bearing events now fail closed",
+        "release requires a structurally valid current plan approval",
+        "local abandonment is authority-bound, idempotent, and terminal",
+        "runtime review config plus template and config version drift are blocked",
+        "review state is no longer prematurely accepted"
+      ],
+      "validation": {
+        "offline_tests_passed": 151,
+        "live_tests_deselected": 1,
+        "matrix_rows_validated": 128,
+        "docs_checks": "passed",
+        "scope_and_diff_checks": "passed"
+      }
+    },
+    {
+      "role": "security",
+      "reviewer": "independent-security-resolution-reviewer",
+      "verdict": "approve",
+      "reviewed_commit": "d9c90b18f60ff4586191bee1a129057ed3e14d35",
+      "resolved_findings": [
+        "closed event reduction prevents arbitrary status from changing state",
+        "checksum scope is limited to corruption detection rather than authenticated storage",
+        "scrub rules and negative tests cover every required evidence category"
+      ],
+      "validation": {
+        "offline_tests_passed": 151,
+        "live_tests_deselected": 1,
+        "matrix_rows_validated": 128,
+        "evidence_files_scrubbed": 9,
+        "scrub_findings": 0,
+        "offline_lock_check": "passed"
+      }
+    },
+    {
+      "role": "product",
+      "reviewer": "independent-product-reviewer",
+      "verdict": "approve",
+      "reviewed_commit": "d9c90b18f60ff4586191bee1a129057ed3e14d35",
+      "resolved_findings": [
+        "local abandonment is a terminal no-resume choice",
+        "the complete unavailable fallback tuple is validator-enforced"
+      ],
+      "validation": {
+        "offline_tests_passed": 151,
+        "live_tests_deselected": 1,
+        "matrix_rows_validated": 128,
+        "product_scope_invariants": "passed",
+        "scope_and_diff_checks": "passed"
+      }
+    }
+  ],
+  "per_row_state": {
+    "source": "matrix.json",
+    "matrix_sha256": "4e34c8a27fed331a6941f8050b348b968abcecc74e1f9d5018d2d98e167bd602",
+    "fixture_manifest_sha256": "0ba12f5a16b46bd95fca20db6caf033ad761f86766aab68b49961b4f8ebcaec1",
+    "selector": "all rows",
+    "row_count": 128,
+    "verdict": "reviewed-supporting-offline-evidence-only",
+    "contributes_only_to": [
+      "AC-DW-TASK-002-02",
+      "AC-DW-QUAL-001-03"
+    ],
+    "end_to_end_contribution": false,
+    "exceptions": []
+  },
+  "remaining_blockers": [
+    "accepted-SPIKE-HITL-001",
+    "accepted-SPIKE-COMPOSE-001",
+    "accepted-SPIKE-CONFIG-001",
+    "sanctioned-non-production-classic-sandbox"
+  ],
+  "live_contract_executed": false,
+  "capability_enabled": false
+}

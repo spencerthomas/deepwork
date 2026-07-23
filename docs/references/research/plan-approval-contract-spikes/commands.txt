@@ -1,21 +1,21 @@
-# Deterministic validation ledger. The harness updates each pending status with
-# the exact exit status after execution. No command captures environment dumps.
+# Deterministic validation ledger. Every uv command used the task-specific cache
+# shown below with network disabled. No command captures environment dumps.
 
-PENDING	uv lock --project tools/contract-spikes/plan-approval
-PENDING	uv sync --project tools/contract-spikes/plan-approval --frozen
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen pytest -m 'not live_contract'
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.generate_evidence --output-dir docs/references/research/plan-approval-contract-spikes
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.inventory --output docs/references/research/plan-approval-contract-spikes/versions.json
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.validate_matrix docs/references/research/plan-approval-contract-spikes/matrix.json --require-complete-cross-product --reject-blocked-dependency-promotion --reject-unresolved-precedence-conflicts
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.scrub docs/references/research/plan-approval-contract-spikes
-PENDING	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.validate_scope --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
-PENDING	uv lock --project tools/contract-spikes/plan-approval --check --offline
-PENDING	UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen pytest -m 'not live_contract'
-PENDING	python3 tools/docs/generate.py --check
-PENDING	python3 tools/docs/check.py
-PENDING	git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
-PENDING	git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c
-PENDING	git status --short
+EXIT-0	UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv lock --project tools/contract-spikes/plan-approval
+EXIT-0	UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv sync --project tools/contract-spikes/plan-approval --frozen
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen pytest -m 'not live_contract'
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.generate_evidence --output-dir docs/references/research/plan-approval-contract-spikes
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.inventory --output docs/references/research/plan-approval-contract-spikes/versions.json
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.validate_matrix docs/references/research/plan-approval-contract-spikes/matrix.json --require-complete-cross-product --reject-blocked-dependency-promotion --reject-unresolved-precedence-conflicts
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.scrub docs/references/research/plan-approval-contract-spikes
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.validate_scope --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
+EXIT-0	UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv lock --project tools/contract-spikes/plan-approval --check --offline
+EXIT-0	PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/private/tmp/deepwork-plan-approval-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/plan-approval --frozen pytest -m 'not live_contract'
+EXIT-0	python3 tools/docs/generate.py --check
+EXIT-0	python3 tools/docs/check.py
+EXIT-0-EMPTY	git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
+EXIT-0-34-PATHS	git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c
+EXIT-0-EMPTY	git status --short
 
 PROHIBITED-NOT-RUN	uv run --project tools/contract-spikes/plan-approval --frozen pytest -m live_contract --live-profile non-production-classic-plan-approval --evidence-dir docs/references/research/plan-approval-contract-spikes/live
 PROHIBITED-NOT-RUN	uv run --project tools/contract-spikes/plan-approval --frozen python -m plan_approval_contract_spikes.scrub docs/references/research/plan-approval-contract-spikes/live

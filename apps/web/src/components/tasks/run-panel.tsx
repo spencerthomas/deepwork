@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { StatusChip } from "@/components/shell/status-chip";
 import type {
+  ClientMode,
   ConnectionState,
   EvidenceRecord,
   ProposedPlan,
@@ -12,6 +13,7 @@ import type {
   TaskEvent,
   TaskSummary,
 } from "@/lib/task-types";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { cn } from "@/lib/utils";
 
 type PanelTab = "status" | "stream" | "evidence" | "files" | "git" | "trace";
@@ -58,7 +60,7 @@ function UnavailableTab({ title, body }: { title: string; body: string }) {
         {body}
       </p>
       <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-status-review-bg px-2.5 py-1 text-xs font-medium text-status-review">
-        Unavailable in the local runtime
+        Unavailable in this client
       </span>
     </div>
   );
@@ -71,6 +73,7 @@ export function RunPanel({
   evidence,
   plan,
   connectionState,
+  mode,
   onClose,
 }: {
   selected: TaskSummary;
@@ -79,9 +82,11 @@ export function RunPanel({
   evidence: readonly EvidenceRecord[];
   plan?: ProposedPlan;
   connectionState: ConnectionState;
+  mode: ClientMode;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
+  const runtimeCopy = taskRuntimePresentation(mode);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
@@ -151,8 +156,8 @@ export function RunPanel({
                 </div>
               )}
               <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Agent</dt>
-                <dd>Local deterministic runner</dd>
+                <dt className="text-muted-foreground">Task source</dt>
+                <dd>{runtimeCopy.taskOriginLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Events</dt>
@@ -209,7 +214,7 @@ export function RunPanel({
               </ol>
             )}
             <p className="border-t border-border px-2 py-2 text-[11px] text-muted-foreground">
-              {events.length} events · replayed and appended live from the local API
+              {events.length} events · {runtimeCopy.runEventSource}
             </p>
           </div>
         )}
@@ -255,10 +260,7 @@ export function RunPanel({
         )}
 
         {tab === "files" && (
-          <UnavailableTab
-            title="No file workspace"
-            body="File changes appear here when a coding-capable source runs the task. The local runner produces a text brief only."
-          />
+          <UnavailableTab title="No file workspace" body={runtimeCopy.runFilesDescription} />
         )}
         {tab === "git" && (
           <UnavailableTab
@@ -277,7 +279,7 @@ export function RunPanel({
       <div className="border-t border-border px-4 py-2">
         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Activity className="size-3" aria-hidden />
-          Deterministic local runner · no external providers
+          {runtimeCopy.runFooter}
         </p>
       </div>
     </div>

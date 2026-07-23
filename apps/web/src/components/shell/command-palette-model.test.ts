@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCommandResults,
   ROUTE_COMMANDS,
+  routeCommands,
   TASK_RESULT_LIMIT,
   taskCommandItem,
 } from "./command-palette-model";
@@ -41,6 +42,15 @@ describe("buildCommandResults", () => {
     const results = buildCommandResults("approvals", tasks);
     expect(results.some((item) => item.id === "route:approvals")).toBe(true);
     expect(results.some((item) => item.id === "route:agents")).toBe(false);
+  });
+
+  it("keeps the new-task hint mode-aware without inferring an API runner", () => {
+    const apiHint = routeCommands("api").find((item) => item.id === "route:new")?.hint;
+    const fixtureHint = routeCommands("fixture").find((item) => item.id === "route:new")?.hint;
+
+    expect(apiHint).toBe("Dispatch through the configured API");
+    expect(apiHint).not.toMatch(/local|runner|deterministic/i);
+    expect(fixtureHint).toBe("Dispatch the in-browser fixture runner");
   });
 
   it("matches the task title case-insensitively and ignores surrounding space", () => {

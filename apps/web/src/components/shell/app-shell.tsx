@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import { runtimeDisclosure } from "@/lib/runtime-disclosure";
+import { runtimeDisclosure, shellRuntimePresentation } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
 import { cn } from "@/lib/utils";
 
@@ -32,10 +32,11 @@ function Logo() {
 }
 
 function WorkspaceSelector() {
+  const workspace = shellRuntimePresentation(taskClient.mode);
   return (
     <button
       type="button"
-      aria-label="Workspace: local — personal workspace"
+      aria-label={`Workspace: ${workspace.workspaceLabel} — ${workspace.workspaceSubtitle}`}
       className="flex items-center gap-2 rounded-[13.6px] border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:bg-accent"
     >
       <span
@@ -45,8 +46,10 @@ function WorkspaceSelector() {
         DW
       </span>
       <span className="hidden leading-tight sm:block">
-        <span className="block text-[13px] font-medium">local</span>
-        <span className="block text-[11px] text-muted-foreground">personal workspace</span>
+        <span className="block text-[13px] font-medium">{workspace.workspaceLabel}</span>
+        <span className="block text-[11px] text-muted-foreground">
+          {workspace.workspaceSubtitle}
+        </span>
       </span>
       <ChevronDown aria-hidden className="size-3.5 text-muted-foreground" />
     </button>
@@ -54,8 +57,8 @@ function WorkspaceSelector() {
 }
 
 /**
- * Persistent runtime disclosure. Honesty rule from docs/DESIGN.md: fixture or
- * local-runtime mode must stay unmistakable, so this strip is not dismissible.
+ * Persistent runtime disclosure. Honesty rule from docs/DESIGN.md: the selected
+ * client mode must stay unmistakable, so this strip is not dismissible.
  */
 function RuntimeBanner() {
   const fixture = taskClient.mode === "fixture";

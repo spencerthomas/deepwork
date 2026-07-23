@@ -9,6 +9,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarLabel } from "@/components/shell/sidebar-nav";
 import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { PROMPT_MAX_LENGTH } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
@@ -22,9 +23,10 @@ const templates = [
 
 export function NewTask() {
   const router = useRouter();
-  const { creating, createError, createTask } = useTasksStore();
+  const { creating, createError, createTask, mode } = useTasksStore();
   const [prompt, setPrompt] = useState("");
   const [validationError, setValidationError] = useState<string>();
+  const runtimeCopy = taskRuntimePresentation(mode);
 
   const length = unicodeLength(prompt);
 
@@ -70,11 +72,11 @@ export function NewTask() {
         <PageHeader
           eyebrow="Dispatch"
           title="New task"
-          description="Describe the outcome you want. The local agent proposes a plan and waits for your approval before executing."
+          description={runtimeCopy.newTaskDescription}
         />
 
         <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Agent
+          {runtimeCopy.dispatchTargetLabel}
         </label>
         <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
@@ -86,7 +88,7 @@ export function NewTask() {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-medium text-crisp">
-                Local deterministic runner
+                {runtimeCopy.taskOriginLabel}
               </span>
               <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
                 plan · approval · evidence
@@ -100,7 +102,7 @@ export function NewTask() {
             <span className="min-w-0">
               <span className="block text-sm font-medium">External agent sources</span>
               <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                Unavailable — the local product runs credential-free.
+                {runtimeCopy.sourceSelectionDescription}
               </span>
             </span>
           </div>

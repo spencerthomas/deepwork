@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runtimeDisclosure } from "./runtime-disclosure";
+import { runtimeDisclosure, shellRuntimePresentation } from "./runtime-disclosure";
 
 describe("runtimeDisclosure", () => {
   it("discloses the deterministic in-browser adapter in fixture mode", () => {
@@ -17,5 +17,19 @@ describe("runtimeDisclosure", () => {
     );
     expect(disclosure).not.toContain("embedded deterministic runner");
     expect(disclosure).not.toContain("providers are unavailable");
+  });
+
+  it("labels the persistent shell from the selected client mode", () => {
+    expect(shellRuntimePresentation("fixture")).toEqual({
+      workspaceLabel: "fixture",
+      workspaceSubtitle: "in-browser workspace",
+    });
+    expect(shellRuntimePresentation("api")).toEqual({
+      workspaceLabel: "configured API",
+      workspaceSubtitle: "control surface",
+    });
+    expect(Object.values(shellRuntimePresentation("api")).join(" ")).not.toMatch(
+      /local|runner|provider/i,
+    );
   });
 });

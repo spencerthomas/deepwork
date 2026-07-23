@@ -40,7 +40,7 @@ export function CommandBar({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const { tasks } = useTasksStore();
+  const { mode, tasks } = useTasksStore();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
 
@@ -56,7 +56,10 @@ export function CommandBar({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
-  const filtered = useMemo(() => buildCommandResults(query, tasks), [query, tasks]);
+  const filtered = useMemo(
+    () => buildCommandResults(query, tasks, undefined, mode),
+    [mode, query, tasks],
+  );
 
   useEffect(() => setIndex(0), [query]);
 

@@ -1,4 +1,5 @@
-import type { TaskSummary } from "@/lib/task-types";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
+import type { ClientMode, TaskSummary } from "@/lib/task-types";
 
 export type CommandIconKey =
   | "new-task"
@@ -18,51 +19,57 @@ export interface CommandItem {
   icon: CommandIconKey;
 }
 
-export const ROUTE_COMMANDS: readonly CommandItem[] = [
-  {
-    id: "route:new",
-    label: "New task",
-    hint: "Dispatch the local agent",
-    href: "/tasks/new",
-    icon: "new-task",
-  },
-  { id: "route:tasks", label: "Tasks", hint: "Task inbox", href: "/tasks", icon: "tasks" },
-  {
-    id: "route:approvals",
-    label: "Approvals",
-    hint: "What agents need from you",
-    href: "/approvals",
-    icon: "approvals",
-  },
-  {
-    id: "route:agents",
-    label: "Agents",
-    hint: "Manage your fleet",
-    href: "/agents",
-    icon: "agents",
-  },
-  {
-    id: "route:schedules",
-    label: "Schedules",
-    hint: "Recurring runs",
-    href: "/schedules",
-    icon: "schedules",
-  },
-  {
-    id: "route:activity",
-    label: "Activity",
-    hint: "Recent runs",
-    href: "/activity",
-    icon: "activity",
-  },
-  {
-    id: "route:settings",
-    label: "Settings",
-    hint: "Workspace settings",
-    href: "/settings",
-    icon: "settings",
-  },
-];
+export function routeCommands(mode: ClientMode): readonly CommandItem[] {
+  const runtimeCopy = taskRuntimePresentation(mode);
+  return [
+    {
+      id: "route:new",
+      label: "New task",
+      hint: runtimeCopy.commandNewTaskHint,
+      href: "/tasks/new",
+      icon: "new-task",
+    },
+    { id: "route:tasks", label: "Tasks", hint: "Task inbox", href: "/tasks", icon: "tasks" },
+    {
+      id: "route:approvals",
+      label: "Approvals",
+      hint: "What agents need from you",
+      href: "/approvals",
+      icon: "approvals",
+    },
+    {
+      id: "route:agents",
+      label: "Agents",
+      hint: "Manage your fleet",
+      href: "/agents",
+      icon: "agents",
+    },
+    {
+      id: "route:schedules",
+      label: "Schedules",
+      hint: "Recurring runs",
+      href: "/schedules",
+      icon: "schedules",
+    },
+    {
+      id: "route:activity",
+      label: "Activity",
+      hint: "Recent runs",
+      href: "/activity",
+      icon: "activity",
+    },
+    {
+      id: "route:settings",
+      label: "Settings",
+      hint: "Workspace settings",
+      href: "/settings",
+      icon: "settings",
+    },
+  ];
+}
+
+/** Fail-closed default retained for consumers that do not select a client mode. */
+export const ROUTE_COMMANDS: readonly CommandItem[] = routeCommands("api");
 
 /** How many task matches the palette surfaces at once. */
 export const TASK_RESULT_LIMIT = 6;
@@ -97,8 +104,11 @@ export function buildCommandResults(
   query: string,
   tasks: readonly TaskSummary[],
   limit: number = TASK_RESULT_LIMIT,
+  mode: ClientMode = "api",
 ): CommandItem[] {
-  const routes = ROUTE_COMMANDS.filter((command) => matches(query, command.label, command.hint));
+  const routes = routeCommands(mode).filter((command) =>
+    matches(query, command.label, command.hint),
+  );
   const trimmed = query.trim();
   const taskItems =
     trimmed === ""

@@ -4,7 +4,7 @@ import { ActivityFeed } from "@/components/activity/activity-feed";
 
 export const metadata: Metadata = {
   title: "Activity — Deep Work",
-  description: "Task status and events observed from the local API in this session.",
+  description: "Task status and events observed by this browser session.",
 };
 
 export default function ActivityPage() {

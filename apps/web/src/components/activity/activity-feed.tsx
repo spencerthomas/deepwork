@@ -22,6 +22,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import type { TaskEventName } from "@/lib/task-types";
 import { useTasksStore } from "@/lib/tasks-store";
 
@@ -113,8 +114,9 @@ function FeedRow({ entry }: { entry: ActivityEntry }) {
 }
 
 export function ActivityFeed() {
-  const { tasks, loadingTasks, listError, refreshList, eventsByTask } = useTasksStore();
+  const { tasks, loadingTasks, listError, refreshList, eventsByTask, mode } = useTasksStore();
   const [filter, setFilter] = useState<ActivityFilter>("all");
+  const runtimeCopy = taskRuntimePresentation(mode);
 
   const entries = useMemo(() => buildActivityFeed(tasks, eventsByTask), [tasks, eventsByTask]);
   const counts = useMemo(() => activityFilterCounts(entries), [entries]);
@@ -141,7 +143,7 @@ export function ActivityFeed() {
       <PageHeader
         eyebrow="Provenance"
         title="Activity"
-        description="Task status plus every event this browser session has observed from the local API. Restarting the API process clears task history; entries are ordered by task and event id — no timestamps are fabricated."
+        description={runtimeCopy.activityDescription}
         actions={
           <button
             type="button"
@@ -154,10 +156,7 @@ export function ActivityFeed() {
         }
       />
 
-      <p className="mb-5 text-xs text-muted-foreground">
-        Streamed events are captured while a task’s page is open in this tab; status rows come from
-        the task list.
-      </p>
+      <p className="mb-5 text-xs text-muted-foreground">{runtimeCopy.activitySessionNote}</p>
 
       {listError !== undefined && (
         <div

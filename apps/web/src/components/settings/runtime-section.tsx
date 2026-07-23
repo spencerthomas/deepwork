@@ -1,6 +1,7 @@
 "use client";
 
 import { CapabilityChip } from "@/components/capability-chip";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 
@@ -18,6 +19,7 @@ function MonoValue({ children }: { children: string }) {
 export function RuntimeSection() {
   const { mode, apiBaseUrl } = useTasksStore();
   const { status, loading } = useDemoStatus();
+  const runtimeCopy = taskRuntimePresentation(mode, apiBaseUrl);
 
   return (
     <section>
@@ -30,14 +32,12 @@ export function RuntimeSection() {
       <Card className="mb-6">
         <Row
           title="Client mode"
-          description="api talks to the local Deep Work API over HTTP; fixture is an in-browser deterministic adapter with no network."
+          description={runtimeCopy.settingsModeDescription}
           control={<MonoValue>{mode}</MonoValue>}
         />
         <Row
-          title="API base URL"
-          control={
-            <MonoValue>{mode === "fixture" ? "local fixture adapter" : apiBaseUrl}</MonoValue>
-          }
+          title="Connection target"
+          control={<MonoValue>{runtimeCopy.settingsConnectionTarget}</MonoValue>}
         />
       </Card>
 
@@ -82,7 +82,7 @@ export function RuntimeSection() {
         />
         <Row
           title="Status source"
-          description="fixture means this status was synthesized locally by the in-browser adapter, not fetched from an API."
+          description={runtimeCopy.settingsStatusSourceDescription}
           control={<MonoValue>{status?.source ?? "unknown"}</MonoValue>}
         />
       </Card>

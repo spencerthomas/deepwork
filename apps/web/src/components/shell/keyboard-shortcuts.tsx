@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { X } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
 
 interface Shortcut {
   keys: readonly string[];
@@ -40,6 +41,9 @@ const GROUPS: readonly ShortcutGroup[] = [
   },
 ];
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function KeyboardShortcuts({
   open,
   onOpenChange,
@@ -47,13 +51,46 @@ export function KeyboardShortcuts({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
+    // Move focus into the dialog, remembering the invoking element to restore.
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onOpenChange(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onOpenChange(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusables.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      const atEdge = event.shiftKey ? active === first || active === dialog : active === last;
+      if (atEdge || !dialog.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
     }
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      restoreFocusRef.current?.focus();
+    };
   }, [open, onOpenChange]);
 
   if (!open) return null;
@@ -64,17 +101,26 @@ export function KeyboardShortcuts({
       onClick={() => onOpenChange(false)}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Keyboard shortcuts"
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl focus:outline-none"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold text-crisp">Keyboard shortcuts</h2>
-          <kbd className="rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
-            esc
-          </kbd>
+          <h2 id={titleId} className="text-sm font-semibold text-crisp">
+            Keyboard shortcuts
+          </h2>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close shortcuts help"
+            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
         </div>
         <div className="max-h-[60vh] space-y-5 overflow-auto p-4">
           {GROUPS.map((group) => (

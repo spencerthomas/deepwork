@@ -30,6 +30,8 @@ export const PRIMARY_NAVIGATION: readonly PrimaryNavigationItem[] = [
 export function AppHeader({ apiBaseUrl, mode, activePath = "/" }: AppHeaderProps) {
   const [darkTheme, setDarkTheme] = useState(false);
   const runtimeLabel = mode === "fixture" ? "Deterministic local fixture" : "Local API transport";
+  // The composer only exists on the home route, so link there from any other destination.
+  const newTaskHref = activePath === "/" ? "#composer-heading" : "/#composer-heading";
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("dw-theme");
@@ -106,7 +108,7 @@ export function AppHeader({ apiBaseUrl, mode, activePath = "/" }: AppHeaderProps
                 </svg>
               )}
             </button>
-            <a className="new-task-link" href="#composer-heading">
+            <a className="new-task-link" href={newTaskHref}>
               <span aria-hidden="true">+</span>
               New task
             </a>

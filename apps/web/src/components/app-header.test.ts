@@ -37,6 +37,22 @@ describe("AppHeader product navigation", () => {
     expect(markup).toContain('aria-pressed="false"');
   });
 
+  it("keeps the New task link reachable from a non-home destination", () => {
+    const home = renderToStaticMarkup(
+      createElement(AppHeader, { apiBaseUrl: "http://127.0.0.1:8000/api/v1", mode: "fixture" }),
+    );
+    const away = renderToStaticMarkup(
+      createElement(AppHeader, {
+        apiBaseUrl: "http://127.0.0.1:8000/api/v1",
+        mode: "fixture",
+        activePath: "/schedules",
+      }),
+    );
+
+    expect(home).toContain('href="#composer-heading"');
+    expect(away).toContain('href="/#composer-heading"');
+  });
+
   it("marks Approvals active when it is the current destination", () => {
     const markup = renderToStaticMarkup(
       createElement(AppHeader, {

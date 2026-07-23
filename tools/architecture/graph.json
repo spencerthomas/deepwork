@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "planned-wave-1",
+  "zones": {
+    "packages/domain": {"runtime": "browser-safe", "allows": []},
+    "packages/sdk": {"runtime": "browser-safe", "allows": ["packages/domain"]},
+    "packages/ui": {"runtime": "browser-safe", "allows": ["packages/domain"]},
+    "apps/web": {"runtime": "browser", "allows": ["packages/domain", "packages/sdk", "packages/ui"]},
+    "apps/desktop": {"runtime": "native-host", "allows": ["apps/web"]},
+    "apps/api": {"runtime": "server", "allows": []},
+    "packages/agent": {"runtime": "server-independent", "allows": []}
+  },
+  "forbidden": [
+    ["packages/ui", "packages/sdk"],
+    ["packages/domain", "packages/sdk"],
+    ["apps/api", "packages/agent"],
+    ["packages/agent", "apps/api"]
+  ],
+  "provider_locations": ["apps/api/adapters/sources", "packages/agent"],
+  "composition_roots": ["apps/api/bootstrap", "apps/web", "apps/desktop"],
+  "exceptions": []
+}

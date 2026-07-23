@@ -1,45 +1,54 @@
 # Deep Work
 
-**The open-source workspace for agents that do real work — built natively on the LangChain platform.**
+Deep Work is an open-source control surface for delegating, supervising,
+approving, and verifying long-running agent work across desktop and phone.
 
-Deep Work is a Codex / Claude-Cowork-class product experience delivered as an open-source contribution to the LangChain ecosystem. Sign in with your LangSmith org and get a multi-surface (web, desktop, mobile) workspace over your own agents: dispatch tasks, watch and steer live runs, approve sensitive actions, review diffs, and manage a fleet of managed deep agents — with every run traced in LangSmith and every byte of state living in *your* org.
+> **Status:** Wave 0 planning and repository harness are ready for review. No
+> product runtime is implemented. The next bounded task is the credential-free
+> monorepo scaffold in the active ExecPlan.
 
-> **Status: planning.** This repo currently contains the v1 project plan, architecture, and UI specification. See [`docs/plan/`](docs/plan/). Implementation follows the [roadmap](docs/plan/04-roadmap.md).
+## Start here
 
-## What it is
-
-- **A wrapper over the LangChain platform.** Deep Work owns almost no backend. Agents run on LangSmith-hosted runtimes (Managed Deep Agents / Agent Server), traces land in LangSmith, memory and skills live in Context Hub, execution happens in LangSmith Sandboxes. Deep Work is the product experience on top.
-- **One client, every runtime rung.** Fleet agents, Managed Deep Agents, any LangSmith Deployment, a local `langgraph dev` server, or a pure-OSS self-hosted backend — all speak the same Agent Server API and streaming protocol, so the same task inbox, steering, and approvals UX works against each.
-- **Managed agents that work like Fleet — in the open.** A create/configure/schedule/approve experience for deep agents (instructions, tools, connectors, sub-agents, skills, channels, schedules, per-tool approvals), provisioned programmatically onto your org.
-- **Work, not just code.** Coding tasks get sandboxes, branches, and draft PRs; the same harness runs research, writing, and ops tasks. (Anthropic's own numbers: >90% of Cowork usage is non-coding.)
-
-## The stack
-
-| Layer | Technology |
+| Need | Canonical source |
 |---|---|
-| Agent harness | [`deepagents`](https://github.com/langchain-ai/deepagents) (Python / TS) |
-| Hosted runtime | Managed Deep Agents (beta) · LangSmith Deployment · Agent Server |
-| Execution | LangSmith Sandboxes (thread-scoped, snapshot environments) |
-| Memory / skills | Context Hub (`AGENTS.md`, `skills/`, per-user memories) |
-| Observability | LangSmith tracing (every run deep-links to its trace) |
-| Frontend | `@langchain/react` `useStream` · Next.js · Tailwind · shadcn/ui |
-| Desktop / mobile | Tauri v2 · PWA first, Expo later |
+| Agent instructions | [AGENTS.md](AGENTS.md) |
+| System and dependency boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Product outcome and judgment | [docs/PRODUCT_SENSE.md](docs/PRODUCT_SENSE.md) |
+| Program roadmap and acceptance | [docs/PLANS.md](docs/PLANS.md) |
+| Stable feature specifications | [docs/product-specs/index.md](docs/product-specs/index.md) |
+| Active implementation handoff | [Wave 1 scaffold ExecPlan](docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md) |
+| Security and reliability | [docs/SECURITY.md](docs/SECURITY.md), [docs/RELIABILITY.md](docs/RELIABILITY.md) |
+| Evidence and source pins | [docs/references/source-ledger.md](docs/references/source-ledger.md) |
 
-## Documentation
+## Accepted stack direction
 
-| Doc | Contents |
-|---|---|
-| [01 — Vision & v1 scope](docs/plan/01-vision.md) | Product definition, personas, pillars, v1 cut line |
-| [02 — Architecture](docs/plan/02-architecture.md) | Runtime tiers, agent design, execution, auth, platform integration |
-| [03 — UI specification](docs/plan/03-ui-spec.md) | Design language, app shell, screens, components, data contracts |
-| [04 — Roadmap](docs/plan/04-roadmap.md) | Milestones to v1, risks, open questions |
-| [05 — OSS setup](docs/plan/05-oss-setup.md) | License, repo structure, CI, conventions |
-| [06 — Frontend implementation](docs/plan/06-frontend-implementation.md) | Evaluation of the [deep-work-frontend](https://github.com/spencerthomas/deep-work-frontend) concept + phased plan to make it `apps/web` |
-| [07 — Organizational intelligence](docs/plan/07-org-intelligence.md) | The learning loop: LangSmith monitoring/Insights, memory synthesis, OKF knowledge base, structured data plane, temporal org graph |
-| [08 — deepagents feature map](docs/plan/08-deepagents-feature-map.md) | Every deepagents feature set (incl. beta) mapped to its use in Deep Work |
-| [Design brief](docs/design/deepwork-design-brief.html) | Visual brief with tokens, specimens, and screen concepts |
-| [Research digest](docs/research/README.md) | Condensed findings that ground every decision above |
+- Python 3.12 FastAPI API and worker with PostgreSQL/outbox, object storage, and
+  server-only source adapters.
+- A separately installable Python Deep Agents package.
+- Next.js/React/TypeScript responsive web, with pure domain, browser-safe SDK, and
+  presentation-only UI packages.
+- PWA enhancements only on qualified browser cells; Tauri as a gated thin desktop
+  host; Expo/native mobile later.
+- Classic LangSmith Deployment as the public baseline. MDA and Fleet remain
+  capability-gated; unsupported routes or CRUD are not assumed.
 
-## License & affiliation
+The sibling `deep-work-frontend` repository at the accepted `26c698b` baseline is
+visual and interaction evidence only. Migration is one-way into the future
+`apps/web`; do not make it a dependency.
 
-MIT. Deep Work is an independent open-source project built on LangChain technologies. It is **not affiliated with, endorsed by, or sponsored by LangChain, Inc.** "LangChain" and "LangSmith" are registered trademarks of LangChain, Inc., used here only to describe compatibility.
+## Validate Wave 0
+
+```bash
+python3 tools/docs/generate.py --check
+python3 tools/docs/check.py
+```
+
+There is intentionally no executable `WORKFLOW.md`. Manual one-agent-per-worktree
+dispatch is current until `SPIKE-SYMPHONY-001` passes.
+
+## License and affiliation
+
+MIT. Deep Work is an independent open-source project built for compatibility with
+LangChain technologies. It is not affiliated with, endorsed by, or sponsored by
+LangChain, Inc. “LangChain” and “LangSmith” are trademarks of their respective
+owner and are used only to describe compatibility.

@@ -5,4 +5,3 @@
   "basePath": "manifests/fixture-source.json",
   "mutation": {"operation": "replace", "path": "/capabilities/2/evidenceClass", "value": "live-contract"}
 }
-

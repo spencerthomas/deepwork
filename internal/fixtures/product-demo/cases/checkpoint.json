@@ -21,4 +21,3 @@
   "expected": {"orderedRecordIds": ["fx_record_checkpoint"], "checkpointId": "fx_checkpoint_alpha", "forkCapabilityState": "gated", "forkPerformed": false},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

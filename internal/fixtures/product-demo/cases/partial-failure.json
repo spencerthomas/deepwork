@@ -22,4 +22,3 @@
   "expected": {"orderedRecordIds": ["fx_record_partial_healthy", "fx_record_partial_error"], "healthyRecordIds": ["fx_record_partial_healthy"], "partialErrorRecordIds": ["fx_record_partial_error"], "aggregateUsable": true, "failedSourceId": "fx_source_beta"},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

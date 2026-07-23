@@ -971,7 +971,7 @@ declared code.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`fda318147fff70fe949a8428f868f9d39e487fc5564c0ffe5f30307b3d6ac171`.
+`76839423f108521a2aa712bcdc6a6e94591263b08dfc11d0e4678f8ffb10f1dd`.
 The generated validation and isolation reports record 13 cases, 12 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
@@ -981,8 +981,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=fda318...ac171; validation-report=fc06c5...04973;
-no-external-network=e48d53...c1dee; first updated_files contained all 3 targets
+exit 0; hashes.sha256=768394...0f1dd; validation-report=6ddb6c...ced0a;
+no-external-network=0ffdc2...a7f89; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -991,7 +991,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=fda318...ac171; 13 case IDs; 12 rule codes;
+exit 0; corpus_digest=768394...0f1dd; 13 case IDs; 12 rule codes;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator subprocess/environment/wall-clock/write counts=0
 

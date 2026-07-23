@@ -22,4 +22,3 @@
   "expected": {"orderedRecordIds": ["fx_record_tool_start", "fx_record_tool_result"], "correlatedToolCallId": "fx_tool_call_alpha", "rawToolBodyPresent": false},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

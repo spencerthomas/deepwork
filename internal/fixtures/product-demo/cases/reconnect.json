@@ -22,4 +22,3 @@
   "expected": {"orderedRecordIds": ["fx_record_reconnect_durable", "fx_record_reconnect_boundary"], "retainedRecordIds": ["fx_record_reconnect_durable"], "freshness": "reconnecting", "terminalInferred": false, "cancelInferred": false, "providerRecoveryMechanism": "unspecified"},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

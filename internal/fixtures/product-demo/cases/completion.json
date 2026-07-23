@@ -21,4 +21,3 @@
   "expected": {"orderedRecordIds": ["fx_record_completion"], "terminalStatus": "completed", "terminalAuthorityRecordId": "fx_record_completion", "absenceInfersTerminal": false, "timeoutInfersTerminal": false, "disconnectInfersTerminal": false},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

@@ -43,4 +43,3 @@
   "expected": {"orderedRecordIds": ["fx_record_interrupt"], "requestOrder": ["fx_request_review_a", "fx_request_review_b"], "repeatedActionNamesPreserved": ["review", "review"], "acceptedDecisionPresent": false, "resumePayloadPresent": false, "submissionCapabilityState": "gated"},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

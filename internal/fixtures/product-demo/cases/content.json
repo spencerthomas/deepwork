@@ -22,4 +22,3 @@
   "expected": {"orderedRecordIds": ["fx_record_content_a", "fx_record_content_b"], "visibleTextOrder": ["Synthetic visible content.", "Synthetic bounded continuation."], "privateReasoningPresent": false},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

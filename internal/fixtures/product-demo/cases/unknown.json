@@ -21,4 +21,3 @@
   "expected": {"orderedRecordIds": ["fx_record_unknown"], "classification": "unknown", "observable": true, "promotedDiscriminator": false},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }
-

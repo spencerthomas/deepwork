@@ -5,4 +5,3 @@
   "basePath": "cases/start.json",
   "mutation": {"operation": "add", "path": "/expected/externalLocation", "value": "https://outside.invalid/path"}
 }
-

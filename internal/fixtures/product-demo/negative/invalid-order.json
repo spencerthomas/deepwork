@@ -5,4 +5,3 @@
   "basePath": "cases/content.json",
   "mutation": {"operation": "replace", "path": "/records/1/sequence", "value": 1}
 }
-

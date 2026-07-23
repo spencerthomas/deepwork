@@ -28,4 +28,3 @@ queries for repository scope proof and never validates or mutates the corpus.
 The 13 positive cases and 12 single-code negatives are indexed by `corpus.json`
 and `negative/matrix.json`. `hashes.sha256` closes exactly over the machine index,
 schemas, manifests, positive cases, negative matrix, and negative fixtures.
-

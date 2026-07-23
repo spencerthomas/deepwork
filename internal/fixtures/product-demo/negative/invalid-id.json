@@ -5,4 +5,3 @@
   "basePath": "cases/start.json",
   "mutation": {"operation": "replace", "path": "/caseId", "value": "case_without_fixture_prefix"}
 }
-

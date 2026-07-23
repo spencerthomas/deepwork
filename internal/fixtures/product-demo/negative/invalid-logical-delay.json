@@ -5,4 +5,3 @@
   "basePath": "cases/logical-delay.json",
   "mutation": {"operation": "replace", "path": "/expected/releaseTick", "value": 43}
 }
-

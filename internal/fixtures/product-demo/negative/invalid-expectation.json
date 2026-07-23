@@ -5,4 +5,3 @@
   "basePath": "cases/replay.json",
   "mutation": {"operation": "replace", "path": "/expected/visibleRecordIds", "value": ["fx_record_replay_a", "fx_record_replay_a_duplicate", "fx_record_replay_b"]}
 }
-

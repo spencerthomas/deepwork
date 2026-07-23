@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -36,6 +36,7 @@ import {
   moveInboxFocus,
   orderedInboxIds,
 } from "@/components/tasks/task-inbox-navigation";
+import { inboxViewToQuery, type InboxView, readInboxView } from "@/components/tasks/task-inbox-url";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import type { ClientMode, TaskStatus, TaskSummary } from "@/lib/task-types";
@@ -149,11 +150,50 @@ function KbdHint({ children }: { children: string }) {
 export function TaskInbox() {
   const router = useRouter();
   const { tasks, loadingTasks, listError, refreshList, mode } = useTasksStore();
-  const [filter, setFilter] = useState<TaskInboxFilter>(EMPTY_TASK_INBOX_FILTER);
-  const [grouped, setGrouped] = useState(true);
+  const [view, setView] = useState<InboxView>(() => ({
+    filter: EMPTY_TASK_INBOX_FILTER,
+    grouped: true,
+  }));
+  const filter = view.filter;
+  const grouped = view.grouped;
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const runtimeCopy = taskRuntimePresentation(mode);
+
+  // Mirror the view in the URL so a filtered/grouped inbox is shareable, and
+  // restore it on first load and on browser back/forward.
+  const commitView = useCallback((next: InboxView) => {
+    setView(next);
+    const query = inboxViewToQuery(next);
+    const { pathname } = window.location;
+    window.history.replaceState(
+      window.history.state,
+      "",
+      query ? `${pathname}?${query}` : pathname,
+    );
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () => setView(readInboxView(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
+  const setFilter = useCallback(
+    (update: TaskInboxFilter | ((current: TaskInboxFilter) => TaskInboxFilter)) => {
+      const nextFilter = typeof update === "function" ? update(viewRef.current.filter) : update;
+      commitView({ filter: nextFilter, grouped: viewRef.current.grouped });
+    },
+    [commitView],
+  );
+
+  const setGrouped = useCallback(
+    (next: boolean) => commitView({ filter: viewRef.current.filter, grouped: next }),
+    [commitView],
+  );
 
   const counts = countTasks(tasks);
   const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);

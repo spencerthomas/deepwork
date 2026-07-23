@@ -10,6 +10,7 @@ import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import {
   activeAgentCount,
   agentRuntimeCopy,
+  agentSessionTaskLabel,
   type AgentCardModel,
   deriveAgentCards,
 } from "@/lib/agent-cards";
@@ -43,7 +44,7 @@ function CardStateIndicator({ card }: { card: AgentCardModel }) {
 }
 
 export function AgentFleet() {
-  const { mode, tasks, loadingTasks } = useTasksStore();
+  const { mode, tasks, loadingTasks, listError } = useTasksStore();
   const { status, loading: statusLoading } = useDemoStatus();
 
   const runtimeCopy = agentRuntimeCopy(mode);
@@ -114,7 +115,7 @@ export function AgentFleet() {
 
           <div className="mt-4 flex items-center gap-3 border-t border-border pt-3 text-[13px] text-muted-foreground">
             <span className="tabular-nums">
-              {loadingTasks ? "Loading tasks…" : `${tasks.length} tasks this session`}
+              {agentSessionTaskLabel(loadingTasks, tasks.length, listError)}
             </span>
             <div className="ml-auto flex items-center gap-1">
               <Link

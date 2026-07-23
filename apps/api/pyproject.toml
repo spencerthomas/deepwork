@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deepwork-api"
+version = "0.0.0"
+description = "Credential-free Wave 1 scaffold for the Deep Work application service"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+  "fastapi==0.139.2",
+  "langgraph-sdk==0.4.2",
+  "pydantic==2.13.4",
+  "uvicorn==0.51.0",
+]
+
+[project.scripts]
+deepwork-api = "deepwork_api.bootstrap.api:main"
+deepwork-worker = "deepwork_api.bootstrap.worker:main"
+
+[dependency-groups]
+dev = [
+  "hatchling==1.31.0",
+  "httpx==0.28.1",
+  "mypy==1.20.2",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-socket==0.8.0",
+  "ruff==0.15.22",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deepwork_api"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/deepwork_api", "README.md", "pyproject.toml", "uv.lock"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "E", "F", "I", "RUF", "UP"]

@@ -1,0 +1,37 @@
+{
+  "wheel": "deepwork_agent-0.0.0-py3-none-any.whl",
+  "wheel_sha256": "e6cec348da7bd671becdabecdabcb93660a1a19db40c80bb893e8056f725b0d0",
+  "source_distribution": "deepwork_agent-0.0.0.tar.gz",
+  "source_distribution_sha256": "d030b2611e32392ca17d84568ec431c43d0c6197bda2a75548e971e527517159",
+  "reproducible_builds": 2,
+  "py_typed": true,
+  "public_exports": [
+    "AgentConfig",
+    "AgentInput",
+    "AgentOutput",
+    "AgentState",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalResponse",
+    "DEEP_WORK_SYSTEM_PROMPT",
+    "PROTECTED_ACTION",
+    "RUNTIME_MODE",
+    "RuntimeCapabilities",
+    "create_graph",
+    "initial_state",
+    "runtime_capabilities",
+    "validate_approval_response",
+    "validate_plan_edit"
+  ],
+  "runtime_mode": "local-runtime",
+  "runtime_available": true,
+  "managed_external_providers": "unavailable",
+  "model_injection_required": true,
+  "runtime_dependencies": [
+    "deepagents==0.6.12",
+    "langchain-core==1.5.0",
+    "langgraph==1.2.9",
+    "typing-extensions==4.16.0"
+  ],
+  "install_index": "disabled"
+}

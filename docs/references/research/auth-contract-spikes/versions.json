@@ -1,0 +1,35 @@
+{
+  "account_tier": null,
+  "collection_date": "2026-07-23",
+  "environment_values_read": false,
+  "installed_module_inventory": {
+    "langgraph_sdk": {
+      "generated_schema_available": true,
+      "installed": true
+    },
+    "langsmith": {
+      "generated_schema_available": false,
+      "installed": true
+    }
+  },
+  "interpreter": {
+    "implementation": "CPython",
+    "major_minor": "3.12",
+    "version": "3.12.11"
+  },
+  "live_profile": "blocked-live-evidence",
+  "packages": {
+    "auth-contract-spikes": "0.1.0",
+    "langgraph-sdk": "0.4.2",
+    "langsmith": "0.10.9",
+    "pytest": "8.4.2"
+  },
+  "pinned_sources": {
+    "SRC-LC": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+    "SRC-LCPY": "592055e15e138f5369dce95dd049ce22430996e2",
+    "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+  },
+  "region": null,
+  "schema_version": 1,
+  "server_revision": null
+}

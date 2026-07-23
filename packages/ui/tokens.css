@@ -11,29 +11,36 @@
 
 :root {
   /* Brand core */
-  --primary: 22 31 52;            /* #161F34 — light-mode accent/active */
-  --primary-light: 127 200 255;   /* #7FC8FF — dark-mode accent/active */
-  --primary-dark: 0 109 221;      /* #006DDD — CTAs, banner, links, running */
+  --primary: 22 31 52; /* #161F34 — light-mode accent/active */
+  --primary-light: 127 200 255; /* #7FC8FF — dark-mode accent/active */
+  --primary-dark: 0 109 221; /* #006DDD — CTAs, banner, links, running */
   --background: 255 255 255;
-  --foreground: 3 7 16;           /* #030710 — never pure black */
+  --foreground: 3 7 16; /* #030710 — never pure black */
 
   /* Dark-blue surface family (brand-guidelines.md) */
-  --surface-raised-dark: 13 19 34;    /* #0D1322 */
-  --surface-elevated-dark: 22 31 52;  /* #161F34 — also dark inline-code bg */
+  --surface-raised-dark: 13 19 34; /* #0D1322 */
+  --surface-elevated-dark: 22 31 52; /* #161F34 — also dark inline-code bg */
 
   /* Gray ramp — machine-derived from primary; regenerate if hue changes */
-  --gray-50: 243 243 244;  --gray-100: 238 238 239; --gray-200: 223 223 224;
-  --gray-300: 206 206 207; --gray-400: 159 159 160; --gray-500: 112 112 113;
-  --gray-600: 80 80 81;    --gray-700: 63 63 64;    --gray-800: 38 38 38;
-  --gray-900: 23 23 24;    --gray-950: 10 11 11;
+  --gray-50: 243 243 244;
+  --gray-100: 238 238 239;
+  --gray-200: 223 223 224;
+  --gray-300: 206 206 207;
+  --gray-400: 159 159 160;
+  --gray-500: 112 112 113;
+  --gray-600: 80 80 81;
+  --gray-700: 63 63 64;
+  --gray-800: 38 38 38;
+  --gray-900: 23 23 24;
+  --gray-950: 10 11 11;
 
   /* Extended palette (semantic + callouts; use sparingly) */
-  --green: 110 137 0;      /* #6E8900 success/approve */
-  --plum: 136 82 112;      /* #885270 */
-  --purple: 80 75 95;      /* #504B5F */
-  --peach: 99 70 67;       /* #634643 */
-  --warning: 245 158 11;   /* #f59e0b in-progress/interrupted (UI convention) */
-  --error: 239 68 68;      /* #ef4444 error/reject (UI convention) */
+  --green: 110 137 0; /* #6E8900 success/approve */
+  --plum: 136 82 112; /* #885270 */
+  --purple: 80 75 95; /* #504B5F */
+  --peach: 99 70 67; /* #634643 */
+  --warning: 245 158 11; /* #f59e0b in-progress/interrupted (UI convention) */
+  --error: 239 68 68; /* #ef4444 error/reject (UI convention) */
 
   /* Borders */
   --border: rgb(var(--gray-100));
@@ -42,33 +49,51 @@
 
   /* Typography. ADAPTED: headings ship Inter 600/700 (OFL) in place of the
      commercial TWK Lausanne; swap --font-heading in one place to rebrand. */
-  --font-heading: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Radii */
-  --radius-tile: 0.5rem;      /* 8px  — icon tiles, small cards */
+  --radius-tile: 0.5rem; /* 8px  — icon tiles, small cards */
   --radius-interactive: 0.75rem; /* 12px — buttons, nav items, CTAs (workhorse) */
   --radius-selector: 0.85rem; /* sidebar dropdown card */
-  --radius-code: 14px;        /* inner code blocks */
-  --radius-frame: 1rem;       /* 16px — code-group frames, cards */
-  --radius-pill: 9999px;      /* search, chips */
+  --radius-code: 14px; /* inner code blocks */
+  --radius-frame: 1rem; /* 16px — code-group frames, cards */
+  --radius-pill: 9999px; /* search, chips */
 
   /* Layout (live-verified) */
-  --shell-max-width: 92rem;   /* 1472px */
+  --shell-max-width: 92rem; /* 1472px */
   --content-max-width: 72rem; /* 1152px */
-  --navbar-height: 3.5rem;    /* 56px */
-  --tabbar-height: 2.5rem;    /* 40px — header total 6rem */
-  --banner-height: 2.5rem;    /* dismissible */
-  --sidebar-width: 18rem;     /* 288px */
-  --rail-width: 19rem;        /* incl. 2.5rem gutter */
-  --content-gap: 3rem;        /* 48px */
+  --navbar-height: 3.5rem; /* 56px */
+  --tabbar-height: 2.5rem; /* 40px — header total 6rem */
+  --banner-height: 2.5rem; /* dismissible */
+  --sidebar-width: 18rem; /* 288px */
+  --rail-width: 19rem; /* incl. 2.5rem gutter */
+  --content-gap: 3rem; /* 48px */
   --content-pad-left: 5.5rem; /* 88px at lg+ */
-  --chat-max-width: 900px;    /* thread column (deep-agents-ui convention) */
+  --chat-max-width: 900px; /* thread column (deep-agents-ui convention) */
+
+  /* Shared component geometry */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --font-size-sm: 0.875rem;
+  --font-size-lg: 1.125rem;
+  --font-weight-emphasis: 600;
+  --line-height-heading: 1.35;
+  --line-height-body: 1.5;
+  --measure-readable: 70ch;
+  --measure-status-body-min: 16rem;
+  --touch-target-min: 2.75rem;
+  --border-width-default: 1px;
+  --border-width-control: 2px;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
 
   /* Code blocks (catppuccin) */
-  --code-bg: #eff1f5;         /* latte */
-  --code-bg-dark: #1e1e2e;    /* mocha */
+  --code-bg: #eff1f5; /* latte */
+  --code-bg-dark: #1e1e2e; /* mocha */
 }
 
 /* Signature interaction details:

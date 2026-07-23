@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-23",
+  "scrub_attestation": "Every listed fixture is synthetic package-source or documentary evidence only. No fixture is installed-distribution or live evidence.",
+  "files": [
+    {
+      "path": "hitl-ordered-batch.json",
+      "sha256": "bcbb3f0e0e5cd745795e3687271f03e0a91061089841aa4f22837f08c18b062d",
+      "evidence": "synthetic ordered HITL contract"
+    },
+    {
+      "path": "package-source-contract-transcript.json",
+      "sha256": "19f889ca3a05555a979a17e427daaf0ae4ceff19acf095086d0d414c1d31c3d1",
+      "evidence": "synthetic transcript from pinned public package source and generated OpenAPI"
+    },
+    {
+      "path": "protocol-v3-events.json",
+      "sha256": "7262cc258b3aaece2c4a4046b99f6fe681fb64e5fe9b9cd1e75a41714240f4fe",
+      "evidence": "synthetic protocol-v3 reconnect and dedupe transcript"
+    }
+  ]
+}

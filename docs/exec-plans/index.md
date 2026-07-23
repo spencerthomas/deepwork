@@ -8,6 +8,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 
 - [Canonical program coordination](active/DW-EXEC-PROGRAM-CANONICAL.md)
 - [Wave 1 repository scaffold](active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md)
+- [Root TypeScript workspace baseline](active/DW-EXEC-M1-ROOT-TS-HARNESS.md)
 
 ## Other records
 

@@ -358,7 +358,7 @@ class ContentDeltaEventData(_TaskWireModel):
 
 class PlanProposedEventData(_TaskWireModel):
     title: str = Field(min_length=1, max_length=100)
-    steps: tuple[str, ...] = Field(min_length=1, max_length=8)
+    steps: tuple[str, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
     revision: int = Field(strict=True, ge=1, le=MAX_PLAN_REVISION)
     evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
     evidence_class: TaskEvidenceClass = Field(alias="evidenceClass")

@@ -142,8 +142,12 @@ neither consumer is implemented here.
 
 ### Permissions and risk boundary
 
-- Allowed paths are exactly `internal/fixtures/product-demo/**` and
-  `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`.
+- Implementation-author allowed paths are exactly
+  `internal/fixtures/product-demo/**` and
+  `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`. The later
+  coordinator-only plan/index transition has its own narrower change range and
+  proof scope; it does not broaden implementation authority or front-matter
+  `governed_paths`.
 - No dependency installation, package index access, provider/service access,
   credential, live account, production data, or external network is permitted.
 - No destructive operation, migration, release, deployment, publication, push,
@@ -341,12 +345,12 @@ import allow-list. It contains no runtime timestamp. The no-external-network
 evidence states only what this read-only validator proves; it cannot be reused as
 evidence that future API, browser, or provider consumers made no network calls.
 
-### Linked-worktree-safe Git scope runner
+### Linked-worktree-safe Git scope runner and proof scopes
 
 `verify_scope.py` is a separate standard-library-only repository-policy helper.
 It contains no corpus validation and may invoke only a fixed `git` executable
-through `subprocess.run` without a shell. It accepts the repository path and exact
-base commit, then:
+through `subprocess.run` without a shell. It accepts the repository path, one of
+the two named proof scopes below, and exact full base and candidate commits, then:
 
 1. resolves the worktree root with `git -C <repo> rev-parse --show-toplevel`;
 2. resolves and records the linked-worktree-safe absolute Git directory and
@@ -356,15 +360,31 @@ base commit, then:
    Git output so both old and new paths of copies/renames are checked;
 4. reads untracked paths with
    `git ls-files --others --exclude-standard -z`; and
-5. rejects absolute, parent-traversing, undecodable, or out-of-allow-list paths.
+5. rejects symbolic or nonexistent commit arguments and rejects absolute,
+   parent-traversing, undecodable, or out-of-allow-list paths.
 
-The exact allow-list is `internal/fixtures/product-demo/**` plus
-`docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`. The runner covers
-committed changes from
-`fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD`, staged changes, unstaged
-changes, and untracked files independently. Its report names each state and path;
-an empty state remains explicit. It performs no network access, arbitrary command
-execution, corpus mutation, or Git mutation.
+The runner has exactly two proof scopes:
+
+1. `implementation` compares the reviewed base
+   `fff1bfd278d550d01de6e8d74f553f45c4003a8c` with the exact full implementation
+   candidate commit. Its allow-list is exactly
+   `internal/fixtures/product-demo/**` plus
+   `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`.
+2. `coordinator-transition` compares the exact accepted implementation commit
+   with the exact full coordinator transition commit. Its allow-list is exactly
+   `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md` plus
+   `docs/exec-plans/index.md`.
+
+Both scopes cover their explicit committed range plus staged changes, unstaged
+changes, and untracked files independently. The runner rejects a candidate that
+is not the checked-out `HEAD`, records both full commits and the selected
+allow-list, and names every state and path; an empty state remains explicit. The
+coordinator scope is not implementation permission: no implementation agent may
+edit `docs/exec-plans/index.md`, select the coordinator transition as its
+implementation proof, or include index changes in the implementation candidate.
+The coordinator may use the second scope only after independent acceptance of the
+first scope's exact implementation commit. The runner performs no network access,
+arbitrary command execution, corpus mutation, or Git mutation.
 
 ## Milestones
 
@@ -420,8 +440,8 @@ Acceptance:
   and deterministic reports;
 - the Git scope runner resolves linked-worktree metadata through fixed Git
   commands and never imports or mutates the corpus;
-- all committed/staged/unstaged/untracked paths are within the exact allow-list;
-  and
+- the exact base-to-implementation-candidate committed range and every staged,
+  unstaged, and untracked path are within the `implementation` allow-list; and
 - `docs/plans/**` hashes remain unchanged from the base.
 
 ### Milestone 4 — Independent review handoff
@@ -435,8 +455,12 @@ Acceptance:
 - the implementation author does not approve, index, merge, or begin consumer
   work;
 - reviewers accept or return bounded rework against only the two governed paths;
-- an accepted review hands the reviewer/coordinator the exact metadata and index
-  transition needed before dispatch; and
+- an accepted review hands the reviewer/coordinator the exact accepted
+  implementation commit and the metadata/index transition needed before
+  dispatch;
+- the coordinator transition compares that accepted implementation commit with
+  its exact transition commit and changes only this plan plus
+  `docs/exec-plans/index.md`; and
 - API adapters, TypeScript consumers, product-demo services, and live parity
   remain separate reviewed cells.
 
@@ -451,6 +475,11 @@ Acceptance:
 - [x] 2026-07-23 AEST — Final plan-only review finding resolved: evidence update
   now has an exact two-write/zero-second-update proof followed by a double-render
   byte comparison against disk. Fresh review remains pending.
+- [x] 2026-07-23 AEST — Final independent scope finding resolved: implementation
+  proof is base-to-exact-candidate with fixture/plan paths only, while the later
+  coordinator transition is accepted-implementation-to-exact-transition with
+  plan/index paths only. Implementation agents remain forbidden from editing the
+  index. Fresh review remains pending.
 - [ ] Independent plan review confirms ownership, disjoint paths, gates,
   dependencies, case semantics, and install-free validation.
 - [ ] Milestone 1 complete; exact fixture contract and inventory retained.
@@ -521,6 +550,13 @@ Acceptance:
   claim-limited. Rationale: wall-clock stamps and broad "no network" claims would
   make hashes unstable and overstate proof. Consequence: reports describe only
   corpus and validator properties; consumer network proof is downstream.
+- 2026-07-23 AEST — Decision: use distinct implementation and coordinator
+  transition scope proofs. Rationale: the fixture implementation allow-list must
+  exclude the coordinator-owned index, while the reviewed metadata/index
+  transition necessarily changes it. Consequence: implementation is proven from
+  the reviewed base to its exact candidate commit using only fixture/plan paths;
+  after acceptance, the coordinator transition is proven from that exact commit
+  using only plan/index paths.
 
 ## Detailed implementation approach
 
@@ -544,12 +580,17 @@ Acceptance:
    `render_passes=2`, `render_byte_identical=true`, and
    `disk_byte_identical=true`, and writes nothing. Either mode exits nonzero on
    disagreement.
-6. Implement `verify_scope.py` separately with fixed, shell-free Git queries and
-   linked-worktree-safe root/Git-directory discovery.
-7. Run the exact install-free validation below twice, confirm scope and legacy
-   preservation, update this plan, and commit only the two governed path sets.
-8. Hand the commit to fresh independent review. Do not run package tooling or
-   start API/web/product-demo processes.
+6. Implement `verify_scope.py` separately with fixed, shell-free Git queries,
+   linked-worktree-safe root/Git-directory discovery, and the two exact proof
+   scopes above. The implementation agent may invoke only `--scope
+   implementation` and may not edit the index.
+7. Run the exact install-free corpus and documentation validation below twice,
+   confirm legacy preservation, update this plan, and commit only the
+   implementation-governed fixture/plan paths.
+8. Resolve and retain the exact full implementation candidate commit, rerun the
+   read-only `implementation` scope proof from the reviewed base to that commit,
+   require a clean worktree, and hand that exact commit to fresh independent
+   review. Do not run package tooling or start API/web/product-demo processes.
 
 ## Validation and proof
 
@@ -564,13 +605,24 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --check
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
 python3 -B tools/docs/generate.py --check
 python3 -B tools/docs/check.py
 git diff --check
-git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
-git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
 git status --short
+```
+
+After committing only the implementation-governed fixture/plan paths, run the
+candidate proof against the exact commit handed to review:
+
+```text
+implementation_commit="$(git rev-parse HEAD)"
+test "${#implementation_commit}" -eq 40
+git cat-file -e "${implementation_commit}^{commit}"
+git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --scope implementation --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --candidate "$implementation_commit" --include-untracked
+git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
+git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
+test -z "$(git status --porcelain)"
 ```
 
 Required observations:
@@ -582,15 +634,17 @@ Required observations:
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
   no writes or subprocess invocation;
-- the separate scope runner reports linked worktree/common Git directories and
-  fails on any committed, staged, unstaged, or untracked path outside
-  `internal/fixtures/product-demo/**` and this plan;
+- the `implementation` scope runner records the exact reviewed base and exact
+  full implementation candidate commit, reports linked worktree/common Git
+  directories, and fails on any committed, staged, unstaged, or untracked path
+  outside `internal/fixtures/product-demo/**` and this plan;
 - generated docs remain drift-free;
 - before independent review/index transition, docs validation reports exactly the
   eight draft/review diagnostics retained above and no others;
-- after the reviewed metadata/index transition below, docs validation passes;
 - base-relative and worktree whitespace checks pass;
-- the final implementation commit contains only governed paths; and
+- the exact implementation candidate commit contains only fixture/plan governed
+  paths, contains no `docs/exec-plans/index.md` change, and is the commit handed
+  to review; and
 - the final author handoff is clean.
 
 Retain in this plan:
@@ -599,7 +653,8 @@ Retain in this plan:
 - case/file inventory and corpus SHA-256 digest;
 - positive-case and negative-rule-code coverage;
 - scrub/no-external-network report summary;
-- base-relative changed-file inventory and scope result;
+- exact implementation commit, base-relative changed-file inventory, and
+  `implementation` scope result;
 - exact complete docs-check diagnostic set before transition and the later green
   result;
 - fresh independent reviewer identity/result; and
@@ -617,8 +672,8 @@ claiming review.
 This author/rework commit deliberately keeps `status: draft`,
 `dispatch_ready: false`, empty reviewer fields, null review dates, null
 `last_verified_commit`, and `gate_review_status: unreviewed`. After fresh
-independent plan acceptance, a reviewer/coordinator—not the author—must make one
-reviewed transition that:
+independent plan acceptance of the exact implementation commit, a
+reviewer/coordinator—not the author—must make one reviewed transition that:
 
 1. sets `status: reviewed`;
 2. records at least one independent non-owner in `reviewed_by` and the actual
@@ -626,16 +681,40 @@ reviewed transition that:
 3. records `gate_review_status: reviewed-with-gates`, independent
    `gate_reviewed_by`, and the actual `gate_reviewed_at` date without closing the
    open runtime gates;
-4. records an existing full `last_verified_commit` for the accepted plan state;
+4. records that exact accepted implementation commit as the existing full
+   `last_verified_commit`;
 5. adds this plan to `docs/exec-plans/index.md` in the coordinator-owned change;
-6. reruns generation, docs validation, base/working-tree whitespace, exact scope,
-   and clean-status checks; and
+6. commits only this plan and `docs/exec-plans/index.md`, resolves the exact full
+   transition commit, and proves the `coordinator-transition` scope from the
+   accepted implementation commit to that transition commit before rerunning
+   generation, docs validation, range/working-tree whitespace, and clean-status
+   checks; and
 7. keeps `agent_review_required: true`.
 
-Only after all seven facts are committed and `python3 -B tools/docs/check.py`
-passes may a coordinator deliberately set `dispatch_ready: true` in reviewed
-metadata. This rework does not authorize that transition and leaves
-`dispatch_ready: false`.
+After committing those seven facts, the coordinator runs this distinct proof:
+
+```text
+accepted_implementation_commit="<exact accepted 40-character implementation commit>"
+test "${#accepted_implementation_commit}" -eq 40
+git cat-file -e "${accepted_implementation_commit}^{commit}"
+transition_commit="$(git rev-parse HEAD)"
+test "${#transition_commit}" -eq 40
+git cat-file -e "${transition_commit}^{commit}"
+git merge-base --is-ancestor "$accepted_implementation_commit" "$transition_commit"
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --scope coordinator-transition --base "$accepted_implementation_commit" --candidate "$transition_commit" --include-untracked
+python3 -B tools/docs/generate.py --check
+python3 -B tools/docs/check.py
+git diff --check "$accepted_implementation_commit" "$transition_commit"
+git diff --name-only "$accepted_implementation_commit" "$transition_commit"
+test -z "$(git status --porcelain)"
+```
+
+The transition is valid only when all seven facts coexist in that exact
+transition commit, the coordinator scope reports only this plan and
+`docs/exec-plans/index.md`, and docs validation passes. Only afterward may a
+coordinator deliberately set `dispatch_ready: true` in a separately authorized
+reviewed metadata change. This rework does not authorize either coordinator
+change and leaves `dispatch_ready: false`.
 
 ## Idempotence, rollback, and recovery
 
@@ -645,15 +724,22 @@ reports. Two consecutive `--write` runs must print identical target digests and
 the second must update nothing; the following `--check` must render every target
 twice, prove both render sets byte-identical, and prove exact byte identity with
 disk. A partial validator failure leaves all source files and diagnostics intact.
-Recovery changes only the invalid governed fixture or this plan; it never weakens
-a rule, deletes a negative case, changes external evidence, or edits a consumer to
-make the corpus pass.
+Implementation recovery changes only the invalid governed fixture or this plan;
+it never weakens a rule, deletes a negative case, changes external evidence,
+edits the index, or edits a consumer to make the corpus pass. A failed coordinator
+transition is recovered only by changing this plan and/or
+`docs/exec-plans/index.md`, then creating a new exact transition commit and
+rerunning the `coordinator-transition` proof from the unchanged accepted
+implementation commit.
 
-Before integration, rollback is one reviewed revert of only this cell's commit.
-There is no database, external run, registry, deployment, credential, or live
-state to clean up. If a later accepted production schema conflicts with this
-corpus, create a versioned corpus migration or superseding reviewed plan; do not
-rewrite prior evidence in place or claim historical live parity.
+Before the coordinator transition, rollback is one reviewed revert of only the
+implementation cell's commit. After transition, rollback keeps the ranges
+separate: revert the coordinator plan/index transition independently from the
+accepted fixture/plan implementation commit. There is no database, external run,
+registry, deployment, credential, or live state to clean up. If a later accepted
+production schema conflicts with this corpus, create a versioned corpus migration
+or superseding reviewed plan; do not rewrite prior evidence in place or claim
+historical live parity.
 
 `SPIKE-STREAM-001` and every other gate in front matter retains its documented
 fallback. A failed or delayed gate does not block fixture validation; it blocks

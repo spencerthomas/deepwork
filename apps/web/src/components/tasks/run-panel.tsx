@@ -156,8 +156,8 @@ export function RunPanel({
                 </div>
               )}
               <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Agent</dt>
-                <dd>{runtimeCopy.runnerName}</dd>
+                <dt className="text-muted-foreground">Task source</dt>
+                <dd>{runtimeCopy.taskOriginLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Events</dt>

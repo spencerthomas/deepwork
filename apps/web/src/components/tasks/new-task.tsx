@@ -76,7 +76,7 @@ export function NewTask() {
         />
 
         <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Agent
+          {runtimeCopy.dispatchTargetLabel}
         </label>
         <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
@@ -87,7 +87,9 @@ export function NewTask() {
               <Bot className="size-4" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-crisp">{runtimeCopy.runnerName}</span>
+              <span className="block text-sm font-medium text-crisp">
+                {runtimeCopy.taskOriginLabel}
+              </span>
               <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
                 plan · approval · evidence
               </span>

@@ -9,7 +9,8 @@ import type { ClientMode } from "./task-types";
  * proves them elsewhere.
  */
 export interface TaskRuntimePresentation {
-  runnerName: string;
+  taskOriginLabel: string;
+  dispatchTargetLabel: string;
   newTaskDescription: string;
   sourceSelectionDescription: string;
   commandNewTaskHint: string;
@@ -34,7 +35,8 @@ export function taskRuntimePresentation(
 ): TaskRuntimePresentation {
   if (mode === "fixture") {
     return {
-      runnerName: "In-browser fixture runner",
+      taskOriginLabel: "In-browser fixture runner",
+      dispatchTargetLabel: "Agent",
       newTaskDescription:
         "Describe the outcome you want. The in-browser fixture runner proposes a plan and waits for your approval before executing.",
       sourceSelectionDescription:
@@ -66,33 +68,34 @@ export function taskRuntimePresentation(
   }
 
   return {
-    runnerName: "Configured API task runner",
+    taskOriginLabel: "Task via configured API",
+    dispatchTargetLabel: "Dispatch target",
     newTaskDescription:
-      "Describe the outcome you want. The configured API task runner can propose a plan and wait for your approval before executing.",
+      "Describe the outcome you want. The task request is sent to the configured API. Any plan or approval request shown here comes from events returned by that API.",
     sourceSelectionDescription:
-      "Source selection is unavailable in this client. API-side runner and provider configuration are not inferred.",
+      "Source selection is unavailable in this client. API-side execution and provider configuration are not inferred.",
     commandNewTaskHint: "Dispatch through the configured API",
     approvalsDescription:
-      "Every task run loaded from the configured API that has paused for your decision. The available verbs come from each interruption itself — nothing here acts without you.",
+      "Approval requests returned by the configured API. The available verbs come from each interruption itself — nothing here acts without you.",
     activityDescription:
       "Task status plus every event this browser session has observed from the configured API. Entries are ordered by task and event id — no timestamps are fabricated. Server-side retention is not inferred.",
     activitySessionNote:
       "Streamed events are captured while a task page is open in this tab; status rows come from the configured API task list.",
     inboxEyebrow: "Workspace · API",
     inboxDescription:
-      "Dispatch work through the configured API, watch it run, steer the plan, and review the evidence behind every result.",
+      "Send work through the configured API, inspect returned task events, steer reported plans, and review the evidence attached to each result.",
     inboxScope:
       "Search and filters cover tasks loaded from the configured API in this session. This client does not provide global or provider-side search.",
     inboxEmptyDescription:
-      "Dispatch your first task through the configured API — the server-side runner and provider configuration remain unknown to this client.",
+      "Dispatch your first task through the configured API — the server-side execution implementation and provider configuration remain unknown to this client.",
     runEventSource: "replayed and appended from the configured API",
     runFilesDescription:
       "File changes appear here when a coding-capable source runs the task. This client has not established that capability for the configured API.",
-    runFooter: "Configured API task runner · server-side runner and provider configuration unknown",
+    runFooter: "Task via configured API · server-side execution and provider configuration unknown",
     settingsModeDescription:
       "api sends requests to the configured Deep Work API; fixture selects a deterministic in-browser adapter with no network.",
     settingsConnectionTarget: apiBaseUrl,
     settingsStatusSourceDescription:
-      "api means this status was fetched from the configured API. It does not identify the server-side runner, provider configuration, or durability model.",
+      "api means this status was fetched from the configured API. It does not identify the server-side execution implementation, provider configuration, or durability model.",
   };
 }

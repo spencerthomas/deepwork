@@ -77,7 +77,7 @@ function TaskRow({ mode, task }: { mode: ClientMode; task: TaskSummary }) {
           <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
         <div className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
-          <span className="font-medium text-foreground/70">{runtimeCopy.runnerName}</span>
+          <span className="font-medium text-foreground/70">{runtimeCopy.taskOriginLabel}</span>
           <span className="text-border">·</span>
           <span className="truncate font-mono text-xs">
             {task.runId ? `Run ${task.runId.slice(0, 10)}` : `Task ${task.taskId.slice(0, 10)}`}

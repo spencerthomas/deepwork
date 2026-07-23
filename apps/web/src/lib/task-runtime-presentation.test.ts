@@ -11,24 +11,30 @@ describe("taskRuntimePresentation", () => {
     const copy = taskRuntimePresentation("fixture");
     const text = renderedCopy(copy);
 
-    expect(copy.runnerName).toBe("In-browser fixture runner");
+    expect(copy.taskOriginLabel).toBe("In-browser fixture runner");
+    expect(copy.dispatchTargetLabel).toBe("Agent");
     expect(text).toMatch(/deterministic/i);
     expect(text).toMatch(/in-browser fixture/i);
     expect(text).toMatch(/no external providers/i);
     expect(copy.runEventSource).not.toMatch(/api/i);
   });
 
-  it("does not infer an API runner, provider state, or local deployment", () => {
+  it("uses transport-only API labels without inferring a runner identity", () => {
     const copy = taskRuntimePresentation("api", "https://deepwork.example.test");
     const text = renderedCopy(copy);
 
-    expect(copy.runnerName).toBe("Configured API task runner");
+    expect(copy.taskOriginLabel).toBe("Task via configured API");
+    expect(copy.dispatchTargetLabel).toBe("Dispatch target");
     expect(copy.settingsConnectionTarget).toBe("https://deepwork.example.test");
-    expect(text).toContain("server-side runner and provider configuration remain unknown");
+    expect(text).toContain(
+      "server-side execution implementation and provider configuration remain unknown",
+    );
     expect(text).toContain("Server-side retention is not inferred");
     expect(text).not.toMatch(
-      /local (?:api|agent|runner|runtime)|deterministic (?:api|runner)|embedded|no external providers|providers? (?:are|is) unavailable/i,
+      /runner|local (?:api|agent|runtime)|deterministic api|embedded|no external providers|providers? (?:are|is) unavailable/i,
     );
+    expect(copy.newTaskDescription).toContain("events returned by that API");
+    expect(copy.newTaskDescription).not.toMatch(/configured API.+(?:plans|pauses)/i);
   });
 
   it("keeps API task, approval, activity, run-panel, command, and settings copy fail closed", () => {
@@ -48,7 +54,7 @@ describe("taskRuntimePresentation", () => {
 
     expect(surfaces).toContain("configured API");
     expect(surfaces).toMatch(/unknown|not inferred|not established/i);
-    expect(surfaces).not.toMatch(/deterministic|embedded|local runner|local API/i);
+    expect(surfaces).not.toMatch(/runner|deterministic|embedded|local API/i);
     expect(copy.settingsModeDescription).toContain(
       "fixture selects a deterministic in-browser adapter",
     );

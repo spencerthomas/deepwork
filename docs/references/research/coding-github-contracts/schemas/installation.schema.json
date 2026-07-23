@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "installation_id",
+    "repository_node",
+    "permissions",
+    "expires_at"
+  ],
+  "title": "installation",
+  "type": "object"
+}

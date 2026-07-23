@@ -147,7 +147,7 @@ export function ApprovalCard({
           </div>
           {submittedDecision !== undefined && (
             <p className="mt-2 text-[13px] text-muted-foreground" role="status">
-              Decision sent — waiting for the runner to record it…
+              Decision sent — waiting for confirmation…
             </p>
           )}
         </div>

@@ -65,7 +65,7 @@ export function buildThread(
       case "content.delta": {
         const text = getEventText(event) ?? "";
         if (text.trim() !== "") {
-          items.push({ kind: "narration", id: event.id, label: "Task runner", text });
+          items.push({ kind: "narration", id: event.id, label: "Task update", text });
         }
         break;
       }

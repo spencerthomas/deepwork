@@ -11,8 +11,8 @@ supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
 issue: local:DW-M1-TS-SCAFFOLD
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: b1189ce7a1236fbc6b7751a0552159687e940521
-last_verified_commit: b1189ce7a1236fbc6b7751a0552159687e940521
+base_commit: e57c4deae2cf4e2107361690e0548d36f631a1ce
+last_verified_commit: e57c4deae2cf4e2107361690e0548d36f631a1ce
 risk: medium
 governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
@@ -49,7 +49,7 @@ complete; this cell claims only reviewed source and static evidence.
 ## Context and orientation
 
 The exact reviewed base is
-`b1189ce7a1236fbc6b7751a0552159687e940521`. That terminal root-dependency commit
+`e57c4deae2cf4e2107361690e0548d36f631a1ce`. That terminal root-dependency commit
 records `local:DW-M1-ROOT-TS-001` completed after adding the reviewed Node/pnpm/
 Turbo/TypeScript declarations, workspace metadata, and shared configuration. It
 contains no shared lock. At this base, `packages/ui` contains design tokens, a
@@ -362,11 +362,21 @@ Acceptance:
   configuration without a lock. Consequence: this cell ends after source/static
   review, then hands sequentially to lock integration and executable verification.
 - 2026-07-23 AEST — The current branch terminates at root completion commit
-  `b1189ce7a1236fbc6b7751a0552159687e940521`; its parent implementation contains
+  `e57c4deae2cf4e2107361690e0548d36f631a1ce`, whose implementation contains
   the exact Node 24.18.0, pnpm 10.34.5, Turbo 2.10.6, TypeScript 7.0.2, Oxfmt
   0.60.0, and Oxlint 1.75.0 declarations plus strict shared ES2022 profiles.
   Consequence: the dependency is satisfied without package manifests, install,
   generated files, or `pnpm-lock.yaml` being present.
+- 2026-07-23 AEST — The originally recorded base
+  `b1189ce7a1236fbc6b7751a0552159687e940521` no longer exists in repository
+  history after branch integration rewrote it away, which made
+  `tools/docs/check.py` fail on this plan's commit metadata. Consequence: the
+  base and last-verified pins were re-recorded against
+  `e57c4deae2cf4e2107361690e0548d36f631a1ce`
+  (`build(repo): add root TypeScript workspace baseline`), verified to contain
+  the identical root declarations, workspace metadata, shared configuration, no
+  shared lock, and only the pre-existing `packages/ui` token files. No scope,
+  permission, or review-state change accompanies this re-pin.
 - 2026-07-23 AEST — The draft import-inventory command contained a bracketed quote
   expression that the documentation checker interpreted as an internal Markdown
   link. Consequence: the review rewrote only that install-free search expression;

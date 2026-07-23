@@ -1,0 +1,54 @@
+name: checks
+
+# Enforce the repository command contract on every change to main so broken
+# imports, type errors, failing tests, or documentation drift cannot merge.
+# Mirrors the local `make` targets exactly (see the root Makefile and AGENTS.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Enable pnpm via corepack
+        run: corepack enable
+
+      - name: Bootstrap all workspaces
+        run: make bootstrap
+
+      - name: Validate documentation
+        run: make check-docs
+
+      - name: Check architecture boundaries
+        run: make check-architecture
+
+      - name: Run workspace checks
+        run: make check

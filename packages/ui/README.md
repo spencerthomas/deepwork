@@ -25,11 +25,12 @@ scale or viewport breakpoint. Heading font ships as Inter (OFL); do not commit
 commercial font files.
 
 `check-architecture` scans shipped source and verifies intentional failing
-fixtures for SDK, provider, raw-network, Next.js, Node, environment, and raw-HTML
-boundaries. `package-check` packs UI and domain output, inspects every JavaScript,
-CSS, token, and preset export, rejects workspace-protocol leakage, installs the
-archives and React offline into an empty temporary consumer, and imports or
-resolves every public UI entry point.
+fixtures for every enforced rule: SDK/self, Next.js, provider, raw network
+package/API, Node API, environment access, local ESM extension, and raw HTML.
+`package-check` packs UI and domain output, inspects every JavaScript, CSS, token,
+and preset export, rejects workspace-protocol leakage, installs the archives and
+React offline into an empty temporary consumer, and imports or resolves every
+public UI entry point.
 
 These package scripts are reserved for the downstream lock and executable
 verification cells and have not been run by the authoring cell.

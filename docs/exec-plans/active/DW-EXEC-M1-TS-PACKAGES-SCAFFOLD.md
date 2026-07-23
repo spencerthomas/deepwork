@@ -300,6 +300,10 @@ Acceptance:
   scripts, stable rule-coded negative fixtures/tests, and canonical UI geometry
   tokens with intrinsic wrapping. The permitted static suite was rerun cleanly;
   every executable check remains unexecuted pending fresh independent re-review.
+- [x] 2026-07-23 AEST — Fresh review found that the negative-fixture matrix proved
+  only a subset of codes retained by each boundary scanner. Round-two rework adds
+  one combined intentional fixture per package so every emitted rule code appears
+  in `expectedCodes`; the existing test loop consumes every matrix entry.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -488,6 +492,7 @@ packages/domain/tests/boundaries.test.mjs
 packages/domain/tests/capability.test.ts
 packages/domain/tests/fixtures/negative/browser-network.fixture.ts
 packages/domain/tests/fixtures/negative/framework-side-effect.fixture.ts
+packages/domain/tests/fixtures/negative/internal-node-environment-extension.fixture.ts
 packages/domain/tests/fixtures/negative/provider-network-side-effect.fixture.ts
 packages/domain/tests/identity.test.ts
 packages/domain/tests/view-state.test.ts
@@ -507,6 +512,7 @@ packages/sdk/src/unavailable.ts
 packages/sdk/tests/boundaries.test.mjs
 packages/sdk/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/sdk/tests/fixtures/negative/raw-network.fixture.ts
+packages/sdk/tests/fixtures/negative/self-framework-node-environment-extension.fixture.ts
 packages/sdk/tests/fixtures/negative/ui-side-effect.fixture.ts
 packages/sdk/tests/public-api.test.ts
 packages/sdk/tests/unavailable.test.ts
@@ -526,6 +532,7 @@ packages/ui/tests/boundaries.test.mjs
 packages/ui/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/ui/tests/fixtures/negative/raw-network.fixture.ts
 packages/ui/tests/fixtures/negative/sdk-side-effect.fixture.ts
+packages/ui/tests/fixtures/negative/self-next-node-environment-extension-html.fixture.ts
 packages/ui/tests/status-panel.test.tsx
 packages/ui/tokens.css
 packages/ui/tsconfig.json
@@ -537,18 +544,21 @@ Static import findings:
 
 - Domain shipped source imports only explicit local `.js` modules. Node imports
   occur only in package-local checks, the negative-test harness, and Vitest alias
-  config. Intentional excluded fixtures cover React, browser/raw-network, Axios,
-  and LangGraph SDK failures with stable rule codes.
+  config. Four intentional excluded fixtures cover every retained rule code:
+  internal, framework, provider, network import/API, browser API, Node,
+  environment, and ESM extension.
 - SDK shipped source imports `@deepwork/domain` and explicit local `.js` modules;
   it has no UI, React, Next.js, Node, provider, or network import. Its Node imports
   are confined to package-local checks, the negative-test harness, and Vitest
-  config. Intentional excluded fixtures cover UI, LangGraph SDK, Axios, fetch,
-  and EventSource failures with stable rule codes.
+  config. Four intentional excluded fixtures cover every retained rule code: UI,
+  self, framework, provider, network import/API, Node, environment, and ESM
+  extension.
 - UI shipped source imports `@deepwork/domain`, React, and an explicit local `.js`
   module. It has no SDK, Next.js, provider, route, generated, environment, network,
   or runtime CSS-loader import. Node imports are confined to package-local checks,
   the negative-test harness, and Vitest config. Intentional excluded fixtures
-  cover SDK, LangGraph SDK, Axios, fetch, and WebSocket failures.
+  cover every retained rule code: SDK, self, Next.js, provider, network
+  import/API, Node, environment, ESM extension, and raw HTML.
 - Tests import named package entry points rather than implementation paths.
 
 Source-level UI review:
@@ -589,7 +599,7 @@ Author rework static evidence on 2026-07-23 AEST:
 six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
 rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
   inventory above, including 3 clean-package scripts, 3 negative-test harnesses,
-  and 9 intentional negative fixtures
+  and 12 intentional negative fixtures
 rg manifest exports/type/scripts/dependencies -> exit 0; all packages retain ESM,
   named exports, and distinct script declarations
 rg package/framework imports -> exit 0; shipped edges remain sdk -> domain and
@@ -603,6 +613,59 @@ git status --short -> exit 0; only the three governed packages and this living
 No `check-architecture`, `package-check`, Vitest, formatter, linter, compiler,
 build, pack, pnpm, install, lock, consumer, accessibility, or network command was
 executed during rework.
+
+Round-two negative-fixture matrix authored for later execution:
+
+```text
+domain/framework-side-effect
+  -> DW-DOMAIN-FRAMEWORK-IMPORT
+domain/browser-network
+  -> DW-DOMAIN-BROWSER-API, DW-DOMAIN-NETWORK-API
+domain/provider-network-side-effect
+  -> DW-DOMAIN-PROVIDER-IMPORT, DW-DOMAIN-NETWORK-IMPORT
+domain/internal-node-environment-extension
+  -> DW-DOMAIN-INTERNAL-IMPORT, DW-DOMAIN-NODE-IMPORT,
+     DW-DOMAIN-ESM-EXTENSION, DW-DOMAIN-ENVIRONMENT
+
+sdk/ui-side-effect
+  -> DW-SDK-UI-IMPORT
+sdk/provider-side-effect
+  -> DW-SDK-PROVIDER-IMPORT
+sdk/raw-network
+  -> DW-SDK-NETWORK-IMPORT, DW-SDK-NETWORK-API
+sdk/self-framework-node-environment-extension
+  -> DW-SDK-SELF-IMPORT, DW-SDK-FRAMEWORK-IMPORT, DW-SDK-NODE-IMPORT,
+     DW-SDK-ESM-EXTENSION, DW-SDK-ENVIRONMENT
+
+ui/sdk-side-effect
+  -> DW-UI-SDK-IMPORT
+ui/provider-side-effect
+  -> DW-UI-PROVIDER-IMPORT
+ui/raw-network
+  -> DW-UI-NETWORK-IMPORT, DW-UI-NETWORK-API
+ui/self-next-node-environment-extension-html
+  -> DW-UI-SELF-IMPORT, DW-UI-NEXT-IMPORT, DW-UI-NODE-IMPORT,
+     DW-UI-ESM-EXTENSION, DW-UI-ENVIRONMENT, DW-UI-RAW-HTML
+```
+
+Every code constructed by the three scanners is listed exactly once or more in
+this matrix. Each package's existing `boundaries.test.mjs` loops its exported
+`negativeFixtures` array and asserts that all declared `expectedCodes` occur. The
+fixtures and tests were not executed in this authoring cell.
+
+Round-two static evidence on 2026-07-23 AEST:
+
+```text
+six permitted package-manifest/main-tsconfig JSON parses -> exit 0
+package inventory, manifest, and import searches -> exit 0
+git diff --check -> exit 0; no output
+git status --short -> exit 0; only governed packages and this plan changed
+python3 tools/docs/check.py -> exit 1; sole existing coordinator-owned error:
+  active ExecPlan is not indexed
+```
+
+The documentation index is outside this cell's governed paths, so this repair
+records but does not mutate that known external gate.
 
 Executable format, lint, typecheck, unit, build, pack, package structural,
 network-denial, accessibility, and clean-consumer proof remains explicitly

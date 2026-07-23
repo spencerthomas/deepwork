@@ -30,6 +30,16 @@ export const negativeFixtures = [
       "DW-SDK-NETWORK-API",
     ],
   },
+  {
+    path: "tests/fixtures/negative/self-framework-node-environment-extension.fixture.ts",
+    expectedCodes: [
+      "DW-SDK-SELF-IMPORT",
+      "DW-SDK-FRAMEWORK-IMPORT",
+      "DW-SDK-NODE-IMPORT",
+      "DW-SDK-ESM-EXTENSION",
+      "DW-SDK-ENVIRONMENT",
+    ],
+  },
 ];
 
 function importSpecifiers(source) {

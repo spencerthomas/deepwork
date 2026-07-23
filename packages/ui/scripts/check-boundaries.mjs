@@ -28,6 +28,17 @@ export const negativeFixtures = [
       "DW-UI-NETWORK-API",
     ],
   },
+  {
+    path: "tests/fixtures/negative/self-next-node-environment-extension-html.fixture.ts",
+    expectedCodes: [
+      "DW-UI-SELF-IMPORT",
+      "DW-UI-NEXT-IMPORT",
+      "DW-UI-NODE-IMPORT",
+      "DW-UI-ESM-EXTENSION",
+      "DW-UI-ENVIRONMENT",
+      "DW-UI-RAW-HTML",
+    ],
+  },
 ];
 
 function importSpecifiers(source) {

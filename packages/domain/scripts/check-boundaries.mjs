@@ -33,6 +33,15 @@ export const negativeFixtures = [
       "DW-DOMAIN-NETWORK-IMPORT",
     ],
   },
+  {
+    path: "tests/fixtures/negative/internal-node-environment-extension.fixture.ts",
+    expectedCodes: [
+      "DW-DOMAIN-INTERNAL-IMPORT",
+      "DW-DOMAIN-NODE-IMPORT",
+      "DW-DOMAIN-ESM-EXTENSION",
+      "DW-DOMAIN-ENVIRONMENT",
+    ],
+  },
 ];
 
 function importSpecifiers(source) {

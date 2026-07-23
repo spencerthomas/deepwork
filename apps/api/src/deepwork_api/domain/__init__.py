@@ -36,6 +36,8 @@ from deepwork_api.domain.tasks import (
     TaskNotFoundError,
     TaskSnapshot,
     TaskSourceUnavailableError,
+    "TaskSourceUnavailableError",
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 

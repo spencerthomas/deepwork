@@ -92,6 +92,9 @@ class LocalAgentServerRunner:
     _threads: dict[str, str] = field(default_factory=dict, init=False)
     _tasks: dict[str, asyncio.Task[None]] = field(default_factory=dict, init=False)
     _review_comments: dict[tuple[str, str], str] = field(default_factory=dict, init=False)
+    _resume_acknowledgements: dict[tuple[str, str], asyncio.Future[None]] = field(
+        default_factory=dict, init=False
+    )
 
     async def create(self, *, title: str, objective: str) -> TaskSnapshot:
         try:
@@ -110,6 +113,8 @@ class LocalAgentServerRunner:
     def start(self, task: TaskSnapshot, run: LocalRun) -> None:
         if task.task_id in self._tasks:
             return
+        if task.pending_interrupt_id is not None:
+            self._register_resume_acknowledgement((task.task_id, task.pending_interrupt_id))
         background = asyncio.create_task(
             self._follow(task, run), name=f"deepwork-local-{task.task_id}"
         )
@@ -117,6 +122,9 @@ class LocalAgentServerRunner:
         background.add_done_callback(lambda finished: self._discard(task.task_id, finished))
 
     async def close(self) -> None:
+        for acknowledgement in self._resume_acknowledgements.values():
+            if not acknowledgement.done():
+                acknowledgement.set_exception(TaskSourceUnavailableError())
         active = tuple(self._tasks.values())
         for task in active:
             task.cancel()
@@ -169,8 +177,12 @@ class LocalAgentServerRunner:
             steps=steps,
             evidence_class=EvidenceClass.LOCAL_SOURCE,
         )
+        acknowledgement = self._resume_acknowledgements.pop((task.task_id, interrupt_id), None)
+        if acknowledgement is not None and not acknowledgement.done():
+            acknowledgement.set_exception(StaleInterruptError())
         if record.plan.revision != updated.plan_revision:
             raise TaskSourceContractError
+        self._register_resume_acknowledgement((task.task_id, updated.interrupt_id))
         await self.repository.append_event(
             task.task_id,
             name=TaskEventName.INTERRUPT_REQUESTED,
@@ -200,10 +212,15 @@ class LocalAgentServerRunner:
         comment_provided: bool,
         response_digest: str | None,
     ) -> DecisionRecord:
-        """Retain a response comment only until its source resume is sent."""
+        """Return only after the source accepts the exact resume command."""
 
         key = (task_id, interrupt_id)
-        if decision is DecisionValue.RESPOND and comment is not None:
+        stored_comment = self._review_comments.get(key)
+        inserted_comment = (
+            decision is DecisionValue.RESPOND and comment is not None and stored_comment is None
+        )
+        if inserted_comment:
+            assert comment is not None
             self._review_comments[key] = comment
         try:
             record = await self.repository.record_decision(
@@ -213,9 +230,16 @@ class LocalAgentServerRunner:
                 comment_provided=comment_provided,
                 response_digest=response_digest,
             )
+            acknowledgement = self._resume_acknowledgements.get(key)
+            if acknowledgement is None:
+                raise TaskSourceContractError
+            await asyncio.shield(acknowledgement)
         except Exception:
-            self._review_comments.pop(key, None)
+            if inserted_comment and self._review_comments.get(key) == comment:
+                self._review_comments.pop(key, None)
             raise
+        if record.duplicate and inserted_comment and self._review_comments.get(key) == comment:
+            self._review_comments.pop(key, None)
         return record
 
     def _discard(self, task_id: str, background: asyncio.Task[None]) -> None:
@@ -225,6 +249,7 @@ class LocalAgentServerRunner:
             del self._tasks[task_id]
 
     async def _follow(self, task: TaskSnapshot, run: LocalRun) -> None:
+        resume_key: tuple[str, str] | None = None
         try:
             await self.repository.append_event(
                 task.task_id,
@@ -248,7 +273,12 @@ class LocalAgentServerRunner:
                 )
             state = await self.source.get_state(run.thread_id)
             if state.interrupt is not None:
-                await self._pause(task, state)
+                resume_key = (task.task_id, state.interrupt.interrupt_id)
+                self._register_resume_acknowledgement(resume_key)
+                if task.pending_interrupt_id is None:
+                    await self._pause(task, state)
+                elif task.pending_interrupt_id != state.interrupt.interrupt_id:
+                    raise TaskSourceContractError
                 decision = await self.repository.wait_for_decision(
                     task.task_id, state.interrupt.interrupt_id
                 )
@@ -259,20 +289,58 @@ class LocalAgentServerRunner:
                     decision=decision.value,
                     comment=self._review_comments.pop(key, None),
                 )
+                self._accept_resume(resume_key)
                 self._tasks.pop(task.task_id, None)
                 self.start(await self.repository.get_task(task.task_id), next_run)
                 return
             await self._complete(task, state)
         except asyncio.CancelledError:
+            self._reject_resume(resume_key, TaskSourceUnavailableError())
             raise
-        except (StaleInterruptError, TaskSourceContractError):
+        except (StaleInterruptError, TaskSourceContractError) as error:
+            self._reject_resume(resume_key, error)
             # The source advanced or broke its contract underneath an accepted
             # decision; the task must end honestly instead of claiming success.
             await self._fail(task, _SOURCE_CONTRACT_REASON)
-        except TaskSourceUnavailableError:
+        except TaskSourceUnavailableError as error:
+            self._reject_resume(resume_key, error)
             await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
         except Exception:
+            self._reject_resume(resume_key, TaskSourceUnavailableError())
             await self._fail(task, _RUNNER_FAILURE_REASON)
+
+    def _register_resume_acknowledgement(self, key: tuple[str, str]) -> None:
+        existing = self._resume_acknowledgements.get(key)
+        if existing is not None:
+            if existing.done():
+                raise TaskSourceContractError
+            return
+        acknowledgement = asyncio.get_running_loop().create_future()
+        acknowledgement.add_done_callback(self._consume_acknowledgement_error)
+        self._resume_acknowledgements[key] = acknowledgement
+
+    def _accept_resume(self, key: tuple[str, str]) -> None:
+        acknowledgement = self._resume_acknowledgements.get(key)
+        if acknowledgement is None:
+            raise TaskSourceContractError
+        if not acknowledgement.done():
+            acknowledgement.set_result(None)
+
+    def _reject_resume(
+        self,
+        key: tuple[str, str] | None,
+        error: TaskSourceContractError | TaskSourceUnavailableError | StaleInterruptError,
+    ) -> None:
+        if key is None:
+            return
+        acknowledgement = self._resume_acknowledgements.get(key)
+        if acknowledgement is not None and not acknowledgement.done():
+            acknowledgement.set_exception(error)
+
+    @staticmethod
+    def _consume_acknowledgement_error(acknowledgement: asyncio.Future[None]) -> None:
+        if not acknowledgement.cancelled():
+            acknowledgement.exception()
 
     async def _pause(self, task: TaskSnapshot, state: LocalState) -> None:
         interrupt = state.interrupt

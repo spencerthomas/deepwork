@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { activeAgentCount, agentRuntimeCopy, deriveAgentCards } from "./agent-cards";
+import {
+  activeAgentCount,
+  agentRuntimeCopy,
+  agentSessionTaskLabel,
+  deriveAgentCards,
+} from "./agent-cards";
 import { fixtureDemoStatus, normalizeDemoStatus } from "./demo-status";
 
 describe("deriveAgentCards", () => {
@@ -44,6 +49,26 @@ describe("deriveAgentCards", () => {
 
   it("counts only truly active agents", () => {
     expect(activeAgentCount(deriveAgentCards(fixtureDemoStatus(), "fixture"))).toBe(1);
+  });
+});
+
+describe("agentSessionTaskLabel", () => {
+  it("reports loading while the task list is being fetched", () => {
+    expect(agentSessionTaskLabel(true, 0)).toBe("Loading tasks…");
+    // Loading takes precedence over a stale count or error.
+    expect(agentSessionTaskLabel(true, 3, "boom")).toBe("Loading tasks…");
+  });
+
+  it("never fabricates a zero count when the task-list fetch failed", () => {
+    expect(agentSessionTaskLabel(false, 0, "network error")).toBe("Task count unavailable");
+    // Even a non-empty stale list is reported as unavailable on refresh failure.
+    expect(agentSessionTaskLabel(false, 4, "network error")).toBe("Task count unavailable");
+  });
+
+  it("pluralizes the honest task count", () => {
+    expect(agentSessionTaskLabel(false, 0)).toBe("0 tasks this session");
+    expect(agentSessionTaskLabel(false, 1)).toBe("1 task this session");
+    expect(agentSessionTaskLabel(false, 2)).toBe("2 tasks this session");
   });
 
   it("never infers a deterministic runner or provider state in API mode", () => {

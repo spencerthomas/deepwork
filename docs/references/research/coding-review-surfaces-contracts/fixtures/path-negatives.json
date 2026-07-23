@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "cases": [
+    {"id": "nul", "encoded_input": "bad\\u0000name", "expected": "rejected-before-read"},
+    {"id": "absolute-posix", "input": "/outside", "expected": "rejected-before-read"},
+    {"id": "absolute-drive", "encoded_input": "drive-prefix-backslash-outside", "expected": "rejected-before-read"},
+    {"id": "traversal", "input": "../outside", "expected": "rejected-before-read"},
+    {"id": "nested-traversal", "input": "safe/../../outside", "expected": "rejected-before-read"},
+    {"id": "backslash", "input": "safe\\\\outside", "expected": "rejected-before-read"},
+    {"id": "symlink-escape", "input": "link-out", "expected": "rejected-before-read"},
+    {"id": "hardlink-unknown", "input": "hardlink", "expected": "metadata-only-blocked"},
+    {"id": "directory-as-file", "input": "empty", "expected": "type-conflict"},
+    {"id": "guessed-ref", "input": "opaque-guessed", "expected": "not-authorized"},
+    {"id": "wrong-task", "input": "README.txt", "expected": "not-authorized"},
+    {"id": "expired-ref", "input": "README.txt", "expected": "expired"},
+    {"id": "unicode-ambiguity", "input": "cafe-combining.txt", "expected": "ambiguous-blocked"},
+    {"id": "case-ambiguity", "input": "Readme.txt", "expected": "ambiguous-blocked"},
+    {"id": "bidi-filename", "input": "safe-bidi-marker.txt", "expected": "escaped-display"}
+  ]
+}

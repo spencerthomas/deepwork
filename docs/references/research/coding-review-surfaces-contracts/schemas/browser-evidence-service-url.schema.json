@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeBrowserRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["browser", "kind", "task_ref", "sandbox_ref", "actor_ref", "captured_at", "expiry", "authorization_state"],
+  "properties": {
+    "browser": {"enum": ["evidence", "service_url", "none"]},
+    "kind": {"enum": ["verified_evidence", "authorized_service_url", "external_link", "none"]},
+    "task_ref": {"type": ["string", "null"]},
+    "sandbox_ref": {"type": ["string", "null"]},
+    "actor_ref": {"type": ["string", "null"]},
+    "captured_at": {"type": ["string", "null"]},
+    "expiry": {"type": ["string", "null"]},
+    "authorization_state": {"enum": ["current", "expired", "revoked", "missing"]},
+    "origin_ref": {"type": ["string", "null"]},
+    "screenshot_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "auto_open": {"const": false}
+  }
+}

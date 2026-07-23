@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "terminal": "transcript",
+  "command_input": "discrete_reviewed",
+  "source": {
+    "kind": "deterministic-fake-sandbox",
+    "session_ref": "synthetic-session",
+    "host_class": "deterministic-fake-no-command-host"
+  },
+  "events": [
+    {"sequence": 1, "stream": "stdout", "text": "starting\\n"},
+    {"sequence": 2, "stream": "stderr", "text": "warning\\n"},
+    {"sequence": 3, "stream": "stdout", "text": "[terminal-control-removed]done\\n"}
+  ],
+  "exit": {"code": 0, "observed": true},
+  "truncation": {
+    "truncated": true,
+    "returned_bytes": 64,
+    "omitted_bytes": 128,
+    "retrieval": "authorized-source-download-only"
+  },
+  "reconnect": {"cursor": 3, "process_state": "unknown"},
+  "controls_exposed": []
+}

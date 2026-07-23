@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeFileNode",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_identity", "path_ref", "name", "kind", "freshness"],
+  "properties": {
+    "source_identity": {"type": "string", "minLength": 1},
+    "path_ref": {"type": "string", "minLength": 1},
+    "name": {"type": "string"},
+    "kind": {"enum": ["file", "directory", "symlink", "unknown"]},
+    "size": {"type": "integer", "minimum": 0},
+    "media_type": {"type": ["string", "null"]},
+    "checksum": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "freshness": {"enum": ["current", "stale", "expired", "unknown"]},
+    "next_cursor": {"type": ["string", "null"]}
+  }
+}

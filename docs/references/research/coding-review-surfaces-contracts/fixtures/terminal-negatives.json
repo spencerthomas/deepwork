@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "cases": [
+    {"id": "ansi-csi", "encoded": "\\u001b[31mred", "expected": "escaped-plain-text"},
+    {"id": "osc-title", "encoded": "\\u001b]0;title\\u0007", "expected": "control-removed"},
+    {"id": "osc-link", "encoded": "\\u001b]8;;external-ref\\u0007label", "expected": "non-clickable"},
+    {"id": "bidi-control", "encoded": "text-with-escaped-bidi-marker", "expected": "escaped-display"},
+    {"id": "oversized-escape", "encoded": "digest-only", "expected": "bounded-before-parse"},
+    {"id": "wrong-origin", "expected": "channel-denied"},
+    {"id": "cross-actor", "expected": "channel-denied"},
+    {"id": "replay", "expected": "channel-denied"},
+    {"id": "expired-grant", "expected": "channel-denied"},
+    {"id": "concurrent-controller", "expected": "second-controller-denied"},
+    {"id": "disconnect", "expected": "process-state-unknown-not-stopped"}
+  ],
+  "pty_claim": {
+    "tty_allocation": "unproven",
+    "resize": "unproven",
+    "input_echo": "unproven",
+    "control_sequences": "unproven",
+    "lifetime": "unproven",
+    "close": "unproven",
+    "fixture_terminal": "transcript",
+    "accepted_terminal": "none"
+  }
+}

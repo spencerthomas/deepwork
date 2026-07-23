@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "authority": "deterministic-fake",
+  "root": {
+    "path_ref": "opaque-root",
+    "kind": "directory",
+    "children_total": 7
+  },
+  "pages": [
+    {
+      "cursor": null,
+      "items": ["README.txt", "assets", "empty"],
+      "next_cursor": "page-2"
+    },
+    {
+      "cursor": "page-2",
+      "items": ["large.dat", "nested", "unknown.bin", "utf8-bom.txt"],
+      "next_cursor": null
+    }
+  ],
+  "nodes": [
+    {
+      "path": "README.txt",
+      "kind": "file",
+      "size": 12,
+      "encoding": "utf-8",
+      "newline": "lf",
+      "media_type_declared": "text/plain",
+      "media_type_detected": "text/plain",
+      "checksum": "f30a3f061e979f08f4aeb8f7c20a7e342d2c51c31dc41416d0667207d54136af"
+    },
+    {
+      "path": "assets/image.png",
+      "kind": "file",
+      "size": 68,
+      "media_type_declared": "image/png",
+      "media_type_detected": "image/png",
+      "dimensions": {"width": 1, "height": 1},
+      "preview": "metadata-only"
+    },
+    {
+      "path": "assets/report.pdf",
+      "kind": "file",
+      "size": 256,
+      "media_type_declared": "application/pdf",
+      "media_type_detected": "application/pdf",
+      "pages": 1,
+      "preview": "metadata-only"
+    },
+    {"path": "empty", "kind": "directory", "children_total": 0},
+    {"path": "large.dat", "kind": "file", "size": 9000000, "preview": "metadata-only"},
+    {"path": "nested/a/b/c.txt", "kind": "file", "size": 4, "preview": "escaped-text"},
+    {"path": "unknown.bin", "kind": "file", "size": 32, "preview": "metadata-only"},
+    {
+      "path": "utf8-bom.txt",
+      "kind": "file",
+      "size": 8,
+      "encoding": "utf-8-sig",
+      "newline": "crlf",
+      "preview": "escaped-text"
+    }
+  ]
+}

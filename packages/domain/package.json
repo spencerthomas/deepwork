@@ -1,0 +1,30 @@
+{
+  "name": "@deepwork/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build tsconfig.json",
+    "check-architecture": "node scripts/check-boundaries.mjs",
+    "format": "oxfmt .",
+    "format-check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "package-check": "node scripts/check-boundaries.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --project tsconfig.test.json"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

@@ -281,10 +281,17 @@ Acceptance:
   scenario qualification, no-network/no-lock permissions, and exact sequential
   declarations -> package manifests/source/static review -> coordinator lock ->
   executable verification handoff. Dispatch metadata is complete.
-- [ ] Milestone 1 — package contracts explicit.
-- [ ] Milestone 2 — domain and SDK source/test contracts authored.
-- [ ] Milestone 3 — UI primitive source/test contract authored.
-- [ ] Milestone 4 — static review and sequential integration handoff complete.
+- [x] 2026-07-23 AEST — Milestone 1 complete: package manifests, strict local
+  compiler profiles, named public exports, and package guidance authored without
+  changing the root workspace or creating a lock.
+- [x] 2026-07-23 AEST — Milestone 2 complete: source-qualified domain values,
+  evidence-bearing capabilities, separate SDK ports, unavailable seams, public-
+  entry tests, boundary checks, and a network-denial test authored but not run.
+- [x] 2026-07-23 AEST — Milestone 3 complete: token-preserving semantic status
+  primitive, styles, and accessibility/unsafe-content tests authored but not run.
+- [x] 2026-07-23 AEST — Milestone 4 author static review complete: every permitted
+  JSON/inventory/import/scope/whitespace command exited zero. Independent review
+  and downstream handoff acceptance remain pending.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -308,6 +315,13 @@ Acceptance:
   expression that the documentation checker interpreted as an internal Markdown
   link. Consequence: the review rewrote only that install-free search expression;
   it does not broaden the search, package scope, or execution permissions.
+- 2026-07-23 AEST — The shared compiler base deliberately excludes DOM globals.
+  Consequence: SDK and UI opt into `DOM` locally while domain retains `ES2022`
+  only; tests and Vitest aliases remain package-local and unexecuted.
+- 2026-07-23 AEST — The existing `tokens.css` and `tailwind.preset.mjs` already
+  provide the allowed visual constants. Consequence: both files remain unchanged,
+  and the first component stylesheet consumes those token variables rather than
+  creating a replacement token source.
 
 ## Decision Log
 
@@ -426,6 +440,113 @@ a lock, execute authored tests, or claim build/pack/consumer/accessibility succe
 The coordinator lock cell and subsequent executable-verification cell remain
 strictly sequential and independently reviewed.
 
+Author implementation evidence on 2026-07-23 AEST:
+
+```text
+python3 -m json.tool packages/domain/package.json >/dev/null -> exit 0
+python3 -m json.tool packages/sdk/package.json >/dev/null -> exit 0
+python3 -m json.tool packages/ui/package.json >/dev/null -> exit 0
+python3 -m json.tool packages/domain/tsconfig.json >/dev/null -> exit 0
+python3 -m json.tool packages/sdk/tsconfig.json >/dev/null -> exit 0
+python3 -m json.tool packages/ui/tsconfig.json >/dev/null -> exit 0
+rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; inventory below
+rg manifest exports/type/scripts/dependencies -> exit 0; all three packages are ESM
+  with scripts and exports; SDK/UI declare only the domain internal dependency
+rg package/framework imports -> exit 0; findings summarized below
+git diff --check -> exit 0; no output
+git status --short -> exit 0; only governed package paths changed before this
+  living-plan update
+```
+
+Exact package inventory:
+
+```text
+packages/domain/AGENTS.md
+packages/domain/README.md
+packages/domain/package.json
+packages/domain/scripts/check-boundaries.mjs
+packages/domain/src/capability.ts
+packages/domain/src/identity.ts
+packages/domain/src/index.ts
+packages/domain/src/view-state.ts
+packages/domain/tests/capability.test.ts
+packages/domain/tests/identity.test.ts
+packages/domain/tests/view-state.test.ts
+packages/domain/tsconfig.json
+packages/domain/tsconfig.test.json
+packages/domain/vitest.config.ts
+packages/sdk/AGENTS.md
+packages/sdk/README.md
+packages/sdk/package.json
+packages/sdk/scripts/check-boundaries.mjs
+packages/sdk/src/index.ts
+packages/sdk/src/mapping.ts
+packages/sdk/src/ports.ts
+packages/sdk/src/result.ts
+packages/sdk/src/unavailable.ts
+packages/sdk/tests/public-api.test.ts
+packages/sdk/tests/unavailable.test.ts
+packages/sdk/tsconfig.json
+packages/sdk/tsconfig.test.json
+packages/sdk/vitest.config.ts
+packages/ui/AGENTS.md
+packages/ui/README.md
+packages/ui/package.json
+packages/ui/scripts/check-boundaries.mjs
+packages/ui/src/index.ts
+packages/ui/src/status-panel.tsx
+packages/ui/src/styles.d.ts
+packages/ui/status-panel.css
+packages/ui/tailwind.preset.mjs
+packages/ui/tests/status-panel.test.tsx
+packages/ui/tokens.css
+packages/ui/tsconfig.json
+packages/ui/tsconfig.test.json
+packages/ui/vitest.config.ts
+```
+
+Static import findings:
+
+- Domain shipped source imports only explicit local `.js` modules. Node imports
+  occur only in its package-local structural script and Vitest alias config.
+- SDK shipped source imports `@deepwork/domain` and explicit local `.js` modules;
+  it has no UI, React, Next.js, Node, provider, or network import. Its Node imports
+  are confined to the package-local structural script and Vitest alias config.
+- UI shipped source imports `@deepwork/domain`, React, its named CSS file, and an
+  explicit local `.js` module. It has no SDK, Next.js, provider, route, generated,
+  environment, or network import. Node imports are confined to the package-local
+  structural script and Vitest alias config.
+- Tests import named package entry points rather than implementation paths.
+
+Source-level UI review:
+
+- `StatusPanel` uses a labelled native `section`, native heading and button,
+  polite loading status, assertive error role, explicit visible state text, and a
+  non-color mark. Unknown/unavailable variants cannot accept an action.
+- Styles use existing token variables, `:focus-visible`, forced-colors support,
+  no animation, a reduced-motion safeguard, overflow wrapping, a single-column
+  narrow layout, and progressive wider reflow.
+- Display inputs are strings rendered as React text; no raw-HTML API exists. The
+  authored test covers markup-shaped input and long localized content.
+
+Network denial is authored, not executed: `packages/sdk/tests/unavailable.test.ts`
+replaces `globalThis.fetch` with a throwing spy and asserts that an unknown
+capability returns `capability-unavailable` without calling it. Package structural
+scripts also reject network primitives from shipped source. Neither the test nor
+those Node scripts ran in this cell.
+
+Changed-file scope is exactly the three package inventories above plus this
+living plan. The existing UI token and Tailwind preset files are present in the
+inventory but byte-for-byte unchanged. No root/shared/index/generated/app path,
+lock, external system, or credential changed.
+
+Executable format, lint, typecheck, unit, build, pack, package structural,
+network-denial, accessibility, and clean-consumer proof remains explicitly
+deferred. `local:DW-M1-TS-LOCK-001` first owns dependency resolution, first-lock,
+frozen-install, and lock-no-drift proof; only after its terminal success does
+`local:DW-M1-TS-VERIFY-001` own those executable package checks and reviewed
+package-local fixes.
+
 ## Idempotence, rollback, and recovery
 
 Package scaffolding is additive and owns no production state. Static checks must
@@ -458,12 +579,18 @@ to draft review.
 
 ## Outcomes & Retrospective
 
-Planning review accepted the cell for dispatch from exact terminal base
-`b1189ce7a1236fbc6b7751a0552159687e940521`. The governed paths, pure-domain,
-browser-safe SDK, presentational UI, security, and accessibility boundaries match
-the canonical authorities. `SPIKE-HARNESS-ARCH-001` remains open with static
-negative-test and architecture-review fallback. Implementation is still pending;
-at completion, compare the delivered public surfaces with this bounded authoring
-purpose, list exact static evidence and deviations, identify both downstream
-cells, and state which tests were authored without claiming they passed or that
-broader product acceptance is complete.
+Authored the bounded package surfaces from the reviewed base: source-qualified
+domain identities, safe capability summaries and state guards; distinct browser-
+safe SDK query/mutation/stream ports and explicit unavailable factories; and one
+semantic React status primitive consuming the domain public surface while
+preserving the existing token sources. Package-local public-entry, collision,
+unknown-capability, network-denial, unsafe-content, and accessibility-oriented
+tests plus structural boundary scripts are present.
+
+The author ran only the permitted install-free JSON, inventory, import, scope,
+and whitespace checks, all with exit zero. No package executable, dependency
+install, lock operation, test, build, pack, clean consumer, accessibility runner,
+or network request ran, so none is claimed as passing. There were no scope
+deviations. `SPIKE-HARNESS-ARCH-001` remains open, independent implementation
+review is still required, and sequential proof remains with
+`local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

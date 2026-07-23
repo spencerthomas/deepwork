@@ -17,7 +17,7 @@ not fetch, authenticate, select sources, mutate durable state, or decide product
 authorization. Business reducers stay in domain; components may own transient
 presentation state.
 
-`tokens.css` and the shared preset are the current token source. Do not duplicate
+`tokens.css` and the shared preset are the token source. Do not duplicate
 product color, spacing, type, radius, elevation, or motion constants in app code.
 
 ## Component and accessibility contract
@@ -38,6 +38,12 @@ repositories, credentials, signed URLs, or customer content. Test behavior,
 keyboard/focus, accessibility, sanitization, long/localized content, and responsive
 states rather than snapshots alone.
 
-Until the scaffold adds package commands, validate Wave 0 with
-`python3 tools/docs/check.py` from the repository root and report missing package
-checks honestly.
+Import the component API only from `@deepwork/ui`, tokens from
+`@deepwork/ui/tokens.css`, component styles from their named CSS entry point, and
+domain values only from `@deepwork/domain`. Keep local ESM imports explicit with
+`.js` runtime extensions.
+
+Package scripts are declarations for the downstream lock and executable
+verification cells. Until the shared lock exists, run only the install-free
+static checks authorized by the active ExecPlan and report executable package
+checks as unexecuted.

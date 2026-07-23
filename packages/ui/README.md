@@ -1,20 +1,22 @@
-# @deepwork/ui (seed)
+# @deepwork/ui
 
-Design tokens and (eventually) the shared component library for Deep Work.
+Accessible, presentational React primitives for Deep Work.
 
-Currently contains the **token seed** extracted from the LangChain docs design system
-(see [docs/plan/03-ui-spec.md](../../docs/plan/03-ui-spec.md) and the
-[design brief](../../docs/design/deepwork-design-brief.html)):
+Public entry points:
 
-- `tokens.css` — CSS custom properties (colors, type, radii, layout)
-- `tailwind.preset.mjs` — Tailwind preset consuming those tokens
+- `@deepwork/ui` — named component exports;
+- `@deepwork/ui/tokens.css` — the existing CSS token source;
+- `@deepwork/ui/status-panel.css` — status primitive styles; and
+- `@deepwork/ui/tailwind-preset` — the existing token-consuming Tailwind preset.
 
-Component build-out lands in roadmap M0–M1 (shadcn/ui new-york re-themed to these
-tokens; component inventory in the UI spec §4).
+`StatusPanel` receives normalized domain values, display text, and callbacks
+through props. It does not fetch, infer capabilities, authorize actions, or
+render raw HTML. Its unavailable variant has no action prop, so an unknown
+capability cannot look enabled.
 
-Notes:
+The token and preset sources remain the single source for product color,
+typography, radii, and layout. Heading font ships as Inter (OFL); do not commit
+commercial font files.
 
-- Heading font ships as Inter (OFL). The docs site uses commercial TWK Lausanne —
-  swap `--font-heading` to rebrand; do not commit commercial font files.
-- Grays are machine-derived from the primary; regenerate the ramp if the primary
-  hue ever changes.
+The package scripts are reserved for the downstream lock and executable
+verification cells and have not been run by the authoring cell.

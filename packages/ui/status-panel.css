@@ -1,0 +1,105 @@
+.dw-status-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 100%;
+  padding: 1rem;
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-frame);
+  font-family: var(--font-body);
+}
+
+.dw-status-panel__body {
+  min-width: 0;
+}
+
+.dw-status-panel__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0;
+  color: rgb(var(--gray-600));
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+.dw-status-panel__mark {
+  color: rgb(var(--primary-dark));
+  font-size: 1.2em;
+}
+
+.dw-status-panel[data-state='error'] .dw-status-panel__mark {
+  color: rgb(var(--error));
+}
+
+.dw-status-panel[data-state='unavailable'] .dw-status-panel__mark {
+  color: rgb(var(--warning));
+}
+
+.dw-status-panel__title {
+  margin: 0.4em 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-heading);
+  font-size: 1.125em;
+  line-height: 1.35;
+}
+
+.dw-status-panel__detail {
+  margin: 0.5em 0 0;
+  max-width: 70ch;
+  overflow-wrap: anywhere;
+  color: rgb(var(--gray-700));
+  line-height: 1.5;
+}
+
+.dw-status-panel__action {
+  justify-self: start;
+  min-block-size: 2.75rem;
+  max-width: 100%;
+  padding: 0.65em 1em;
+  overflow-wrap: anywhere;
+  color: rgb(var(--background));
+  background: rgb(var(--primary-dark));
+  border: 2px solid transparent;
+  border-radius: var(--radius-interactive);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dw-status-panel__action:focus-visible {
+  outline: 3px solid rgb(var(--primary-dark));
+  outline-offset: 3px;
+}
+
+@media (min-width: 36rem) {
+  .dw-status-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-status-panel,
+  .dw-status-panel__action {
+    scroll-behavior: auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .dw-status-panel,
+  .dw-status-panel__action {
+    border-color: CanvasText;
+  }
+
+  .dw-status-panel__mark,
+  .dw-status-panel[data-state='error'] .dw-status-panel__mark,
+  .dw-status-panel[data-state='unavailable'] .dw-status-panel__mark {
+    color: CanvasText;
+  }
+
+  .dw-status-panel__action:focus-visible {
+    outline-color: Highlight;
+  }
+}

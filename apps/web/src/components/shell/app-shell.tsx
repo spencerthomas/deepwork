@@ -86,6 +86,12 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-1.5 focus:text-[13px] focus:font-medium focus:text-brand-foreground"
+      >
+        Skip to main content
+      </a>
       <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
 
       <RuntimeBanner />
@@ -137,7 +143,10 @@ export function AppShell({
           </Link>
         </div>
 
-        <nav className="mx-auto flex h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6">
+        <nav
+          aria-label="Primary"
+          className="mx-auto flex h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6"
+        >
           {tabs.map((tab) => {
             const isActive = active === tab.label;
             return (
@@ -170,7 +179,9 @@ export function AppShell({
           </aside>
         )}
 
-        <main className="min-w-0 flex-1 py-8 lg:pl-2">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 py-8 outline-none lg:pl-2">
+          {children}
+        </main>
 
         {rail && (
           <aside className="hidden w-72 shrink-0 py-8 pl-8 xl:block">

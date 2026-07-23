@@ -7,25 +7,27 @@ import type { ClientMode } from "../lib/task-types";
 interface AppHeaderProps {
   apiBaseUrl: string;
   mode: ClientMode;
+  /** Route of the destination currently being viewed; used to mark the active nav item. */
+  activePath?: string;
 }
 
 export interface PrimaryNavigationItem {
-  current: boolean;
+  /** Present when the destination is a delivered route; absent items are not yet available. */
   href?: string;
   label: string;
 }
 
 export const PRIMARY_NAVIGATION: readonly PrimaryNavigationItem[] = [
-  { current: true, href: "#main-content", label: "Tasks" },
-  { current: false, label: "Approvals" },
-  { current: false, label: "Agents" },
-  { current: false, label: "Schedules" },
-  { current: false, label: "Activity" },
-  { current: false, label: "Observability" },
-  { current: false, label: "Settings" },
+  { href: "/", label: "Tasks" },
+  { href: "/approvals", label: "Approvals" },
+  { label: "Agents" },
+  { label: "Schedules" },
+  { label: "Activity" },
+  { label: "Observability" },
+  { label: "Settings" },
 ];
 
-export function AppHeader({ apiBaseUrl, mode }: AppHeaderProps) {
+export function AppHeader({ apiBaseUrl, mode, activePath = "/" }: AppHeaderProps) {
   const [darkTheme, setDarkTheme] = useState(false);
   const runtimeLabel = mode === "fixture" ? "Deterministic local fixture" : "Local API transport";
 
@@ -112,18 +114,22 @@ export function AppHeader({ apiBaseUrl, mode }: AppHeaderProps) {
         </div>
 
         <nav className="product-navigation" aria-label="Primary navigation">
-          {PRIMARY_NAVIGATION.map((item) =>
-            item.current && item.href ? (
-              <a
-                className="product-navigation-item is-active"
-                href={item.href}
-                aria-current="page"
-                key={item.label}
-              >
-                {item.label}
-                <span className="navigation-indicator" aria-hidden="true" />
-              </a>
-            ) : (
+          {PRIMARY_NAVIGATION.map((item) => {
+            if (item.href) {
+              const current = item.href === activePath;
+              return (
+                <a
+                  className={`product-navigation-item${current ? " is-active" : ""}`}
+                  href={item.href}
+                  aria-current={current ? "page" : undefined}
+                  key={item.label}
+                >
+                  {item.label}
+                  {current ? <span className="navigation-indicator" aria-hidden="true" /> : null}
+                </a>
+              );
+            }
+            return (
               <span
                 className="product-navigation-item is-disabled"
                 aria-disabled="true"
@@ -133,8 +139,8 @@ export function AppHeader({ apiBaseUrl, mode }: AppHeaderProps) {
                 {item.label}
                 <span className="navigation-soon">Soon</span>
               </span>
-            ),
-          )}
+            );
+          })}
         </nav>
       </header>
     </>

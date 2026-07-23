@@ -14,6 +14,7 @@ from deepwork_api.contracts.tasks import (
     PlanProposedEventData,
     PlanUpdateRequest,
     ProposedPlanResponse,
+    TaskCreateRequest,
 )
 from deepwork_api.domain import (
     MAX_PLAN_REVISION,
@@ -24,6 +25,17 @@ from deepwork_api.domain import (
     TaskEventName,
     TaskStatus,
 )
+
+
+@pytest.mark.parametrize("bad", ["a\x7fb", "a\x80b", "a\x85b", "a\x9fb", "a\x00b", "a\x1fb"])
+def test_task_prompt_rejects_c0_del_and_c1_controls(bad: str) -> None:
+    with pytest.raises(ValidationError):
+        TaskCreateRequest.model_validate({"prompt": bad})
+
+
+def test_task_prompt_accepts_tab_newline_carriage_return_and_emoji() -> None:
+    request = TaskCreateRequest.model_validate({"prompt": "line1\r\n\tline2 🧭 café"})
+    assert request.prompt == "line1\r\n\tline2 🧭 café"
 
 
 def test_objective_is_preserved_bounded_and_secret_redacted() -> None:

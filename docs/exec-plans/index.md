@@ -22,6 +22,9 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 - [LangChain contract-spike research](external/DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH.md)
 - [Documentation-harness acceptance](external/DW-EXT-W1-DOCS-HARNESS-ACCEPTANCE.md)
 - [API-key and workspace-header contract research](external/DW-EXT-W1-AUTH-HEADER-CONTRACT-RESEARCH.md)
+- [Add a file to the first task safely](external/DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS.md)
+- [Require a real plan before the first task executes](external/DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL.md)
+- [Finish research and writing with verifiable results](external/DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT.md)
 
 Symphony is not active. A maintainer manually creates one worktree per reviewed
 ExecPlan and keeps external credentials and provider integration out unless the

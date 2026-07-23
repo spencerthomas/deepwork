@@ -316,6 +316,9 @@ export function capabilitySummary(
 ): UnavailableCapabilitySummary;
 export function capabilitySummary<T extends CapabilityEvidenceValue>(
   evidence: CapabilityEvidence<T>,
+): CapabilitySummary;
+export function capabilitySummary<T extends CapabilityEvidenceValue>(
+  evidence: CapabilityEvidence<T>,
 ): CapabilitySummary {
   if ("safeReason" in evidence) {
     return Object.freeze({

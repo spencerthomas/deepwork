@@ -6,9 +6,11 @@ import {
   CAPABILITY_STATES,
   isCapabilityAvailable,
   rfc3339Instant,
+  type CapabilityEvidence,
+  type CapabilitySummary,
   unavailableCapability,
 } from "@deepwork/domain";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 const metadata = {
   observedAt: "2026-07-23T00:00:00.000Z",
@@ -33,6 +35,16 @@ describe("capability evidence", () => {
       ...metadata,
     });
     expect(JSON.stringify(capabilitySummary(evidence))).not.toContain("privatePayload");
+  });
+
+  it("preserves a safe summary type for union evidence", () => {
+    const evidence = unavailableCapability(
+      "unknown",
+      "contract-not-verified",
+      metadata,
+    ) as CapabilityEvidence<string>;
+
+    expectTypeOf(capabilitySummary(evidence)).toEqualTypeOf<CapabilitySummary>();
   });
 
   it("snapshots and deeply freezes supported evidence values", () => {

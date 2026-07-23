@@ -1,14 +1,26 @@
 """Unit tests for safe local task semantics."""
 
 import asyncio
+from typing import Any
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
 from deepwork_api.adapters.fixture import InMemoryTaskRepository
 from deepwork_api.application.tasks import sanitize_objective
+from deepwork_api.contracts.tasks import (
+    InterruptRequestedEventData,
+    PendingInterruptResponse,
+    PlanProposedEventData,
+    PlanUpdateRequest,
+    ProposedPlanResponse,
+)
 from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
     DecisionConflictError,
     DecisionValue,
+    PlanRevisionConflictError,
+    ProposedPlan,
     TaskEventName,
     TaskStatus,
 )
@@ -30,6 +42,93 @@ def test_objective_is_preserved_bounded_and_secret_redacted() -> None:
     assert sanitize_objective("x" * 8_000) == "x" * 8_000
     with pytest.raises(ValueError, match="shared request bound"):
         sanitize_objective("x" * 8_001)
+
+
+def _revision_wire_cases(revision: object) -> tuple[tuple[type[BaseModel], dict[str, Any]], ...]:
+    return (
+        (
+            PendingInterruptResponse,
+            {
+                "interruptId": "interrupt_00000001",
+                "planRevision": revision,
+            },
+        ),
+        (
+            ProposedPlanResponse,
+            {
+                "revision": revision,
+                "title": "Bounded plan",
+                "steps": ["Inspect input"],
+                "evidenceRefs": [],
+            },
+        ),
+        (
+            PlanUpdateRequest,
+            {
+                "interruptId": "interrupt_00000001",
+                "expectedRevision": revision,
+                "steps": ["Inspect input"],
+            },
+        ),
+        (
+            PlanProposedEventData,
+            {
+                "title": "Bounded plan",
+                "steps": ["Inspect input"],
+                "revision": revision,
+                "evidenceRefs": [],
+                "evidenceClass": "fixture",
+            },
+        ),
+        (
+            InterruptRequestedEventData,
+            {
+                "interruptId": "interrupt_00000001",
+                "question": "Approve?",
+                "decisions": ["approve", "reject", "respond"],
+                "planRevision": revision,
+            },
+        ),
+    )
+
+
+def test_plan_revision_shared_bound_accepts_exact_maximum_everywhere() -> None:
+    assert MAX_PLAN_REVISION == 2_147_483_647
+    plan = ProposedPlan(
+        revision=MAX_PLAN_REVISION,
+        title="Bounded plan",
+        steps=("Inspect input",),
+        evidence_refs=(),
+    )
+
+    assert plan.revision == MAX_PLAN_REVISION
+    for model, payload in _revision_wire_cases(MAX_PLAN_REVISION):
+        validated = model.model_validate(payload)
+        assert MAX_PLAN_REVISION in (
+            getattr(validated, "revision", None),
+            getattr(validated, "plan_revision", None),
+            getattr(validated, "expected_revision", None),
+        )
+
+
+@pytest.mark.parametrize(
+    "revision",
+    [MAX_PLAN_REVISION + 1, 0, -1, True, "1", 1.0],
+)
+def test_plan_revision_shared_bound_rejects_invalid_domain_and_wire_types(
+    revision: object,
+) -> None:
+    with pytest.raises(ValueError, match="shared bound"):
+        ProposedPlan(
+            revision=revision,  # type: ignore[arg-type]
+            title="Bounded plan",
+            steps=("Inspect input",),
+            evidence_refs=(),
+        )
+
+    for model, payload in _revision_wire_cases(revision):
+        with pytest.raises(ValidationError):
+            model.model_validate(payload)
 
 
 async def test_repository_preserves_order_and_monotonic_events() -> None:
@@ -56,6 +155,101 @@ async def test_repository_preserves_order_and_monotonic_events() -> None:
         second.task_id,
     ]
     assert (await repository.events_after(first.task_id, 1)) == (event,)
+
+
+async def test_repository_rejects_plan_revision_max_without_mutation() -> None:
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(
+        title="Maximum plan revision",
+        objective="Maximum plan revision",
+    )
+    interrupt_id = "interrupt_00000001"
+    plan = ProposedPlan(
+        revision=MAX_PLAN_REVISION,
+        title="Bounded plan",
+        steps=("Inspect input",),
+        evidence_refs=(),
+    )
+    await repository.set_plan(
+        task.task_id,
+        plan=plan,
+        event_name=TaskEventName.PLAN_PROPOSED,
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.INTERRUPT_REQUESTED,
+        data=(
+            ("interruptId", interrupt_id),
+            ("question", "Approve?"),
+            ("decisions", ("approve", "reject", "respond")),
+            ("planRevision", MAX_PLAN_REVISION),
+        ),
+        status=TaskStatus.WAITING_APPROVAL,
+        pending_interrupt_id=interrupt_id,
+    )
+    before = await repository.get_task(task.task_id)
+    events_before = await repository.events_after(task.task_id, 0)
+
+    with pytest.raises(PlanRevisionConflictError):
+        await repository.update_plan(
+            task.task_id,
+            interrupt_id=interrupt_id,
+            expected_revision=MAX_PLAN_REVISION,
+            steps=("Mutated step",),
+        )
+
+    assert await repository.get_task(task.task_id) == before
+    assert await repository.events_after(task.task_id, 0) == events_before
+
+
+@pytest.mark.parametrize(
+    "expected_revision",
+    [True, 1.0, "1", 0, -1, MAX_PLAN_REVISION + 1],
+)
+async def test_repository_rejects_invalid_revision_type_without_mutation(
+    expected_revision: object,
+) -> None:
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(
+        title="Strict revision",
+        objective="Strict revision",
+    )
+    interrupt_id = "interrupt_00000001"
+    await repository.set_plan(
+        task.task_id,
+        plan=ProposedPlan(
+            revision=1,
+            title="Bounded plan",
+            steps=("Inspect input",),
+            evidence_refs=(),
+        ),
+        event_name=TaskEventName.PLAN_PROPOSED,
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.INTERRUPT_REQUESTED,
+        data=(
+            ("interruptId", interrupt_id),
+            ("question", "Approve?"),
+            ("decisions", ("approve", "reject", "respond")),
+            ("planRevision", 1),
+        ),
+        status=TaskStatus.WAITING_APPROVAL,
+        pending_interrupt_id=interrupt_id,
+    )
+    before = await repository.get_task(task.task_id)
+    events_before = await repository.events_after(task.task_id, 0)
+
+    with pytest.raises(PlanRevisionConflictError):
+        await repository.update_plan(
+            task.task_id,
+            interrupt_id=interrupt_id,
+            expected_revision=expected_revision,  # type: ignore[arg-type]
+            steps=("Must not mutate",),
+        )
+
+    assert await repository.get_task(task.task_id) == before
+    assert await repository.events_after(task.task_id, 0) == events_before
 
 
 async def test_repository_decision_wait_and_idempotency() -> None:

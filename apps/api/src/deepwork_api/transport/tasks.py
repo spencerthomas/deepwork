@@ -36,6 +36,7 @@ from deepwork_api.contracts import (
 )
 
 TaskPath = Annotated[str, Path(pattern=r"^task_[0-9]{8}$")]
+_MAX_EVENT_CURSOR = 2_147_483_647
 
 
 def build_task_router(service: TaskService) -> APIRouter:
@@ -177,7 +178,7 @@ def _parse_event_cursor(value: str | None) -> int:
     if not value.isascii() or not value.isdecimal():
         raise InvalidEventCursorError
     cursor = int(value)
-    if cursor > 2_147_483_647:
+    if cursor > _MAX_EVENT_CURSOR:
         raise InvalidEventCursorError
     return cursor
 

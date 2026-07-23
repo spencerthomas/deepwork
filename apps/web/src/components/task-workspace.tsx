@@ -470,6 +470,26 @@ export function TaskWorkspace() {
     <div className="app-shell">
       <AppHeader mode={taskClient.mode} apiBaseUrl={taskClient.apiBaseUrl} />
       <main id="main-content" className="main-content">
+        <header className="page-header">
+          <div>
+            <p className="eyebrow">Workspace · local / product</p>
+            <h1>Tasks</h1>
+            <p>
+              Delegate meaningful work, follow honest progress, steer the plan, and inspect the
+              evidence behind the result.
+            </p>
+          </div>
+          <div className="outcome-badge" aria-label="Current product outcome">
+            <span className="outcome-badge-mark" aria-hidden="true">
+              2
+            </span>
+            <span>
+              <strong>Trust and steer</strong>
+              <small>Local product session</small>
+            </span>
+          </div>
+        </header>
+
         <TaskComposer busy={creating} onCreate={createTask} />
         {createError ? (
           <div className="create-error" role="alert">
@@ -509,8 +529,8 @@ export function TaskWorkspace() {
         </div>
       </main>
       <footer className="app-footer">
-        <span>Deep Work</span>
-        <span>Human-supervised task execution</span>
+        <span>deepwork</span>
+        <span>Human-supervised local task execution · external providers unavailable</span>
       </footer>
     </div>
   );

@@ -11,7 +11,13 @@ from typing import Any, cast
 import httpx
 
 from deepwork_api import create_app
-from deepwork_api.domain import MAX_TASK_RESULT_LENGTH
+from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
+    MAX_TASK_RESULT_LENGTH,
+    ProposedPlan,
+    TaskEventName,
+    TaskStatus,
+)
 
 
 @asynccontextmanager
@@ -601,6 +607,107 @@ async def test_validation_errors_never_echo_rejected_comment_content() -> None:
             }
             assert secret not in response.text
             assert "do-not-echo-this" not in response.text
+
+
+async def test_plan_revision_request_bound_is_strict_and_never_echoes_input() -> None:
+    async with _client() as client:
+        created = await _create_task(client)
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        interrupt_id = paused["pendingInterrupt"]["interruptId"]
+
+        maximum = await client.patch(
+            f"/api/v1/tasks/{created['taskId']}/plan",
+            json={
+                "interruptId": interrupt_id,
+                "expectedRevision": MAX_PLAN_REVISION,
+                "steps": ["Bounded plan"],
+            },
+        )
+        assert maximum.status_code == 409
+        assert maximum.json()["code"] == "plan_revision_conflict"
+
+        for invalid_revision in (
+            MAX_PLAN_REVISION + 1,
+            True,
+            "1",
+            1.0,
+        ):
+            secret = "password=revision-input-must-not-echo"
+            rejected = await client.patch(
+                f"/api/v1/tasks/{created['taskId']}/plan",
+                json={
+                    "interruptId": interrupt_id,
+                    "expectedRevision": invalid_revision,
+                    "steps": [secret],
+                },
+            )
+            assert rejected.status_code == 422
+            assert rejected.json() == {
+                "code": "request_invalid",
+                "message": "Request validation failed.",
+            }
+            assert secret not in rejected.text
+            assert "revision-input-must-not-echo" not in rejected.text
+
+
+async def test_plan_revision_max_returns_canonical_conflict_without_mutation() -> None:
+    app = create_app()
+    repository = app.state.task_repository
+    task = await repository.create_task(
+        title="Maximum plan revision",
+        objective="Maximum plan revision",
+    )
+    interrupt_id = "interrupt_00000001"
+    plan = ProposedPlan(
+        revision=MAX_PLAN_REVISION,
+        title="Bounded plan",
+        steps=("Inspect input",),
+        evidence_refs=(),
+    )
+    await repository.set_plan(
+        task.task_id,
+        plan=plan,
+        event_name=TaskEventName.PLAN_PROPOSED,
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.INTERRUPT_REQUESTED,
+        data=(
+            ("interruptId", interrupt_id),
+            ("question", "Approve?"),
+            ("decisions", ("approve", "reject", "respond")),
+            ("planRevision", MAX_PLAN_REVISION),
+        ),
+        status=TaskStatus.WAITING_APPROVAL,
+        pending_interrupt_id=interrupt_id,
+    )
+    snapshot_before = await repository.get_task(task.task_id)
+    events_before = await repository.events_after(task.task_id, 0)
+    transport = httpx.ASGITransport(app=app)
+
+    try:
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://fixture.test",
+        ) as client:
+            response = await client.patch(
+                f"/api/v1/tasks/{task.task_id}/plan",
+                json={
+                    "interruptId": interrupt_id,
+                    "expectedRevision": MAX_PLAN_REVISION,
+                    "steps": ["Must not mutate"],
+                },
+            )
+    finally:
+        await app.state.task_runner.close()
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "code": "plan_revision_conflict",
+        "message": "Plan revision is stale or conflicting.",
+    }
+    assert await repository.get_task(task.task_id) == snapshot_before
+    assert await repository.events_after(task.task_id, 0) == events_before
 
 
 async def test_plan_step_bounds_use_unicode_code_points_without_truncation() -> None:

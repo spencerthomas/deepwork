@@ -1,11 +1,12 @@
 import { builtinModules } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // TypeScript 7 has no API; the wrapper is pinned and its parser is asserted below.
 import ts from "@typescript/typescript6";
 
-const packageRoot = resolve(process.cwd());
+const packageRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const sourceRoot = join(packageRoot, "src");
 const nodeBuiltins = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const help =
@@ -210,10 +211,30 @@ function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
 }
 
+function normalizeSourceFile(sourceFile) {
+  if (sourceFile instanceof URL) {
+    if (sourceFile.protocol !== "file:") {
+      throw new TypeError(`Boundary scanner source must be a local file path. ${help}`);
+    }
+    return fileURLToPath(sourceFile);
+  }
+  if (typeof sourceFile !== "string") {
+    throw new TypeError(`Boundary scanner source must be a local file path. ${help}`);
+  }
+  if (/^file:/i.test(sourceFile)) {
+    return fileURLToPath(new URL(sourceFile));
+  }
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(sourceFile) && !/^[a-z]:[\\/]/i.test(sourceFile)) {
+    throw new TypeError(`Boundary scanner source must be a local file path. ${help}`);
+  }
+  return resolve(sourceFile);
+}
+
 export function inspectSource(source, sourceFile = join(sourceRoot, "__inspection__.ts")) {
+  const normalizedSourceFile = normalizeSourceFile(sourceFile);
   const violations = [];
   const add = (code, message) => violations.push({ code, message: `${message}. ${help}` });
-  const imports = moduleImports(source, sourceFile);
+  const imports = moduleImports(source, normalizedSourceFile);
 
   for (let index = 0; index < imports.unsafeDynamicImportCount; index += 1) {
     add(
@@ -265,7 +286,7 @@ export function inspectSource(source, sourceFile = join(sourceRoot, "__inspectio
       );
     }
     if (
-      (relative && !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
+      (relative && !isWithin(sourceRoot, resolve(dirname(normalizedSourceFile), specifier))) ||
       specifier.startsWith("/")
     ) {
       add("DW-UI-PATH-ESCAPE", `import escapes the package source boundary: ${specifier}`);
@@ -345,6 +366,7 @@ function inspectCssReference(reference, sourceFile, add, imported) {
 }
 
 export function inspectCss(source, sourceFile = join(packageRoot, "__inspection__.css")) {
+  const normalizedSourceFile = normalizeSourceFile(sourceFile);
   const violations = [];
   const add = (code, message) => violations.push({ code, message: `${message}. ${help}` });
   const inspectableSource = source.replace(/\/\*[\s\S]*?\*\//g, " ");
@@ -357,7 +379,7 @@ export function inspectCss(source, sourceFile = join(packageRoot, "__inspection_
         "UI CSS @import must use a statically inspectable quoted or url() path",
       );
     } else {
-      inspectCssReference(reference, sourceFile, add, true);
+      inspectCssReference(reference, normalizedSourceFile, add, true);
     }
   }
   for (const match of inspectableSource.matchAll(/\burl\s*\(\s*([^)]*)\)/gi)) {
@@ -365,7 +387,7 @@ export function inspectCss(source, sourceFile = join(packageRoot, "__inspection_
     if (reference === undefined) {
       add("DW-UI-CSS-DYNAMIC-REFERENCE", "UI CSS url() must use a statically inspectable path");
     } else {
-      inspectCssReference(reference, sourceFile, add, false);
+      inspectCssReference(reference, normalizedSourceFile, add, false);
     }
   }
 
@@ -418,9 +440,6 @@ export async function checkBoundaries() {
   }
 }
 
-if (
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === join(packageRoot, "scripts", "check-boundaries.mjs")
-) {
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await checkBoundaries();
 }

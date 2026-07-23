@@ -14,6 +14,7 @@ from pydantic import (
 )
 
 from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
@@ -95,13 +96,18 @@ class PendingInterruptResponse(_TaskWireModel):
         DecisionValue.REJECT,
         DecisionValue.RESPOND,
     )
-    plan_revision: int = Field(alias="planRevision", ge=1)
+    plan_revision: int = Field(
+        alias="planRevision",
+        strict=True,
+        ge=1,
+        le=MAX_PLAN_REVISION,
+    )
 
 
 class ProposedPlanResponse(_TaskWireModel):
     """Current plan available for inspection and pre-execution editing."""
 
-    revision: int = Field(ge=1)
+    revision: int = Field(strict=True, ge=1, le=MAX_PLAN_REVISION)
     title: str = Field(min_length=1, max_length=100)
     steps: tuple[str, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
     evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
@@ -252,7 +258,12 @@ class PlanUpdateRequest(_TaskWireModel):
     """Edit the exact pending plan revision without silently truncating it."""
 
     interrupt_id: InterruptId = Field(alias="interruptId")
-    expected_revision: int = Field(alias="expectedRevision", ge=1)
+    expected_revision: int = Field(
+        alias="expectedRevision",
+        strict=True,
+        ge=1,
+        le=MAX_PLAN_REVISION,
+    )
     steps: tuple[str, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
 
     @field_validator("steps")
@@ -332,7 +343,7 @@ class ContentDeltaEventData(_TaskWireModel):
 class PlanProposedEventData(_TaskWireModel):
     title: str = Field(min_length=1, max_length=100)
     steps: tuple[str, ...] = Field(min_length=1, max_length=8)
-    revision: int = Field(ge=1)
+    revision: int = Field(strict=True, ge=1, le=MAX_PLAN_REVISION)
     evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
     evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
 
@@ -341,7 +352,12 @@ class InterruptRequestedEventData(_TaskWireModel):
     interrupt_id: InterruptId = Field(alias="interruptId")
     question: str = Field(min_length=1, max_length=200)
     decisions: tuple[DecisionValue, ...]
-    plan_revision: int = Field(alias="planRevision", ge=1)
+    plan_revision: int = Field(
+        alias="planRevision",
+        strict=True,
+        ge=1,
+        le=MAX_PLAN_REVISION,
+    )
 
 
 class DecisionRecordedEventData(_TaskWireModel):

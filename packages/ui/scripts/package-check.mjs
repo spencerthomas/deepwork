@@ -114,13 +114,17 @@ try {
     join(consumer, "package.json"),
     `${JSON.stringify({ name: "ui-clean-consumer", private: true, type: "module" }, null, 2)}\n`,
   );
+  await writeFile(
+    join(consumer, "pnpm-workspace.yaml"),
+    `packages:\n  - "."\noverrides:\n  "@deepwork/domain": "file:${domainArchive}"\n`,
+  );
+  runPnpm(["add", "--offline", "--ignore-scripts", "--save-exact", domainArchive], consumer);
   runPnpm(
     [
       "add",
       "--offline",
       "--ignore-scripts",
       "--save-exact",
-      domainArchive,
       uiArchive,
       "react@19.2.8",
       "@types/react@19.2.17",

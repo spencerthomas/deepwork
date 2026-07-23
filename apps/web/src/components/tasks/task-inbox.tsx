@@ -152,6 +152,7 @@ export function TaskInbox() {
   const [filter, setFilter] = useState<TaskInboxFilter>(EMPTY_TASK_INBOX_FILTER);
   const [grouped, setGrouped] = useState(true);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const runtimeCopy = taskRuntimePresentation(mode);
 
   const counts = countTasks(tasks);
@@ -174,6 +175,13 @@ export function TaskInbox() {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isInteractiveTarget(event.target)) return;
+      if (event.key === "/") {
+        // Jump to search from anywhere on the page (the guard above means this
+        // never fires while the caret is already in a field).
+        event.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
       if (orderedIds.length === 0) return;
       if (event.key === "j" || event.key === "ArrowDown") {
         event.preventDefault();
@@ -278,6 +286,7 @@ export function TaskInbox() {
       <div className="mb-4 flex items-center gap-2 rounded-full border border-border bg-card px-3.5">
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <input
+          ref={searchRef}
           type="search"
           name="task-search"
           aria-label="Search loaded tasks"
@@ -292,14 +301,19 @@ export function TaskInbox() {
             }))
           }
           onKeyDown={(event) => {
-            if (event.key === "Escape" && filter.query !== "") {
+            if (event.key === "Escape") {
               event.preventDefault();
-              setFilter((current) => ({ ...current, query: "" }));
+              // First Escape clears the query; a second (empty) one leaves search.
+              if (filter.query !== "") {
+                setFilter((current) => ({ ...current, query: "" }));
+              } else {
+                event.currentTarget.blur();
+              }
             }
           }}
           className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
-        {filterActive && (
+        {filterActive ? (
           <button
             type="button"
             onClick={() => setFilter(EMPTY_TASK_INBOX_FILTER)}
@@ -307,6 +321,13 @@ export function TaskInbox() {
           >
             Clear
           </button>
+        ) : (
+          <kbd
+            aria-hidden
+            className="hidden shrink-0 rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] leading-none text-muted-foreground sm:inline-flex"
+          >
+            /
+          </kbd>
         )}
       </div>
 

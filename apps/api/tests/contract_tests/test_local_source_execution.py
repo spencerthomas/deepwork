@@ -48,6 +48,9 @@ class ScriptedAgentServer:
         self.failures: set[str] = set()
         self.omit_final_answer = False
         self.closed = False
+        self.block_resume = False
+        self.resume_started = asyncio.Event()
+        self.resume_release = asyncio.Event()
         self.resume_decisions: list[str] = []
         self.resume_comments: list[str | None] = []
         self.update_state_calls: list[Mapping[str, object]] = []
@@ -191,6 +194,9 @@ class _FakeRuns:
             server.new_interrupt()
             server.record_run(run_id, ("plan", "approve"))
         elif command is not None:
+            if server.block_resume:
+                server.resume_started.set()
+                await server.resume_release.wait()
             resume = command["resume"]
             assert isinstance(resume, Mapping)
             payloads = cast("Mapping[str, Mapping[str, object]]", resume)
@@ -576,6 +582,34 @@ async def test_identical_decision_replays_idempotently(
         assert conflicting.json()["code"] == "decision_conflict"
 
 
+async def test_decision_waits_for_source_resume_acceptance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    server.block_resume = True
+    async with _local_app(server, monkeypatch) as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        task_id = created["taskId"]
+        paused = await _wait_for_status(client, task_id, {"waiting-approval"})
+        interrupt_id = paused["pendingInterrupt"]["interruptId"]
+
+        request = asyncio.create_task(
+            client.post(
+                f"/api/v1/tasks/{task_id}/decisions",
+                json={"interruptId": interrupt_id, "decision": "approve"},
+            )
+        )
+        await asyncio.wait_for(server.resume_started.wait(), timeout=1)
+        assert request.done() is False
+
+        server.resume_release.set()
+        accepted = await asyncio.wait_for(request, timeout=1)
+        assert accepted.status_code == 202
+        assert accepted.json()["duplicate"] is False
+        await _wait_for_status(client, task_id, {"completed"})
+
+
 async def test_decision_with_unknown_interrupt_is_rejected_without_source_io(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -637,7 +671,11 @@ async def test_source_outage_after_decision_fails_the_task_safely(
             f"/api/v1/tasks/{task_id}/decisions",
             json={"interruptId": interrupt_id, "decision": "approve"},
         )
-        assert decided.status_code == 202
+        assert decided.status_code == 503
+        assert decided.json() == {
+            "code": "local_source_unavailable",
+            "message": "The configured local task source is unavailable.",
+        }
 
         failed = await _wait_for_status(client, task_id, {"failed"})
         assert failed["result"] is None
@@ -669,7 +707,11 @@ async def test_externally_advanced_interrupt_fails_source_scoped(
             f"/api/v1/tasks/{task_id}/decisions",
             json={"interruptId": interrupt_id, "decision": "approve"},
         )
-        assert decided.status_code == 202
+        assert decided.status_code == 409
+        assert decided.json() == {
+            "code": "interrupt_stale",
+            "message": "Interrupt is no longer actionable.",
+        }
 
         failed = await _wait_for_status(client, task_id, {"failed"})
         replay = await client.get(f"/api/v1/tasks/{task_id}/events")

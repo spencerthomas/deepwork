@@ -11,8 +11,8 @@ supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
 issue: local:DW-M1-TS-SCAFFOLD
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: e57c4deae2cf4e2107361690e0548d36f631a1ce
-last_verified_commit: e57c4deae2cf4e2107361690e0548d36f631a1ce
+base_commit: 3bd6fac451cd23be511127019d318627256b5671
+last_verified_commit: 3bd6fac451cd23be511127019d318627256b5671
 risk: medium
 governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
@@ -353,6 +353,13 @@ Acceptance:
 
 ## Surprises & Discoveries
 
+- 2026-07-23 — Observation: repository publication rewrote pre-publication
+  history, so neither the original `b1189ce7` pin nor the later `e57c4dea`
+  re-pin names a commit that exists in the published repository, and
+  `python3 tools/docs/check.py` failed closed. Consequence: both fields now
+  name `3bd6fac4`, the first published commit containing this plan and the
+  completed root-TS baseline; claims tied to pre-publication hashes remain
+  historical prose only.
 - 2026-07-23 14:00 AEST — The reviewed base has no root TypeScript workspace or
   shared lock and only the existing UI token files. Consequence: the cell cannot
   claim executable install/build proof until coordinator-owned integration makes

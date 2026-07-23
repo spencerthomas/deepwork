@@ -7,11 +7,9 @@ export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("dw-theme");
-    const prefers = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = stored ? stored === "dark" : prefers;
-    setDark(isDark);
-    document.documentElement.classList.toggle("dark", isDark);
+    // The pre-paint script in the root layout already applied the theme class;
+    // read it so the icon matches without recomputing (or re-flashing).
+    setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
   function toggle() {

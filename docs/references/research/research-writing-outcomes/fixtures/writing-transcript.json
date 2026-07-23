@@ -1,0 +1,32 @@
+{
+  "expected_verdict": "failed-without-promoted-final",
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "model_output": "Everything passed.",
+  "negative_cases": [
+    "missing",
+    "empty",
+    "stale",
+    "working-only"
+  ],
+  "promotion": {
+    "artifact_id": "artifact-final-01",
+    "attestation_id": "promotion-001",
+    "content_hash": "0e921506e3abf3f421d8ef59eb04620464e20031b33c4bc7ffc0c0d7a07eecb6",
+    "state": "promoted"
+  },
+  "schema_version": "dw.fixture.writing.v1",
+  "template_id": "writing-v1",
+  "working_file": {
+    "artifact_id": "working-draft-01",
+    "content_hash": "44150324db0f40d78a1659db3c8f3ed853e60303deffdb80152563e5123e91ed",
+    "state": "working"
+  }
+}

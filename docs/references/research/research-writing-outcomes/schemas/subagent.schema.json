@@ -1,0 +1,96 @@
+{
+  "$id": "https://schemas.example.invalid/deepwork/subagent.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "display_summary": {
+      "maxLength": 240,
+      "type": "string"
+    },
+    "evidence_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "attempt_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "source_id",
+        "actor_id",
+        "task_id",
+        "run_id",
+        "attempt_id"
+      ],
+      "type": "object"
+    },
+    "namespace": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "dw.subagent-event.v1"
+    },
+    "sequence": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "spawned",
+        "progress",
+        "completed",
+        "failed",
+        "cancelled",
+        "reconnected",
+        "unknown"
+      ]
+    },
+    "subagent_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "identity",
+    "subagent_id",
+    "namespace",
+    "sequence",
+    "state",
+    "display_summary",
+    "evidence_id"
+  ],
+  "title": "subagent",
+  "type": "object"
+}

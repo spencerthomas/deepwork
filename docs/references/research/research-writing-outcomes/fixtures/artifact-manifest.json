@@ -1,0 +1,88 @@
+{
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "live_content_access": "blocked-live-evidence",
+  "live_operations": {
+    "deletion": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "download": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "expiry": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "open": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "range": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "retention": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "revocation": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "size_limit": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "stale_link": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    },
+    "unavailable_content": {
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "state": "blocked-live-evidence"
+    }
+  },
+  "ownership": {
+    "file_owner": "source-fake-normalizer-v1",
+    "sandbox_owner": null,
+    "source_owner": "source-fake-normalizer-v1",
+    "state_owner": "source-fake-normalizer-v1"
+  },
+  "promoted": {
+    "artifact_id": "artifact-final-01",
+    "content_hash": "0e921506e3abf3f421d8ef59eb04620464e20031b33c4bc7ffc0c0d7a07eecb6",
+    "promotion_attestation": "promotion-001",
+    "safe_media": {
+      "media_type": "text/plain",
+      "size_bytes": 29
+    },
+    "version": "artifact-v1"
+  },
+  "schema_version": "dw.fixture.artifact-manifest.v1",
+  "source_native_link": "https://source.example.invalid/artifacts/artifact-final-01",
+  "working": {
+    "artifact_id": "working-draft-01",
+    "content_hash": "44150324db0f40d78a1659db3c8f3ed853e60303deffdb80152563e5123e91ed",
+    "promoted": false,
+    "version": "working-v1"
+  }
+}

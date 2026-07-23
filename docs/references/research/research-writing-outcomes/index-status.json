@@ -1,0 +1,11 @@
+{
+  "approved": false,
+  "checked_at": "2026-07-23T06:28:09.954910+00:00",
+  "failure_class": null,
+  "mode": "no-index",
+  "network_request_performed": false,
+  "permitted_validation_path": "offline-no-index-only",
+  "reason": "No reviewer-approved public package-index access was supplied.",
+  "schema_version": "dw.index-preflight.v1",
+  "state": "blocked-package-index-evidence"
+}

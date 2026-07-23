@@ -1,0 +1,58 @@
+{
+  "citation_cases": [
+    {
+      "case": "valid",
+      "evidence_id": "ev-citation-valid",
+      "state": "valid"
+    },
+    {
+      "case": "missing",
+      "evidence_id": "ev-citation-missing",
+      "state": "missing"
+    },
+    {
+      "case": "unreachable",
+      "evidence_id": "ev-citation-unreachable",
+      "state": "invalid"
+    },
+    {
+      "case": "mismatched",
+      "evidence_id": "ev-citation-mismatched",
+      "state": "invalid"
+    },
+    {
+      "case": "fabricated",
+      "evidence_id": "ev-citation-fabricated",
+      "state": "invalid"
+    }
+  ],
+  "expected_verdict": "failed",
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "model_output": "Everything passed.",
+  "report": {
+    "candidate_hash": "d254ca746d0daf875ce3f2542e47615efca1fdb5c3a320b6b918b1d78c966571",
+    "claims": [
+      {
+        "claim_id": "claim-a",
+        "evidence_id": "ev-citation-valid",
+        "state": "supported"
+      },
+      {
+        "claim_id": "claim-b",
+        "evidence_id": null,
+        "state": "unresolved"
+      }
+    ]
+  },
+  "schema_version": "dw.fixture.research.v1",
+  "template_id": "research-v1",
+  "truth_limit": "Citation presence does not establish factual truth."
+}

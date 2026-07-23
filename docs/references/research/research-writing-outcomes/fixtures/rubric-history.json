@@ -1,0 +1,52 @@
+{
+  "cost_ceiling_units": 10,
+  "criteria": [
+    {
+      "criterion_id": "criterion-provenance",
+      "evidence_refs": [
+        "ev-citation-missing"
+      ],
+      "order": 1,
+      "semantics": "required",
+      "state": "fail"
+    },
+    {
+      "criterion_id": "criterion-deliverable",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "order": 2,
+      "semantics": "required",
+      "state": "pass"
+    },
+    {
+      "criterion_id": "criterion-style",
+      "evidence_refs": [],
+      "order": 3,
+      "semantics": "advisory",
+      "state": "uncertain"
+    }
+  ],
+  "history_mode": "append-only",
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "iteration_cap": 3,
+  "operation_cases": {
+    "cancel": "cancelled",
+    "cap": "capped",
+    "interrupt": "blocked-live-evidence",
+    "restart": "resume-from-last-immutable-verdict",
+    "verifier_error": "unsupported"
+  },
+  "rubric_id": "rubric-research-writing-v1",
+  "schema_version": "dw.fixture.rubric-history.v1",
+  "time_ceiling_seconds": 30,
+  "version": "1"
+}

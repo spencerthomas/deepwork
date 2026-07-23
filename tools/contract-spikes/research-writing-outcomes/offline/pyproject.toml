@@ -1,0 +1,14 @@
+[project]
+name = "research-writing-outcome-spikes"
+version = "0.1.0"
+description = "Dependency-free Deep Work research and writing outcome normalization corpus"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = []
+build-backend = "build_backend"
+backend-path = ["."]
+
+[tool.uv]
+package = true

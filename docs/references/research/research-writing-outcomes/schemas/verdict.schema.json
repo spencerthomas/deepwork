@@ -1,0 +1,102 @@
+{
+  "$id": "https://schemas.example.invalid/deepwork/verdict.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "display_rationale": {
+      "maxLength": 240,
+      "type": "string"
+    },
+    "evidence_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "attempt_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "source_id",
+        "actor_id",
+        "task_id",
+        "run_id",
+        "attempt_id"
+      ],
+      "type": "object"
+    },
+    "rubric_version": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "dw.verdict.v1"
+    },
+    "state": {
+      "enum": [
+        "passed",
+        "failed",
+        "unsupported",
+        "manually_reviewed",
+        "cancelled",
+        "capped"
+      ]
+    },
+    "template_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "verdict_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "identity",
+    "verdict_id",
+    "template_id",
+    "rubric_version",
+    "candidate_hash",
+    "evidence_versions",
+    "state",
+    "display_rationale"
+  ],
+  "title": "verdict",
+  "type": "object"
+}

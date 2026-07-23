@@ -1,0 +1,18 @@
+{
+  "categories": [
+    "secrets",
+    "credentials",
+    "customer_or_tenant_data",
+    "reusable_endpoints",
+    "headers_or_cookies",
+    "hidden_reasoning",
+    "unsafe_html_or_urls",
+    "absolute_paths"
+  ],
+  "covered_file_count": 18,
+  "covered_max_mtime_ns": 1784788208375278200,
+  "finding_count": 0,
+  "findings": [],
+  "generated_at": "2026-07-23T06:30:15.101441+00:00",
+  "schema_version": "dw.scrub-report.v1"
+}

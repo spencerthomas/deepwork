@@ -1,0 +1,3386 @@
+{
+  "e2e_ids_credited": [],
+  "evidence": [
+    {
+      "content_sha256": "6cfbfba6a3125ca9c7344cc6cd5ccc4f23f00d45881c6b3ef012e76d98a473a2",
+      "evidence_id": "ev-artifact-working",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "artifact",
+      "path": "fixtures/artifact-manifest.json",
+      "version": "working-v1"
+    },
+    {
+      "content_sha256": "6cfbfba6a3125ca9c7344cc6cd5ccc4f23f00d45881c6b3ef012e76d98a473a2",
+      "evidence_id": "ev-artifact-promoted",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "artifact",
+      "path": "fixtures/artifact-manifest.json",
+      "version": "artifact-v1"
+    },
+    {
+      "content_sha256": "7c921f01720b86240fd70cabc89bd5f3686ae72e753abaad7bde4b8babe42c9d",
+      "evidence_id": "ev-subagent-events",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "subagent",
+      "path": "fixtures/subagent-events.json",
+      "version": "event-set-v1"
+    },
+    {
+      "content_sha256": "cae7104e16fb0b967e188029782f9a1017ae4d5160e9a7e18dcaaf9c7fdcc9f4",
+      "evidence_id": "ev-rubric-history",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "rubric",
+      "path": "fixtures/rubric-history.json",
+      "version": "rubric-v1"
+    },
+    {
+      "content_sha256": "9f6d1cff42939bcbadaffe168ae6dbc25c2e631c67fec45772b5649af6211625",
+      "evidence_id": "ev-verdict-history",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/verdict-history.json",
+      "version": "history-v1"
+    },
+    {
+      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "evidence_id": "ev-citation-valid",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/research-transcript.json",
+      "version": "citation-v1"
+    },
+    {
+      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "evidence_id": "ev-citation-missing",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/research-transcript.json",
+      "version": "missing-v1"
+    },
+    {
+      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "evidence_id": "ev-citation-unreachable",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/research-transcript.json",
+      "version": "unreachable-v1"
+    },
+    {
+      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "evidence_id": "ev-citation-mismatched",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/research-transcript.json",
+      "version": "mismatch-v1"
+    },
+    {
+      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "evidence_id": "ev-citation-fabricated",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/research-transcript.json",
+      "version": "fabricated-v1"
+    },
+    {
+      "content_sha256": "36c5b87811f5400bc443d6619a9f0730685a502ca3c4224fa699db4699108a75",
+      "evidence_id": "ev-test-failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/coding-negative-transcript.json",
+      "version": "test-v1"
+    },
+    {
+      "content_sha256": "83ceabc54d32ce471a402c82ceb0f3f2ec2a205f95193019292abc8209788c53",
+      "evidence_id": "ev-writing-transcript",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "immutable": true,
+      "owner_stream": "verification",
+      "path": "fixtures/writing-transcript.json",
+      "version": "writing-v1"
+    }
+  ],
+  "excluded_acceptance_ids": [
+    "AC-DW-TASK-005-04"
+  ],
+  "identity_fields": [
+    "tenant_id",
+    "workspace_id",
+    "source_id",
+    "actor_id",
+    "task_id",
+    "run_id",
+    "attempt_id"
+  ],
+  "installed_public": {
+    "commands_run": false,
+    "lock_created": false,
+    "state": "blocked-package-index-evidence"
+  },
+  "live_contract": {
+    "accepted_upstreams_supplied": false,
+    "sandbox_supplied": false,
+    "state": "blocked-live-evidence"
+  },
+  "precedence_conflicts": [],
+  "rows": [
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "capability": "access",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "blocked-live-evidence",
+      "row_id": "artifact-001-access",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "content_hash",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "artifact-002-content_hash",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "capability": "expiry_revocation",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "blocked-live-evidence",
+      "row_id": "artifact-003-expiry_revocation",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "metadata",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "artifact-004-metadata",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "capability": "range_size",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "blocked-live-evidence",
+      "row_id": "artifact-005-range_size",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "capability": "retention_deletion",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "blocked-live-evidence",
+      "row_id": "artifact-006-retention_deletion",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "sanctioned-non-production-classic-sandbox",
+      "capability": "unavailable_stale",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "blocked-live-evidence",
+      "row_id": "artifact-007-unavailable_stale",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": "working",
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "working_vs_promoted",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": false,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "artifact-008-working_vs_promoted",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "bounded_input_summary",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "subagent-009-bounded_input_summary",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "ordering_deduplication",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "subagent-010-ordering_deduplication",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "parent_attribution",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-011-parent_attribution",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "progress",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "subagent-012-progress",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "reconnect_compaction",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "subagent-013-reconnect_compaction",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "spawn_discover",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-014-spawn_discover",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "terminal_states",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-015-terminal_states",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "unknown_malformed",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "subagent-016-unknown_malformed",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "cap_cancel",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-017-cap_cancel",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "ceilings",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-018-ceilings",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "evaluation_states",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-019-evaluation_states",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "immutable_ordered_rubric",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "rubric-020-immutable_ordered_rubric",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "interrupt",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "rubric-021-interrupt",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "repair_supersession",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-022-repair_supersession",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "required_advisory",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-023-required_advisory",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "verifier_error_resume",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "rubric-024-verifier_error_resume",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "cap_cancel_error_resume",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-025-cap_cancel_error_resume",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "coding_test_negative",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-test-failed"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "required_evidence_state": "fail",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-026-coding_test_negative",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "manual_fallback",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-027-manual_fallback",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "repair_evidence_change",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-028-repair_evidence_change",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "research_citation_negatives",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-citation-missing"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "required_evidence_state": "missing",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-029-research_citation_negatives",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "research_provenance",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-citation-valid"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-030-research_provenance",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "writing_deliverable_negatives",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-writing-transcript"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "required_evidence_state": "missing",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-031-writing_deliverable_negatives",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "writing_promotion",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-writing-transcript"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-032-writing_promotion",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "access",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-artifact-working"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "artifact-033-evidence-closure-ev-artifact-working",
+      "stream": "artifact",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "cap_cancel_error_resume",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-citation-unreachable"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-034-evidence-closure-ev-citation-unreachable",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "cap_cancel_error_resume",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-citation-mismatched"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-035-evidence-closure-ev-citation-mismatched",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": true,
+      "blocker": null,
+      "capability": "cap_cancel_error_resume",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-citation-fabricated"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "accepted-deterministic-normalization",
+      "row_id": "verification-036-evidence-closure-ev-citation-fabricated",
+      "stream": "verification",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_actor_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-actor_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-037-substitution_actor_id",
+      "stream": "artifact",
+      "substitution_dimension": "actor_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_artifact_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-artifact_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-038-substitution_artifact_id",
+      "stream": "artifact",
+      "substitution_dimension": "artifact_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_attempt_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-attempt_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-039-substitution_attempt_id",
+      "stream": "artifact",
+      "substitution_dimension": "attempt_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_evidence_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-evidence_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-040-substitution_evidence_id",
+      "stream": "artifact",
+      "substitution_dimension": "evidence_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_run_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-run_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-041-substitution_run_id",
+      "stream": "artifact",
+      "substitution_dimension": "run_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_source_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-source_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-042-substitution_source_id",
+      "stream": "artifact",
+      "substitution_dimension": "source_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_task_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-task_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-043-substitution_task_id",
+      "stream": "artifact",
+      "substitution_dimension": "task_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_tenant_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-tenant_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-044-substitution_tenant_id",
+      "stream": "artifact",
+      "substitution_dimension": "tenant_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-02"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_workspace_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-artifact-promoted"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "metadata-and-authorized-source-native-link-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.artifact.v1",
+      "presented_value": "wrong-workspace_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.artifact-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "artifact-045-substitution_workspace_id",
+      "stream": "artifact",
+      "substitution_dimension": "workspace_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_actor_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-actor_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-046-substitution_actor_id",
+      "stream": "subagent",
+      "substitution_dimension": "actor_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_attempt_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-attempt_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-047-substitution_attempt_id",
+      "stream": "subagent",
+      "substitution_dimension": "attempt_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_evidence_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-evidence_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-048-substitution_evidence_id",
+      "stream": "subagent",
+      "substitution_dimension": "evidence_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_run_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-run_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-049-substitution_run_id",
+      "stream": "subagent",
+      "substitution_dimension": "run_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_source_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-source_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-050-substitution_source_id",
+      "stream": "subagent",
+      "substitution_dimension": "source_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_subagent_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-subagent_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-051-substitution_subagent_id",
+      "stream": "subagent",
+      "substitution_dimension": "subagent_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_task_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-task_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-052-substitution_task_id",
+      "stream": "subagent",
+      "substitution_dimension": "task_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_tenant_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-tenant_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-053-substitution_tenant_id",
+      "stream": "subagent",
+      "substitution_dimension": "tenant_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_workspace_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "presented_value": "wrong-workspace_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "subagent-054-substitution_workspace_id",
+      "stream": "subagent",
+      "substitution_dimension": "workspace_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_actor_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-actor_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-055-substitution_actor_id",
+      "stream": "rubric",
+      "substitution_dimension": "actor_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_attempt_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-attempt_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-056-substitution_attempt_id",
+      "stream": "rubric",
+      "substitution_dimension": "attempt_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_criterion_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-criterion_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-057-substitution_criterion_id",
+      "stream": "rubric",
+      "substitution_dimension": "criterion_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_evidence_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-evidence_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-058-substitution_evidence_id",
+      "stream": "rubric",
+      "substitution_dimension": "evidence_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_run_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-run_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-059-substitution_run_id",
+      "stream": "rubric",
+      "substitution_dimension": "run_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_source_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-source_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-060-substitution_source_id",
+      "stream": "rubric",
+      "substitution_dimension": "source_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_task_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-task_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-061-substitution_task_id",
+      "stream": "rubric",
+      "substitution_dimension": "task_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_tenant_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-tenant_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-062-substitution_tenant_id",
+      "stream": "rubric",
+      "substitution_dimension": "tenant_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_workspace_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "presented_value": "wrong-workspace_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "rubric-063-substitution_workspace_id",
+      "stream": "rubric",
+      "substitution_dimension": "workspace_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_actor_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-actor_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-064-substitution_actor_id",
+      "stream": "verification",
+      "substitution_dimension": "actor_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_attempt_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-attempt_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-065-substitution_attempt_id",
+      "stream": "verification",
+      "substitution_dimension": "attempt_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_candidate_hash",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-candidate_hash",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-066-substitution_candidate_hash",
+      "stream": "verification",
+      "substitution_dimension": "candidate_hash",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_evidence_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-evidence_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-067-substitution_evidence_id",
+      "stream": "verification",
+      "substitution_dimension": "evidence_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_rubric_version",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-rubric_version",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-068-substitution_rubric_version",
+      "stream": "verification",
+      "substitution_dimension": "rubric_version",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_run_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-run_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-069-substitution_run_id",
+      "stream": "verification",
+      "substitution_dimension": "run_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_source_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-source_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-070-substitution_source_id",
+      "stream": "verification",
+      "substitution_dimension": "source_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_task_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-task_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-071-substitution_task_id",
+      "stream": "verification",
+      "substitution_dimension": "task_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_template_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-template_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-072-substitution_template_id",
+      "stream": "verification",
+      "substitution_dimension": "template_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_tenant_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-tenant_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-073-substitution_tenant_id",
+      "stream": "verification",
+      "substitution_dimension": "tenant_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-01",
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-03",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": null,
+      "capability": "substitution_workspace_id",
+      "case": "substitution",
+      "evidence_refs": [
+        "ev-verdict-history"
+      ],
+      "evidence_tier": "deterministic-fake",
+      "fact_origin": null,
+      "fallback": "unsupported-or-manually-reviewed",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.verification.v1",
+      "presented_value": "wrong-workspace_id",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.verification-request.v1",
+      "result": "rejected-substitution",
+      "row_id": "verification-074-substitution_workspace_id",
+      "stream": "verification",
+      "substitution_dimension": "workspace_id",
+      "transitions": [
+        "received",
+        "identity-rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "installed_public_create_deep_agent",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-075-installed_public_create_deep_agent",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-HITL-002-01",
+        "AC-DW-HITL-002-02",
+        "AC-DW-HITL-002-04"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "installed_public_RubricMiddleware",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-rubric-history"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": null,
+      "fallback": "immutable-manual-checklist-without-automatic-score",
+      "history_mode": "append-only",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.rubric.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.rubric-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "rubric-076-installed_public_RubricMiddleware",
+      "stream": "rubric",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "installed_public_SubAgent",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-077-installed_public_SubAgent",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-DW-TASK-005-03"
+      ],
+      "artifact_state": null,
+      "automatic_pass": false,
+      "blocker": "approved-public-package-index-access",
+      "capability": "installed_public_SubAgentMiddleware",
+      "case": "positive-or-fallback",
+      "evidence_refs": [
+        "ev-subagent-events"
+      ],
+      "evidence_tier": "unknown",
+      "fact_origin": "source-supplied",
+      "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
+      "history_mode": null,
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "output_schema": "dw.subagent.v1",
+      "promoted": null,
+      "provider_proof": false,
+      "request_schema": "dw.subagent-request.v1",
+      "result": "blocked-package-index-evidence",
+      "row_id": "subagent-078-installed_public_SubAgentMiddleware",
+      "stream": "subagent",
+      "transitions": [
+        "received",
+        "validated",
+        "normalized"
+      ]
+    }
+  ],
+  "schema_version": "dw.research-writing-matrix.v1",
+  "upstream_dependencies": {
+    "SPIKE-COMPOSE-001": {
+      "accepted_as_input": false,
+      "reviewed_head": "758c1d4a2230b7c4261fcfbd0f3008634509e096",
+      "state": "blocked-live-evidence"
+    },
+    "SPIKE-CONFIG-001": {
+      "accepted_as_input": false,
+      "reviewed_head": "758c1d4a2230b7c4261fcfbd0f3008634509e096",
+      "state": "blocked-live-evidence"
+    },
+    "SPIKE-HITL-001": {
+      "accepted_as_input": false,
+      "reviewed_head": "758c1d4a2230b7c4261fcfbd0f3008634509e096",
+      "state": "blocked-live-evidence"
+    },
+    "SPIKE-STREAM-003": {
+      "accepted_as_input": false,
+      "reviewed_head": "758c1d4a2230b7c4261fcfbd0f3008634509e096",
+      "state": "blocked-live-evidence"
+    }
+  }
+}

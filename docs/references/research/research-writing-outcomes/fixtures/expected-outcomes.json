@@ -1,0 +1,14 @@
+{
+  "automatic_numeric_score": null,
+  "cancelled": "cancelled",
+  "cap_reached": "capped",
+  "coding_failed_or_missing_tests": "failed",
+  "generic_model_pass_overridden": true,
+  "manual_checklist": "manually_reviewed",
+  "required_not_evaluated": "failed",
+  "required_uncertain": "failed",
+  "research_missing_required_evidence": "failed",
+  "schema_version": "dw.fixture.expected-outcomes.v1",
+  "verifier_error": "unsupported",
+  "writing_without_promoted_final": "failed"
+}

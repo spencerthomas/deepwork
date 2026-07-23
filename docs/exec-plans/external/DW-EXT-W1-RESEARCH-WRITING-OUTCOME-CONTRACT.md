@@ -412,3 +412,64 @@ program/index records, starter agents, application adapters, normalized
 contracts, capability flags, or release scope. No worktree creation, push, merge,
 deployment, publication, production mutation, credential collection, or
 destructive cleanup is authorized by this packet.
+
+## Progress
+
+- [x] Confirmed the delegated worktree, branch, seed, exact base, governed paths,
+  and repository/documentation instructions.
+- [x] Implemented the dependency-free offline project with a local PEP 517
+  backend, frozen lock, stdlib `unittest` suite, deterministic fake normalizer,
+  and global socket/DNS denial.
+- [x] Implemented fail-closed package-index preflight and the separate,
+  deliberately unlocked and unexecuted installed-public conformance cell.
+- [x] Generated the correlated artifact/subagent/rubric/verifier matrix, closed
+  schemas, deterministic transcripts/manifests/histories, report, versions,
+  commands, scrub status, and evidence hash closure.
+- [x] Kept COMPOSE-001, CONFIG-001, STREAM-003, and HITL-001 blocked at reviewed
+  head `758c1d4a2230b7c4261fcfbd0f3008634509e096`; no upstream row was copied,
+  accepted, or reclassified.
+- [x] Completed all exact no-index validations after final corpus fixes: 15
+  stdlib tests, 78 matrix rows, 12 evidence records, 19-file retained hash
+  closure, zero scrub findings, fresh evidence, governed scope, offline lock,
+  documentation generation/check, and diff checks.
+- [ ] Commit a clean candidate, obtain distinct runtime-contract/security/product
+  final reviews, resolve findings, and create the review-only attestation commit.
+- [ ] Validate the attestation, send the coordinator the reviewed SHA and exact
+  evidence, then stop.
+
+## Surprises and discoveries
+
+- The sandboxed first `uv` invocation could not access the existing user cache.
+  The required no-index commands therefore run with explicit sandbox escalation;
+  `UV_OFFLINE=true`, `--offline`, and the test-level network denial remain active.
+- The first offline sync exposed that uv requested the PEP 660 editable hooks.
+  The dependency-free local backend now supplies those hooks by emitting the same
+  deterministic wheel, without a build dependency.
+- The first scrub correctly rejected a prose occurrence matching its private
+  reasoning detector. The detector is now scoped to persisted reasoning fields
+  and chain-of-thought markers, so the report can state the prohibition without
+  becoming a false positive.
+
+## Decision log
+
+- Decision: finish the no-index path and mark installed-public and live cells
+  blocked.
+  Rationale: no reviewer-approved package-index access, accepted upstream
+  artifact, or sanctioned non-production classic sandbox was supplied.
+- Decision: retain an installed-public fail-closed test template but no
+  `uv.lock`, distribution pins, or observed constructor result.
+  Rationale: the packet requires a separate project while prohibiting improvised
+  source/editable/copied-wheel evidence before approved public index access.
+- Decision: use one synthetic identity tuple across the positive corpus and
+  independently substitute every tenant/workspace/source/actor/task/run/attempt
+  and stream-specific identity in negative rows.
+  Rationale: this makes cross-stream ownership explicit and lets the validator
+  reject both orphaned evidence and replay/substitution.
+
+## Outcomes and retrospective
+
+Pending final validation and independent review. The intended truthful outcome is
+accepted deterministic Deep Work normalization for bounded offline cells, with
+public Deep Agents conformance and classic-sandbox behavior left blocked at their
+named evidence gates. This packet will credit only AC-DW-TASK-005-01/-02/-03 and
+AC-DW-HITL-002-01..04, zero `E2E-*` IDs, and no AC-DW-TASK-005-04.

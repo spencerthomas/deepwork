@@ -1,0 +1,12 @@
+[project]
+name = "research-writing-outcomes-installed-public-blocked"
+version = "0.0.0"
+description = "Blocked manifest placeholder; not a conformance lock"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.research-writing-outcomes]
+state = "blocked-package-index-evidence"
+lock-created = false
+commands-run = false
+requires-approved-index-preflight = true

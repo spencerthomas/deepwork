@@ -1,0 +1,58 @@
+{
+  "compacted_before_sequence": 2,
+  "events": [
+    {
+      "display_summary": "Synthetic subagent started.",
+      "sequence": 1,
+      "state": "spawned"
+    },
+    {
+      "display_summary": "One bounded source fact was supplied.",
+      "sequence": 2,
+      "state": "progress"
+    },
+    {
+      "display_summary": "Duplicate ignored.",
+      "sequence": 2,
+      "state": "progress"
+    },
+    {
+      "display_summary": "Synthetic subagent completed.",
+      "sequence": 4,
+      "state": "completed"
+    },
+    {
+      "display_summary": "Out-of-order event ignored after checkpoint.",
+      "sequence": 3,
+      "state": "reconnected"
+    }
+  ],
+  "fallback": "generic-parent-timeline",
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "namespace": "parent/subagent-sync-01",
+  "negative_cases": [
+    "wrong-parent-identity",
+    "cross-workspace-replay",
+    "evidence-substitution",
+    "unknown-state",
+    "malformed-content",
+    "duplicate-event",
+    "out-of-order-event"
+  ],
+  "public_api_state": "blocked-package-index-evidence",
+  "schema_version": "dw.fixture.subagent-events.v1",
+  "subagent_id": "subagent-sync-01",
+  "terminal_states": [
+    "completed",
+    "failed",
+    "cancelled"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "candidate_hash": "fed53ee6b0ddd474f9f2d93dfdb7c00321eb6538ec02a4572f6b986724403584",
+      "evidence_versions": {
+        "ev-citation-missing": "1"
+      },
+      "iteration": 1,
+      "state": "failed",
+      "supersedes_verdict_id": null,
+      "verdict_id": "verdict-001"
+    },
+    {
+      "candidate_hash": "5b9f45cfe85bb8dccbe042aadc887f928cba25e9241dcc0442c85e8f8d0c49e9",
+      "evidence_versions": {
+        "ev-citation-valid": "2"
+      },
+      "iteration": 2,
+      "state": "passed",
+      "supersedes_verdict_id": "verdict-001",
+      "verdict_id": "verdict-002"
+    },
+    {
+      "candidate_hash": "40863b146a36aedfe80491a58026de35a518a7dc0c2b45307c5aee6d860a9d25",
+      "evidence_versions": {
+        "ev-citation-valid": "3"
+      },
+      "iteration": 3,
+      "state": "capped",
+      "supersedes_verdict_id": "verdict-002",
+      "verdict_id": "verdict-003"
+    }
+  ],
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "manual_fallback_state": "manually_reviewed",
+  "restart_checkpoint": {
+    "last_iteration": 3,
+    "last_verdict_id": "verdict-003"
+  },
+  "schema_version": "dw.fixture.verdict-history.v1"
+}

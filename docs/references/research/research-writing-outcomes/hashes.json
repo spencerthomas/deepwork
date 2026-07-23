@@ -1,0 +1,29 @@
+{
+  "algorithm": "sha256",
+  "excluded": [
+    "hashes.json",
+    "review.json"
+  ],
+  "files": {
+    "commands.txt": "b20b02ff9be675f71bc32ed4b55e4d022710b325efd9050eecac9c277cae19d0",
+    "fixtures/artifact-manifest.json": "6cfbfba6a3125ca9c7344cc6cd5ccc4f23f00d45881c6b3ef012e76d98a473a2",
+    "fixtures/coding-negative-transcript.json": "36c5b87811f5400bc443d6619a9f0730685a502ca3c4224fa699db4699108a75",
+    "fixtures/expected-outcomes.json": "6c0dba6ec3c425dec9d52e50c32c4b1221f577ae61d6bb835cf9f936c0da5801",
+    "fixtures/research-transcript.json": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+    "fixtures/rubric-history.json": "cae7104e16fb0b967e188029782f9a1017ae4d5160e9a7e18dcaaf9c7fdcc9f4",
+    "fixtures/subagent-events.json": "7c921f01720b86240fd70cabc89bd5f3686ae72e753abaad7bde4b8babe42c9d",
+    "fixtures/verdict-history.json": "9f6d1cff42939bcbadaffe168ae6dbc25c2e631c67fec45772b5649af6211625",
+    "fixtures/writing-transcript.json": "83ceabc54d32ce471a402c82ceb0f3f2ec2a205f95193019292abc8209788c53",
+    "index-status.json": "b601d53fe9b64c20cc8b1d09f3f06fd1b911b194b21fd0126284c055fd8e97f1",
+    "matrix.json": "94d4bd26f46313563fda53f2a57fb9c345ca7f1b12e106558d55cb9d0fb63d8e",
+    "report.md": "07f67ec546fc08f886a68f7a7ebc7772c6e4d280fa685c87ea208f30fa0a81ce",
+    "schemas/artifact.schema.json": "04e5364d5b96a309b9b72d08a191af244a9449e4bdccd2a83dd035fc37fc7280",
+    "schemas/cross-reference.schema.json": "d1ad54badb49a989f0d9f02a4e8f3cf735dc7afbc5121b703a3a647b99a5eb6e",
+    "schemas/rubric.schema.json": "e3c8c0f4ccccc8c2cb52e9a80ed85849bc3fd3097f4c395d28f5bad4305b332f",
+    "schemas/subagent.schema.json": "997b5b09360d95a8399aa3eb746f1eff3ea579631e9e23a41a2195fb51fe68e6",
+    "schemas/verdict.schema.json": "3227b7e478a9ef9372f38a1c3f94d3b408b05ddedb25435c4003618b2ecdcad3",
+    "scrub-report.json": "be781ed7c4ed4f0a2ad0cb6d7e712a8a343d339203d714651e9c69aa1a114ea7",
+    "versions.json": "10fe71d60d155ed71af4bf70d05460b5be0246c52a551324b84a699c49969764"
+  },
+  "schema_version": "dw.evidence-hashes.v1"
+}

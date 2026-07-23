@@ -1,0 +1,21 @@
+{
+  "expected_verdict": "failed",
+  "identity": {
+    "actor_id": "actor-synthetic-reviewer",
+    "attempt_id": "attempt-001",
+    "run_id": "run-outcome-contract-001",
+    "source_id": "source-fake-normalizer-v1",
+    "task_id": "task-outcome-contract-001",
+    "tenant_id": "tenant-synthetic-01",
+    "workspace_id": "workspace-synthetic-01"
+  },
+  "model_output": "Everything passed.",
+  "schema_version": "dw.fixture.coding-negative.v1",
+  "scope_limit": "Evidence-binding negative only; no coding journey credit.",
+  "template_id": "coding-negative-only-v1",
+  "test_evidence": {
+    "evidence_id": "ev-test-failed",
+    "exit_status": 1,
+    "state": "fail"
+  }
+}

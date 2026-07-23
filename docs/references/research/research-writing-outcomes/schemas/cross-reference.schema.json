@@ -1,0 +1,89 @@
+{
+  "$id": "https://schemas.example.invalid/deepwork/cross-reference.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "candidate_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "criterion_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "evidence_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "attempt_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "source_id",
+        "actor_id",
+        "task_id",
+        "run_id",
+        "attempt_id"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "dw.cross-reference.v1"
+    },
+    "subagent_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "verdict_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "identity",
+    "artifact_id",
+    "subagent_id",
+    "criterion_id",
+    "evidence_id",
+    "candidate_hash",
+    "verdict_id"
+  ],
+  "title": "cross-reference",
+  "type": "object"
+}

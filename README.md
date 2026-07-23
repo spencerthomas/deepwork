@@ -82,6 +82,10 @@ python3 tools/docs/generate.py --check
 python3 tools/docs/check.py
 ```
 
+Continuous integration runs `make bootstrap`, `make check-docs`,
+`make check-architecture`, and `make check` on every pull request to `main`
+(`.github/workflows/checks.yml`), so the same contract gates merges.
+
 There is intentionally no executable `WORKFLOW.md`. Manual one-agent-per-worktree
 dispatch is current until `SPIKE-SYMPHONY-001` passes.
 

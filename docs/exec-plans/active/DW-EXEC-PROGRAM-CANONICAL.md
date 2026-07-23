@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 8323084697fe9d7c1aac1c2b07fadf66cc92dff5
+last_verified_commit: 2a4d8eb937bfe5d43669377567d46b2651972242
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -98,9 +98,9 @@ successor after its independent review and local commit.
 |---|---:|---|---|---|---|---|
 | DW-W0.1-DISPATCH-HARDENING | 0.1 | completed (`3dbe662`) | `500eaa7` | docs/checker and program records | none | terminal |
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
-| DW-M1-API-SCAFFOLD | 1 | implementation committed (`d0ae220`) | `3dbe662` | `apps/api/**` | W0.1 | independent implementation review |
-| DW-M1-AGENT-SCAFFOLD | 1 | implementation committed (`6f82e55`) | `3dbe662` | `packages/agent/**` | W0.1 | independent implementation review |
-| DW-M1-TS-SCAFFOLD | 1 | plan re-review | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | reviewed cell ExecPlan |
+| DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
+| DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
+| DW-M1-TS-SCAFFOLD | 1 | implementation rework | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close package-proof/boundary/token findings |
 | DW-M1-INTEGRATION | 1 | pending | accepted lane commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes | lane reviews accepted |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
@@ -112,10 +112,10 @@ later reviewed cell explicitly reassigns it.
 
 | Role | Cell | Branch | Worktree | State |
 |---|---|---|---|---|
-| coordinator | program/root TS integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | root TS terminal; coordinating reviews |
-| API author/reviewer | API authored; TS plan review | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | API committed; reviewing TS plan in its worktree |
-| agent author/API reviewer | agent authored; API review | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | agent committed; reviewing API worktree |
-| TS planner/agent reviewer | root/TS planning; agent review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | root dependency integrated; reviewing agent worktree |
+| coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | API/agent/root TS terminal; coordinating TS rework |
+| API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
+| agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
+| TS lane | TS package author | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | bounded implementation rework |
 
 ## Progress
 
@@ -127,9 +127,11 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — Root TypeScript declarations/config completed and independently
   reviewed through `8323084697fe9d7c1aac1c2b07fadf66cc92dff5`; no lock or
   executable package claim made.
-- [ ] Wave 1 API and agent implementations pass independent review and integrate;
-  TypeScript packages complete their reviewed authoring, lock, and verification
-  sequence.
+- [x] 2026-07-23 — Fixture-only API and independent agent package implementations
+  passed fresh cross-review after bounded rework and integrated locally through
+  `2a4d8eb937bfe5d43669377567d46b2651972242`.
+- [ ] TypeScript packages close authoring review findings, then complete their
+  coordinator-owned lock and executable-verification sequence.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.
 - [ ] v1.x, v2, and v3 discovery briefs become reviewed executable plans and are
   implemented or retained behind exact human/external blocker entries.
@@ -156,6 +158,16 @@ later reviewed cell explicitly reassigns it.
 - 2026-07-23 — Observation: independent review caught DOM libraries in the
   universal TypeScript base. Consequence: the accepted base is ES2022-only and
   browser-owning packages must opt into DOM libraries locally.
+- 2026-07-23 — Observation: initial Python package checks overstated proof: the
+  agent verifier rewrote stale hashes, while the API eagerly loaded framework
+  modules and left non-bootstrap downloads possible. Consequence: accepted cells
+  now use immutable double-build evidence, lazy public imports, fail-closed offline
+  commands, installed-launcher execution, and exact wheel-content scans.
+- 2026-07-23 — Observation: first TS source review found `package-check` aliased to
+  architecture scanning, promised negative fixtures absent, and component scale
+  constants outside `tokens.css`. Consequence: source stays unintegrated until
+  clean-consumer proof is authored, negative cases exist, and UI values consume
+  the canonical token source.
 
 ## Decision Log
 
@@ -211,11 +223,12 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 ## Outcomes & Retrospective
 
-Wave 0.1 and the root TypeScript declaration/configuration cell are terminal.
-API and agent package implementations are locally committed with full author
-validation and are undergoing fresh cross-review. The TypeScript package plan is
-under final review against its now-terminal root prerequisite. No protected
-`docs/plans/**` file, external credential, production system, push, merge,
-deployment, or publication has been touched. The terminal outcome remains the
-verified complete canonical vision through v3, or an exact blocker ledger after
-every independent DAG branch is exhausted.
+Wave 0.1, root TypeScript declarations, the fixture-only API package, and the
+independent agent package are terminal local integration cells. Both Python lanes
+needed and passed bounded fresh re-review before integration. TypeScript package
+source is implemented but remains outside the integration branch while its author
+closes three independent review findings; shared lock and executable claims remain
+downstream. No protected `docs/plans/**` file, external credential, production
+system, push, merge, deployment, or publication has been touched. The terminal
+outcome remains the verified complete canonical vision through v3, or an exact
+blocker ledger after every independent DAG branch is exhausted.

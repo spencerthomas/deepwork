@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 089167809592488b11ee9260ac8ec076b231c7a1
+last_verified_commit: 7fedc6a3504f98ed2810d8c0dea1ea923fdf734a
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -106,16 +106,16 @@ successor after its independent review and local commit.
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
 | DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
 | DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
-| DW-M1-TS-SCAFFOLD | 1 | implementation rework after external review | `03b019a` integrated / lane `6a57ab8` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close nine findings; fresh independent review |
+| DW-M1-TS-SCAFFOLD | 1 | second rework complete; fresh external review pending | `03b019a` integrated / lane `76ec47d` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | receive ACCEPTED FOR LOCK HANDOFF or bounded rework |
 | DW-M1-TS-LOCK-001 | 1 | blocked before execution | accepted TS rework | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
 | DW-M1-TS-VERIFY-001 | 1 | pending | terminal lock cell | package-local executable checks/fixes | TS lock terminal | independent executable review |
-| DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | active external | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | packet dependencies; product demo for final worktree acceptance | await independently reviewed commit SHA |
-| DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | active external | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | pinned public/source evidence; optional sandbox only for live acceptance | await independently reviewed commit SHA |
+| DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | reviewed implementation awaiting coordinator integration (`8cb2f76`) | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | architecture coverage dependency-gated; real product-demo peer absent | integrate bounded harness; keep both named spikes open |
+| DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | reviewed blocked evidence awaiting coordinator integration (`758c1d4`) | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | all 11 rows blocked on package/live evidence | integrate evidence only; enable nothing |
 | DW-EXT-W1-DOCS-HARNESS-ACCEPTANCE | 1 | active external | `b9d2444` / seed `552dca0` | `tools/docs/**`, docs fixtures/research/packet | current canonical corpus | await independently reviewed commit SHA |
 | DW-EXT-W1-AUTH-HEADER-CONTRACT-RESEARCH | 1 | active external | `b9d2444` / seed `9efbca4` | `tools/contract-spikes/auth/**`, auth research/packet | official/public evidence; optional non-production account only for live rows | await independently reviewed commit SHA |
-| DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS | 1 | ready for external dispatch | `fff1bfd` / seed pending | attachment contract probe/research/packet | public evidence; live object/scanner/runtime rows blocked | create seed-only branch; external launcher owns implementation |
-| DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL | 1 | ready for external dispatch, offline harness only | `fff1bfd` / seed pending | plan-approval contract probe/research/packet | HITL/compose/config rows blocked; live sandbox absent | create seed-only branch; no target-spike acceptance |
-| DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT | 1 | packet rework before dispatch | `fff1bfd` | research/writing outcome probe/research/packet | upstream/public-package/live evidence blockers | close independent packet-review findings |
+| DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS | 1 | active external | `fff1bfd` / seed `e0f1087` | attachment contract probe/research/packet | public evidence; live object/scanner/runtime rows blocked | await independently reviewed clean commit SHA |
+| DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL | 1 | active external, offline harness only | `fff1bfd` / seed `886f6b1` | plan-approval contract probe/research/packet | HITL/compose/config rows blocked; live sandbox absent | await independently reviewed clean commit SHA; no target-spike acceptance |
+| DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT | 1 | ready for external dispatch | `fff1bfd` / seed pending | research/writing outcome probe/research/packet | upstream/public-package/live evidence blockers | create seed-only branch; zero E2E credit |
 | DW-M1-INTEGRATION | 1 | pending | accepted lane and external commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes and applicable gates | compose one credential-free product demo |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
@@ -130,11 +130,13 @@ later reviewed cell explicitly reassigns it.
 | coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | sole integrator; TS lock paused; coordinating source rework and external results |
 | API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
 | agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
-| TS lane | TS package author; internal and external reviewers | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | bounded rework after external task `019f8d06-3a9b-7d82-8843-13c8ac03542f` returned `REWORK REQUIRED` |
-| external platform accelerator | worktree/architecture harness | `external/platform/worktree-architecture-harness` | `/Users/tomspencer/dev/deepwork/worktrees/external-worktree-architecture-harness` | task `019f8d02-8117-7791-a5dd-5a71d848f2e5`; external-owned; active |
-| external research accelerator | LangChain contract spikes | `external/research/langchain-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes` | task `019f8d02-a16a-72a2-b74a-932da4a9132b`; external-owned; active |
+| TS lane | TS package author; external reviewer pending | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | second bounded rework committed at `76ec47d`; lock paused pending fresh verdict |
+| external platform accelerator | worktree/architecture harness | `external/platform/worktree-architecture-harness` | `/Users/tomspencer/dev/deepwork/worktrees/external-worktree-architecture-harness` | task `019f8d02-8117-7791-a5dd-5a71d848f2e5`; reviewed clean `8cb2f76`; integration pending |
+| external research accelerator | LangChain contract spikes | `external/research/langchain-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes` | task `019f8d02-a16a-72a2-b74a-932da4a9132b`; reviewed clean `758c1d4`; all rows blocked |
 | external docs accelerator | documentation-harness acceptance | `external/platform/documentation-harness-acceptance` | `/Users/tomspencer/dev/deepwork/worktrees/external-documentation-harness-acceptance` | task `019f8d12-3be4-78c1-8591-936e853995d0`; external-owned; active |
 | external auth accelerator | API-key/header contract research | `external/research/auth-header-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-auth-header-contract-spikes` | task `019f8d12-4aba-75a0-9607-9cf8171cb3ae`; external-owned; active |
+| external attachment accelerator | safe first-task files | `external/research/first-task-safe-attachments` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-safe-attachments` | task `019f8d2d-104e-7592-862e-fe1f7a580072`; seed `e0f1087`; external-owned; active |
+| external plan accelerator | plan before execution | `external/research/first-task-plan-approval` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-plan-approval` | task `019f8d2d-079b-7e82-bea7-e5a02e710c15`; seed `886f6b1`; external-owned; active |
 
 ## Progress
 
@@ -168,9 +170,11 @@ later reviewed cell explicitly reassigns it.
   read-only review at `0891678`; both are dispatch-only research cells from
   `fff1bfd`. Plan approval remains offline-harness-only and cannot accept its
   target spikes on that base.
-- [ ] 2026-07-23 — Research/writing outcome packet remains under bounded
-  amendment and independent re-review; no seed or external implementation
-  authority exists yet.
+- [x] 2026-07-23 — Safe-attachment and plan-approval workers became active from
+  seeds `e0f1087` and `886f6b1`; their paths remain externally owned.
+- [x] 2026-07-23 — Research/writing outcome packet passed final independent
+  review at `7fedc6a`; all upstream/package/live dependencies remain blocked and
+  the packet credits zero E2E acceptance.
 - [ ] Complete TypeScript source rework, then the coordinator-owned lock and executable-verification
   sequence.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.

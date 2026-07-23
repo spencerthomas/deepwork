@@ -6,7 +6,7 @@ OFFLINE_UV := $(UV) --offline --no-python-downloads
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
 
-.PHONY: bootstrap build check contract doctor format format-check lint offline-ready package-check test typecheck
+.PHONY: bootstrap build check contract doctor format format-check lint offline-ready openapi package-check test typecheck
 
 offline-ready:
 	@test -x "$(UV_PROJECT_ENVIRONMENT)/bin/python" -a -d "$(UV_CACHE_DIR)" || { \
@@ -43,6 +43,9 @@ contract: offline-ready
 
 build: offline-ready
 	$(OFFLINE_UV) build --no-sources
+
+openapi: offline-ready
+	$(OFFLINE_UV) run --frozen python scripts/export_openapi.py --write
 
 package-check: offline-ready build
 	$(OFFLINE_UV) run --frozen python scripts/check_package.py

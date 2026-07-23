@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_logical_delay_visibility",
+  "declaredRuleCode": "FIXTURE_EXPECTATION_DELAY_VISIBILITY",
+  "basePath": "cases/logical-delay.json",
+  "mutation": {"operation": "replace", "path": "/expected/visibleRecordIdsByTick/43", "value": ["fx_record_delay_start", "fx_record_delay_content"]}
+}

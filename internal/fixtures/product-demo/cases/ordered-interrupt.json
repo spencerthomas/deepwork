@@ -1,0 +1,45 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_ordered_interrupt",
+  "category": "ordered-interrupt",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 8, "observedAt": "2026-07-23T00:00:02.000Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_interrupt",
+    "runId": "fx_run_interrupt",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_interrupt",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_interrupt:fx_run_interrupt"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {
+      "recordId": "fx_record_interrupt",
+      "durableEventId": "fx_event_interrupt",
+      "sequence": 1,
+      "tick": 8,
+      "observedAt": "2026-07-23T00:00:02.000Z",
+      "kind": "fixture-interrupt",
+      "sourceId": "fx_source_alpha",
+      "threadId": "fx_thread_interrupt",
+      "runId": "fx_run_interrupt",
+      "payload": {
+        "interruptId": "fx_interrupt_alpha",
+        "version": "fx_interrupt_version_3",
+        "actionRequests": [
+          {"name": "review", "args": {"subject": "fx_change_a"}, "description": "Review synthetic change A."},
+          {"name": "review", "args": {"subject": "fx_change_b"}, "description": "Review synthetic change B."}
+        ],
+        "reviewConfigs": [
+          {"actionName": "review", "allowedDecisions": ["approve", "edit", "reject", "respond"]},
+          {"actionName": "review", "allowedDecisions": ["approve", "edit", "reject", "respond"]}
+        ]
+      }
+    }
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_interrupt"], "actionRequestOrder": ["review", "review"], "reviewConfigOrder": ["review", "review"], "positionalAlignment": true, "repeatedActionNamesPreserved": ["review", "review"], "documentedDecisionVocabulary": ["approve", "edit", "reject", "respond"], "acceptedDecisionPresent": false, "resumePayloadPresent": false, "submissionCapabilityState": "gated"},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

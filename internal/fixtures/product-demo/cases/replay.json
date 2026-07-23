@@ -1,0 +1,25 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_replay",
+  "category": "replay",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 24, "observedAt": "2026-07-23T00:00:06.000Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_replay",
+    "runId": "fx_run_replay",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_replay",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_replay:fx_run_replay"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_replay_a", "durableEventId": "fx_event_replay_a", "sequence": 1, "tick": 21, "observedAt": "2026-07-23T00:00:05.250Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_replay", "runId": "fx_run_replay", "payload": {"text": "Synthetic replay item A.", "trust": "untrusted"}},
+    {"recordId": "fx_record_replay_a_duplicate", "durableEventId": "fx_event_replay_a", "sequence": 2, "tick": 22, "observedAt": "2026-07-23T00:00:05.500Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_replay", "runId": "fx_run_replay", "payload": {"text": "Synthetic replay item A.", "trust": "untrusted"}},
+    {"recordId": "fx_record_replay_b", "durableEventId": "fx_event_replay_b", "sequence": 3, "tick": 24, "observedAt": "2026-07-23T00:00:06.000Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_replay", "runId": "fx_run_replay", "payload": {"text": "Synthetic replay item B.", "trust": "untrusted"}}
+  ],
+  "expected": {"inputRecordIds": ["fx_record_replay_a", "fx_record_replay_a_duplicate", "fx_record_replay_b"], "deduplicatedDurableEventIds": ["fx_event_replay_a", "fx_event_replay_b"], "ignoredRecordIds": ["fx_record_replay_a_duplicate"], "visibleRecordIds": ["fx_record_replay_a", "fx_record_replay_b"]},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

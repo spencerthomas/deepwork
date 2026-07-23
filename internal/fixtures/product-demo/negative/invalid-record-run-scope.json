@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_record_run_scope",
+  "declaredRuleCode": "FIXTURE_ID_QUALIFICATION",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "replace", "path": "/records/0/runId", "value": "fx_run_other"}
+}

@@ -1,0 +1,24 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_content",
+  "category": "content",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 3, "observedAt": "2026-07-23T00:00:00.750Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_content",
+    "runId": "fx_run_content",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_content",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_content:fx_run_content"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_content_a", "durableEventId": "fx_event_content_a", "sequence": 1, "tick": 2, "observedAt": "2026-07-23T00:00:00.500Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_content", "runId": "fx_run_content", "payload": {"chunkIndex": 0, "text": "Synthetic visible content.", "trust": "untrusted"}},
+    {"recordId": "fx_record_content_b", "durableEventId": "fx_event_content_b", "sequence": 2, "tick": 3, "observedAt": "2026-07-23T00:00:00.750Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_content", "runId": "fx_run_content", "payload": {"chunkIndex": 1, "text": "Synthetic bounded continuation.", "trust": "untrusted"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_content_a", "fx_record_content_b"], "visibleTextOrder": ["Synthetic visible content.", "Synthetic bounded continuation."], "privateReasoningPresent": false},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_order",
+  "declaredRuleCode": "FIXTURE_ORDER_SEQUENCE",
+  "basePath": "cases/content.json",
+  "mutation": {"operation": "replace", "path": "/records/1/sequence", "value": 1}
+}

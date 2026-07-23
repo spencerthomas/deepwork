@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_interrupt_decision",
+  "declaredRuleCode": "FIXTURE_INTERRUPT_DECISION_VALUE",
+  "basePath": "cases/ordered-interrupt.json",
+  "mutation": {"operation": "replace", "path": "/records/0/payload/reviewConfigs/0/allowedDecisions/0", "value": "accept"}
+}

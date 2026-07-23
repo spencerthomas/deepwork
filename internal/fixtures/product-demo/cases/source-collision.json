@@ -1,0 +1,24 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_source_collision",
+  "category": "source-collision",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 39, "observedAt": "2026-07-23T00:00:09.750Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_shared_external",
+    "runId": "fx_run_shared_external",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_shared_external",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_shared_external:fx_run_shared_external"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_collision_alpha", "durableEventId": "fx_event_collision_alpha", "sequence": 1, "tick": 38, "observedAt": "2026-07-23T00:00:09.500Z", "kind": "fixture-source-result", "sourceId": "fx_source_alpha", "threadId": "fx_thread_shared_external", "runId": "fx_run_shared_external", "payload": {"qualifiedThreadKey": "fx_source_alpha:fx_thread_shared_external", "qualifiedRunKey": "fx_source_alpha:fx_thread_shared_external:fx_run_shared_external"}},
+    {"recordId": "fx_record_collision_beta", "durableEventId": "fx_event_collision_beta", "sequence": 2, "tick": 39, "observedAt": "2026-07-23T00:00:09.750Z", "kind": "fixture-source-result", "sourceId": "fx_source_beta", "threadId": "fx_thread_shared_external", "runId": "fx_run_shared_external", "payload": {"qualifiedThreadKey": "fx_source_beta:fx_thread_shared_external", "qualifiedRunKey": "fx_source_beta:fx_thread_shared_external:fx_run_shared_external"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_collision_alpha", "fx_record_collision_beta"], "sharedThreadId": "fx_thread_shared_external", "sharedRunId": "fx_run_shared_external", "distinctQualifiedThreadKeys": ["fx_source_alpha:fx_thread_shared_external", "fx_source_beta:fx_thread_shared_external"], "distinctQualifiedRunKeys": ["fx_source_alpha:fx_thread_shared_external:fx_run_shared_external", "fx_source_beta:fx_thread_shared_external:fx_run_shared_external"]},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

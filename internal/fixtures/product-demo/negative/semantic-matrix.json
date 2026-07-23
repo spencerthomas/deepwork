@@ -1,0 +1,868 @@
+{
+  "matrixVersion": "1.0.0",
+  "probes": [
+    {
+      "negativeId": "fx_probe_start_provider_call_expected",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/expected/providerCreateCall", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_start_status",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/status", "value": "completed"}
+    },
+    {
+      "negativeId": "fx_probe_start_provider_call_payload",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/records/0/payload/providerCreateCall", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_start_provider_call_missing",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "remove", "path": "/expected/providerCreateCall"}
+    },
+    {
+      "negativeId": "fx_probe_start_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/records/0/kind", "value": "fixture-completion"}
+    },
+    {
+      "negativeId": "fx_probe_content_trust",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/trust", "value": "trusted"}
+    },
+    {
+      "negativeId": "fx_probe_content_private_reasoning_expected",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/expected/privateReasoningPresent", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_content_visible_order",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/expected/visibleTextOrder", "value": ["Synthetic bounded continuation.", "Synthetic visible content."]}
+    },
+    {
+      "negativeId": "fx_probe_content_chunk_order",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/chunkIndex", "value": 0}
+    },
+    {
+      "negativeId": "fx_probe_content_private_reasoning_payload",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "add", "path": "/records/0/payload/privateReasoning", "value": "hidden"}
+    },
+    {
+      "negativeId": "fx_probe_content_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CONTENT",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/records/1/kind", "value": "fixture-unknown"}
+    },
+    {
+      "negativeId": "fx_probe_tool_summary_long",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/summary", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+    },
+    {
+      "negativeId": "fx_probe_tool_summary_json",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/summary", "value": "{\"complete\":\"provider response\"}"}
+    },
+    {
+      "negativeId": "fx_probe_tool_summary_missing",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "remove", "path": "/records/1/payload/summary"}
+    },
+    {
+      "negativeId": "fx_probe_interrupt_subject_order",
+      "declaredRuleCode": "FIXTURE_INTERRUPT_ALIGNMENT",
+      "basePath": "cases/ordered-interrupt.json",
+      "mutation": {
+        "operation": "replace",
+        "path": "/records/0/payload/actionRequests",
+        "value": [
+          {"name": "review", "args": {"subject": "fx_change_b"}, "description": "Review synthetic change B."},
+          {"name": "review", "args": {"subject": "fx_change_a"}, "description": "Review synthetic change A."}
+        ]
+      }
+    },
+    {
+      "negativeId": "fx_probe_checkpoint_key",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CHECKPOINT",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/qualifiedCheckpointKey", "value": "fx_source_alpha:fx_thread_checkpoint:fx_checkpoint_wrong"}
+    },
+    {
+      "negativeId": "fx_probe_checkpoint_expected_id",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CHECKPOINT",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/expected/checkpointId", "value": "fx_checkpoint_wrong"}
+    },
+    {
+      "negativeId": "fx_probe_checkpoint_fork_state",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CHECKPOINT",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/expected/forkCapabilityState", "value": "available"}
+    },
+    {
+      "negativeId": "fx_probe_checkpoint_fork_performed",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CHECKPOINT",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/expected/forkPerformed", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_checkpoint_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_CHECKPOINT",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/records/0/kind", "value": "fixture-checkpoint-forked"}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_retained",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/expected/retainedRecordIds", "value": []}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_freshness_expected",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/expected/freshness", "value": "fresh"}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_terminal",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/expected/terminalInferred", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_cancel",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/expected/cancelInferred", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_provider_mechanism",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/expected/providerRecoveryMechanism", "value": "protocol-v2"}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_payload_freshness",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/freshness", "value": "completed"}
+    },
+    {
+      "negativeId": "fx_probe_reconnect_record_order",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_RECONNECT",
+      "probe": {"kind": "normalized-reverse-records", "basePath": "cases/reconnect.json"}
+    },
+    {
+      "negativeId": "fx_probe_replay_input_empty",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+      "basePath": "cases/replay.json",
+      "mutation": {"operation": "replace", "path": "/expected/inputRecordIds", "value": []}
+    },
+    {
+      "negativeId": "fx_probe_replay_unique_coherent",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+      "basePath": "cases/replay.json",
+      "mutations": [
+        {"operation": "replace", "path": "/records/1/durableEventId", "value": "fx_event_replay_a_duplicate"},
+        {"operation": "replace", "path": "/expected/deduplicatedDurableEventIds", "value": ["fx_event_replay_a", "fx_event_replay_a_duplicate", "fx_event_replay_b"]},
+        {"operation": "replace", "path": "/expected/ignoredRecordIds", "value": []},
+        {"operation": "replace", "path": "/expected/visibleRecordIds", "value": ["fx_record_replay_a", "fx_record_replay_a_duplicate", "fx_record_replay_b"]}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_replay_payload_mismatch",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+      "basePath": "cases/replay.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/text", "value": "Synthetic replay item changed."}
+    },
+    {
+      "negativeId": "fx_probe_non_replay_duplicate",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/records/1/durableEventId", "value": "fx_event_content_a"}
+    },
+    {
+      "negativeId": "fx_probe_delay_content_tick",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_DELAY_VISIBILITY",
+      "basePath": "cases/logical-delay.json",
+      "mutations": [
+        {"operation": "replace", "path": "/records/1/tick", "value": 43},
+        {"operation": "replace", "path": "/records/1/observedAt", "value": "2026-07-23T00:00:10.750Z"}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_delay_completion_tick",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_DELAY_VISIBILITY",
+      "basePath": "cases/logical-delay.json",
+      "mutations": [
+        {"operation": "replace", "path": "/records/2/tick", "value": 44},
+        {"operation": "replace", "path": "/records/2/observedAt", "value": "2026-07-23T00:00:11.000Z"}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_delay_content_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_DELAY_VISIBILITY",
+      "basePath": "cases/logical-delay.json",
+      "mutation": {"operation": "replace", "path": "/records/1/kind", "value": "fixture-unknown"}
+    },
+    {
+      "negativeId": "fx_probe_completion_status",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/status", "value": "failed"}
+    },
+    {
+      "negativeId": "fx_probe_completion_absence",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/expected/absenceInfersTerminal", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_completion_timeout",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/expected/timeoutInfersTerminal", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_completion_disconnect",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/expected/disconnectInfersTerminal", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_completion_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/records/0/kind", "value": "fixture-content"}
+    },
+    {
+      "negativeId": "fx_probe_unknown_observable",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/expected/observable", "value": false}
+    },
+    {
+      "negativeId": "fx_probe_unknown_trust",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/trust", "value": "trusted"}
+    },
+    {
+      "negativeId": "fx_probe_unknown_summary_missing",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "remove", "path": "/records/0/payload/safeSummary"}
+    },
+    {
+      "negativeId": "fx_probe_unknown_original_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/originalKind", "value": "fixture-content"}
+    },
+    {
+      "negativeId": "fx_probe_unknown_raw_body",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "add", "path": "/records/0/payload/rawBody", "value": "unsafe"}
+    },
+    {
+      "negativeId": "fx_probe_unknown_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/records/0/kind", "value": "fixture-content"}
+    },
+    {
+      "negativeId": "fx_probe_malformed_raw_retained",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/rawBodyRetained", "value": true}
+    },
+    {
+      "negativeId": "fx_probe_malformed_safe_classification",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/safeClassification", "value": "valid"}
+    },
+    {
+      "negativeId": "fx_probe_malformed_input_missing",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "remove", "path": "/records/0/payload/input"}
+    },
+    {
+      "negativeId": "fx_probe_malformed_expected_classification",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/expected/classification", "value": "valid"}
+    },
+    {
+      "negativeId": "fx_probe_malformed_error",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/safeErrorCode", "value": "OTHER"}
+    },
+    {
+      "negativeId": "fx_probe_malformed_raw_body",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "add", "path": "/records/0/payload/rawBody", "value": {"provider": "body"}}
+    },
+    {
+      "negativeId": "fx_probe_malformed_kind",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/records/0/kind", "value": "fixture-content"}
+    },
+    {
+      "negativeId": "fx_probe_partial_collapse",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_PARTIAL_FAILURE",
+      "basePath": "cases/partial-failure.json",
+      "mutations": [
+        {"operation": "replace", "path": "/records/1/sourceId", "value": "fx_source_alpha"},
+        {"operation": "replace", "path": "/records/1/threadId", "value": "fx_thread_partial"},
+        {"operation": "replace", "path": "/records/1/runId", "value": "fx_run_partial"},
+        {"operation": "replace", "path": "/expected/failedSourceId", "value": "fx_source_alpha"},
+        {"operation": "replace", "path": "/expected/failedThreadId", "value": "fx_thread_partial"},
+        {"operation": "replace", "path": "/expected/failedRunId", "value": "fx_run_partial"},
+        {"operation": "replace", "path": "/expected/failedQualifiedThreadKey", "value": "fx_source_alpha:fx_thread_partial"},
+        {"operation": "replace", "path": "/expected/failedQualifiedRunKey", "value": "fx_source_alpha:fx_thread_partial:fx_run_partial"}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_partial_healthy_trust",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_PARTIAL_FAILURE",
+      "basePath": "cases/partial-failure.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/trust", "value": "trusted"}
+    },
+    {
+      "negativeId": "fx_probe_schema_deep_nesting",
+      "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+      "probe": {"kind": "deep-nesting", "basePath": "cases/unknown.json", "path": "/records/0/payload/safeSummary", "depth": 66}
+    },
+    {
+      "negativeId": "fx_probe_unicode_fullwidth_actor",
+      "declaredRuleCode": "FIXTURE_SCRUB_REAL_IDENTITY",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/ＡＣＴＯＲ－ＩＤ", "value": "real-person"}
+    },
+    {
+      "negativeId": "fx_probe_unicode_cyrillic_actor",
+      "declaredRuleCode": "FIXTURE_SCRUB_REAL_IDENTITY",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/actоrId", "value": "real-person"}
+    },
+    {
+      "negativeId": "fx_probe_unicode_cyrillic_identity",
+      "declaredRuleCode": "FIXTURE_SCRUB_REAL_IDENTITY",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/identitу", "value": "real-person"}
+    },
+    {
+      "negativeId": "fx_probe_network_postgres",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "postgres://db/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_redis",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "redis://cache/0"}
+    },
+    {
+      "negativeId": "fx_probe_network_s3",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "s3://private-bucket/key"}
+    },
+    {
+      "negativeId": "fx_probe_network_gs",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "gs://private-bucket/key"}
+    },
+    {
+      "negativeId": "fx_probe_network_localhost",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "localhost:8443/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_decimal",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "2130706433/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_hex",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "0x7f000001/private"}
+    },
+    {
+      "negativeId": "fx_probe_delay_coherent_enqueue_drift",
+      "declaredRuleCode": "FIXTURE_CLOCK_DELAY_MISMATCH",
+      "basePath": "cases/logical-delay.json",
+      "mutations": [
+        {"operation": "replace", "path": "/expected/enqueueTick", "value": 40},
+        {"operation": "replace", "path": "/expected/delayTicks", "value": 4},
+        {"operation": "replace", "path": "/expected/enqueueAt", "value": "2026-07-23T00:00:10.000Z"}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_delay_coherent_release_drift",
+      "declaredRuleCode": "FIXTURE_CLOCK_DELAY_MISMATCH",
+      "basePath": "cases/logical-delay.json",
+      "mutations": [
+        {"operation": "replace", "path": "/expected/delayTicks", "value": 4},
+        {"operation": "replace", "path": "/expected/lastPreReleaseTick", "value": 44},
+        {"operation": "replace", "path": "/expected/releaseTick", "value": 45},
+        {"operation": "replace", "path": "/expected/completionTick", "value": 46},
+        {"operation": "replace", "path": "/expected/lastPreReleaseAt", "value": "2026-07-23T00:00:11.000Z"},
+        {"operation": "replace", "path": "/expected/releaseAt", "value": "2026-07-23T00:00:11.250Z"},
+        {"operation": "replace", "path": "/expected/completionAt", "value": "2026-07-23T00:00:11.500Z"}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_network_abbreviated_ipv4_two_part",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "127.1/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_abbreviated_ipv4_three_part",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "127.0.1/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_octal_ipv4",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "0177.0.0.1/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_localhost_trailing_dot",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "localhost./private"}
+    },
+    {
+      "negativeId": "fx_probe_network_redis_without_slashes",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "redis:cache/0"}
+    },
+    {
+      "negativeId": "fx_probe_network_postgres_without_slashes",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "postgres:db/private"}
+    },
+    {
+      "negativeId": "fx_probe_network_tcp_abbreviated_ipv4",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "tcp:127.1:9000"}
+    },
+    {
+      "negativeId": "fx_probe_type_start_false_as_zero",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_START",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/expected/providerCreateCall", "value": 0}
+    },
+    {
+      "negativeId": "fx_probe_type_completion_false_as_zero",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_TERMINAL_AUTHORITY",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/expected/absenceInfersTerminal", "value": 0}
+    },
+    {
+      "negativeId": "fx_probe_type_unknown_true_as_one",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_UNKNOWN",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/expected/observable", "value": 1}
+    },
+    {
+      "negativeId": "fx_probe_type_malformed_false_as_zero",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/records/0/payload/rawBodyRetained", "value": 0}
+    },
+    {
+      "negativeId": "fx_probe_type_partial_true_as_one",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_PARTIAL_FAILURE",
+      "basePath": "cases/partial-failure.json",
+      "mutation": {"operation": "replace", "path": "/records/1/payload/sourceQualified", "value": 1}
+    },
+    {
+      "negativeId": "fx_probe_type_clock_integer_as_float",
+      "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/clock/tickDurationMs", "value": 250.0}
+    },
+    {
+      "negativeId": "fx_probe_corpus_record_id_collision",
+      "declaredRuleCode": "FIXTURE_ID_DUPLICATE_RECORD",
+      "probe": {
+        "kind": "corpus-record-id-collision",
+        "basePath": "cases/ordered-interrupt.json",
+        "mutations": [
+          {"operation": "replace", "path": "/records/0/recordId", "value": "fx_record_start"},
+          {"operation": "replace", "path": "/expected/orderedRecordIds", "value": ["fx_record_start"]}
+        ]
+      }
+    },
+    {
+      "negativeId": "fx_probe_delay_expected_extra_key",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_DELAY_VISIBILITY",
+      "basePath": "cases/logical-delay.json",
+      "mutation": {"operation": "add", "path": "/expected/undeclaredDelayClaim", "value": false}
+    },
+    {
+      "negativeId": "fx_probe_fixed_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_start_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_content_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_content_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_content_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_content_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/content.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_tool_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_tool_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_tool_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_tool_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/tool.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_ordered_interrupt_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/ordered-interrupt.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_ordered_interrupt_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_ordered_interrupt_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/ordered-interrupt.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_ordered_interrupt_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/ordered-interrupt.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_checkpoint_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_checkpoint_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_checkpoint_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_checkpoint_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/checkpoint.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_reconnect_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_reconnect_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_reconnect_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_reconnect_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/reconnect.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_replay_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/replay.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_replay_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_replay_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/replay.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_replay_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/replay.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_logical_delay_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/logical-delay.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_logical_delay_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_logical_delay_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/logical-delay.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_logical_delay_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/logical-delay.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_completion_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_completion_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_completion_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_completion_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/completion.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_unknown_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_unknown_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_unknown_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_unknown_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/unknown.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_malformed_input_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_malformed_input_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_malformed_input_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_malformed_input_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/malformed-input.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_partial_failure_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/partial-failure.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_partial_failure_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_partial_failure_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/partial-failure.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_partial_failure_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/partial-failure.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_source_collision_case_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/source-collision.json",
+      "mutation": {"operation": "replace", "path": "/caseId", "value": "fx_case_source_collision_mutated"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_source_collision_tenant_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/source-collision.json",
+      "mutation": {"operation": "replace", "path": "/scope/tenantId", "value": "fx_tenant_other"}
+    },
+    {
+      "negativeId": "fx_probe_fixed_source_collision_workspace_id",
+      "declaredRuleCode": "FIXTURE_ID_FIXED",
+      "basePath": "cases/source-collision.json",
+      "mutation": {"operation": "replace", "path": "/scope/workspaceId", "value": "fx_workspace_other"}
+    },
+    {
+      "negativeId": "fx_probe_interrupt_coordinated_record_id",
+      "declaredRuleCode": "FIXTURE_INTERRUPT_ALIGNMENT",
+      "basePath": "cases/ordered-interrupt.json",
+      "mutations": [
+        {"operation": "replace", "path": "/records/0/recordId", "value": "fx_record_start"},
+        {"operation": "replace", "path": "/expected/orderedRecordIds", "value": ["fx_record_start"]}
+      ]
+    },
+    {
+      "negativeId": "fx_probe_scrub_sk_proj_value",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "sk-proj-abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_xoxb_value",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "xoxb-abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_github_pat_value",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "github_pat_abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_tilde_path",
+      "declaredRuleCode": "FIXTURE_SCRUB_UNSAFE_PATH",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "~/private/path"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_sk_proj_direct",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "probe": {"kind": "scrub-diagnostic", "value": "ｓｋ－ｐｒｏｊ－abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_github_pat_direct",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "probe": {"kind": "scrub-diagnostic", "value": "github＿pat＿abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_tilde_path_direct",
+      "declaredRuleCode": "FIXTURE_SCRUB_UNSAFE_PATH",
+      "probe": {"kind": "scrub-diagnostic", "value": "～／private/path"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_sk_proj_case",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "ｓｋ－ｐｒｏｊ－abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_github_pat_case",
+      "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "github＿pat＿abcdefghijk"}
+    },
+    {
+      "negativeId": "fx_probe_scrub_unicode_tilde_path_case",
+      "declaredRuleCode": "FIXTURE_SCRUB_UNSAFE_PATH",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "～／private/path"}
+    },
+    {
+      "negativeId": "fx_probe_network_octal_integer_host",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "017700000001/path"}
+    },
+    {
+      "negativeId": "fx_probe_network_unicode_dot_host",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "probe": {"kind": "network-diagnostic", "value": "api。vendor。com/path"}
+    },
+    {
+      "negativeId": "fx_probe_case_network_abbreviated_ipv4",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "127.1/path"}
+    },
+    {
+      "negativeId": "fx_probe_case_network_octal_integer_host",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "017700000001/path"}
+    },
+    {
+      "negativeId": "fx_probe_case_network_unicode_dot_host",
+      "declaredRuleCode": "FIXTURE_NETWORK_EXTERNAL_URL",
+      "basePath": "cases/start.json",
+      "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "api。vendor。com/path"}
+    },
+    {
+      "negativeId": "fx_probe_validator_purity_write",
+      "declaredRuleCode": "FIXTURE_SCHEMA_VALIDATOR_PURITY",
+      "probe": {
+        "kind": "validator-purity-snippet",
+        "source": "from pathlib import Path as S\nwriter = getattr(S(\"fx.tmp\"), \"write_\" + \"text\")\nwriter(\"unsafe\")\nS(\"fx.tmp\").replace(\"fx.other\")\n"
+      }
+    },
+    {
+      "negativeId": "fx_probe_source_collision_duplicate_event",
+      "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+      "basePath": "cases/source-collision.json",
+      "mutation": {"operation": "replace", "path": "/records/1/durableEventId", "value": "fx_event_collision_alpha"}
+    }
+  ]
+}

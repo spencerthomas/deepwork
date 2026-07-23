@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_path",
+  "declaredRuleCode": "FIXTURE_SCRUB_UNSAFE_PATH",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "/Users/example/private/repository"}
+}

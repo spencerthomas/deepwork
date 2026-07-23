@@ -1,0 +1,44 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_logical_delay",
+  "category": "logical-delay",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 45, "observedAt": "2026-07-23T00:00:11.250Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_delay",
+    "runId": "fx_run_delay",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_delay",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_delay:fx_run_delay"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_delay_start", "durableEventId": "fx_event_delay_start", "sequence": 1, "tick": 40, "observedAt": "2026-07-23T00:00:10.000Z", "kind": "fixture-start", "sourceId": "fx_source_alpha", "threadId": "fx_thread_delay", "runId": "fx_run_delay", "payload": {"status": "active"}},
+    {"recordId": "fx_record_delay_content", "durableEventId": "fx_event_delay_content", "sequence": 2, "tick": 44, "observedAt": "2026-07-23T00:00:11.000Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_delay", "runId": "fx_run_delay", "payload": {"text": "Synthetic logically delayed content.", "trust": "untrusted"}},
+    {"recordId": "fx_record_delay_complete", "durableEventId": "fx_event_delay_complete", "sequence": 3, "tick": 45, "observedAt": "2026-07-23T00:00:11.250Z", "kind": "fixture-completion", "sourceId": "fx_source_alpha", "threadId": "fx_thread_delay", "runId": "fx_run_delay", "payload": {"status": "completed", "authoritative": "fixture"}}
+  ],
+  "expected": {
+    "enqueueTick": 41,
+    "delayTicks": 3,
+    "lastPreReleaseTick": 43,
+    "releaseTick": 44,
+    "completionTick": 45,
+    "enqueueAt": "2026-07-23T00:00:10.250Z",
+    "lastPreReleaseAt": "2026-07-23T00:00:10.750Z",
+    "releaseAt": "2026-07-23T00:00:11.000Z",
+    "completionAt": "2026-07-23T00:00:11.250Z",
+    "visibleRecordIdsByTick": {
+      "40": ["fx_record_delay_start"],
+      "43": ["fx_record_delay_start"],
+      "44": ["fx_record_delay_start", "fx_record_delay_content"],
+      "45": ["fx_record_delay_start", "fx_record_delay_content", "fx_record_delay_complete"]
+    },
+    "releaseOrder": ["fx_record_delay_start", "fx_record_delay_content", "fx_record_delay_complete"],
+    "contentVisibleExactlyOnceAtRelease": true,
+    "wallClockClaim": false
+  },
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}

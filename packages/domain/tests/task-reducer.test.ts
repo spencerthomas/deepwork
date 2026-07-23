@@ -100,11 +100,41 @@ describe("deterministic task projection", () => {
     };
 
     expect(afterStart.status).toBe("running");
+    expect(afterStart.seenEventFingerprints[0]?.fingerprint).not.toBeNull();
+    expect(afterStart.seenEventFingerprints[0]?.fingerprint.length).toBeGreaterThan(0);
     expect(duplicate).toBe(afterStart);
     expect(reduceTaskEvent(afterStart, checkpointReplay)).toBe(afterStart);
     const quarantined = reduceTaskEvent(afterStart, conflictingReplay);
     expect(quarantined.quarantined).toBe(true);
     expect(quarantined.status).toBe("running");
+  });
+
+  it("uses an applied plan fingerprint to distinguish exact and changed payload replay", () => {
+    const checkpointPlan = proposedPlan({
+      revision: 1,
+      title: "Checkpoint plan",
+      steps: ["Inspect the authoritative checkpoint"],
+      evidenceRefs: [],
+    });
+    const exact: TaskApplicationEvent = {
+      ...baseEvent(3),
+      name: "plan.proposed",
+      plan: checkpointPlan,
+      evidenceClass: "fixture",
+    };
+    const changed: TaskApplicationEvent = {
+      ...exact,
+      plan: proposedPlan({
+        revision: 1,
+        title: "Changed replay plan",
+        steps: ["Inspect the authoritative checkpoint"],
+        evidenceRefs: [],
+      }),
+    };
+    const applied = reduceTaskEvent(runningProjection(), exact);
+
+    expect(reduceTaskEvent(applied, exact)).toBe(applied);
+    expect(reduceTaskEvent(applied, changed).quarantined).toBe(true);
   });
 
   it("preserves run evidence while a current interrupt owns attention", () => {
@@ -344,6 +374,100 @@ describe("deterministic task projection", () => {
     expect(anotherOutage.recovered).toBe(false);
   });
 
+  it("converges completion-pending-result with equal-cursor authoritative detail", () => {
+    const completed = reduceTaskEvent(runningProjection(), {
+      ...baseEvent(3),
+      name: "run.completed",
+      outcome: "success",
+      safeReason: displayText("The result can now be fetched.", "Completion safe reason", 200),
+      resultAvailable: true,
+    });
+
+    expect(completed.status).toBe("done");
+    expect(completed.resultPending).toBe(true);
+    expect(completed.lastAppliedSequence).toBe(3);
+    expect(completed.task.lastEventSequence).toBe(2);
+    expect(completed.task.facts.runActive).toBe(true);
+    expect(completed.task.result).toBeUndefined();
+    expect(() => taskDetail(completed.task)).not.toThrow();
+
+    const impossibleNewerRunning = reconcileTaskProjection(
+      completed,
+      taskDetail({
+        taskId: task,
+        sourceThread,
+        run: sourceRun,
+        title: "Inspect the request",
+        objective: "Explain the bounded request.",
+        facts: {
+          cancellationConfirmed: false,
+          pendingCurrentInterrupt: false,
+          runActive: true,
+          queued: false,
+          terminalFailure: false,
+          terminalSuccess: false,
+        },
+        lastEvent: eventIdentity(4),
+        lastEventSequence: 4,
+        evidence: [],
+      }),
+    );
+    expect(impossibleNewerRunning.quarantined).toBe(true);
+    expect(impossibleNewerRunning.status).toBe("done");
+
+    const hydrated = reconcileTaskProjection(
+      completed,
+      taskDetail({
+        taskId: task,
+        sourceThread,
+        run: sourceRun,
+        title: "Inspect the request",
+        objective: "Explain the bounded request.",
+        facts: {
+          cancellationConfirmed: false,
+          pendingCurrentInterrupt: false,
+          runActive: false,
+          queued: false,
+          terminalFailure: false,
+          terminalSuccess: true,
+        },
+        lastEvent: eventIdentity(3),
+        lastEventSequence: 3,
+        evidence: [],
+        result: resultText("The authoritative equal-cursor result."),
+      }),
+    );
+
+    expect(hydrated.quarantined).toBe(false);
+    expect(hydrated.recovered).toBe(true);
+    expect(hydrated.resultPending).toBe(false);
+    expect(hydrated.task.result).toBe("The authoritative equal-cursor result.");
+    expect(hydrated.task.lastEventSequence).toBe(3);
+  });
+
+  it("rejects incoherent public and hydrated result state without mutating the projection", () => {
+    const forged = {
+      ...initialProjection().task,
+      facts: {
+        cancellationConfirmed: false,
+        pendingCurrentInterrupt: false,
+        runActive: false,
+        queued: false,
+        terminalFailure: false,
+        terminalSuccess: true,
+      },
+      status: "done",
+      lastEvent: eventIdentity(2),
+      lastEventSequence: 2,
+    } as unknown as ReturnType<typeof taskDetail>;
+
+    expect(() => createTaskProjection(forged)).toThrow(TypeError);
+    const reconciled = reconcileTaskProjection(initialProjection(), forged);
+    expect(reconciled.quarantined).toBe(true);
+    expect(reconciled.task).toEqual(initialProjection().task);
+    expect(reconciled.status).toBe("queued");
+  });
+
   it("does not clear quarantine for conflicting equal-cursor hydration", () => {
     const gap = reduceTaskEvent(initialProjection(), {
       ...baseEvent(3),
@@ -552,6 +676,7 @@ describe("deterministic task projection", () => {
     });
 
     expect(withTaskResult(completed, correct).task.result).toBe("The correlated result.");
+    expect(withTaskResult(completed, correct).resultPending).toBe(false);
     expect(() => withTaskResult(completed, otherTask)).toThrow(TypeError);
     expect(() => withTaskResult(completed, otherRun)).toThrow(TypeError);
   });

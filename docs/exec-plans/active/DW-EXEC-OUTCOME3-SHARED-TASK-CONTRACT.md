@@ -318,7 +318,16 @@ or temporary output and must not change manifests or the lock.
 - [x] 2026-07-23 AEST — Milestone 3 SDK implementation complete, including exact
       mapping, full mutation binding/revision guards, explicit recovery boundaries,
       canonical Problem mapping, replay quarantine, and 58 network-denied tests.
-- [ ] Milestone 4 validation, commit, and Coordinator handoff complete.
+- [x] 2026-07-23 AEST — Immutable candidate `1508a943` independently reviewed;
+      review correctly rejected nullable checkpoint replay fingerprints and an
+      invalid success-before-result `TaskDetail`.
+- [x] 2026-07-23 AEST — Successor fixes implemented: authoritative checkpoints
+      retain bounded non-null fingerprints, successful completion uses an
+      explicit projection-level pending-result state, equal-cursor authoritative
+      result hydration converges, incoherent hydration quarantines, and public
+      aggregate constructors strip caller-only fields.
+- [x] 2026-07-23 AEST — Milestone 4 bounded successor validation complete;
+      immutable commit and Coordinator handoff follow this recorded source state.
 
 ## Surprises and discoveries
 
@@ -362,6 +371,15 @@ or temporary output and must not change manifests or the lock.
 - 2026-07-23 — Decision: retain at most 256 projected evidence records and 2,048
   replay fingerprints/keys. Rationale: every untrusted collection requires a
   deterministic memory bound and overflow must fail closed.
+- 2026-07-23 — Decision: a success event may advance projection facts and cursor
+  while `resultPending` retains the last valid public detail. Rationale: the
+  accepted event announces result availability, but only the correlated result
+  or authoritative detail contains the result required by the public success
+  invariant.
+- 2026-07-23 — Decision: seed hydration with a bounded canonical detail
+  fingerprint and suppress checkpoint event replay only when the detail proves
+  its exact semantics. Rationale: the API detail does not expose arbitrary prior
+  event payloads, so ambiguous replay must fail closed rather than use a wildcard.
 - 2026-07-23 — Decision: the rotating interrupt identity plus plan revision is
   only the current local single-action concurrency boundary. Rationale: it does
   not prove the stable specification's general ordered multi-action HITL model.
@@ -413,6 +431,22 @@ Validation infrastructure disposition:
   `/private/tmp/task-domain-sdk-partial.qZR9iL/node_modules` and
   `/private/tmp/task-domain-sdk-offline-node_modules.PU8mB2/node_modules` trees
   were not touched.
+
+Successor validation after immutable review:
+
+- direct domain build with the bundled Node/TypeScript runtime passed;
+- domain source and tests passed a temporary-path direct TypeScript check; the
+  temporary review config was removed before commit;
+- changed domain source/tests passed direct `oxfmt --check` and `oxlint`;
+- direct ESM probes against built output passed checkpoint exact/conflicting
+  replay, completion-pending-result equal-cursor convergence, incoherent
+  hydration rejection, and aggregate constructor secret stripping; and
+- dependency-backed Vitest and architecture reruns are temporarily blocked
+  because an independent reviewer accidentally started and interrupted a
+  managed workspace install, leaving ignored root `node_modules/.pnpm` and
+  breaking the authorized package-local relative dependency links. The artifact
+  is preserved untouched; no cleanup, restoration, install, or further `pnpm`
+  command was attempted without Coordinator authorization.
 
 ## Outcomes and retrospective
 

@@ -17,8 +17,10 @@ import {
   sourceApplicationEventKey,
   sourceRunKey,
   sourceThreadKey,
+  taskAccepted,
   taskId,
   taskDetail,
+  taskResult,
   taskSummary,
   threadId,
 } from "@deepwork/domain";
@@ -271,5 +273,61 @@ describe("client-safe task values", () => {
         ],
       }),
     ).toThrow(TypeError);
+  });
+
+  it("strips caller-only fields from every public task aggregate constructor", () => {
+    const sourceThread = sourceThreadKey(source, thread);
+    const sourceRun = sourceRunKey(source, thread, run);
+    const lastEvent = sourceApplicationEventKey(source, task, thread, run, applicationEventId("1"));
+    const facts = {
+      cancellationConfirmed: false,
+      pendingCurrentInterrupt: false,
+      runActive: false,
+      queued: true,
+      terminalFailure: false,
+      terminalSuccess: false,
+      authRef: "facts-secret",
+    };
+    const summaryInput = {
+      taskId: task,
+      sourceThread: { ...sourceThread, authRef: "thread-secret" },
+      run: { ...sourceRun, authRef: "run-secret" },
+      title: "Bound task",
+      objective: "Strip caller-only state.",
+      facts,
+      lastEvent: { ...lastEvent, authRef: "event-secret" },
+      lastEventSequence: 1,
+      authRef: "summary-secret",
+    };
+    const acceptedInput = {
+      taskId: task,
+      run: summaryInput.run,
+      facts,
+      authRef: "accepted-secret",
+    };
+    const detailInput = {
+      ...summaryInput,
+      evidence: [],
+      authRef: "detail-secret",
+    };
+    const resultInput = {
+      taskId: task,
+      run: summaryInput.run,
+      result: "Safe result.",
+      authRef: "result-secret",
+    };
+    const accepted = taskAccepted(acceptedInput);
+    const summary = taskSummary(summaryInput);
+    const detail = taskDetail(detailInput);
+    const result = taskResult(resultInput);
+
+    for (const value of [accepted, summary, detail, result]) {
+      expect(JSON.stringify(value)).not.toContain("secret");
+      expect("authRef" in value).toBe(false);
+      expect("authRef" in value.run).toBe(false);
+    }
+    expect("authRef" in summary.sourceThread).toBe(false);
+    expect("authRef" in summary.lastEvent).toBe(false);
+    expect("authRef" in summary.facts).toBe(false);
   });
 });

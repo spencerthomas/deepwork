@@ -1,0 +1,94 @@
+.dw-status-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 100%;
+  padding: var(--space-4);
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
+  border: var(--border-width-default) solid var(--border);
+  border-radius: var(--radius-frame);
+  font-family: var(--font-body);
+}
+
+.dw-status-panel__body {
+  flex: 1 1 var(--measure-status-body-min);
+  min-width: 0;
+}
+
+.dw-status-panel__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: rgb(var(--gray-600));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-emphasis);
+}
+
+.dw-status-panel__mark {
+  color: rgb(var(--primary-dark));
+  font-size: var(--font-size-lg);
+}
+
+.dw-status-panel[data-state="error"] .dw-status-panel__mark {
+  color: rgb(var(--error));
+}
+
+.dw-status-panel[data-state="unavailable"] .dw-status-panel__mark {
+  color: rgb(var(--warning));
+}
+
+.dw-status-panel__title {
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-heading);
+}
+
+.dw-status-panel__detail {
+  margin: var(--space-2) 0 0;
+  max-width: var(--measure-readable);
+  overflow-wrap: anywhere;
+  color: rgb(var(--gray-700));
+  line-height: var(--line-height-body);
+}
+
+.dw-status-panel__action {
+  flex: 0 1 auto;
+  min-block-size: var(--touch-target-min);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  overflow-wrap: anywhere;
+  color: rgb(var(--background));
+  background: rgb(var(--primary-dark));
+  border: var(--border-width-control) solid transparent;
+  border-radius: var(--radius-interactive);
+  font: inherit;
+  font-weight: var(--font-weight-emphasis);
+  cursor: pointer;
+}
+
+.dw-status-panel__action:focus-visible {
+  outline: var(--focus-ring-width) solid rgb(var(--primary-dark));
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (forced-colors: active) {
+  .dw-status-panel,
+  .dw-status-panel__action {
+    border-color: CanvasText;
+  }
+
+  .dw-status-panel__mark,
+  .dw-status-panel[data-state="error"] .dw-status-panel__mark,
+  .dw-status-panel[data-state="unavailable"] .dw-status-panel__mark {
+    color: CanvasText;
+  }
+
+  .dw-status-panel__action:focus-visible {
+    outline-color: Highlight;
+  }
+}

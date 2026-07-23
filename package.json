@@ -1,0 +1,30 @@
+{
+  "name": "deepwork",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "check": "turbo run format-check lint typecheck test build",
+    "check-architecture": "turbo run check-architecture",
+    "contract": "turbo run contract",
+    "dev": "./dev",
+    "demo:web": "NEXT_PUBLIC_DEMO_MODE=fixture pnpm --filter @deepwork/web dev",
+    "dev:web": "pnpm --filter @deepwork/web dev",
+    "format": "turbo run format",
+    "format-check": "turbo run format-check",
+    "lint": "turbo run lint",
+    "package-check": "turbo run package-check",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "oxfmt": "0.60.0",
+    "oxlint": "1.75.0",
+    "turbo": "2.10.6",
+    "typescript": "7.0.2"
+  }
+}

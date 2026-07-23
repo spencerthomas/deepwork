@@ -1,0 +1,21 @@
+{
+  "acceptance": "implemented-not-accepted",
+  "command": "exercise",
+  "evidence_class": "product-demo-blocker",
+  "namespaces": [
+    "dw-iso-a",
+    "dw-iso-b"
+  ],
+  "processes_started": 0,
+  "reasons": [
+    "root: missing static reviewed product-demo contract or driver: tools/product_demo/worktree-driver-contract.json",
+    "peer: missing static reviewed product-demo contract or driver: tools/product_demo/worktree-driver-contract.json"
+  ],
+  "recovery": "not-required",
+  "recovery_context": null,
+  "resources_reserved": 0,
+  "retryable": true,
+  "schema_version": 1,
+  "spike": "SPIKE-WORKTREE-001",
+  "status": "blocked"
+}

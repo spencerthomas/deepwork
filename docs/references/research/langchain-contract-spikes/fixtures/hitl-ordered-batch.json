@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "scrub_attestation": "Contains only synthetic tool requests and decisions; no credentials, tenant data, customer data, or reusable endpoint.",
+  "action_requests": [
+    {
+      "name": "write_file",
+      "args": {
+        "path": "synthetic/a.txt",
+        "content": "synthetic"
+      }
+    },
+    {
+      "name": "write_file",
+      "args": {
+        "path": "synthetic/c.txt",
+        "content": "synthetic second"
+      }
+    }
+  ],
+  "review_configs": [
+    {
+      "action_name": "write_file",
+      "allowed_decisions": [
+        "approve",
+        "edit",
+        "reject"
+      ]
+    },
+    {
+      "action_name": "write_file",
+      "allowed_decisions": [
+        "approve",
+        "reject",
+        "respond"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "type": "edit",
+      "edited_action": {
+        "name": "write_file",
+        "args": {
+          "path": "synthetic/b.txt",
+          "content": "synthetic edited"
+        }
+      }
+    },
+    {
+      "type": "reject",
+      "message": "Synthetic rejection"
+    }
+  ]
+}

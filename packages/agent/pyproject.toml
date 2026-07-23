@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deepwork-agent"
+version = "0.0.0"
+description = "Injected-model local Deep Work agent graph"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Deep Work contributors" }]
+dependencies = [
+  "deepagents==0.6.12",
+  "langchain-core==1.5.0",
+  "langgraph==1.2.9",
+  "typing-extensions==4.16.0",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
+]
+
+[dependency-groups]
+dev = [
+  "hatchling==1.31.0",
+  "pytest==9.1.1",
+  "pytest-socket==0.8.0",
+  "ruff==0.15.22",
+  "ty==0.0.62",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/deepwork_agent", "tests", "README.md", "Makefile"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deepwork_agent"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-config --strict-markers"
+testpaths = ["tests/unit"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "COM812",
+  "D203",
+  "D213",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]

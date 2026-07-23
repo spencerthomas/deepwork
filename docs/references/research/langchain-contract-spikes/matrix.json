@@ -1,0 +1,817 @@
+{
+  "schema_version": "1.0",
+  "collected_at": "2026-07-23",
+  "source_precedence": [
+    "sanitized-live-classic-sandbox",
+    "installed-public-contract",
+    "official-documented",
+    "reference-repository-internals"
+  ],
+  "installed_public_distributions": {},
+  "global_live_blocker": "No human-provided non-production classic sandbox profile, account tier, region, authentication context, or server revision was available. Live-dependent conclusions are blocked-live-evidence.",
+  "rows": [
+    {
+      "spike_id": "SPIKE-SOURCE-001",
+      "operation": "discover classic Agent Server assistants and source identity",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Classic Agent Server exposes deployment-scoped assistants, threads, runs, state, and streams."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned public package source identifies candidate langgraph-sdk 0.4.2 APIs, but public-index egress was unavailable and no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "preflight_wire": [
+          "GET /ok?check_db=0",
+          "GET /ok?check_db=1",
+          "GET /info"
+        ],
+        "assistant_sdk_candidate": "client.assistants.search(limit=10, offset=0)",
+        "assistant_wire": "POST /assistants/search",
+        "authentication": "source-specific server-side credential; exact live header blocked"
+      },
+      "response_schema": {
+        "documented_health": {
+          "ok": true
+        },
+        "documented_info_required": [
+          "version",
+          "langgraph_py_version",
+          "flags",
+          "metadata"
+        ],
+        "candidate_assistant_source": "list[Assistant] or AssistantsSearchResponse depending pagination mode",
+        "stable_fields_used": [
+          "assistant_id",
+          "graph_id",
+          "config",
+          "metadata",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "errors": [
+        "HTTP status errors are raised by the SDK",
+        "wrong plane or source URL",
+        "disabled metadata can remove /info and make /ok shallow",
+        "authentication and entitlement errors require live classification"
+      ],
+      "idempotency": "Read-only search; retry only with the same deployment-scoped filters and source identity.",
+      "retry": "Bounded retry for transport/5xx only; never fan out from one source result as organization-global truth.",
+      "cancel": "Not applicable to read-only discovery.",
+      "reconnect": "Recreate the client with the same explicit source record; no universal auth/header inference.",
+      "result": "blocked-live-evidence",
+      "fallback": "Keep the source unavailable and expose no assistants until a pinned classic source passes authenticated discovery.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/assistants.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-FND-004-01",
+        "AC-DW-AGENT-003-01"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-CONFIG-001",
+      "operation": "read assistant configuration and schemas",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Agent Server publishes assistant read, graph, schema, subgraph, and version operations."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned public package source shows candidate assistant methods, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.assistants.get_schemas(assistant_id)",
+        "wire": "GET /assistants/{assistant_id}/schemas",
+        "authentication": "same explicit Agent Server source context as assistant discovery"
+      },
+      "response_schema": {
+        "candidate_package_source": "dict[str, Any]",
+        "qualification": "The candidate SDK source does not narrow agent-defined input, output, config, context, or state schema fields."
+      },
+      "errors": [
+        "assistant not found",
+        "schema unavailable for the deployed graph",
+        "permission and version errors require live classification"
+      ],
+      "idempotency": "Read-only for a fixed assistant/version; cache only with source and version provenance.",
+      "retry": "Bounded read retry; invalidate on assistant version change.",
+      "cancel": "Not applicable.",
+      "reconnect": "Refetch schemas after source/package/server revision changes.",
+      "result": "blocked-live-evidence",
+      "fallback": "Treat configuration as opaque/read-only and disable config-derived form editing until exact deployed schemas are observed.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/assistants.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-AGENT-003-01"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-DEPLOY-001",
+      "operation": "classic deployment control-plane lifecycle",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "The control plane is separate from Agent Server and documents /v2/deployments with X-Api-Key plus X-Tenant-Id."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source is data-plane oriented and does not establish a deployment control-plane client; no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Create/update/delete states, idempotency, region behavior, and exact error bodies are not qualified for this account."
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "documented_wire": "/v2/deployments",
+        "authentication": "server-side X-Api-Key and X-Tenant-Id; values must never enter retained evidence",
+        "mutation": "not executed"
+      },
+      "response_schema": {
+        "installed_public_distribution": null,
+        "documented": "deployment lifecycle objects; exact accepted fields and states require package/live proof"
+      },
+      "errors": [
+        "entitlement, tenant, region, build, and lifecycle errors remain unclassified without live evidence"
+      ],
+      "idempotency": "Unknown for create/update; do not retry mutations automatically.",
+      "retry": "Read status only after an explicitly authorized mutation; no mutation was attempted.",
+      "cancel": "Unknown and not inferred from Agent Server run cancellation.",
+      "reconnect": "Poll only a verified deployment identity and state contract.",
+      "result": "blocked-live-evidence",
+      "fallback": "Deployment remains an external operator-owned workflow; Deep Work may connect an already deployed classic source but must not expose deploy controls.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/api-ref-control-plane.mdx"
+        },
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/control-plane.mdx"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-AGENT-003-05"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-COMPOSE-001",
+      "operation": "create a thread-scoped run from task input",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Agent Server separates thread creation and run creation; agent input/config/state schemas are deployment-defined."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source shows a candidate RunsClient.create shape, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.runs.create(thread_id, assistant_id, input=..., multitask_strategy=...)",
+        "wire": "POST /threads/{thread_id}/runs",
+        "required_fields": [
+          "thread_id",
+          "assistant_id"
+        ],
+        "input_shape": "agent-defined and must be checked against get_schemas"
+      },
+      "response_schema": {
+        "candidate_package_source": "Run",
+        "fields": [
+          "run_id",
+          "thread_id",
+          "assistant_id",
+          "status",
+          "metadata",
+          "multitask_strategy"
+        ]
+      },
+      "errors": [
+        "agent input validation",
+        "thread/assistant not found",
+        "concurrent run conflict",
+        "auth and server errors require live fixtures"
+      ],
+      "idempotency": "RunsClient.create exposes no caller run_id or mutation idempotency key. if_not_exists controls missing-thread behavior, not duplicate-run deduplication; the application must keep its own attempt record.",
+      "retry": "Never retry an ambiguous run-create mutation until the source is reconciled.",
+      "cancel": "Use the separately qualified run cancel operation.",
+      "reconnect": "Refetch thread/run identity before joining or subscribing.",
+      "result": "blocked-live-evidence",
+      "fallback": "Keep submit disabled for the source and retain the task as an application draft.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/runs.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-TASK-002-01",
+        "AC-DW-TASK-002-02"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-THREADS-001",
+      "operation": "create, read, and deployment-scoped search of threads",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Thread search belongs to one Agent Server deployment and is not organization-global."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source shows candidate create/get/search methods with limit/offset pagination, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.threads.create(...) and client.threads.search(...)",
+        "wire": "POST /threads and POST /threads/search",
+        "scope": "one explicit Agent Server source"
+      },
+      "response_schema": {
+        "candidate_package_source": "Thread or list[Thread]",
+        "thread_fields": [
+          "thread_id",
+          "created_at",
+          "updated_at",
+          "metadata",
+          "status",
+          "values",
+          "interrupts"
+        ]
+      },
+      "errors": [
+        "thread conflict/not found",
+        "invalid search filters",
+        "source partial failure must remain source-qualified"
+      ],
+      "idempotency": "Explicit thread_id plus if_exists controls local duplicate behavior; exact server race behavior needs live proof.",
+      "retry": "Reads may retry; ambiguous create requires get-by-id reconciliation.",
+      "cancel": "Not applicable to thread read/search.",
+      "reconnect": "Refresh each source independently and preserve that source's limit/offset position; the installed-source candidate does not expose a cursor.",
+      "result": "blocked-live-evidence",
+      "fallback": "Show no runtime threads for an unqualified source; do not present deployment search as global search.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/threads.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-FND-004-01"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-STREAM-001",
+      "operation": "base run stream and resumable run join",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Run stream/join is distinct from protocol-v3 event subscription; resumable join uses Last-Event-ID only when stream_resumable is enabled."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source shows candidate stream and join_stream parameters, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.runs.stream(...) or client.runs.join_stream(thread_id, run_id, last_event_id=...)",
+        "wire": "POST /threads/{thread_id}/runs/stream or GET /threads/{thread_id}/runs/{run_id}/stream",
+        "resume": "Last-Event-ID applies only to qualified resumable join"
+      },
+      "response_schema": {
+        "candidate_package_source": "AsyncIterator[StreamPart]",
+        "stream_modes": [
+          "values",
+          "messages",
+          "updates",
+          "events",
+          "tasks",
+          "checkpoints",
+          "debug",
+          "custom",
+          "messages-tuple"
+        ]
+      },
+      "errors": [
+        "non-resumable run",
+        "stale event ID",
+        "disconnect/cancellation race",
+        "retention gap behavior requires live proof"
+      ],
+      "idempotency": "Joining is read-like; starting a stream may create a run and is not automatically replay-safe.",
+      "retry": "Rejoin only a known run with its qualified cursor; otherwise refetch state.",
+      "cancel": "cancel_on_disconnect is an explicit request behavior, not a universal default.",
+      "reconnect": "Use last_event_id only on the resumable join contract; never reuse it for protocol v3.",
+      "result": "blocked-live-evidence",
+      "fallback": "Poll run and thread state, then render a non-live snapshot without claiming lossless replay.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/streaming.mdx"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/runs.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-FND-004-01",
+        "AC-DW-TASK-003-01"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-STREAM-002",
+      "operation": "project stream modes and concurrent-input strategies",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Agent Server documents reject, interrupt, rollback, and enqueue multitask strategies; frontend submit helpers are not universal wire contracts."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source types four candidate strategies, but no installed distribution or live strategy behavior was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.runs.create(..., multitask_strategy=<strategy>, stream_mode=<modes>)",
+        "strategies": [
+          "reject",
+          "interrupt",
+          "rollback",
+          "enqueue"
+        ]
+      },
+      "response_schema": {
+        "candidate_package_source": "Run.multitask_strategy plus selected StreamPart types",
+        "projection_rule": "Preserve source/run/mode identity; do not flatten tool, message, update, checkpoint, or task events into one untyped payload."
+      },
+      "errors": [
+        "unsupported server version/capability",
+        "busy-thread conflict",
+        "strategy-specific destructive or ordering behavior requires live proof"
+      ],
+      "idempotency": "Each submitted input needs an application idempotency record; enqueue order is not inferred without live evidence.",
+      "retry": "Never switch strategy on retry; reconcile source state first.",
+      "cancel": "interrupt and rollback multitask strategies are not aliases for explicit run cancel.",
+      "reconnect": "Reconstruct current run/thread state before resuming projected events.",
+      "result": "blocked-live-evidence",
+      "fallback": "Disable steering for the source; retain new text as an application draft until the active run reaches a terminal state.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/double-texting.mdx"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/schema.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-TASK-003-01",
+        "AC-DW-TASK-004-01"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-STREAM-003",
+      "operation": "protocol-v3 subscribe, resume, and deduplicate",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Beta protocol v3 subscribes through POST /threads/{thread_id}/stream/events and resumes with body field since; event_id is durable identity while seq is replay position."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source contains candidate stream controller/subscription surfaces, but no installed distribution contract was captured and hosted retention remains unknown."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk_candidate": "client.threads.stream(thread_id?, assistant_id=..., transport='sse'|'websocket')",
+        "wire": "POST /threads/{thread_id}/stream/events",
+        "body": {
+          "channels": "<selected typed projection channels>",
+          "namespaces": "<optional namespace filters>",
+          "depth": "<optional traversal depth>",
+          "since": "<last confirmed seq>"
+        },
+        "command_separation": "run.start and input.respond are separate thread command operations"
+      },
+      "response_schema": {
+        "documented": "SSE ProtocolEvent with type, seq, method, params.namespace, params.timestamp, params.data, and optional durable event_id",
+        "cursor_rule": "Persist source, thread, run, protocol, seq, and event_id."
+      },
+      "errors": [
+        "server/SDK below protocol-v3 minimum",
+        "stale or evicted since position",
+        "bounded-buffer gap",
+        "reauthentication and cancellation races require live proof"
+      ],
+      "idempotency": "Deduplicate user-visible projection by durable event_id within source/run identity.",
+      "retry": "Reconnect with since equal to the last confirmed seq only; refetch state on a gap.",
+      "cancel": "Subscription cancellation does not prove run cancellation.",
+      "reconnect": "Never send Last-Event-ID for protocol v3; use body field since.",
+      "result": "blocked-live-evidence",
+      "fallback": "Use qualified legacy run join if separately accepted; otherwise refetch thread state and show non-live recovery.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/event-streaming.mdx"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/stream"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-FND-004-02",
+        "AC-DW-FND-004-03",
+        "AC-DW-TASK-003-02",
+        "AC-DW-TASK-003-04"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-HITL-001",
+      "operation": "observe and respond to ordered human-in-the-loop interrupts",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Deep Agents HITL aligns action_requests and review_configs and requires one ordered decision per action; documented decisions are approve, edit, reject, and respond subject to config."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned package sources expose candidate Interrupt and Command shapes; no installed distribution contract was captured and the interrupt value remains agent-defined."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "deepagents",
+        "candidate_package_source_version": "0.6.12",
+        "sdk_package": "langgraph-sdk",
+        "candidate_sdk_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "documented_resume": "Command(resume={\"decisions\": [...]})",
+        "ordering": "Exactly one decision per action request, in source order.",
+        "wire": "The exact hosted input.respond/run resume mapping requires live proof."
+      },
+      "response_schema": {
+        "candidate_package_source": "ThreadState.interrupts: list[Interrupt] where Interrupt has id and open value",
+        "documented_value": {
+          "action_requests": "ordered list",
+          "review_configs": "ordered aligned list"
+        }
+      },
+      "errors": [
+        "stale interrupt",
+        "disallowed decision type",
+        "reordered or missing decision",
+        "ambiguous submission after transport failure"
+      ],
+      "idempotency": "Persist an application decision attempt; on ambiguity refetch pending state before any retry.",
+      "retry": "Never resend solely because the response was lost; reject a stale duplicate.",
+      "cancel": "Cancellation is separately qualified and must not synthesize an approval decision.",
+      "reconnect": "Refetch current interrupts, preserve source order, and reconcile the attempted decision.",
+      "result": "blocked-live-evidence",
+      "fallback": "Render the interrupt read-only and disable submit; do not flatten, force-resolve, or invent ignore.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/oss/deepagents/human-in-the-loop.mdx"
+        },
+        {
+          "id": "SRC-LCPY",
+          "revision": "592055e15e138f5369dce95dd049ce22430996e2",
+          "locator": "libs/langchain_v1/langchain/agents/middleware/human_in_the_loop.py"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/schema.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-FND-004-03",
+        "AC-DW-TASK-003-04"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-CANCEL-001",
+      "operation": "cancel an active thread run",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Agent Server exposes run cancel and distinguishes interrupt from rollback actions."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source shows a candidate cancel signature with interrupt or rollback, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.runs.cancel(thread_id, run_id, wait=True, action='interrupt')",
+        "wire": "POST /threads/{thread_id}/runs/{run_id}/cancel?wait=1&action=interrupt"
+      },
+      "response_schema": {
+        "candidate_package_source": "None",
+        "qualification": "A successful return does not by itself establish terminal source state; refetch run/thread."
+      },
+      "errors": [
+        "run not found or already terminal",
+        "interrupt/rollback conflict",
+        "timeout while wait=true",
+        "disconnect during cancel"
+      ],
+      "idempotency": "Not established; reconcile run state before repeating.",
+      "retry": "Do not retry an ambiguous cancellation until run status is refetched.",
+      "cancel": "interrupt preserves prior checkpoints; rollback is destructive and must require explicit authority.",
+      "reconnect": "After disconnect, refetch run and thread state and classify cancellation outcome.",
+      "result": "blocked-live-evidence",
+      "fallback": "Disable cancel and show the run as source-controlled; allow refresh only.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/runs.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-TASK-004-02"
+      ]
+    },
+    {
+      "spike_id": "SPIKE-CHECKPOINT-001",
+      "operation": "read thread state and checkpoint history",
+      "evidence_level": "official-documented",
+      "evidence": [
+        {
+          "level": "official-documented",
+          "finding": "Agent Server exposes current state, checkpoint-qualified state, history, and state update operations."
+        },
+        {
+          "level": "unsupported-or-unknown",
+          "finding": "Pinned SDK source shows candidate state/history parameters, but no installed distribution contract was captured."
+        },
+        {
+          "level": "sanitized-live-classic-sandbox",
+          "finding": "unavailable"
+        }
+      ],
+      "environment": {
+        "package": "langgraph-sdk",
+        "candidate_package_source_version": "0.4.2",
+        "server_revision": null,
+        "account_tier": null,
+        "region": null,
+        "authentication_context": null,
+        "date": "2026-07-23",
+        "live_evidence": "unavailable"
+      },
+      "request": {
+        "sdk": "client.threads.get_state(thread_id, checkpoint=...) and client.threads.get_history(thread_id, ...)",
+        "wire": "GET /threads/{thread_id}/state, POST /threads/{thread_id}/state/checkpoint, POST /threads/{thread_id}/history"
+      },
+      "response_schema": {
+        "candidate_package_source": "ThreadState and list[ThreadState]",
+        "checkpoint_fields": [
+          "thread_id",
+          "checkpoint_ns",
+          "checkpoint_id",
+          "checkpoint_map"
+        ],
+        "state_fields": [
+          "values",
+          "next",
+          "checkpoint",
+          "metadata",
+          "created_at",
+          "parent_checkpoint",
+          "tasks",
+          "interrupts"
+        ]
+      },
+      "errors": [
+        "checkpoint not found or pruned",
+        "namespace/map mismatch",
+        "history ordering and retention require live proof"
+      ],
+      "idempotency": "Reads are safe for a fixed source/thread/checkpoint identity; state update is a separate mutation and is not qualified here.",
+      "retry": "Bounded read retry; surface pruned/unavailable rather than substituting the latest checkpoint.",
+      "cancel": "Checkpoint read does not cancel or roll back a run.",
+      "reconnect": "Refetch current state before replaying transient stream effects.",
+      "result": "blocked-live-evidence",
+      "fallback": "Show current state only when available and disable checkpoint restore/branch actions.",
+      "sources": [
+        {
+          "id": "SRC-LC",
+          "revision": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+          "locator": "src/langsmith/agent-server-openapi.json"
+        },
+        {
+          "id": "SRC-LG",
+          "revision": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+          "locator": "libs/sdk-py/langgraph_sdk/_async/threads.py"
+        }
+      ],
+      "downstream_acceptance_ids": [
+        "AC-DW-TASK-004-03"
+      ]
+    }
+  ]
+}

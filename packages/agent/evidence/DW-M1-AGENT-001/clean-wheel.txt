@@ -1,0 +1,13 @@
+Recorded: 2026-07-23 AEST
+Command: make -C packages/agent package-check
+Result: PASS
+
+The verifier built the wheel and source distribution, required exact direct
+dependency metadata and py.typed, created a clean temporary Python 3.12
+environment from the frozen lock and package-local uv cache with networking
+disabled, installed the wheel rather than the source checkout, imported every
+declared public export, and confirmed truthful local-runtime capability reporting.
+
+It then built a second artifact pair in a separate temporary directory, required
+identical hashes, compared those hashes with artifacts.json, and removed both
+temporary directories. Ordinary package-check does not rewrite evidence.

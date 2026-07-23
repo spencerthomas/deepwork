@@ -1,0 +1,27 @@
+{
+  "description": "Synthetic, credential-free namespace isolation fixtures.",
+  "namespace_a": "dw-fixture-a",
+  "namespace_b": "dw-fixture-b",
+  "invalid_namespaces": [
+    "",
+    "../peer",
+    "DW-UPPER",
+    "leading space",
+    "double--separator",
+    "trailing-",
+    "/absolute",
+    "contains_underscore"
+  ],
+  "required_dimensions": [
+    "workspace_path",
+    "ports",
+    "database",
+    "schema",
+    "object_prefix",
+    "browser",
+    "telemetry",
+    "logs_path",
+    "proof_path",
+    "process_identities"
+  ]
+}

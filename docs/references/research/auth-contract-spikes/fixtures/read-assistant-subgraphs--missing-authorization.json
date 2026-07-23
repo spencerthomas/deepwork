@@ -1,0 +1,29 @@
+{
+  "context_case": "missing-authorization",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "read-assistant-subgraphs",
+  "request": {
+    "body_schema": "assistant_id path parameter",
+    "headers": {},
+    "host_class": "classic-agent-server",
+    "method": "GET",
+    "negative_input": {
+      "authorization_state": "missing"
+    },
+    "route_template": "/assistants/{assistant_id}/subgraphs"
+  },
+  "result": {
+    "code": "missing-authorization",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "local-policy-rejected"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

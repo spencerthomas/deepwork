@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "scrub_attestation": "Contains only synthetic identifiers and content; no headers, credentials, tenant data, customer data, or reusable endpoint.",
+  "subscribe_request": {
+    "method": "POST",
+    "path": "/threads/00000000-0000-4000-8000-000000000002/stream/events",
+    "body": {
+      "channels": [
+        "messages",
+        "lifecycle"
+      ],
+      "since": 1
+    }
+  },
+  "events": [
+    {
+      "seq": 1,
+      "event_id": "evt-synthetic-1",
+      "type": "event",
+      "method": "lifecycle",
+      "params": {
+        "namespace": [],
+        "timestamp": 1784764800000,
+        "data": {
+          "event": "started",
+          "run_id": "00000000-0000-4000-8000-000000000003"
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "event_id": "evt-synthetic-2",
+      "type": "event",
+      "method": "messages",
+      "params": {
+        "namespace": [],
+        "timestamp": 1784764800001,
+        "data": {
+          "event": "message-start",
+          "message_id": "message-synthetic-1"
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "event_id": "evt-synthetic-2",
+      "type": "event",
+      "method": "messages",
+      "params": {
+        "namespace": [],
+        "timestamp": 1784764800001,
+        "data": {
+          "event": "message-start",
+          "message_id": "message-synthetic-1"
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "event_id": "evt-synthetic-3",
+      "type": "event",
+      "method": "lifecycle",
+      "params": {
+        "namespace": [],
+        "timestamp": 1784764800002,
+        "data": {
+          "event": "completed",
+          "run_id": "00000000-0000-4000-8000-000000000003"
+        }
+      }
+    }
+  ]
+}

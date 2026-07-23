@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MessageSquareReply, ShieldQuestion, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { unicodeLength, validateDecisionComment } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, DecisionInput } from "@/lib/task-types";
@@ -27,13 +27,20 @@ export function ApprovalCard({
   error,
   onDecide,
 }: ApprovalCardProps) {
+  const fieldId = useId();
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string>();
   const disabled = submitting || submittedDecision !== undefined;
-  const overLimit = unicodeLength(comment) > DECISION_COMMENT_MAX_LENGTH;
+  // Length is measured the same way validateDecisionComment measures it — on the
+  // trimmed value — so the visible/accessible invalid state matches what submits.
+  const commentLength = unicodeLength(comment.trim());
+  const overLimit = commentLength > DECISION_COMMENT_MAX_LENGTH;
   const shownError = validationError ?? error;
-  const countId = `comment-count-${interrupt.interruptId}`;
-  const errorId = `decision-error-${interrupt.interruptId}`;
+  // Component-generated IDs; the interrupt identity may contain characters that
+  // are unsafe inside an id / aria-describedby IDREF list.
+  const commentId = `${fieldId}-comment`;
+  const countId = `${fieldId}-count`;
+  const errorId = `${fieldId}-error`;
   const commentDescribedBy = [countId, shownError !== undefined ? errorId : null]
     .filter((id): id is string => id !== null)
     .join(" ");
@@ -83,7 +90,7 @@ export function ApprovalCard({
       ) : (
         <div className="border-t border-status-review/30 bg-card/60 px-4 py-3">
           <label
-            htmlFor={`comment-${interrupt.interruptId}`}
+            htmlFor={commentId}
             className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
           >
             Comment{" "}
@@ -92,7 +99,7 @@ export function ApprovalCard({
             </span>
           </label>
           <textarea
-            id={`comment-${interrupt.interruptId}`}
+            id={commentId}
             value={comment}
             rows={2}
             disabled={disabled}
@@ -156,8 +163,7 @@ export function ApprovalCard({
                 overLimit ? "text-status-failed" : "text-muted-foreground",
               )}
             >
-              {unicodeLength(comment).toLocaleString()} /{" "}
-              {DECISION_COMMENT_MAX_LENGTH.toLocaleString()}
+              {commentLength.toLocaleString()} / {DECISION_COMMENT_MAX_LENGTH.toLocaleString()}
             </span>
           </div>
           {submittedDecision !== undefined && (

@@ -123,7 +123,7 @@ class CapabilityObservation:
 
 @dataclass(frozen=True, slots=True)
 class ClassicQualification:
-    """One source result; never contains endpoint, authRef, or credentials."""
+    """One source result; never contains endpoint or authentication material."""
 
     source_id: str
     state: QualificationState

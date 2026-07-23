@@ -4,6 +4,7 @@ This independently locked Python 3.12 project is the application-service package
 boundary for Deep Work. The Wave 1 scaffold provides:
 
 - a side-effect-free `deepwork_api.create_app()` factory;
+- optional, explicit local SQLite fixture persistence;
 - process-only `GET /health`;
 - deterministic `GET /api/v1/demo/status` that is permanently labelled fixture;
 - in-memory task create/list/detail endpoints with a sanitized, prompt-specific result;
@@ -12,11 +13,25 @@ boundary for Deep Work. The Wave 1 scaffold provides:
 - separate `deepwork-api` and `deepwork-worker` entry points from one artifact; and
 - package-local format, lint, type, no-network test, build, and clean-wheel checks.
 
-Task state survives list/detail/result requests only for the lifetime of one API process.
+By default, task state survives list/detail/result requests only for the lifetime of
+one API process. Two default application instances do not share task state. For
+local fixture recovery across restarts, opt in with an explicit absolute path:
+
+```bash
+deepwork-api --task-database /absolute/path/tasks.sqlite --port 8000
+```
+
+The SQLite file preserves completed task, plan, result, evidence, decision, and event
+history for this deterministic local fixture. Startup creates or validates the
+schema and fails closed for an invalid path, schema, or database; it never falls
+back to memory. There is no environment lookup or default database path.
+
 The API does **not** provide authentication, source connections, provider calls,
-durable persistence, durable jobs, credentials, or production readiness. Stream
-output is explicitly local fixture evidence, never a provider/model claim. The worker
-supports `--check` only and reports durability unavailable.
+durable jobs, credentials, or production readiness. The opt-in SQLite adapter is
+not PostgreSQL, migrations, an outbox, or production durability, and active
+execution is not reconstructed or resumed after restart. Stream output is explicitly
+local fixture evidence, never a provider/model claim. The worker supports `--check`
+only and reports durability unavailable.
 
 ## Local task loop
 
@@ -43,7 +58,8 @@ current interrupt but is never echoed, stored raw, or emitted in events. It prod
 a fresh interrupt around the safely revised local plan.
 
 Reconnect with `Last-Event-ID: 6` to replay only later events. Task IDs are local
-process identities, and the in-memory repository is intentionally reset on restart.
+repository identities. The default in-memory repository is intentionally reset on
+restart; only the explicit local SQLite option recovers completed fixture history.
 `run.completed` is the terminal stream event, after which the server closes the SSE
 response. `GET /api/v1/tasks/{taskId}/result` returns the completed useful result.
 

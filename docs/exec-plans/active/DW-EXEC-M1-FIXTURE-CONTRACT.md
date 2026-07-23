@@ -409,12 +409,15 @@ evidence reports.
 
 Acceptance:
 
-- two read-only runs produce byte-identical output and no diff;
+- two consecutive `update_evidence.py --write` runs report the same target
+  SHA-256 values, and the second reports no updated file;
+- the following `update_evidence.py --check` independently renders every target
+  twice in memory, proves those byte sets identical, and proves they match disk;
 - each negative fixture fails only with its declared rule code;
 - hash, scrub, and no-external-network checks are part of the required command;
 - corpus validation invokes no subprocess and reads no Git or environment state;
 - the explicit evidence writer is the only corpus helper that may update hashes
-  and deterministic reports, and a second run produces identical bytes;
+  and deterministic reports;
 - the Git scope runner resolves linked-worktree metadata through fixed Git
   commands and never imports or mutates the corpus;
 - all committed/staged/unstaged/untracked paths are within the exact allow-list;
@@ -445,6 +448,9 @@ Acceptance:
   plan-only rework reconciled malformed-input semantics, split corpus/scope
   validation, removed the nonterminal TS machine dependency, and documented the
   complete draft-to-reviewed docs transition. Fresh review remains pending.
+- [x] 2026-07-23 AEST — Final plan-only review finding resolved: evidence update
+  now has an exact two-write/zero-second-update proof followed by a double-render
+  byte comparison against disk. Fresh review remains pending.
 - [ ] Independent plan review confirms ownership, disjoint paths, gates,
   dependencies, case semantics, and install-free validation.
 - [ ] Milestone 1 complete; exact fixture contract and inventory retained.
@@ -530,7 +536,14 @@ Acceptance:
    never writes or invokes a subprocess.
 5. Implement `update_evidence.py` as the explicit maintainer-only deterministic
    writer for the hash manifest and two evidence reports. It performs no Git,
-   network, environment-secret, or wall-clock access.
+   network, environment-secret, or wall-clock access. `--write` renders target
+   bytes, atomically replaces only changed targets, prints each target SHA-256,
+   and prints a sorted `updated_files` list. `--check` performs two independent
+   in-memory renders, byte-compares them, byte-compares the result with every
+   on-disk target, prints the same sorted target digests plus
+   `render_passes=2`, `render_byte_identical=true`, and
+   `disk_byte_identical=true`, and writes nothing. Either mode exits nonzero on
+   disagreement.
 6. Implement `verify_scope.py` separately with fixed, shell-free Git queries and
    linked-worktree-safe root/Git-directory discovery.
 7. Run the exact install-free validation below twice, confirm scope and legacy
@@ -546,9 +559,11 @@ installation:
 ```text
 test "$(git branch --show-current)" = "codex/contracts/wave1-fixture-corpus"
 git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c HEAD
-PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
 python3 -B tools/docs/generate.py --check
 python3 -B tools/docs/check.py
@@ -560,6 +575,10 @@ git status --short
 
 Required observations:
 
+- both `--write` runs print identical sorted target SHA-256 values; the second
+  prints an empty `updated_files` list;
+- `update_evidence.py --check` reports two byte-identical in-memory render passes
+  and byte identity with all on-disk evidence targets, then writes nothing;
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
   no writes or subprocess invocation;
@@ -622,11 +641,13 @@ metadata. This rework does not authorize that transition and leaves
 
 All corpus inputs use fixed clocks and IDs. `validate.py --check` is read-only and
 rerunnable. `update_evidence.py` is the sole deterministic writer for hashes and
-reports; a second write must produce identical bytes, then a second validation
-must produce no diff. A partial validator failure leaves all source files and
-diagnostics intact. Recovery changes only the invalid governed fixture or this
-plan; it never weakens a rule, deletes a negative case, changes external evidence,
-or edits a consumer to make the corpus pass.
+reports. Two consecutive `--write` runs must print identical target digests and
+the second must update nothing; the following `--check` must render every target
+twice, prove both render sets byte-identical, and prove exact byte identity with
+disk. A partial validator failure leaves all source files and diagnostics intact.
+Recovery changes only the invalid governed fixture or this plan; it never weakens
+a rule, deletes a negative case, changes external evidence, or edits a consumer to
+make the corpus pass.
 
 Before integration, rollback is one reviewed revert of only this cell's commit.
 There is no database, external run, registry, deployment, credential, or live

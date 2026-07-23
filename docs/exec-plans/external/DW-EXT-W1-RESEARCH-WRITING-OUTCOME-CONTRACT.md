@@ -248,8 +248,9 @@ Under `docs/references/research/research-writing-outcomes/`, retain:
   and expected outcomes;
 - `schemas/`: machine-readable versioned artifact, subagent, rubric, verdict, and
   cross-reference schemas produced for the probe only;
-- `versions.json`: Python, dependencies, starter templates, public/generated
-  contracts, runtime/server/account/region/date, and upstream artifacts;
+- `versions.json`: Python, dependencies, reference-example paths/tree hashes,
+  explicitly blocked starter-template contract state, public/generated contracts,
+  runtime/server/account/region/date, and upstream artifacts;
 - `commands.txt`: exact commands and exit statuses without environment dumps;
 - `scrub-report.json`: zero secrets, credentials, customer/tenant data, reusable
   endpoints, raw headers/cookies, hidden reasoning, unsafe HTML/URLs, or
@@ -299,7 +300,13 @@ Full `AC-DW-TASK-005-*` qualification remains owned by `DW-TASK-005`
 (`product`, `task-experience`, `agent-runtime`, `sdk`). Full
 `AC-DW-HITL-002-*` qualification remains owned by `DW-HITL-002`
 (`verification`, `agent-runtime`, `task-experience`, `api`). Release/E2E
-qualification remains with `DW-QUAL-001` and the program coordinator.
+qualification remains with `DW-QUAL-001` and the program coordinator. Persistence,
+authorization, audit, and recovery proof remains with `DW-FND-003` and
+`DW-FND-005`; normalized client contracts and fixture equivalence remain with
+`DW-FND-004`; web/demo projection remains with `DW-FND-002`; responsive,
+accessible surface qualification remains with `DW-SURF-001` and `DW-QUAL-001`.
+The excluded `AC-DW-TASK-005-04` remains with later `DW-CODE-001`,
+`DW-CODE-002`, `DW-CODE-003`, and their coding-journey implementation packet.
 
 ## Exact validation commands
 
@@ -310,7 +317,7 @@ must be the default:
 python3 tools/contract-spikes/research-writing-outcomes/index_preflight.py --mode no-index --output docs/references/research/research-writing-outcomes/index-status.json
 uv lock --project tools/contract-spikes/research-writing-outcomes/offline --offline
 uv sync --project tools/contract-spikes/research-writing-outcomes/offline --frozen --offline
-UV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen pytest
+UV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m unittest discover -s tools/contract-spikes/research-writing-outcomes/offline/tests -p 'test_*.py'
 UV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.inventory --output docs/references/research/research-writing-outcomes/versions.json
 UV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.validate_matrix docs/references/research/research-writing-outcomes/matrix.json --require-all-streams --require-complete-cross-product --require-installed-public-blocked --reject-orphaned-evidence --reject-blocked-dependency-promotion --reject-unresolved-precedence-conflicts
 UV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.scrub docs/references/research/research-writing-outcomes

@@ -431,7 +431,10 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-up,
     .beam-flow,
-    .breathe {
+    .breathe,
+    .animate-ping,
+    .animate-spin,
+    .animate-pulse {
       animation: none;
     }
   }

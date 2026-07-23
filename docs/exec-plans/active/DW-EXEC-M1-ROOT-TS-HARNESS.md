@@ -4,7 +4,7 @@ title: Root TypeScript workspace baseline
 status: reviewed
 superseded_by: null
 owner: program-coordinator
-reviewed_by: [ts-package-planner-reviewer]
+reviewed_by: [ts-package-planner-reviewer, root-ts-implementation-reviewer]
 reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-001
 supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
@@ -115,10 +115,10 @@ Acceptance:
 
 - [x] 2026-07-23 — Independent review accepted pins, paths, gates, commands, and
   the declarations -> package manifests -> lock integration sequence.
-- [ ] Toolchain/workspace manifests complete; no lock generated.
-- [ ] Shared compiler profiles and deterministic validation complete.
-- [ ] Independent implementation review accepted; baseline handed to the
-  TypeScript source/manifests cell and a later lock-integration cell recorded.
+- [x] 2026-07-23 — Toolchain/workspace manifests complete; no lock generated.
+- [x] 2026-07-23 — Shared compiler profiles and deterministic validation complete.
+- [x] 2026-07-23 — Independent implementation review accepted; baseline ready
+  for the TypeScript source/manifests cell and later lock-integration cell.
 
 ## Surprises & Discoveries
 
@@ -127,12 +127,23 @@ Acceptance:
 - 2026-07-23 — Review found that generating a lock before workspace importers
   exist would make the first frozen install stale. Consequence: this cell excludes
   the lock and a later coordinator cell owns first lock integration.
+- 2026-07-23 — The implementation host currently provides Node `v20.18.0`,
+  Corepack `0.29.3`, and pnpm `9.12.1`. Consequence: this cell records and
+  statically validates the canonical Node 24/pnpm 10 declarations without
+  changing the host or making install/build claims.
 
 ## Decision Log
 
 - 2026-07-23 — Decision: split root TypeScript ownership from package source.
   Rationale: the coordinator owns shared manifests/locks and worker governed paths
   must remain disjoint. Consequence: TS package dispatch waits for this cell.
+- 2026-07-23 — Decision: keep shared compiler profiles path-independent.
+  Rationale: `rootDir`, `outDir`, and build-info paths resolve relative to the
+  configuration that declares them. Consequence: each consuming package owns
+  those paths while inheriting strict language and emit policy here.
+- 2026-07-23 — Decision: keep the universal base library set to `ES2022` only.
+  Rationale: browser globals in the base would weaken the pure domain boundary.
+  Consequence: browser-owning packages must opt into `DOM` libraries locally.
 
 ## Detailed implementation approach
 
@@ -158,6 +169,25 @@ git diff --check
 Retain sanitized command output in the plan. Exact declarations are implementation
 evidence; no install, build, fixture, or live product capability is claimed.
 
+Implementation evidence on 2026-07-23:
+
+```text
+node --version       -> v20.18.0 (host observation; canonical pin is 24.18.0)
+corepack --version   -> 0.29.3
+pnpm --version       -> 9.12.1 (host observation; canonical pin is 10.34.5)
+JSON parse/pin/workspace/strict-option assertions -> pass
+test ! -e pnpm-lock.yaml -> pass
+secret/local-path scan -> pass
+python3 tools/docs/generate.py --check -> verified 6 generated documents
+python3 tools/docs/check.py -> documentation validation passed
+git diff --check -> pass
+```
+
+Independent implementation review confirmed the exact registry pins exist and
+support Node 24, Turbo dependency/task semantics are valid, shared profiles are
+path-independent, the universal base exposes no DOM globals, and no lock,
+install, build, secret, or local-path claim entered the cell.
+
 ## Idempotence, rollback, and recovery
 
 Validation is rerunnable. If an available local tool conflicts with the canonical
@@ -175,5 +205,10 @@ production rollout applies.
 
 ## Outcomes & Retrospective
 
-Pending. Record exact declarations, validation, review, deviations, and the commit
-consumed by the TypeScript source/manifests lane.
+Delivered the exact Node 24.18.0/pnpm 10.34.5 root declaration, pinned Turbo,
+TypeScript, Oxfmt, and Oxlint development tools, the three canonical workspace
+globs, a bounded Turbo task graph, and strict ES2022 base/library/contract
+profiles. Independent review found and removed DOM libraries from the universal
+base before acceptance. No lock or dependency installation was created, so the
+later package-manifest, lock-integration, and executable-verification cells retain
+their intended evidence boundaries.

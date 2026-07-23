@@ -863,6 +863,12 @@
       "mutation": {"operation": "replace", "path": "/capabilities/0/name", "value": "provider-create"}
     },
     {
+      "negativeId": "fx_probe_fixture_capability_state",
+      "declaredRuleCode": "FIXTURE_CAPABILITY_STATE",
+      "basePath": "manifests/fixture-source.json",
+      "mutation": {"operation": "replace", "path": "/capabilities/2/state", "value": "available"}
+    },
+    {
       "negativeId": "fx_probe_negative_id_collision",
       "declaredRuleCode": "FIXTURE_SCHEMA_NEGATIVE_INDEX",
       "probe": {

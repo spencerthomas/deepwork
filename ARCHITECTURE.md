@@ -1,7 +1,8 @@
 # Deep Work architecture
 
-Status: canonical architecture map. Runtime packages are not scaffolded yet; the
-first implementation is governed by the active repository-scaffold ExecPlan.
+Status: canonical architecture map. A credential-free local product slice now
+exists; durable state and provider-backed execution remain governed by the
+active implementation plans.
 
 ## Purpose
 
@@ -73,6 +74,21 @@ packages/agent -> public Deep Agents/LangChain/LangGraph APIs
   reducers, product components, or network services.
 - The frontend prototype is a one-way visual/interaction source and is never an
   import dependency.
+
+### Reuse-first agent integrations
+
+Agent runtimes and agent-facing integrations use the first maintained option
+that satisfies the required capability:
+
+1. a maintained LangChain integration;
+2. a maintained MCP server;
+3. an official provider SDK behind a thin LangChain tool; or
+4. custom integration code only when the missing capability is documented.
+
+This rule does not put LangChain into Next.js presentation, FastAPI transport,
+PostgreSQL persistence, or authentication code. Outcome 1's embedded,
+deterministic local executor is a bounded credential-free product fixture; it
+must not grow into a parallel agent framework.
 
 ## Python layers
 

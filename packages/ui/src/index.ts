@@ -1,4 +1,1 @@
-export {
-  StatusPanel,
-  type StatusPanelProps,
-} from "./status-panel.js";
+export { StatusPanel, type StatusPanelProps } from "./status-panel.js";

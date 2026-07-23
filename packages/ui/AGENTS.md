@@ -17,6 +17,10 @@ not fetch, authenticate, select sources, mutate durable state, or decide product
 authorization. Business reducers stay in domain; components may own transient
 presentation state.
 
+Reusable status primitives do not choose a heading level. Use labelled
+non-heading text or an explicit consumer-owned heading slot so composition does
+not corrupt document hierarchy.
+
 `tokens.css` and the shared preset are the token source. Do not duplicate
 product color, spacing, type, radius, elevation, or motion constants in app code.
 
@@ -42,6 +46,9 @@ Import the component API only from `@deepwork/ui`, tokens from
 `@deepwork/ui/tokens.css`, component styles from their named CSS entry point, and
 domain values only from `@deepwork/domain`. Keep local ESM imports explicit with
 `.js` runtime extensions.
+Computed and template-literal dynamic imports are prohibited. CSS `@import` and
+`url()` references must be statically inspectable and remain inside this package;
+external/scheme and escaping paths fail closed.
 
 Package scripts are declarations for the downstream lock and executable
 verification cells. Until the shared lock exists, run only the install-free
@@ -50,4 +57,6 @@ checks as unexecuted.
 
 Keep `check-architecture` and `package-check` distinct. The former proves green
 source plus intentional negative fixtures; the latter proves packed UI/domain
-archives, CSS/token/preset exports, and an offline empty-consumer import.
+archives, CSS/token/preset exports, and an offline empty-consumer runtime and
+TypeScript import. Boundary diagnostics must name the legal destination,
+`ARCHITECTURE.md#package-graph`, and the local repair command.

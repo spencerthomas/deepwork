@@ -1,0 +1,30 @@
+{
+  "account_tier": "not-supplied",
+  "app_permission_manifest": {
+    "actions": "read",
+    "checks": "read",
+    "contents": "write",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "auth_class": "none-offline; GitHub App installation required for live",
+  "git": "git version 2.45.2",
+  "github_client": "stdlib deterministic fake; no credentialed SDK installed",
+  "github_media_type": "application/vnd.github+json",
+  "github_rest_api": "2026-03-10",
+  "implementation": "CPython",
+  "observed_at": "2026-07-23",
+  "pinned_sources": {
+    "SRC-DA": "7794b61a6e76230e8c7a49bdce808b3728305914",
+    "SRC-LC": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+    "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+  },
+  "probe": "0.1.0",
+  "python": "3.12.11",
+  "region": "not-supplied",
+  "sandbox_upstream": {
+    "commit": "5a518c40fb44b5d64b8eb36f618c8ecd58bad188",
+    "review": "missing"
+  },
+  "uv": "uv 0.11.8 (Homebrew 2026-04-27 aarch64-apple-darwin)"
+}

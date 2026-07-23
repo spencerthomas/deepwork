@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "delivery_id",
+    "signature",
+    "installation",
+    "repository",
+    "action",
+    "pull_request"
+  ],
+  "title": "webhook",
+  "type": "object"
+}

@@ -1,23 +1,70 @@
-"""Typed unavailable state for the package scaffold."""
+"""Typed state and human-review payloads for the local agent graph."""
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired
 
-from deepwork_agent.graph import CONFIG_CONTRACT_GATE, runtime_availability
+from typing_extensions import TypedDict
 
-
-class UnavailableAgentState(TypedDict):
-    """Represent the package's explicit non-runtime state without provider data."""
-
-    status: Literal["unavailable"]
-    contract_gate: Literal["SPIKE-CONFIG-001"]
-    reason: str
+AgentStatus = Literal["planned", "approved", "completed", "rejected"]
+ApprovalDecision = Literal["approve", "reject", "respond"]
+ApprovalStatus = Literal["pending", "approve", "reject", "respond", "not-required"]
+ContentTrust = Literal["trusted", "untrusted"]
 
 
-def initial_unavailable_state() -> UnavailableAgentState:
-    """Return deterministic state suitable for local no-network tests."""
-    availability = runtime_availability()
-    return {
-        "status": "unavailable",
-        "contract_gate": CONFIG_CONTRACT_GATE,
-        "reason": availability.reason,
-    }
+class AgentInput(TypedDict):
+    """Input accepted by the local graph."""
+
+    task: str
+
+
+class AgentState(AgentInput, total=False):
+    """Internal deterministic state accumulated by graph nodes."""
+
+    plan: list[str]
+    plan_revision: int
+    plan_trust: Literal["untrusted"]
+    approval: ApprovalStatus
+    reviewer_comment: str
+    status: AgentStatus
+    final_answer: str
+    final_answer_trust: ContentTrust
+
+
+class AgentOutput(TypedDict):
+    """Terminal output returned after approval, rejection, or execution."""
+
+    task: str
+    plan: list[str]
+    plan_revision: int
+    plan_trust: Literal["untrusted"]
+    approval: ApprovalStatus
+    status: AgentStatus
+    final_answer: str
+    final_answer_trust: ContentTrust
+
+
+class ApprovalRequest(TypedDict):
+    """Serializable payload exposed by the LangGraph interrupt."""
+
+    kind: Literal["deepwork-plan-approval"]
+    action: Literal["execute_plan"]
+    task: str
+    plan: list[str]
+    plan_revision: int
+    plan_trust: Literal["untrusted"]
+    allowed_decisions: list[ApprovalDecision]
+
+
+class ApprovalResponse(TypedDict):
+    """Value required when resuming an interrupted graph."""
+
+    decision: ApprovalDecision
+    comment: NotRequired[str]
+
+
+def initial_state(task: str) -> AgentInput:
+    """Create validated input without contacting a model or provider."""
+    normalized = task.strip()
+    if not normalized:
+        msg = "task must contain non-whitespace text"
+        raise ValueError(msg)
+    return {"task": normalized}

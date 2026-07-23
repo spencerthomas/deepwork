@@ -1,0 +1,13 @@
+@import url(var(--theme-path));
+@import/**/url(var(--comment-hidden-theme-path));
+@import "https://fixture.invalid/theme.css";
+@import "@deepwork/sdk/theme.css";
+@import "../../../../../outside.css";
+
+.unsafe {
+  background-image:
+    url("https://fixture.invalid/pixel.png"),
+    url("../../../../../outside.png"),
+    url("%2e%2e/%2e%2e/encoded-outside.png"),
+    url(" https://fixture.invalid/hidden-space.png");
+}

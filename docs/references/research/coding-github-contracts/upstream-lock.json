@@ -1,0 +1,17 @@
+{
+  "consumed_rows": [],
+  "expected_base": "b2243109d0cfb2e093cc37a57017e8e70b5ea64b",
+  "fallback": "offline research and deterministic negatives only; no proxy, egress, push, or PR mutation",
+  "hashes": {
+    "fixtures": null,
+    "matrix": null,
+    "matrix_scope": null,
+    "versions": null
+  },
+  "observed_commit": "5a518c40fb44b5d64b8eb36f618c8ecd58bad188",
+  "packet_id": "DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH",
+  "reason": "upstream worktree contains only the seed packet; retained outputs and independent review are absent",
+  "review_verdict": "missing",
+  "reviewed_commit": null,
+  "state": "blocked-live-evidence"
+}

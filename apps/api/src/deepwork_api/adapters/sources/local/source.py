@@ -104,6 +104,17 @@ class LocalSourceConfigurationError(LocalSourceError):
     """The source configuration is outside the fixed local boundary."""
 
 
+class LocalSourceGatedError(LocalSourceError):
+    """The local Agent Server capability is gated pending live-contract evidence.
+
+    Wave 1 ``apps/api`` exposes only credential-free fixture behavior and makes
+    no provider/service calls by default. Executing tasks through a real
+    ``langgraph dev`` Agent Server is a development-only capability that stays
+    disabled until its contract gate (``SPIKE-SOURCE-001``) is accepted; it is
+    reachable only through a deliberate, documented local-development opt-in.
+    """
+
+
 class LocalSourceUnavailableError(LocalSourceError, TaskSourceUnavailableError):
     """The loopback Agent Server or official SDK is unavailable.
 

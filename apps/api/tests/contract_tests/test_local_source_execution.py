@@ -282,6 +282,7 @@ async def _local_app(
     app = create_app(
         local_agent_server_endpoint=LOCAL_ENDPOINT,
         local_agent_server_assistant=LOCAL_ASSISTANT,
+        allow_ungated_local_agent_source=True,
     )
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
@@ -778,6 +779,7 @@ async def test_local_mode_adds_no_new_wire_surface(
     local_app = create_app(
         local_agent_server_endpoint=LOCAL_ENDPOINT,
         local_agent_server_assistant=LOCAL_ASSISTANT,
+        allow_ungated_local_agent_source=True,
     )
     fixture_app = create_app()
 

@@ -14,7 +14,10 @@ from fastapi.responses import JSONResponse
 
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
-from deepwork_api.adapters.sources.local import LocalAgentServerSource
+from deepwork_api.adapters.sources.local import (
+    LocalAgentServerSource,
+    LocalSourceGatedError,
+)
 from deepwork_api.application import (
     DeterministicFixtureRunner,
     LocalAgentServerRunner,
@@ -26,6 +29,13 @@ from deepwork_api.ports import TaskRepository
 from deepwork_api.transport import build_router, build_task_router
 
 _WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+_LOCAL_SOURCE_GATED_MESSAGE = (
+    "local Agent Server task execution is gated pending accepted live-contract "
+    "evidence (SPIKE-SOURCE-001); it is a local-development-only capability and "
+    "stays disabled unless the caller sets allow_ungated_local_agent_source=True "
+    "(CLI: --allow-ungated-local-agent-source). The default runtime makes no "
+    "provider/service calls."
+)
 
 
 def _build_local_agent_server_source(
@@ -46,8 +56,18 @@ def create_app(
     task_database_path: Path | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
+    allow_ungated_local_agent_source: bool = False,
 ) -> FastAPI:
-    """Create the local fixture application with optional explicit SQLite persistence."""
+    """Create the local application; loopback source execution is gated off by default.
+
+    The default is credential-free deterministic fixture mode and makes no
+    provider/service calls. Executing tasks through a real ``langgraph dev``
+    Agent Server is a development-only capability that stays disabled until its
+    contract gate (``SPIKE-SOURCE-001``) is accepted: supplying a loopback
+    endpoint and assistant is not enough, the caller must also deliberately set
+    ``allow_ungated_local_agent_source=True``. Without that opt-in the loopback
+    configuration is refused before any source object is constructed.
+    """
 
     status_service = StatusService(provider=FixtureStatusProvider())
     task_repository: TaskRepository
@@ -63,8 +83,18 @@ def create_app(
     if local_agent_server_endpoint is None:
         if local_agent_server_assistant is not None:
             raise ValueError("local Agent Server assistant requires an explicit loopback endpoint")
+        if allow_ungated_local_agent_source:
+            raise ValueError(
+                "allow_ungated_local_agent_source requires an explicit loopback endpoint "
+                "and assistant"
+            )
         task_runner = DeterministicFixtureRunner(repository=task_repository)
     else:
+        # Fail closed before constructing any provider-calling source: the
+        # capability is gated pending SPIKE-SOURCE-001 and reachable only through
+        # a deliberate, documented local-development opt-in.
+        if not allow_ungated_local_agent_source:
+            raise LocalSourceGatedError(_LOCAL_SOURCE_GATED_MESSAGE)
         if task_database_path is not None:
             raise ValueError("local Agent Server mode does not support persistent task recovery")
         if local_agent_server_assistant is None:
@@ -143,12 +173,24 @@ def _parser() -> argparse.ArgumentParser:
         "--local-agent-server-endpoint",
         help=(
             "Explicit HTTP loopback IP origin of a langgraph dev Agent Server "
-            "(for example http://127.0.0.1:2024); requires the assistant flag."
+            "(for example http://127.0.0.1:2024); local development only, requires "
+            "the assistant flag and --allow-ungated-local-agent-source."
         ),
     )
     parser.add_argument(
         "--local-agent-server-assistant",
         help="Assistant identifier registered on the loopback Agent Server.",
+    )
+    parser.add_argument(
+        "--allow-ungated-local-agent-source",
+        action="store_true",
+        help=(
+            "Deliberately opt in to the local-development-only loopback Agent "
+            "Server task execution path, which is otherwise gated off pending "
+            "accepted live-contract evidence (SPIKE-SOURCE-001). Without this "
+            "flag the API runs in credential-free fixture mode and makes no "
+            "provider/service calls."
+        ),
     )
     return parser
 
@@ -162,6 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             task_database_path=args.task_database,
             local_agent_server_endpoint=args.local_agent_server_endpoint,
             local_agent_server_assistant=args.local_agent_server_assistant,
+            allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,
         ),
         host="127.0.0.1",
         port=args.port,

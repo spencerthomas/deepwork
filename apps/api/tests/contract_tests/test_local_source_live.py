@@ -35,6 +35,7 @@ async def _live_client(endpoint: str, assistant_id: str) -> AsyncIterator[httpx.
     app = create_app(
         local_agent_server_endpoint=endpoint,
         local_agent_server_assistant=assistant_id,
+        allow_ungated_local_agent_source=True,
     )
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)

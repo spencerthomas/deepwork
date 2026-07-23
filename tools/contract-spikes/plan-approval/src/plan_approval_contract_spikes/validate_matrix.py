@@ -61,6 +61,17 @@ BLOCKED_SCENARIOS = {
     "cancellation_not_a_decision",
 }
 
+EXPECTED_FALLBACK = {
+    "planApproval": False,
+    "unavailableReason": "blocked_upstream_contract_and_live_evidence",
+    "draftPreserved": True,
+    "textOnlyDispatchAvailable": True,
+    "alternativeChoices": [
+        "compatible_source",
+        "dispatch_without_plan_approval",
+    ],
+}
+
 
 def _walk_strings(value: Any):
     if isinstance(value, str):
@@ -160,9 +171,8 @@ def validate(
             errors.append(f"{row_id} claims an out-of-scope acceptance contribution")
         if row.get("end_to_end_contribution") is not False:
             errors.append(f"{row_id} claims end-to-end contribution")
-        fallback = row.get("fallback")
-        if not isinstance(fallback, dict) or fallback.get("planApproval") is not False:
-            errors.append(f"{row_id} lacks the disabled capability fallback")
+        if row.get("fallback") != EXPECTED_FALLBACK:
+            errors.append(f"{row_id} lacks the complete disabled capability fallback")
         if row.get("resume_schema", {}).get("provider_syntax_tested") is not False:
             errors.append(f"{row_id} claims provider resume evidence")
         fixture = row.get("fixture")

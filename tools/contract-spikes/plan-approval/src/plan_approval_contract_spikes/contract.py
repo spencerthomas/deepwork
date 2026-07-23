@@ -23,6 +23,7 @@ class PlanStatus(StrEnum):
     AWAITING_REVISION = "awaiting_revision"
     APPROVED = "approved"
     REJECTED = "rejected"
+    LOCALLY_ABANDONED = "locally_abandoned"
     EXECUTING = "executing"
 
 

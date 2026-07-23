@@ -58,6 +58,12 @@ The packet adds only plan-specific checks:
 - append-only decision audit and idempotent local resume; and
 - zero protected work before the accepted current plan revision is resumed.
 
+The engine reduces a closed plan-approval event schema. Unknown event types,
+status-bearing model/tool output, invalid transition order, and release events
+without a structurally valid current approval fail closed. Local abandonment is
+an actor-bound, idempotent terminal state for that request and emits no provider
+resume.
+
 The consumed upstream evidence is pinned to LangChain research commit
 `758c1d4a2230b7c4261fcfbd0f3008634509e096`:
 
@@ -99,13 +105,19 @@ covers:
   config/template drift; and
 - unsupported-capability fallback with no silent downgrade.
 
-Every deterministic row requires append-only state transitions and
+Every deterministic row requires structurally valid state transitions and
 `side_effect_count_before_approval: 0`. Only the eight scenarios that both
 persist a current approval and invoke the local release boundary end with one
 protected-effect transition; every other scenario ends with zero. Replaying the
 same local release key remains at one. This counter is a synthetic stand-in for
 the protected execution boundary, not a provider resume, real tool, or provider
 mutation.
+
+The fake checkpoint's SHA-256 chain detects accidental corruption in retained
+fixtures. It is deliberately unkeyed and is not evidence against an actor who
+can rewrite the whole checkpoint. Authenticated application persistence,
+authorization, and hostile-storage resistance remain outside this offline
+packet and blocked for acceptance.
 
 ## Recommended normalized boundary
 
@@ -135,6 +147,11 @@ revision and supersedes the prior revision; it does not mutate history. Approval
 is effective only for the current revision, and only after an authority recheck
 at resume. Any permission or side-effect envelope outside the original reviewed
 task boundary fails closed.
+
+The unavailable fallback is exact rather than merely boolean: it includes a
+typed blocked reason, preserves the draft, keeps text-only dispatch available,
+and offers explicit choices of a compatible source or dispatch without plan
+approval.
 
 The provider-facing request/decision/resume payload remains owned by
 `SPIKE-HITL-001`. This packet does not prescribe a new wire contract.

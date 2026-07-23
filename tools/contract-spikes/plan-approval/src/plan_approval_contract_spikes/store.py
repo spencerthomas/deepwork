@@ -19,7 +19,12 @@ class StoredEvent:
 
 
 class AppendOnlyCheckpointStore:
-    """Deterministic JSONL event store with a verified hash chain."""
+    """Deterministic JSONL event store with a corruption-detecting checksum chain.
+
+    The unkeyed checksum is not authenticated storage and cannot prove resistance
+    to an actor that can rewrite the whole file. Application authorization and
+    durable storage integrity remain outside this offline harness.
+    """
 
     def __init__(self, path: Path):
         self.path = path

@@ -12,8 +12,8 @@ allowed_paths: [tools/contract-spikes/plan-approval/**, docs/references/research
 dependencies: [SPIKE-HITL-001, SPIKE-COMPOSE-001, SPIKE-CONFIG-001, SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LCPY@592055e15e138f5369dce95dd049ce22430996e2, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-sandbox]
 blockers: [accepted-SPIKE-HITL-001, accepted-SPIKE-COMPOSE-001, accepted-SPIKE-CONFIG-001, sanctioned-non-production-classic-sandbox]
 created: 2026-07-23
-reviewed_at: 2026-07-23
-review_result: accepted
+reviewed_at: null
+review_result: pending-independent-review
 ---
 
 # External dispatch - require a real plan before the first task executes
@@ -273,7 +273,8 @@ destructive cleanup is authorized by this packet.
   `SPIKE-HITL-001`, `SPIKE-COMPOSE-001`, and `SPIKE-CONFIG-001` conclusions are
   all `blocked-live-evidence`.
 - [x] 2026-07-23: Implemented and validated the isolated offline plan contract
-  harness with an append-only hash-chained checkpoint, current-authority checks,
+  harness with a structurally reduced checksum-chained checkpoint,
+  current-authority checks,
   immutable revision identity, non-widening boundaries, restart/reconnect replay,
   local idempotent release, and explicit bypass rejection.
 - [x] 2026-07-23: Generated the complete deterministic template/scenario matrix
@@ -306,6 +307,11 @@ destructive cleanup is authorized by this packet.
   sync, and test workflow passes with `UV_OFFLINE=true` using the already
   installed local uv cache for the first sync and a task-specific cache for all
   retained validation.
+- The first independent review of `47e00cdeff547316e1eac35560220a354b794720`
+  found that arbitrary event status could unlock the local release, abandonment
+  was not terminal, template/config drift and fallback assertions were too weak,
+  the scrubber missed required classes, and the unkeyed checksum was overstated.
+  That commit was not approved and is retained only as review provenance.
 
 ## Decision log
 
@@ -325,6 +331,16 @@ destructive cleanup is authorized by this packet.
   drifted runtime config fails closed.
 - 2026-07-23: Treat `respond` as awaiting a new persisted plan revision; another
   decision on the old revision cannot release protected work.
+- 2026-07-23: Treat the fake store's unkeyed checksum as corruption detection,
+  not authenticated persistence. A closed event reducer blocks unknown event
+  types and invalid transitions; adversarial storage integrity remains
+  application evidence outside this packet.
+- 2026-07-23: Make local abandonment actor/current-authority bound, idempotent,
+  and terminal for the request. It cannot be followed by a decision, revision,
+  restart, or protected local release.
+- 2026-07-23: Require the full unavailable fallback tuple—typed reason,
+  preserved draft, text-only dispatch, and explicit alternative choices—in
+  every matrix row.
 
 ## Outcomes and retrospective
 

@@ -1,7 +1,17 @@
 {
+  "attestation": "Only deterministic synthetic identities and pinned public provenance are retained; pattern scanning is defense in depth, not proof that arbitrary customer content is safe.",
+  "categories": {
+    "customer_or_tenant_data": 0,
+    "hidden_reasoning": 0,
+    "raw_headers_or_cookies": 0,
+    "reusable_endpoints": 0,
+    "secrets_or_credentials": 0,
+    "unsanitized_absolute_paths": 0
+  },
   "files_scanned": 9,
   "finding_count": 0,
   "findings": [],
+  "generated_at": null,
   "root": ".",
   "schema_version": "plan-approval-scrub.v1",
   "status": "clean"

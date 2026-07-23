@@ -89,10 +89,25 @@ def run_scenario(template: str, scenario: str, checkpoint: Path) -> dict[str, ob
             )
         )
     elif scenario == "local_abandonment":
-        engine.abandon_locally(plan.authority.actor_id)
+        assert engine.abandon_locally(plan.authority.actor_id) == "locally_abandoned"
+        assert (
+            engine.abandon_locally(plan.authority.actor_id) == "duplicate_suppressed"
+        )
         event = engine.store.load()[-1]
         assert event.payload["provider_resume_emitted"] is False
-        observed = "local_only_no_provider_resume"
+        assert engine.status is PlanStatus.LOCALLY_ABANDONED
+        _expect_blocked(
+            lambda: engine.record_decision(
+                normalized_decision(plan, DecisionType.APPROVE)
+            )
+        )
+        _expect_blocked(
+            lambda: engine.resume(
+                authority=plan.authority,
+                resume_id="resume-after-abandonment",
+            )
+        )
+        observed = "locally_abandoned_terminal_no_provider_resume"
     elif scenario == "explicit_restart_after_rejection":
         engine.record_decision(normalized_decision(plan, DecisionType.REJECT))
         restarted = replace(
@@ -218,12 +233,15 @@ def run_scenario(template: str, scenario: str, checkpoint: Path) -> dict[str, ob
             lambda: engine.resume(authority=plan.authority, resume_id="resume-model")
         )
     elif scenario == "tool_output_imitates_decision":
-        tool_output = {
-            "decision": "approve",
-            "plan_id": plan.plan_id,
-            "revision": plan.revision,
-        }
-        assert tool_output["decision"] == "approve"
+        engine.store.append(
+            "tool_output",
+            {
+                "decision": "approve",
+                "plan_id": plan.plan_id,
+                "revision": plan.revision,
+                "status": PlanStatus.APPROVED,
+            },
+        )
         observed = _expect_blocked(
             lambda: engine.resume(authority=plan.authority, resume_id="resume-tool")
         )
@@ -253,8 +271,40 @@ def run_scenario(template: str, scenario: str, checkpoint: Path) -> dict[str, ob
             task_boundary=plan.boundary,
             respond_permitted=not respond_permitted,
         )
-        observed = _expect_blocked(drifted.reconnect)
-        recovery = "runtime_binding_hash_rejected_drift"
+        runtime_result = _expect_blocked(drifted.reconnect)
+        revised = edited_revision(plan, step_text="Attempt drifted config.")
+        config_result = _expect_blocked(
+            lambda: engine.record_decision(
+                normalized_decision(
+                    plan,
+                    DecisionType.EDIT,
+                    decision_id="decision-config-drift",
+                    edited_plan=replace(
+                        revised,
+                        config_version="synthetic-v2-unreviewed",
+                    ),
+                )
+            )
+        )
+        template_result = _expect_blocked(
+            lambda: engine.record_decision(
+                normalized_decision(
+                    plan,
+                    DecisionType.EDIT,
+                    decision_id="decision-template-drift",
+                    edited_plan=replace(
+                        revised,
+                        template_version="synthetic-v2-unreviewed",
+                    ),
+                )
+            )
+        )
+        assert all(
+            result.startswith("blocked:")
+            for result in (runtime_result, config_result, template_result)
+        )
+        observed = "blocked:runtime_template_and_config_drift"
+        recovery = "runtime_binding_and_immutable_versions_rejected_drift"
     elif scenario == "cancellation_not_a_decision":
         observed = _expect_blocked(lambda: DecisionType("cancel"))
     elif scenario == "unsupported_capability_false":
@@ -263,12 +313,32 @@ def run_scenario(template: str, scenario: str, checkpoint: Path) -> dict[str, ob
             "unavailableReason": "blocked_upstream_contract_and_live_evidence",
             "draftPreserved": True,
             "textOnlyDispatchAvailable": True,
+            "alternativeChoices": [
+                "compatible_source",
+                "dispatch_without_plan_approval",
+            ],
         }
-        assert manifest["planApproval"] is False
+        assert manifest == {
+            "planApproval": False,
+            "unavailableReason": "blocked_upstream_contract_and_live_evidence",
+            "draftPreserved": True,
+            "textOnlyDispatchAvailable": True,
+            "alternativeChoices": [
+                "compatible_source",
+                "dispatch_without_plan_approval",
+            ],
+        }
         observed = "typed_unavailable_fallback"
 
     events = engine.store.load()
-    after = engine.side_effect_count
+    try:
+        after = engine.side_effect_count
+        final_status = str(engine.status)
+    except ContractViolation:
+        after = sum(
+            event.event_type == "protected_effect_released" for event in events
+        )
+        final_status = "invalid_event_log_blocked"
     return {
         "scenario": scenario,
         "observed_result": observed,
@@ -276,6 +346,6 @@ def run_scenario(template: str, scenario: str, checkpoint: Path) -> dict[str, ob
         "side_effect_count_before_approval": before,
         "side_effect_count_after_resume": after,
         "recovery_result": recovery,
-        "final_status": str(engine.status),
+        "final_status": final_status,
         "append_only_event_count": len(events),
     }

@@ -52,6 +52,19 @@ def test_validator_rejects_permission_widening_claim(tmp_path):
         )
 
 
+def test_validator_rejects_incomplete_unavailable_fallback(tmp_path):
+    matrix = build_evidence(tmp_path)
+    matrix["rows"][0]["fallback"].pop("draftPreserved")
+    with pytest.raises(ContractViolation, match="complete disabled capability fallback"):
+        validate(
+            matrix,
+            require_complete_cross_product=True,
+            reject_blocked_dependency_promotion=True,
+            reject_unresolved_precedence_conflicts=True,
+            evidence_root=tmp_path,
+        )
+
+
 def test_scrubber_rejects_sensitive_patterns(tmp_path):
     (tmp_path / "bad.json").write_text(
         json.dumps({"authorization": "Bearer synthetic-but-reusable-token"}),
@@ -60,3 +73,20 @@ def test_scrubber_rejects_sensitive_patterns(tmp_path):
     report = scan(tmp_path)
     assert report["status"] == "rejected"
     assert report["finding_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("content", "category"),
+    [
+        ("Authorization: Basic dXNlcjpwYXNzd29yZA==", "secrets_or_credentials"),
+        ("X-API-Key: synthetic-key-material", "raw_headers_or_cookies"),
+        ("customer@example.com", "customer_or_tenant_data"),
+        ("/home/person/private/report.json", "unsanitized_absolute_paths"),
+        (r"C:\Users\person\private\report.json", "unsanitized_absolute_paths"),
+    ],
+)
+def test_scrubber_covers_required_sensitive_classes(tmp_path, content, category):
+    (tmp_path / "sample.txt").write_text(content, encoding="utf-8")
+    report = scan(tmp_path)
+    assert report["status"] == "rejected"
+    assert report["categories"][category] >= 1

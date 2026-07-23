@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 import hashlib
 import json
 from typing import Callable
@@ -15,6 +15,14 @@ from .contract import (
 )
 from .errors import ContractViolation
 from .store import AppendOnlyCheckpointStore
+
+
+@dataclass(frozen=True)
+class _ReducedState:
+    plan: PlanProposal | None = None
+    status: PlanStatus | None = None
+    current_approval: bool = False
+    side_effect_count: int = 0
 
 
 class PlanApprovalEngine:
@@ -59,25 +67,152 @@ class PlanApprovalEngine:
         if events[0].payload.get("runtime_binding") != self._runtime_binding():
             raise ContractViolation("runtime task/review config drifted from the proposal")
 
+    @staticmethod
+    def _require_status(event, expected: PlanStatus) -> None:
+        if event.payload.get("status") != expected:
+            raise ContractViolation(
+                f"{event.event_type} carries an invalid state transition"
+            )
+
+    def _reduce(self) -> _ReducedState:
+        """Derive state from a closed event schema, never arbitrary status fields."""
+
+        plan: PlanProposal | None = None
+        status: PlanStatus | None = None
+        current_approval = False
+        side_effect_count = 0
+
+        for event in self._events():
+            if event.event_type == "plan_proposed":
+                if plan is not None or status is not None:
+                    raise ContractViolation("initial proposal must be the first event")
+                self._require_status(event, PlanStatus.AWAITING_DECISION)
+                plan = PlanProposal.from_dict(event.payload["plan"])
+                plan.validate()
+                if plan.revision != 1:
+                    raise ContractViolation("initial stored proposal must be revision 1")
+                status = PlanStatus.AWAITING_DECISION
+                current_approval = False
+            elif event.event_type == "decision_recorded":
+                if plan is None or status is not PlanStatus.AWAITING_DECISION:
+                    raise ContractViolation("stored decision is out of sequence")
+                if (
+                    event.payload.get("plan_id") != plan.plan_id
+                    or event.payload.get("revision") != plan.revision
+                    or event.payload.get("authority") != asdict(plan.authority)
+                    or not event.payload.get("decision_id")
+                    or not event.payload.get("decision_fingerprint")
+                ):
+                    raise ContractViolation("stored decision is not bound to the current plan")
+                decision_type = DecisionType(event.payload.get("decision_type"))
+                if decision_type is DecisionType.APPROVE:
+                    expected = PlanStatus.APPROVED
+                    current_approval = True
+                elif decision_type in {DecisionType.EDIT, DecisionType.RESPOND}:
+                    if (
+                        decision_type is DecisionType.RESPOND
+                        and not self.respond_permitted
+                    ):
+                        raise ContractViolation("stored response is not permitted")
+                    expected = PlanStatus.AWAITING_REVISION
+                    current_approval = False
+                elif decision_type is DecisionType.REJECT:
+                    expected = PlanStatus.REJECTED
+                    current_approval = False
+                else:  # pragma: no cover - enum exhaustiveness
+                    raise ContractViolation("stored decision type is invalid")
+                self._require_status(event, expected)
+                status = expected
+            elif event.event_type == "plan_revised":
+                if plan is None or status is not PlanStatus.AWAITING_REVISION:
+                    raise ContractViolation("stored plan revision is out of sequence")
+                self._require_status(event, PlanStatus.AWAITING_DECISION)
+                revised = PlanProposal.from_dict(event.payload["plan"])
+                revised.validate()
+                if revised.immutable_identity() != plan.immutable_identity():
+                    raise ContractViolation("stored revision changed immutable plan identity")
+                if revised.revision != plan.revision + 1:
+                    raise ContractViolation("stored revision skipped a revision")
+                if not revised.boundary.is_within(plan.boundary):
+                    raise ContractViolation("stored revision widened the plan boundary")
+                plan = revised
+                status = PlanStatus.AWAITING_DECISION
+                current_approval = False
+            elif event.event_type == "plan_restarted":
+                if plan is None or status is not PlanStatus.REJECTED:
+                    raise ContractViolation("stored restart is out of sequence")
+                self._require_status(event, PlanStatus.AWAITING_DECISION)
+                restarted = PlanProposal.from_dict(event.payload["plan"])
+                restarted.validate()
+                if (
+                    restarted.revision != 1
+                    or restarted.plan_id == plan.plan_id
+                    or restarted.authority.run_id == plan.authority.run_id
+                    or restarted.authority.request_id == plan.authority.request_id
+                    or restarted.authority.workspace_id != plan.authority.workspace_id
+                    or restarted.authority.task_id != plan.authority.task_id
+                    or restarted.authority.actor_id != plan.authority.actor_id
+                    or not restarted.boundary.is_within(self.task_boundary)
+                ):
+                    raise ContractViolation("stored restart identity or boundary is invalid")
+                plan = restarted
+                status = PlanStatus.AWAITING_DECISION
+                current_approval = False
+            elif event.event_type == "local_abandonment":
+                if plan is None or status not in {
+                    PlanStatus.AWAITING_DECISION,
+                    PlanStatus.AWAITING_REVISION,
+                }:
+                    raise ContractViolation("stored local abandonment is out of sequence")
+                self._require_status(event, PlanStatus.LOCALLY_ABANDONED)
+                if (
+                    event.payload.get("actor_id") != plan.authority.actor_id
+                    or event.payload.get("provider_resume_emitted") is not False
+                ):
+                    raise ContractViolation("stored local abandonment is not actor bound")
+                status = PlanStatus.LOCALLY_ABANDONED
+                current_approval = False
+            elif event.event_type == "protected_effect_released":
+                if (
+                    plan is None
+                    or status is not PlanStatus.APPROVED
+                    or not current_approval
+                    or side_effect_count
+                ):
+                    raise ContractViolation("stored protected release lacks current approval")
+                self._require_status(event, PlanStatus.EXECUTING)
+                if (
+                    event.payload.get("plan_id") != plan.plan_id
+                    or event.payload.get("revision") != plan.revision
+                    or event.payload.get("authority") != asdict(plan.authority)
+                    or not event.payload.get("resume_id")
+                ):
+                    raise ContractViolation("stored protected release is not plan bound")
+                status = PlanStatus.EXECUTING
+                side_effect_count = 1
+            else:
+                raise ContractViolation(
+                    f"unrecognized plan-approval event: {event.event_type}"
+                )
+
+        return _ReducedState(
+            plan=plan,
+            status=status,
+            current_approval=current_approval,
+            side_effect_count=side_effect_count,
+        )
+
     @property
     def current_plan(self) -> PlanProposal | None:
-        plan = None
-        for event in self._events():
-            if event.event_type in {"plan_proposed", "plan_revised", "plan_restarted"}:
-                plan = PlanProposal.from_dict(event.payload["plan"])
-        return plan
+        return self._reduce().plan
 
     @property
     def status(self) -> PlanStatus | None:
-        status = None
-        for event in self._events():
-            if "status" in event.payload:
-                status = PlanStatus(event.payload["status"])
-        return status
+        return self._reduce().status
 
     @property
     def side_effect_count(self) -> int:
-        return sum(event.event_type == "protected_effect_released" for event in self._events())
+        return self._reduce().side_effect_count
 
     def propose(self, plan: PlanProposal) -> None:
         if self.current_plan is not None:
@@ -110,8 +245,8 @@ class PlanApprovalEngine:
             raise ContractViolation("decision authority does not match the plan request")
         if not self.is_current_authority(decision.authority):
             raise ContractViolation("decision authority is no longer current")
-        if not decision.observed_boundary.is_within(plan.boundary):
-            raise ContractViolation("decision attempts to widen reviewed authority")
+        if decision.observed_boundary != plan.boundary:
+            raise ContractViolation("decision boundary does not match the current plan")
         if not decision.observed_boundary.is_within(self.task_boundary):
             raise ContractViolation("decision attempts to widen original task authority")
 
@@ -210,20 +345,36 @@ class PlanApprovalEngine:
             {"plan": revised.to_dict(), "status": PlanStatus.AWAITING_DECISION},
         )
 
-    def abandon_locally(self, actor_id: str) -> None:
+    def abandon_locally(self, actor_id: str) -> str:
         """Record local UI abandonment without inventing a HITL decision/resume."""
 
         if not actor_id:
             raise ContractViolation("abandonment actor is required")
         self._assert_runtime_binding()
+        state = self._reduce()
+        plan = state.plan
+        if plan is None:
+            raise ContractViolation("no plan exists")
+        if actor_id != plan.authority.actor_id:
+            raise ContractViolation("abandonment actor does not own the plan request")
+        if not self.is_current_authority(plan.authority):
+            raise ContractViolation("abandonment actor authority is no longer current")
+        if state.status is PlanStatus.LOCALLY_ABANDONED:
+            return "duplicate_suppressed"
+        if state.status not in {
+            PlanStatus.AWAITING_DECISION,
+            PlanStatus.AWAITING_REVISION,
+        }:
+            raise ContractViolation("current plan cannot be locally abandoned")
         self.store.append(
             "local_abandonment",
             {
                 "actor_id": actor_id,
                 "provider_resume_emitted": False,
-                "status": self.status,
+                "status": PlanStatus.LOCALLY_ABANDONED,
             },
         )
+        return "locally_abandoned"
 
     def restart_after_rejection(self, plan: PlanProposal) -> None:
         """Start a new request explicitly while preserving the rejected audit."""
@@ -275,8 +426,13 @@ class PlanApprovalEngine:
         if not resume_id:
             raise ContractViolation("resume id is required")
         self._assert_runtime_binding()
-        plan = self.current_plan
-        if plan is None or self.status not in {PlanStatus.APPROVED, PlanStatus.EXECUTING}:
+        state = self._reduce()
+        plan = state.plan
+        if (
+            plan is None
+            or state.status not in {PlanStatus.APPROVED, PlanStatus.EXECUTING}
+            or not state.current_approval
+        ):
             raise ContractViolation("direct resume is blocked without persisted approval")
         if authority != plan.authority or not self.is_current_authority(authority):
             raise ContractViolation("resume authority is invalid or expired")
@@ -289,7 +445,7 @@ class PlanApprovalEngine:
         ]
         if matching:
             return "duplicate_suppressed"
-        if self.side_effect_count:
+        if state.side_effect_count:
             raise ContractViolation("a different resume already released protected work")
         self.store.append(
             "protected_effect_released",

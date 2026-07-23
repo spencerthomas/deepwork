@@ -87,8 +87,8 @@
     },
     {
       "append_only_event_count": 2,
-      "final_status": "awaiting_decision",
-      "observed_result": "local_only_no_provider_resume",
+      "final_status": "locally_abandoned",
+      "observed_result": "locally_abandoned_terminal_no_provider_resume",
       "recovery_result": "durable-local-checkpoint-only",
       "scenario": "local_abandonment",
       "side_effect_count_after_resume": 0,
@@ -330,15 +330,16 @@
       ]
     },
     {
-      "append_only_event_count": 1,
-      "final_status": "awaiting_decision",
+      "append_only_event_count": 2,
+      "final_status": "invalid_event_log_blocked",
       "observed_result": "blocked:ContractViolation",
       "recovery_result": "durable-local-checkpoint-only",
       "scenario": "tool_output_imitates_decision",
       "side_effect_count_after_resume": 0,
       "side_effect_count_before_approval": 0,
       "state_transitions": [
-        "plan_proposed"
+        "plan_proposed",
+        "tool_output"
       ]
     },
     {
@@ -384,8 +385,8 @@
     {
       "append_only_event_count": 1,
       "final_status": "awaiting_decision",
-      "observed_result": "blocked:ContractViolation",
-      "recovery_result": "runtime_binding_hash_rejected_drift",
+      "observed_result": "blocked:runtime_template_and_config_drift",
+      "recovery_result": "runtime_binding_and_immutable_versions_rejected_drift",
       "scenario": "config_template_drift",
       "side_effect_count_after_resume": 0,
       "side_effect_count_before_approval": 0,

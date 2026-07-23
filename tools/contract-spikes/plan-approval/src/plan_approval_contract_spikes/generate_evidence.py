@@ -175,9 +175,13 @@ def build_evidence(output_dir: Path) -> dict[str, object]:
                         ],
                         "fallback": {
                             "planApproval": False,
-                            "reason": "blocked_upstream_contract_and_live_evidence",
+                            "unavailableReason": "blocked_upstream_contract_and_live_evidence",
                             "draftPreserved": True,
                             "textOnlyDispatchAvailable": True,
+                            "alternativeChoices": [
+                                "compatible_source",
+                                "dispatch_without_plan_approval",
+                            ],
                         },
                         "conflict": "resolved-blocked",
                         "contributes_only_to": [

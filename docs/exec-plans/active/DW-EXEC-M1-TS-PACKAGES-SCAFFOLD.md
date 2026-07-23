@@ -1,7 +1,7 @@
 ---
 exec_plan_id: DW-EXEC-M1-TS-PACKAGES-SCAFFOLD
 title: Wave 1 TypeScript domain, SDK, and UI package scaffold
-status: completed
+status: active
 superseded_by: null
 owner: typescript-packages
 reviewed_by: [ts-package-boundary-reviewer, ts-package-final-reviewer]
@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: b1189ce7a1236fbc6b7751a0552159687e940521
 last_verified_commit: 03b019ab6a5d71e2911a6019013a089cca098101
 risk: medium
-governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/completed/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
+governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
 decision_gates: [DEC-022, DEC-025, DEC-031, DEC-042]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, packages/ui/AGENTS.md, docs/PLANS.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md]
 scenario_ids: [AC-DW-FND-001-03, AC-DW-FND-002-06, AC-DW-FND-004-06, AC-DW-FND-005-01]
 dispatch_kind: cell
-dispatch_ready: false
+dispatch_ready: true
 agent_review_required: true
 dependencies: [local:DW-M1-ROOT-TS-001]
 blockers: []
@@ -313,8 +313,16 @@ Acceptance:
 - [x] 2026-07-23 AEST — The coordinator integrated the accepted four-commit
   lineage locally through `03b019ab6a5d71e2911a6019013a089cca098101`
   without touching the shared lock or protected `docs/plans/**`.
-- [x] Source/static handoff accepted for `local:DW-M1-TS-LOCK-001`; after its terminal success,
-  executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
+- [x] 2026-07-23 AEST — A later external read-only review of exact author commit
+  `6a57ab8cc548d3bf58b0dae448aed5acf3e18797` returned `REWORK REQUIRED`.
+  It found nondeterministic clean typecheck resolution, incomplete global network
+  denial, bypassable package-local fallback checks, missing packed TypeScript
+  consumer compilation, mutable runtime vocabularies/evidence values, inverted
+  retry posture, a fixed heading level, permissive timestamp parsing, and a
+  missing two-source run-key collision assertion.
+- [ ] Lock handoff is rescinded until bounded source rework and fresh independent
+  review pass. Only after the lock cell is terminal may executable validation
+  proceed in `local:DW-M1-TS-VERIFY-001`.
 
 ## Surprises & Discoveries
 
@@ -730,9 +738,12 @@ The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. Fresh independent final review accepted the complete negative-fixture
+deviations. An internal final review accepted the complete negative-fixture
 matrix, the previously repaired clean-consumer harnesses, and canonical
-token/intrinsic-layout boundary. The coordinator integrated the reviewed source
-at `03b019ab6a5d71e2911a6019013a089cca098101`.
-`SPIKE-HARNESS-ARCH-001` remains open, and sequential executable proof remains
-with `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.
+token/intrinsic-layout boundary, and the coordinator integrated that source at
+`03b019ab6a5d71e2911a6019013a089cca098101`. A later external read-only review
+found nine additional correctness and proof gaps, so this cell is active again
+and the prior lock handoff is void. `SPIKE-HARNESS-ARCH-001` remains open; bounded
+package-local fallback rework must not edit or claim the global harness.
+Sequential lock and executable proof remain paused until fresh independent
+acceptance.

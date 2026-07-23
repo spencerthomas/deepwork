@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 500eaa7faff57def970963160b3d8f1e90c94398
+last_verified_commit: 8323084697fe9d7c1aac1c2b07fadf66cc92dff5
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -40,12 +40,14 @@ cell ExecPlans remain the authority for feature outcomes and implementation.
 
 ## Context and orientation
 
-Wave 0 is reviewed at `500eaa7faff57def970963160b3d8f1e90c94398`.
-Wave 0.1 hardens dispatch before any feature worktree starts. The active Wave 1
-scaffold plan is a non-dispatchable umbrella. The API, agent, and TypeScript cells
-become the first dispatchable work only after each has its own reviewed ExecPlan
-at the Wave 0.1 commit. Classic responsive web remains the public baseline; every
-unproved external capability stays disabled with its documented fallback.
+Wave 0 is reviewed at `500eaa7faff57def970963160b3d8f1e90c94398`, and
+Wave 0.1 dispatch hardening completed at
+`3dbe6629d8053380ab6a8bff6d2fcb462f854256`. The active Wave 1 scaffold plan is
+a non-dispatchable umbrella. Root TypeScript declarations are terminal; the API
+and agent package implementations are committed in isolated worktrees and under
+independent review; the TypeScript package cell is at final plan review. Classic
+responsive web remains the public baseline; every unproved external capability
+stays disabled with its documented fallback.
 
 ## Scope
 
@@ -94,10 +96,11 @@ successor after its independent review and local commit.
 
 | Cell | Wave | State | Base | Governed paths | Dependencies | Next gate |
 |---|---:|---|---|---|---|---|
-| DW-W0.1-DISPATCH-HARDENING | 0.1 | active | `500eaa7` | docs/checker and program records | none | independent review and local commit |
-| DW-M1-API-SCAFFOLD | 1 | pending | Wave 0.1 commit | `apps/api/**` | W0.1 | reviewed cell ExecPlan |
-| DW-M1-AGENT-SCAFFOLD | 1 | pending | Wave 0.1 commit | `packages/agent/**` | W0.1 | reviewed cell ExecPlan |
-| DW-M1-TS-SCAFFOLD | 1 | pending | Wave 0.1 commit | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | W0.1 | reviewed cell ExecPlan |
+| DW-W0.1-DISPATCH-HARDENING | 0.1 | completed (`3dbe662`) | `500eaa7` | docs/checker and program records | none | terminal |
+| DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
+| DW-M1-API-SCAFFOLD | 1 | implementation committed (`d0ae220`) | `3dbe662` | `apps/api/**` | W0.1 | independent implementation review |
+| DW-M1-AGENT-SCAFFOLD | 1 | implementation committed (`6f82e55`) | `3dbe662` | `packages/agent/**` | W0.1 | independent implementation review |
+| DW-M1-TS-SCAFFOLD | 1 | plan re-review | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | reviewed cell ExecPlan |
 | DW-M1-INTEGRATION | 1 | pending | accepted lane commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes | lane reviews accepted |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
@@ -109,17 +112,24 @@ later reviewed cell explicitly reassigns it.
 
 | Role | Cell | Branch | Worktree | State |
 |---|---|---|---|---|
-| coordinator | DW-W0.1-DISPATCH-HARDENING | current branch | repository root | preparing accepted local commit |
-| reviewer | Wave 0.1 independent review | none | review-only session | accepted |
-| workers | Wave 1 lanes | none | none | blocked on Wave 0.1 commit |
+| coordinator | program/root TS integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | root TS terminal; coordinating reviews |
+| API author/reviewer | API authored; TS plan review | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | API committed; reviewing TS plan in its worktree |
+| agent author/API reviewer | agent authored; API review | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | agent committed; reviewing API worktree |
+| TS planner/agent reviewer | root/TS planning; agent review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | root dependency integrated; reviewing agent worktree |
 
 ## Progress
 
 - [x] 2026-07-23 13:00 AEST — Program directive accepted; repository baseline
   verified at `500eaa7faff57def970963160b3d8f1e90c94398`.
-- [ ] 2026-07-23 — Wave 0.1 schema, authority, gate, dispatch, concurrency, and
-  roadmap hardening validated, independently reviewed, and committed.
-- [ ] Wave 1 lanes dispatched from the Wave 0.1 commit and independently reviewed.
+- [x] 2026-07-23 — Wave 0.1 schema, authority, gate, dispatch, concurrency, and
+  roadmap hardening validated, independently reviewed, and committed at
+  `3dbe6629d8053380ab6a8bff6d2fcb462f854256`.
+- [x] 2026-07-23 — Root TypeScript declarations/config completed and independently
+  reviewed through `8323084697fe9d7c1aac1c2b07fadf66cc92dff5`; no lock or
+  executable package claim made.
+- [ ] Wave 1 API and agent implementations pass independent review and integrate;
+  TypeScript packages complete their reviewed authoring, lock, and verification
+  sequence.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.
 - [ ] v1.x, v2, and v3 discovery briefs become reviewed executable plans and are
   implemented or retained behind exact human/external blocker entries.
@@ -139,6 +149,13 @@ later reviewed cell explicitly reassigns it.
 - 2026-07-23 — Observation: independent re-review accepted the bounded Wave 0.1
   patch after those corrections. Consequence: create the authorized local commit
   and use it as the base for scoped Wave 1 planning worktrees.
+- 2026-07-23 — Observation: the implementation host exposes Node 20/pnpm 9 while
+  the canonical repository pins Node 24.18.0/pnpm 10.34.5. Consequence: root
+  declarations were statically verified without an install; the sequential lock
+  cell must provision the pinned toolchain before executable TypeScript proof.
+- 2026-07-23 — Observation: independent review caught DOM libraries in the
+  universal TypeScript base. Consequence: the accepted base is ES2022-only and
+  browser-owning packages must opt into DOM libraries locally.
 
 ## Decision Log
 
@@ -149,6 +166,10 @@ later reviewed cell explicitly reassigns it.
 - 2026-07-23 — Decision: use manual isolated worktrees; keep full-stack work
   serial until `SPIKE-WORKTREE-001` passes. Consequence: package/documentation
   lanes may be parallel, while product-demo composition remains coordinator-owned.
+- 2026-07-23 — Decision: split TypeScript root declarations, package source,
+  first shared lock, and executable verification into sequential evidence cells.
+  Rationale: the lock must include reviewed importers and frozen/no-drift proof
+  cannot truthfully precede them.
 
 ## Detailed implementation approach
 
@@ -190,6 +211,11 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 ## Outcomes & Retrospective
 
-Active. Update after every integration cycle and before context compaction. The
-terminal outcome is the verified complete canonical vision through v3, or an
-exact blocker ledger after every independent DAG branch is exhausted.
+Wave 0.1 and the root TypeScript declaration/configuration cell are terminal.
+API and agent package implementations are locally committed with full author
+validation and are undergoing fresh cross-review. The TypeScript package plan is
+under final review against its now-terminal root prerequisite. No protected
+`docs/plans/**` file, external credential, production system, push, merge,
+deployment, or publication has been touched. The terminal outcome remains the
+verified complete canonical vision through v3, or an exact blocker ledger after
+every independent DAG branch is exhausted.

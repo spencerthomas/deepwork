@@ -40,11 +40,14 @@ const tabs: readonly Destination[] = [
 
 function Logo() {
   return (
-    <Link href="/tasks" className="flex items-center gap-2">
-      <span className="flex size-6 items-center justify-center rounded-md bg-brand text-brand-foreground">
+    <Link href="/tasks" aria-label="Deep Work home" className="flex items-center gap-2">
+      <span
+        aria-hidden
+        className="flex size-6 items-center justify-center rounded-md bg-brand text-brand-foreground"
+      >
         <span className="size-2.5 rounded-[3px] bg-brand-foreground" />
       </span>
-      <span className="text-[15px] font-semibold tracking-tight">deepwork</span>
+      <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">deepwork</span>
     </Link>
   );
 }
@@ -123,7 +126,9 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[92rem] items-center gap-2 px-4 sm:gap-4 sm:px-6">
           <Logo />
-          <span className="text-border">/</span>
+          <span aria-hidden className="hidden text-border sm:inline">
+            /
+          </span>
           <WorkspaceSelector />
 
           <button

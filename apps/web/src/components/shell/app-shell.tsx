@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { runtimeDisclosure } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
 import { cn } from "@/lib/utils";
 
@@ -56,11 +57,7 @@ function RuntimeBanner() {
   const fixture = taskClient.mode === "fixture";
   return (
     <div className="flex min-h-10 items-center justify-center gap-2 bg-brand px-4 text-center text-[13px] text-brand-foreground">
-      <span className="font-medium">
-        {fixture
-          ? "Demo fixture mode — deterministic local data, no external providers."
-          : "Local runtime — tasks run in the embedded deterministic runner. External providers are unavailable."}
-      </span>
+      <span className="font-medium">{runtimeDisclosure(taskClient.mode)}</span>
       <span
         className="hidden rounded-md bg-white/15 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
         title={taskClient.apiBaseUrl}

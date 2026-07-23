@@ -29,6 +29,7 @@ _SOURCE_UNAVAILABLE_REASON = "The local agent source became unavailable."
 _SOURCE_CONTRACT_REASON = "The local agent source broke its supported contract."
 _RUNNER_FAILURE_REASON = "The local source task runner failed safely."
 _TERMINAL_REASON = "Local Agent Server run reached a terminal state."
+_RESUME_SHUTDOWN_GRACE_SECONDS = 1.0
 
 
 class LocalRun(Protocol):
@@ -95,6 +96,9 @@ class LocalAgentServerRunner:
     _resume_acknowledgements: dict[tuple[str, str], asyncio.Future[None]] = field(
         default_factory=dict, init=False
     )
+    _command_locks: dict[str, asyncio.Lock] = field(default_factory=dict, init=False)
+    _resumes_in_flight: set[tuple[str, str]] = field(default_factory=set, init=False)
+    _closing: bool = field(default=False, init=False)
 
     async def create(self, *, title: str, objective: str) -> TaskSnapshot:
         try:
@@ -111,7 +115,7 @@ class LocalAgentServerRunner:
         return task
 
     def start(self, task: TaskSnapshot, run: LocalRun) -> None:
-        if task.task_id in self._tasks:
+        if self._closing or task.task_id in self._tasks:
             return
         if task.pending_interrupt_id is not None:
             self._register_resume_acknowledgement((task.task_id, task.pending_interrupt_id))
@@ -122,17 +126,51 @@ class LocalAgentServerRunner:
         background.add_done_callback(lambda finished: self._discard(task.task_id, finished))
 
     async def close(self) -> None:
+        self._closing = True
+        active = dict(self._tasks)
+        resuming_task_ids = {task_id for task_id, _ in self._resumes_in_flight}
+        draining = tuple(
+            background for task_id, background in active.items() if task_id in resuming_task_ids
+        )
+        for task_id, task in active.items():
+            if task_id not in resuming_task_ids:
+                task.cancel()
+        if draining:
+            _, unfinished = await asyncio.wait(draining, timeout=_RESUME_SHUTDOWN_GRACE_SECONDS)
+            for task in unfinished:
+                task.cancel()
+        remaining = tuple(
+            task for task in set(active.values()) | set(self._tasks.values()) if not task.done()
+        )
+        for task in remaining:
+            task.cancel()
+        tracked = tuple(set(active.values()) | set(self._tasks.values()))
+        if tracked:
+            await asyncio.gather(*tracked, return_exceptions=True)
         for acknowledgement in self._resume_acknowledgements.values():
             if not acknowledgement.done():
                 acknowledgement.set_exception(TaskSourceUnavailableError())
-        active = tuple(self._tasks.values())
-        for task in active:
-            task.cancel()
-        if active:
-            await asyncio.gather(*active, return_exceptions=True)
         self._tasks.clear()
 
     async def update_plan(
+        self,
+        task: TaskSnapshot,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: tuple[str, ...],
+    ) -> PlanUpdateRecord:
+        async with self._command_lock(task.task_id):
+            if self._closing:
+                raise TaskSourceUnavailableError
+            return await self._update_plan(
+                task,
+                interrupt_id=interrupt_id,
+                expected_revision=expected_revision,
+                steps=steps,
+            )
+
+    async def _update_plan(
         self,
         task: TaskSnapshot,
         *,
@@ -214,6 +252,28 @@ class LocalAgentServerRunner:
     ) -> DecisionRecord:
         """Return only after the source accepts the exact resume command."""
 
+        async with self._command_lock(task_id):
+            if self._closing:
+                raise TaskSourceUnavailableError
+            return await self._record_decision(
+                task_id,
+                interrupt_id=interrupt_id,
+                decision=decision,
+                comment=comment,
+                comment_provided=comment_provided,
+                response_digest=response_digest,
+            )
+
+    async def _record_decision(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        decision: DecisionValue,
+        comment: str | None,
+        comment_provided: bool,
+        response_digest: str | None,
+    ) -> DecisionRecord:
         key = (task_id, interrupt_id)
         stored_comment = self._review_comments.get(key)
         inserted_comment = (
@@ -283,12 +343,16 @@ class LocalAgentServerRunner:
                     task.task_id, state.interrupt.interrupt_id
                 )
                 key = (task.task_id, state.interrupt.interrupt_id)
-                next_run = await self.source.resume(
-                    run.thread_id,
-                    interrupt_id=state.interrupt.interrupt_id,
-                    decision=decision.value,
-                    comment=self._review_comments.pop(key, None),
-                )
+                self._resumes_in_flight.add(key)
+                try:
+                    next_run = await self.source.resume(
+                        run.thread_id,
+                        interrupt_id=state.interrupt.interrupt_id,
+                        decision=decision.value,
+                        comment=self._review_comments.pop(key, None),
+                    )
+                finally:
+                    self._resumes_in_flight.discard(key)
                 self._accept_resume(resume_key)
                 self._tasks.pop(task.task_id, None)
                 self.start(await self.repository.get_task(task.task_id), next_run)
@@ -318,6 +382,9 @@ class LocalAgentServerRunner:
         acknowledgement = asyncio.get_running_loop().create_future()
         acknowledgement.add_done_callback(self._consume_acknowledgement_error)
         self._resume_acknowledgements[key] = acknowledgement
+
+    def _command_lock(self, task_id: str) -> asyncio.Lock:
+        return self._command_locks.setdefault(task_id, asyncio.Lock())
 
     def _accept_resume(self, key: tuple[str, str]) -> None:
         acknowledgement = self._resume_acknowledgements.get(key)

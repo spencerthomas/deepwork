@@ -51,6 +51,12 @@ class ScriptedAgentServer:
         self.block_resume = False
         self.resume_started = asyncio.Event()
         self.resume_release = asyncio.Event()
+        self.block_resume_return = False
+        self.resume_accepted = asyncio.Event()
+        self.resume_return_release = asyncio.Event()
+        self.block_update_return = False
+        self.update_accepted = asyncio.Event()
+        self.update_return_release = asyncio.Event()
         self.resume_decisions: list[str] = []
         self.resume_comments: list[str | None] = []
         self.update_state_calls: list[Mapping[str, object]] = []
@@ -157,6 +163,9 @@ class _FakeThreads:
         self.server.state.plan_revision = revision
         self.server.state.status = "planned"
         self.server.state.interrupt_id = None
+        if self.server.block_update_return:
+            self.server.update_accepted.set()
+            await self.server.update_return_release.wait()
         return {"checkpoint": {"checkpoint_id": self.server.next_id("ckpt")}}
 
 
@@ -232,6 +241,9 @@ class _FakeRuns:
                 server.state.status = "planned"
                 server.new_interrupt()
                 server.record_run(run_id, ("approve", "revise", "approve"))
+            if server.block_resume_return:
+                server.resume_accepted.set()
+                await server.resume_return_release.wait()
         else:
             if server.state.status != "planned":
                 raise RuntimeError(UPSTREAM_MARKER)
@@ -608,6 +620,122 @@ async def test_decision_waits_for_source_resume_acceptance(
         assert accepted.status_code == 202
         assert accepted.json()["duplicate"] is False
         await _wait_for_status(client, task_id, {"completed"})
+
+
+async def test_concurrent_losing_response_never_changes_winning_approval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    server.block_resume = True
+    async with _local_app(server, monkeypatch) as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        task_id = created["taskId"]
+        paused = await _wait_for_status(client, task_id, {"waiting-approval"})
+        interrupt_id = paused["pendingInterrupt"]["interruptId"]
+
+        approval = asyncio.create_task(
+            client.post(
+                f"/api/v1/tasks/{task_id}/decisions",
+                json={"interruptId": interrupt_id, "decision": "approve"},
+            )
+        )
+        await asyncio.wait_for(server.resume_started.wait(), timeout=1)
+        response = asyncio.create_task(
+            client.post(
+                f"/api/v1/tasks/{task_id}/decisions",
+                json={
+                    "interruptId": interrupt_id,
+                    "decision": "respond",
+                    "comment": "This losing comment must never reach the source.",
+                },
+            )
+        )
+        await asyncio.sleep(0)
+        assert response.done() is False
+
+        server.resume_release.set()
+        accepted = await asyncio.wait_for(approval, timeout=1)
+        conflict = await asyncio.wait_for(response, timeout=1)
+        assert accepted.status_code == 202
+        assert conflict.status_code == 409
+        assert conflict.json()["code"] == "decision_conflict"
+        assert server.resume_decisions == ["approve"]
+        assert server.resume_comments == [None]
+
+
+async def test_plan_update_serializes_against_the_old_interrupt_decision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    server.block_update_return = True
+    async with _local_app(server, monkeypatch) as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        task_id = created["taskId"]
+        paused = await _wait_for_status(client, task_id, {"waiting-approval"})
+        interrupt_id = paused["pendingInterrupt"]["interruptId"]
+
+        update = asyncio.create_task(
+            client.patch(
+                f"/api/v1/tasks/{task_id}/plan",
+                json={
+                    "interruptId": interrupt_id,
+                    "expectedRevision": 1,
+                    "steps": ["Use only supplied input.", "Return a concise result."],
+                },
+            )
+        )
+        await asyncio.wait_for(server.update_accepted.wait(), timeout=1)
+        decision = asyncio.create_task(
+            client.post(
+                f"/api/v1/tasks/{task_id}/decisions",
+                json={"interruptId": interrupt_id, "decision": "approve"},
+            )
+        )
+        await asyncio.sleep(0)
+        assert decision.done() is False
+
+        server.update_return_release.set()
+        updated = await asyncio.wait_for(update, timeout=1)
+        stale = await asyncio.wait_for(decision, timeout=1)
+        assert updated.status_code == 200
+        assert updated.json()["interruptId"] != interrupt_id
+        assert stale.status_code == 409
+        assert stale.json()["code"] == "interrupt_mismatch"
+        assert server.resume_decisions == []
+
+
+async def test_shutdown_drains_a_source_accepted_resume_before_acknowledging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    server.block_resume_return = True
+    async with _local_app(server, monkeypatch) as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        task_id = created["taskId"]
+        paused = await _wait_for_status(client, task_id, {"waiting-approval"})
+        interrupt_id = paused["pendingInterrupt"]["interruptId"]
+
+        decision = asyncio.create_task(
+            client.post(
+                f"/api/v1/tasks/{task_id}/decisions",
+                json={"interruptId": interrupt_id, "decision": "approve"},
+            )
+        )
+        await asyncio.wait_for(server.resume_accepted.wait(), timeout=1)
+        runner = cast("LocalAgentServerRunner", harness.app.state.task_service.runner)
+        closing = asyncio.create_task(runner.close())
+        await asyncio.sleep(0)
+        assert decision.done() is False
+        assert closing.done() is False
+
+        server.resume_return_release.set()
+        accepted = await asyncio.wait_for(decision, timeout=1)
+        await asyncio.wait_for(closing, timeout=1)
+        assert accepted.status_code == 202
+        assert server.resume_decisions == ["approve"]
 
 
 async def test_decision_with_unknown_interrupt_is_rejected_without_source_io(

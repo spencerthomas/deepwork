@@ -511,11 +511,27 @@ textarea:disabled {
 }
 
 .plan-review-card {
-  margin-top: 18px;
+  margin-top: 8px;
   padding: 18px;
   border: 1px solid #c8d8f8;
   border-radius: 14px;
   background: linear-gradient(135deg, #f7faff, #ffffff);
+}
+
+.plan-focus-status {
+  width: fit-content;
+  margin: 18px 0 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.plan-focus-status:focus {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
 }
 
 .plan-review-heading,

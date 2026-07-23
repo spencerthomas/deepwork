@@ -82,6 +82,7 @@ export function TaskDetail({
     task.status === "rejected" ||
     task.status === "failed" ||
     task.status === "cancelled";
+  const planFocusId = `plan-review-status-${task.taskId}`;
 
   return (
     <section
@@ -124,14 +125,29 @@ export function TaskDetail({
       ) : null}
 
       {plan ? (
-        <PlanReviewCard
-          key={`${activeInterrupt?.interruptId ?? "readonly"}:${plan.revision}`}
-          plan={plan}
-          activeInterrupt={activeInterrupt}
-          saving={updatingPlan}
-          error={planError}
-          onUpdate={onUpdatePlan}
-        />
+        <>
+          <p
+            id={planFocusId}
+            className="plan-focus-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            tabIndex={-1}
+          >
+            {planError
+              ? `Plan review status: ${planError}`
+              : `Plan revision ${plan.revision} is ready for review.`}
+          </p>
+          <PlanReviewCard
+            key={`${activeInterrupt?.interruptId ?? "readonly"}:${plan.revision}`}
+            plan={plan}
+            activeInterrupt={activeInterrupt}
+            saving={updatingPlan}
+            error={planError}
+            onUpdate={onUpdatePlan}
+            returnFocusId={planFocusId}
+          />
+        </>
       ) : null}
 
       {activeInterrupt && !terminal ? (

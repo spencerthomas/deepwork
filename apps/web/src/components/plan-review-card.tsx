@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   PLAN_STEP_MAX_COUNT,
@@ -16,6 +16,7 @@ interface PlanReviewCardProps {
   error?: string;
   onUpdate: (input: PlanUpdateInput) => Promise<boolean>;
   plan: ProposedPlan;
+  returnFocusId: string;
   saving: boolean;
 }
 
@@ -23,19 +24,44 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "The plan could not be validated.";
 }
 
+interface FocusTarget {
+  focus(): void;
+}
+
+export function focusAfterRender(
+  getTarget: () => FocusTarget | null,
+  schedule: (callback: () => void) => void = (callback) => {
+    globalThis.requestAnimationFrame(callback);
+  },
+): void {
+  schedule(() => getTarget()?.focus());
+}
+
 export function PlanReviewCard({
   activeInterrupt,
   error,
   onUpdate,
   plan,
+  returnFocusId,
   saving,
 }: PlanReviewCardProps) {
   const [editing, setEditing] = useState(false);
   const [steps, setSteps] = useState<string[]>(plan.steps);
   const [validationError, setValidationError] = useState<string>();
+  const firstStepRef = useRef<HTMLTextAreaElement | null>(null);
   const headingId = useId();
   const canEdit =
     activeInterrupt !== undefined && activeInterrupt.planRevision === plan.revision && !saving;
+
+  useEffect(() => {
+    if (editing) {
+      focusAfterRender(() => firstStepRef.current);
+    }
+  }, [editing]);
+
+  function focusReviewStatus() {
+    focusAfterRender(() => document.getElementById(returnFocusId));
+  }
 
   async function save() {
     if (!activeInterrupt) {
@@ -51,6 +77,7 @@ export function PlanReviewCard({
       });
       if (saved) {
         setEditing(false);
+        focusReviewStatus();
       }
     } catch (caught) {
       setValidationError(errorMessage(caught));
@@ -80,6 +107,7 @@ export function PlanReviewCard({
                 <li key={inputId}>
                   <label htmlFor={inputId}>Step {index + 1}</label>
                   <textarea
+                    ref={index === 0 ? firstStepRef : undefined}
                     id={inputId}
                     rows={2}
                     value={step}
@@ -138,6 +166,7 @@ export function PlanReviewCard({
                 setSteps(plan.steps);
                 setEditing(false);
                 setValidationError(undefined);
+                focusReviewStatus();
               }}
             >
               Cancel

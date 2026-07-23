@@ -59,3 +59,19 @@ Live review-evidence profile:
 Live terminal profile:
     not run
     reason: accepted public input/session evidence and a separate current terminal grant are absent
+
+Post-merge correction (2026-07-23T12:51:27Z):
+    fixtures/manifest.json recorded stale sha256 hashes for exact-diff.json,
+    exact-review.patch, terminal-negatives.json, and terminal-transcript.json
+    that did not match the committed fixture bytes, so
+    test_fixture_manifest_hashes_match failed despite the "34 passed" claim
+    above. Hashes were repinned to the actual committed bytes; no fixture
+    content was altered. Re-ran from tools/contract-spikes/coding-review-surfaces:
+
+15. uv run --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected
+
+16. UV_OFFLINE=true uv run --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected

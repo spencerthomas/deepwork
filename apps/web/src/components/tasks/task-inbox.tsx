@@ -30,8 +30,9 @@ import {
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "@/components/task-inbox-filter";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
-import type { TaskStatus, TaskSummary } from "@/lib/task-types";
+import type { ClientMode, TaskStatus, TaskSummary } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
 const groupOrder: TaskStatus[] = [
@@ -63,7 +64,8 @@ const views: ViewDef[] = [
   { key: "cancelled", label: "Cancelled", icon: XCircle, always: false },
 ];
 
-function TaskRow({ task }: { task: TaskSummary }) {
+function TaskRow({ mode, task }: { mode: ClientMode; task: TaskSummary }) {
+  const runtimeCopy = taskRuntimePresentation(mode);
   return (
     <Link
       href={`/tasks/${task.taskId}`}
@@ -75,7 +77,7 @@ function TaskRow({ task }: { task: TaskSummary }) {
           <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
         <div className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
-          <span className="font-medium text-foreground/70">Local agent</span>
+          <span className="font-medium text-foreground/70">{runtimeCopy.runnerName}</span>
           <span className="text-border">·</span>
           <span className="truncate font-mono text-xs">
             {task.runId ? `Run ${task.runId.slice(0, 10)}` : `Task ${task.taskId.slice(0, 10)}`}
@@ -104,9 +106,10 @@ function SkeletonRows() {
 }
 
 export function TaskInbox() {
-  const { tasks, loadingTasks, listError, refreshList } = useTasksStore();
+  const { tasks, loadingTasks, listError, refreshList, mode } = useTasksStore();
   const [filter, setFilter] = useState<TaskInboxFilter>(EMPTY_TASK_INBOX_FILTER);
   const [grouped, setGrouped] = useState(true);
+  const runtimeCopy = taskRuntimePresentation(mode);
 
   const counts = countTasks(tasks);
   const visible = filterTasks(tasks, filter);
@@ -138,8 +141,7 @@ export function TaskInbox() {
       <div className="my-3 h-px bg-border" />
       <SidebarLabel>Scope</SidebarLabel>
       <p className="px-3 text-[12px] leading-relaxed text-muted-foreground">
-        Search and filters cover the tasks loaded from the local API in this session. There is no
-        global or provider-side search.
+        {runtimeCopy.inboxScope}
       </p>
     </nav>
   );
@@ -147,9 +149,9 @@ export function TaskInbox() {
   return (
     <AppShell active="Tasks" sidebar={sidebar}>
       <PageHeader
-        eyebrow="Workspace · local"
+        eyebrow={runtimeCopy.inboxEyebrow}
         title="Tasks"
-        description="Dispatch work to the local agent, watch it run, steer the plan, and review the evidence behind every result."
+        description={runtimeCopy.inboxDescription}
         actions={
           <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-0.5">
             <button
@@ -261,8 +263,7 @@ export function TaskInbox() {
           <div className="px-4 py-16 text-center">
             <p className="text-sm font-medium">No tasks yet</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              Dispatch your first task to the local agent — it plans, pauses for your approval, and
-              reports evidence-backed results.
+              {runtimeCopy.inboxEmptyDescription}
             </p>
             <Link
               href="/tasks/new"
@@ -299,7 +300,7 @@ export function TaskInbox() {
                 </div>
                 <div className="divide-y divide-border">
                   {group.map((task) => (
-                    <TaskRow key={task.taskId} task={task} />
+                    <TaskRow key={task.taskId} mode={mode} task={task} />
                   ))}
                 </div>
               </div>
@@ -308,7 +309,7 @@ export function TaskInbox() {
         ) : (
           <div className="divide-y divide-border">
             {visible.map((task) => (
-              <TaskRow key={task.taskId} task={task} />
+              <TaskRow key={task.taskId} mode={mode} task={task} />
             ))}
           </div>
         )}

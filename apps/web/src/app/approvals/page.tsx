@@ -4,7 +4,7 @@ import { ApprovalsView } from "@/components/approvals/approvals-view";
 
 export const metadata: Metadata = {
   title: "Approvals — Deep Work",
-  description: "Every run the local runner has paused for a human decision.",
+  description: "Human decisions requested by task runs.",
 };
 
 export default function ApprovalsPage() {

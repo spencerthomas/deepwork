@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
@@ -101,8 +102,17 @@ function DetailLoadingPanel() {
 }
 
 export function ApprovalsView() {
-  const { tasks, loadingTasks, listError, refreshList, detailsByTask, loadDetail, decideForTask } =
-    useTasksStore();
+  const {
+    tasks,
+    loadingTasks,
+    listError,
+    refreshList,
+    detailsByTask,
+    loadDetail,
+    decideForTask,
+    mode,
+  } = useTasksStore();
+  const runtimeCopy = taskRuntimePresentation(mode);
 
   const [filter, setFilter] = useState<ApprovalCapabilityFilter>("all");
   const [resolvedInterruptIds, setResolvedInterruptIds] = useState<ReadonlySet<string>>(
@@ -217,7 +227,7 @@ export function ApprovalsView() {
       <PageHeader
         eyebrow="Human in the loop"
         title="Approvals"
-        description="Every run the local runner has paused for your decision. The available verbs come from each interruption itself — nothing here acts without you."
+        description={runtimeCopy.approvalsDescription}
         actions={
           <button
             type="button"

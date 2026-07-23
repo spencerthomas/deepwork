@@ -40,6 +40,7 @@ describe("buildThread", () => {
       "plan",
       "interrupt",
     ]);
+    expect(items[2]).toMatchObject({ kind: "narration", label: "Task runner" });
   });
 
   it("only renders the pending interrupt as actionable", () => {

@@ -61,6 +61,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     submittingDecision,
     submittedDecision,
     updatingPlan,
+    mode,
     decide,
     updatePlan,
   } = store;
@@ -363,6 +364,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                 evidence={evidence}
                 plan={plan}
                 connectionState={connectionState}
+                mode={mode}
                 onClose={() => setPanelOpen(false)}
               />
             </aside>

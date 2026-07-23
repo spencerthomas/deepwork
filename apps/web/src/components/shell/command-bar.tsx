@@ -15,6 +15,8 @@ import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
+import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
 interface Command {
@@ -24,15 +26,28 @@ interface Command {
   href: string;
 }
 
-const commands: Command[] = [
-  { label: "New task", hint: "Dispatch the local agent", icon: Plus, href: "/tasks/new" },
-  { label: "Tasks", hint: "Task inbox", icon: Inbox, href: "/tasks" },
-  { label: "Approvals", hint: "What agents need from you", icon: CheckCheck, href: "/approvals" },
-  { label: "Agents", hint: "Manage your fleet", icon: Bot, href: "/agents" },
-  { label: "Schedules", hint: "Recurring runs", icon: Calendar, href: "/schedules" },
-  { label: "Activity", hint: "Recent runs", icon: Activity, href: "/activity" },
-  { label: "Settings", hint: "Workspace settings", icon: Settings, href: "/settings" },
-];
+function commandsForMode(mode: "api" | "fixture"): Command[] {
+  const runtimeCopy = taskRuntimePresentation(mode);
+  return [
+    {
+      label: "New task",
+      hint: runtimeCopy.commandNewTaskHint,
+      icon: Plus,
+      href: "/tasks/new",
+    },
+    { label: "Tasks", hint: "Task inbox", icon: Inbox, href: "/tasks" },
+    {
+      label: "Approvals",
+      hint: "What task runs need from you",
+      icon: CheckCheck,
+      href: "/approvals",
+    },
+    { label: "Agents", hint: "Manage your fleet", icon: Bot, href: "/agents" },
+    { label: "Schedules", hint: "Recurring runs", icon: Calendar, href: "/schedules" },
+    { label: "Activity", hint: "Recent runs", icon: Activity, href: "/activity" },
+    { label: "Settings", hint: "Workspace settings", icon: Settings, href: "/settings" },
+  ];
+}
 
 export function CommandBar({
   open,
@@ -42,8 +57,10 @@ export function CommandBar({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const { mode } = useTasksStore();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const commands = useMemo(() => commandsForMode(mode), [mode]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {

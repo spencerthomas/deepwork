@@ -82,8 +82,11 @@ Only the product demo proves application integration; neither proves a live
 provider contract.
 
 Symphony is gated by `SPIKE-SYMPHONY-001`. There is no executable `WORKFLOW.md`.
-Use one manually created worktree per reviewed ExecPlan, with collision-free paths
-and proof. Never provide production credentials or automatic merge authority.
+Use one manually created worktree per reviewed ExecPlan, with collision-free
+governed paths and proof. Until `SPIKE-WORKTREE-001` passes, at most one full-stack
+application or product-demo worktree may run; package-only and documentation-only
+worktrees with disjoint governed paths may run in parallel. Never provide
+production credentials or automatic merge authority.
 
 ## Non-negotiable proof and safety
 

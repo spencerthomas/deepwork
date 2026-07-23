@@ -6,6 +6,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 
 ## Active
 
+- [Canonical program coordination](active/DW-EXEC-PROGRAM-CANONICAL.md)
 - [Wave 1 repository scaffold](active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md)
 
 ## Other records
@@ -17,3 +18,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 Symphony is not active. A maintainer manually creates one worktree per reviewed
 ExecPlan and keeps external credentials and provider integration out unless the
 plan explicitly authorizes them.
+
+Until `SPIKE-WORKTREE-001` passes, at most one full-stack application or product-
+demo worktree may run. Package-only and documentation-only worktrees with disjoint
+governed paths may run in parallel.

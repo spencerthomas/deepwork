@@ -3,7 +3,7 @@
 Deep Work is an open-source control surface for delegating, supervising,
 approving, and verifying long-running agent work across desktop and phone.
 
-> **Status:** Wave 0 planning and repository harness are ready for review. No
+> **Status:** Wave 0 planning and repository harness are reviewed. No
 > product runtime is implemented. The next bounded task is the credential-free
 > monorepo scaffold in the active ExecPlan.
 

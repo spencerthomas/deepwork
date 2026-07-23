@@ -630,7 +630,7 @@ compose/base stream before HITL, artifact contract before coding activation,
 draft/version schema before deploy activation, responsive web before push, and
 web release before desktop/beta adapters.
 
-### Wave 0 — Plan lock and Harness installation — complete for review
+### Wave 0 — Plan lock and Harness installation — complete and reviewed
 
 **Outcome:** one accepted product/architecture program, canonical document system,
 agent map, execution-plan method, traceability model, and safe issue policy exist
@@ -671,6 +671,10 @@ Primary owners: `DW-FND-001`, early cells of `DW-FND-002/003/004/005`, continuou
 `DW-QUAL-001`.
 
 Parallel lanes:
+
+Until `SPIKE-WORKTREE-001` passes, these lanes may run concurrently only when they
+are package-only or documentation-only with disjoint governed paths. At most one
+full-stack application or product-demo worktree may run.
 
 - independently locked API and agent Python distributions;
 - pnpm/Turbo domain, SDK, UI, web, and desktop boundaries;
@@ -912,7 +916,8 @@ The accepted implementation order is:
 7. scaffold architecture/doc checks and fixture loop;
 8. run the Symphony spike and install `WORKFLOW.md` only if accepted;
 9. run link/ID/coverage/contract/security/accessibility/fixture validation; and
-10. begin Wave 0 implementation through reviewed issues and active ExecPlans.
+10. begin Wave 1 scaffold execution through reviewed work items and active
+    ExecPlans.
 
 Canonical and prototype integration are separate changes. The frontend prototype
 remains a one-way visual/interaction source and receives only separately approved

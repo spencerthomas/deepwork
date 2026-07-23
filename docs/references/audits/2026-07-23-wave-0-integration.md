@@ -1,8 +1,9 @@
 ---
 title: Wave 0 plan-lock integration record
-status: ready-for-review
+status: reviewed
 verified: 2026-07-23
 base_commit: 06f051554bf938e919af5ab7855974098fbf3d2a
+reviewed_commit: 500eaa7faff57def970963160b3d8f1e90c94398
 owners: [planning, developer-experience]
 ---
 
@@ -94,8 +95,9 @@ No runtime code, application package, root runtime manifest, dependency lock, CI
 deployment configuration, credential, live provider, or sibling repository changed
 in Wave 0. Historical originals were not deleted.
 
-After this change is reviewed and committed, the exact Wave 0 commit—not the older
-`06f0515` parent—is the recommended base for a new manual worktree. Give the agent
-the active scaffold ExecPlan verbatim as its scope, allow only its listed paths,
-and require it to stop before UI migration or live integration. Do not install or
-run Symphony.
+The reviewed Wave 0 planning and repository-harness baseline is
+`500eaa7faff57def970963160b3d8f1e90c94398`. Wave 0.1 and every later
+implementation worktree must descend from that commit or from a reviewed
+successor. Give the agent the active scaffold ExecPlan verbatim as its scope,
+allow only its listed paths, and require it to stop before UI migration or live
+integration. Do not install or run Symphony.

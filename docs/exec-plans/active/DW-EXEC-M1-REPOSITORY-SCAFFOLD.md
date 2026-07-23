@@ -1,16 +1,33 @@
 ---
 exec_plan_id: DW-EXEC-M1-REPOSITORY-SCAFFOLD
 title: Wave 1 credential-free monorepo and fixture skeleton
-status: reviewed-ready
-created: 2026-07-23
-updated: 2026-07-23
-owners: [platform, developer-experience]
-product_specs: [DW-FND-001, DW-FND-002, DW-FND-003, DW-FND-004, DW-FND-005, DW-QUAL-001]
-scenario_ids: [AC-DW-FND-001-01, AC-DW-FND-001-03, AC-DW-FND-001-05, AC-DW-FND-001-06]
-external_contracts: none
-orchestration: manual-codex-worktree
-base_commit: 06f051554bf938e919af5ab7855974098fbf3d2a
+status: reviewed
 superseded_by: null
+owner: platform
+reviewed_by: [architecture, developer-experience, security]
+reviewed_at: 2026-07-23
+primary_feature_id: DW-FND-001
+supporting_feature_ids: [DW-FND-002, DW-FND-003, DW-FND-004, DW-FND-005, DW-QUAL-001]
+issue: local:DW-M1-PLATFORM-001
+created: 2026-07-23
+last_updated: 2026-07-23
+base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
+last_verified_commit: 500eaa7faff57def970963160b3d8f1e90c94398
+risk: high
+governed_paths: [Makefile, package.json, pnpm-workspace.yaml, pnpm-lock.yaml, turbo.json, apps/api/**, apps/web/**, apps/desktop/**, packages/agent/**, packages/domain/**, packages/sdk/**, packages/ui/**, internal/fixtures/**, internal/adapter-tests/**, tools/**, docs/generated/**, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/tech-debt-tracker.md, docs/QUALITY_SCORE.md]
+contract_gates: [SPIKE-HARNESS-DOCS-001, SPIKE-HARNESS-ARCH-001, SPIKE-WORKTREE-001]
+decision_gates: [DEC-002, DEC-003, DEC-004, DEC-025, DEC-031, DEC-032, DEC-033, DEC-035, DEC-038, DEC-042, DEC-043]
+gate_review_status: reviewed-with-gates
+gate_reviewed_by: [architecture, developer-experience, security]
+gate_reviewed_at: 2026-07-23
+authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/PLANS.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/references/source-ledger.md]
+scenario_ids: [AC-DW-FND-001-01, AC-DW-FND-001-03, AC-DW-FND-001-05, AC-DW-FND-001-06]
+orchestration: manual-codex-worktree
+dispatch_kind: program
+dispatch_ready: false
+agent_review_required: true
+dependencies: []
+blockers: []
 ---
 
 # Wave 1 credential-free monorepo and fixture skeleton
@@ -24,12 +41,13 @@ illegal architecture edges or generated drift. No live provider, credential,
 deployment, production database, PWA push, Tauri capability, or product feature is
 implemented.
 
-This plan is the exact handoff for the next worktree agent. It is intentionally
-smaller than all of Wave 1: create the package and command skeleton, prove public
-imports and fixture honesty, and stop for review before frontend migration or live
-integration.
+This is the non-dispatchable Wave 1 umbrella plan. It is intentionally smaller
+than all product delivery, but broader than one safe worktree: bounded API, agent,
+and TypeScript cells require their own reviewed plans and disjoint governed paths
+before implementation. The coordinator alone integrates shared/root files,
+`apps/web`, generated outputs, and product-demo composition.
 
-## Canonical context to read
+## Context and orientation
 
 Read in this order:
 
@@ -76,9 +94,22 @@ or modify it. `docs/plans/` is uncertain legacy evidence and is also out of scop
 - Editing canonical feature outcomes to match an implementation shortcut.
 - Installing Symphony or creating executable `WORKFLOW.md`.
 
-## Allowed paths
+### Permissions and risk boundary
 
-The next agent may create or edit:
+- The governed paths in front matter are the complete implementation boundary.
+- External systems, production credentials, destructive operations, deployment,
+  publishing, signing, pushing, and merging are prohibited.
+- The three open contract gates use their documented deterministic fallbacks.
+  Architecture enforcement remains review-backed until its spike passes, and
+  full-stack worktree concurrency remains serial.
+- Architecture, developer-experience, and security review are required before
+  integration. The implementation author cannot approve the change.
+
+## Coordinator-owned umbrella paths
+
+The coordinator may create or edit these paths during reviewed integration. No
+worker receives this broad path set from the umbrella plan; each worker plan must
+contain a disjoint subset.
 
 - root `Makefile`, `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`,
   `turbo.json`, toolchain/version/config files, contributor docs, and `.gitignore`;
@@ -244,6 +275,13 @@ Executable acceptance:
    isolation stack is not in this bounded change, leave `DEBT-004` open and do not
    claim `SPIKE-WORKTREE-001` passed.
 
+## Detailed implementation approach
+
+Create the independently locked package boundaries in disjoint cells, then let the
+coordinator integrate root manifests, locks, generated outputs, `apps/web`, and the
+product-demo composition. Each cell runs package-local checks and receives an
+independent review before its accepted commit is integrated.
+
 ## Recovery and safe retry
 
 Scaffold steps must be additive and independently testable. Do not delete user or
@@ -252,6 +290,17 @@ evidence, revert only files owned by this ExecPlan through a reviewed patch, and
 retry from a clean package environment. No command may use production credentials,
 external provider traffic, destructive database operations, signing, publishing,
 deployment, automatic merge, or sibling-repository writes.
+
+Until `SPIKE-WORKTREE-001` passes, at most one full-stack application or product-
+demo worktree may run. Package-only and documentation-only worktrees with disjoint
+governed paths may run in parallel.
+
+## Rollout and handoff
+
+This credential-free scaffold has no production rollout. Accepted package cells
+hand sanitized validation evidence and exact commits to the coordinator. The
+coordinator composes the single allowed product demo, reruns root checks, records
+the next reviewed base, and leaves every live capability disabled.
 
 ## Outcomes and retrospective
 

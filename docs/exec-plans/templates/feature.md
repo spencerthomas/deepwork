@@ -11,6 +11,7 @@ supporting_feature_ids: []
 issue: <tracker reference>
 created: <YYYY-MM-DD>
 last_updated: <YYYY-MM-DD>
+base_commit: <full reviewed git commit>
 last_verified_commit: <git commit or null while draft>
 risk: low | medium | high
 governed_paths: []
@@ -20,6 +21,12 @@ gate_review_status: unreviewed
 gate_reviewed_by: []
 gate_reviewed_at: null
 authoritative_sources: []
+scenario_ids: []
+dispatch_kind: cell
+dispatch_ready: false
+agent_review_required: true
+dependencies: []
+blockers: []
 ---
 
 # <Observable outcome>
@@ -37,6 +44,11 @@ explicitly confirmed that both arrays are intentionally empty; either reviewed
 state requires reviewer and time metadata. Empty arrays with `unreviewed` never
 mean “no gates.” `completed` requires the retrospective and retained proof;
 `superseded` requires a non-null `superseded_by` pointing to its replacement.
+Every dispatched cell also records its exact reviewed `base_commit`, stable issue
+identity, scenario IDs, dependency/blocker IDs, `dispatch_kind: cell`, exact
+boolean `dispatch_ready: true`, and exact boolean `agent_review_required: true`.
+A program-control ExecPlan uses `dispatch_kind: program` and remains
+`dispatch_ready: false`; it coordinates cells but is not itself a work item.
 
 ## Purpose and observable result
 

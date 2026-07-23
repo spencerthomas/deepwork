@@ -2,7 +2,7 @@
   "wheel": "deepwork_agent-0.0.0-py3-none-any.whl",
   "wheel_sha256": "e6cec348da7bd671becdabecdabcb93660a1a19db40c80bb893e8056f725b0d0",
   "source_distribution": "deepwork_agent-0.0.0.tar.gz",
-  "source_distribution_sha256": "0910f7eb64dc7af194dd75d368c2b541700c52dcb695cf858ad60b2b822d70e5",
+  "source_distribution_sha256": "d030b2611e32392ca17d84568ec431c43d0c6197bda2a75548e971e527517159",
   "reproducible_builds": 2,
   "py_typed": true,
   "public_exports": [

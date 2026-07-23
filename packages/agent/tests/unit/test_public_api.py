@@ -19,6 +19,8 @@ EXPECTED_EXPORTS = {
     "create_graph",
     "initial_state",
     "runtime_capabilities",
+    "validate_approval_response",
+    "validate_plan_edit",
 }
 
 

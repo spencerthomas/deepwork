@@ -8,6 +8,8 @@ from deepwork_agent.graph import (
     RuntimeCapabilities,
     create_graph,
     runtime_capabilities,
+    validate_approval_response,
+    validate_plan_edit,
 )
 from deepwork_agent.state import (
     AgentInput,
@@ -34,4 +36,6 @@ __all__ = [
     "create_graph",
     "initial_state",
     "runtime_capabilities",
+    "validate_approval_response",
+    "validate_plan_edit",
 ]

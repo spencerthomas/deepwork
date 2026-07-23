@@ -5,17 +5,18 @@ make -C packages/agent lock-check: PASS
 make -C packages/agent format-check: PASS
 make -C packages/agent lint: PASS (Ruff, all checks passed)
 make -C packages/agent typecheck: PASS (ty, all checks passed)
-make -C packages/agent test: PASS (18 tests, outbound sockets disabled)
+make -C packages/agent test: PASS (28 tests, outbound sockets disabled)
 make -C packages/agent build: PASS (sdist and wheel)
 make -C packages/agent package-check: PASS
 git diff --check: PASS
 
 The unit suite constructs the public graph with an official-compatible
 deterministic fake chat model and no credentials. It proves ordered plan
-production, the LangGraph interrupt payload, approval and rejection, optional
-tool binding through Deep Agents, bounded plan parsing, final-answer trust,
-local-only capability reporting, and restoration of completed state from the
-same in-memory local session.
+production, authoritative LangGraph interrupt rotation, approval, rejection,
+bounded respond/replan, checkpoint plan editing with as_node="plan", caller-tool
+identity binding alongside Deep Agents built-ins, bounded plan parsing,
+final-answer trust, truthful managed-provider capability reporting, and
+restoration of completed state from the same in-memory local session.
 
 The package-local forbidden-import tests scan every production Python import and
 prove an intentional FastAPI import is reported with its exact file and root.

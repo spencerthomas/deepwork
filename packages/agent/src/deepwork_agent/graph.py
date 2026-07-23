@@ -23,6 +23,7 @@ from deepwork_agent.state import (
     AgentState,
     ApprovalDecision,
     ApprovalRequest,
+    ApprovalResponse,
 )
 
 if TYPE_CHECKING:
@@ -41,6 +42,9 @@ _PLAN_SYSTEM_PROMPT = (
     "with no preamble. Do not perform the task yet."
 )
 _STEP_PREFIX = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*")
+_MAX_REVIEW_COMMENT_LENGTH = 1_000
+_MAX_PLAN_STEP_LENGTH = 500
+_MAX_PLAN_STEPS = 12
 
 ToolLike = BaseTool | Callable[..., Any] | dict[str, Any]
 LocalAgentGraph = CompiledStateGraph[
@@ -57,6 +61,7 @@ class RuntimeCapabilities:
 
     runtime_mode: Literal["local-runtime"]
     available: Literal[True]
+    managed_external_providers: Literal["unavailable"]
     model_injection_required: Literal[True]
     plan_first: Literal[True]
     human_in_the_loop: Literal["langgraph-interrupt"]
@@ -70,6 +75,7 @@ def runtime_capabilities() -> RuntimeCapabilities:
     return RuntimeCapabilities(
         runtime_mode=RUNTIME_MODE,
         available=True,
+        managed_external_providers="unavailable",
         model_injection_required=True,
         plan_first=True,
         human_in_the_loop="langgraph-interrupt",
@@ -102,8 +108,8 @@ def _parse_plan(message: BaseMessage, *, limit: int) -> list[str]:
     return steps
 
 
-def _approval_decision(value: object) -> ApprovalDecision:
-    """Validate an interrupt resume value without accepting extra authority."""
+def validate_approval_response(value: object) -> ApprovalResponse:
+    """Validate a resume value before callers construct a LangGraph Command."""
     if not isinstance(value, dict):
         msg = "approval response must be a mapping"
         raise TypeError(msg)
@@ -112,17 +118,48 @@ def _approval_decision(value: object) -> ApprovalDecision:
         msg = "approval response may contain only decision and optional comment"
         raise ValueError(msg)
     decision = mapping["decision"]
-    if decision not in ("approve", "reject"):
-        msg = "approval decision must be approve or reject"
+    if decision not in ("approve", "reject", "respond"):
+        msg = "approval decision must be approve, reject, or respond"
         raise ValueError(msg)
     comment = mapping.get("comment")
     if comment is not None and not isinstance(comment, str):
         msg = "approval comment must be text"
         raise ValueError(msg)
-    return cast("ApprovalDecision", decision)
+    normalized_comment = comment.strip() if isinstance(comment, str) else None
+    if normalized_comment is not None and len(normalized_comment) > _MAX_REVIEW_COMMENT_LENGTH:
+        msg = "approval comment must contain at most 1000 characters"
+        raise ValueError(msg)
+    if decision == "respond" and not normalized_comment:
+        msg = "respond requires a non-empty comment"
+        raise ValueError(msg)
+    response: ApprovalResponse = {"decision": cast("ApprovalDecision", decision)}
+    if normalized_comment:
+        response["comment"] = normalized_comment
+    return response
 
 
-def create_graph(
+def validate_plan_edit(value: object, *, max_plan_steps: int = 6) -> list[str]:
+    """Bound a plan before an official ``update_state(..., as_node="plan")`` edit."""
+    if not 1 <= max_plan_steps <= _MAX_PLAN_STEPS:
+        msg = "max_plan_steps must be between 1 and 12"
+        raise ValueError(msg)
+    if not isinstance(value, list) or not value or len(value) > max_plan_steps:
+        msg = f"edited plan must contain between 1 and {max_plan_steps} steps"
+        raise ValueError(msg)
+    steps: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            msg = "each edited plan step must be text"
+            raise TypeError(msg)
+        step = item.strip()
+        if not step or len(step) > _MAX_PLAN_STEP_LENGTH:
+            msg = "each edited plan step must contain 1 to 500 characters"
+            raise ValueError(msg)
+        steps.append(step)
+    return steps
+
+
+def create_graph(  # noqa: C901 - graph factory keeps node closures beside topology
     *,
     model: BaseChatModel,
     tools: Sequence[ToolLike] = (),
@@ -168,9 +205,11 @@ def create_graph(
                 HumanMessage(content=task),
             ]
         )
+        parsed_plan = _parse_plan(response, limit=settings.max_plan_steps)
         return {
             "task": task,
-            "plan": _parse_plan(response, limit=settings.max_plan_steps),
+            "plan": parsed_plan,
+            "plan_revision": 1,
             "plan_trust": "untrusted",
             "approval": "pending",
             "status": "planned",
@@ -184,14 +223,57 @@ def create_graph(
             "action": PROTECTED_ACTION,
             "task": state["task"],
             "plan": list(state["plan"]),
+            "plan_revision": state["plan_revision"],
             "plan_trust": "untrusted",
-            "allowed_decisions": ["approve", "reject"],
+            "allowed_decisions": ["approve", "reject", "respond"],
         }
-        decision = _approval_decision(interrupt(request))
-        return {"approval": decision, "status": "approved" if decision == "approve" else "rejected"}
+        response = validate_approval_response(interrupt(request))
+        decision = response["decision"]
+        status = (
+            "approved"
+            if decision == "approve"
+            else "rejected"
+            if decision == "reject"
+            else "planned"
+        )
+        return {
+            "approval": decision,
+            "reviewer_comment": response.get("comment", ""),
+            "status": status,
+        }
 
-    def route_after_approval(state: AgentState) -> Literal["execute", "reject"]:
-        return "reject" if state["approval"] == "reject" else "execute"
+    def route_after_approval(state: AgentState) -> Literal["execute", "reject", "revise"]:
+        if state["approval"] == "reject":
+            return "reject"
+        if state["approval"] == "respond":
+            return "revise"
+        return "execute"
+
+    def revise(state: AgentState) -> dict[str, object]:
+        current_plan = "\n".join(f"- {step}" for step in state["plan"])
+        response = model.invoke(
+            [
+                SystemMessage(
+                    content=(
+                        "Revise the plan using the reviewer response. Return one concrete "
+                        "step per line with no preamble. Do not perform the task yet."
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"Task:\n{state['task']}\n\nCurrent plan:\n{current_plan}\n\n"
+                        f"Reviewer response:\n{state['reviewer_comment']}"
+                    )
+                ),
+            ]
+        )
+        return {
+            "plan": _parse_plan(response, limit=settings.max_plan_steps),
+            "plan_revision": state["plan_revision"] + 1,
+            "plan_trust": "untrusted",
+            "approval": "pending",
+            "status": "planned",
+        }
 
     def reject(state: AgentState) -> dict[str, object]:
         _ = state
@@ -233,13 +315,15 @@ def create_graph(
     builder.add_node("approve", approve)
     builder.add_node("execute", execute)
     builder.add_node("reject", reject)
+    builder.add_node("revise", revise)
     builder.add_edge(START, "plan")
     builder.add_edge("plan", "approve")
     builder.add_conditional_edges(
         "approve",
         route_after_approval,
-        {"execute": "execute", "reject": "reject"},
+        {"execute": "execute", "reject": "reject", "revise": "revise"},
     )
+    builder.add_edge("revise", "approve")
     builder.add_edge("execute", END)
     builder.add_edge("reject", END)
     return cast(

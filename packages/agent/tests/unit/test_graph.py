@@ -18,6 +18,8 @@ from deepwork_agent import (
     create_graph,
     initial_state,
     runtime_capabilities,
+    validate_approval_response,
+    validate_plan_edit,
 )
 
 if TYPE_CHECKING:
@@ -25,12 +27,14 @@ if TYPE_CHECKING:
     from langchain_core.runnables import Runnable, RunnableConfig
 
 ToolDefinition = dict[str, Any] | type | Callable[..., Any] | BaseTool
+REVISED_PLAN_REVISION = 2
 
 
 class ToolBindingFakeChatModel(GenericFakeChatModel):
     """Official fake model with the tool-binding method agents require."""
 
     bound_tool_count: int = Field(default=0)
+    bound_tool_names: tuple[str, ...] = Field(default=())
 
     def bind_tools(
         self,
@@ -42,6 +46,22 @@ class ToolBindingFakeChatModel(GenericFakeChatModel):
         """Record tool binding and remain a deterministic runnable."""
         _ = tool_choice, kwargs
         self.bound_tool_count = len(tools)
+        names: list[str] = []
+        for candidate in tools:
+            if isinstance(candidate, BaseTool):
+                names.append(candidate.name)
+            elif isinstance(candidate, dict):
+                name = candidate.get("name")
+                function = candidate.get("function")
+                if not isinstance(name, str) and isinstance(function, dict):
+                    name = function.get("name")
+                if isinstance(name, str):
+                    names.append(name)
+            else:
+                name = getattr(candidate, "__name__", None)
+                if isinstance(name, str):
+                    names.append(name)
+        self.bound_tool_names = tuple(names)
         return self
 
 
@@ -67,6 +87,7 @@ def test_runtime_capabilities_are_truthful_and_local_only() -> None:
 
     assert capabilities.runtime_mode == "local-runtime"
     assert capabilities.available is True
+    assert capabilities.managed_external_providers == "unavailable"
     assert capabilities.model_injection_required is True
     assert capabilities.plan_first is True
     assert capabilities.human_in_the_loop == "langgraph-interrupt"
@@ -111,12 +132,13 @@ def test_research_writing_task_plans_pauses_and_completes_after_approval() -> No
             "Gather the relevant evidence.",
             "Draft a concise source-aware note.",
         ],
+        "plan_revision": 1,
         "plan_trust": "untrusted",
-        "allowed_decisions": ["approve", "reject"],
+        "allowed_decisions": ["approve", "reject", "respond"],
     }
 
     result = graph.invoke(
-        Command(resume={"decision": "approve"}),
+        Command(resume=validate_approval_response({"decision": "approve"})),
         run_config,
     )
 
@@ -127,6 +149,7 @@ def test_research_writing_task_plans_pauses_and_completes_after_approval() -> No
     )
     assert result["final_answer_trust"] == "untrusted"
     assert model.bound_tool_count > 0
+    assert "collect_research_note" in model.bound_tool_names
     restored = graph.get_state(run_config)
     assert restored.values["plan"] == result["plan"]
     assert restored.values["final_answer"] == result["final_answer"]
@@ -140,7 +163,10 @@ def test_rejection_ends_without_executing_the_deep_agent() -> None:
     run_config = _run_config("research-writing-rejected")
 
     graph.invoke(initial_state("Prepare a short note."), run_config)
-    result = graph.invoke(Command(resume={"decision": "reject"}), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "reject"})),
+        run_config,
+    )
 
     assert result["status"] == "rejected"
     assert result["approval"] == "reject"
@@ -167,15 +193,138 @@ def test_approval_can_be_explicitly_disabled_for_local_automation() -> None:
     assert result["final_answer"] == "A concise completed response."
 
 
-def test_invalid_resume_payload_fails_closed() -> None:
-    """The approval node accepts only the documented decision vocabulary."""
-    model = _model("Review the evidence.")
+def test_invalid_resume_is_rejected_before_command_and_does_not_poison_checkpoint() -> None:
+    """Callers validate before Command so the same thread can still resume safely."""
+    model = _model("Review the evidence.", "The reviewed answer.")
     graph = create_graph(model=model)
     run_config = _run_config("research-writing-invalid-approval")
     graph.invoke(initial_state("Review a short note."), run_config)
 
-    with pytest.raises(ValueError, match="approve or reject"):
-        graph.invoke(Command(resume={"decision": "edit"}), run_config)
+    with pytest.raises(ValueError, match="approve, reject, or respond"):
+        validate_approval_response({"decision": "edit"})
+
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})),
+        run_config,
+    )
+    assert result["status"] == "completed"
+
+
+def test_respond_replans_and_uses_fresh_langgraph_interrupt_authority() -> None:
+    """Bounded guidance creates a new revision and official interrupt before execution."""
+    model = _model(
+        "Inspect the evidence.\nDraft a note.",
+        "Use only supplied evidence.\nReturn exactly two sentences.",
+        "The revised two-sentence note.",
+    )
+    graph = create_graph(model=model)
+    run_config = _run_config("respond-and-replan")
+    first_pause = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Prepare a short note."), run_config),
+    )
+    first_interrupt = first_pause["__interrupt__"][0]
+
+    second_pause = cast(
+        "dict[str, Any]",
+        graph.invoke(
+            Command(
+                resume=validate_approval_response(
+                    {
+                        "decision": "respond",
+                        "comment": "Use supplied evidence and return two sentences.",
+                    }
+                )
+            ),
+            run_config,
+        ),
+    )
+    second_interrupt = second_pause["__interrupt__"][0]
+
+    assert second_pause["plan"] == [
+        "Use only supplied evidence.",
+        "Return exactly two sentences.",
+    ]
+    assert second_pause["plan_revision"] == REVISED_PLAN_REVISION
+    assert second_interrupt.id != first_interrupt.id
+    assert second_interrupt.value["plan_revision"] == REVISED_PLAN_REVISION
+    completed = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})),
+        run_config,
+    )
+    assert completed["status"] == "completed"
+    assert completed["plan_revision"] == REVISED_PLAN_REVISION
+    assert completed["final_answer"] == "The revised two-sentence note."
+
+
+def test_plan_edit_uses_public_checkpoint_update_then_fresh_approval() -> None:
+    """Plan edits are state updates, not respond payload fields."""
+    model = _model("Inspect the request.\nDraft the result.", "Edited plan completed.")
+    graph = create_graph(model=model)
+    run_config = _run_config("checkpoint-plan-edit")
+    first_pause = cast(
+        "dict[str, Any]",
+        graph.invoke(initial_state("Prepare a bounded result."), run_config),
+    )
+    first_interrupt = first_pause["__interrupt__"][0]
+    edited_plan = validate_plan_edit(["Use the supplied inputs only.", "Return a bounded result."])
+
+    graph.update_state(
+        run_config,
+        {
+            "plan": edited_plan,
+            "plan_revision": REVISED_PLAN_REVISION,
+            "plan_trust": "untrusted",
+            "approval": "pending",
+            "status": "planned",
+        },
+        as_node="plan",
+    )
+    assert graph.get_state(run_config).next == ("approve",)
+    second_pause = cast("dict[str, Any]", graph.invoke(None, run_config))
+    second_interrupt = second_pause["__interrupt__"][0]
+
+    assert second_pause["plan"] == edited_plan
+    assert second_interrupt.value["plan"] == edited_plan
+    assert second_interrupt.value["plan_revision"] == REVISED_PLAN_REVISION
+    assert second_interrupt.id != first_interrupt.id
+    completed = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})),
+        run_config,
+    )
+    assert completed["plan"] == edited_plan
+    assert completed["final_answer"] == "Edited plan completed."
+
+
+@pytest.mark.parametrize(
+    "value",
+    [[], [""], ["x" * 501], ["a", "b", "c", "d", "e", "f", "g"]],
+)
+def test_plan_edit_preflight_is_bounded(value: object) -> None:
+    """Checkpoint edits are validated before changing graph state."""
+    with pytest.raises((TypeError, ValueError), match=r"edited plan|each edited plan"):
+        validate_plan_edit(value)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ({"decision": "respond"}, "non-empty comment"),
+        ({"decision": "respond", "comment": "   "}, "non-empty comment"),
+        (
+            {"decision": "respond", "comment": "x" * 1_001},
+            "at most 1000 characters",
+        ),
+        (
+            {"decision": "respond", "comment": "Revise.", "edited_plan": ["No."]},
+            "only decision and optional comment",
+        ),
+    ],
+)
+def test_respond_preflight_is_bounded(value: object, message: str) -> None:
+    """Respond guidance is bounded and cannot smuggle plan edits into resume."""
+    with pytest.raises(ValueError, match=message):
+        validate_approval_response(value)
 
 
 def test_create_graph_requires_an_initialized_chat_model() -> None:

@@ -38,6 +38,7 @@ def create_app(
 
     status_service = StatusService(provider=FixtureStatusProvider())
     task_repository: TaskRepository
+    task_runner: DeterministicFixtureRunner | LocalAgentServerRunner
     sqlite_repository: SQLiteTaskRepository | None
     if task_database_path is None:
         task_repository = InMemoryTaskRepository()

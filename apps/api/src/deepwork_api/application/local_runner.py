@@ -23,29 +23,41 @@ from deepwork_api.ports import TaskRepository
 class LocalRun(Protocol):
     """The narrow source-owned identity required by the application."""
 
-    thread_id: str
-    run_id: str
+    @property
+    def thread_id(self) -> str: ...
+    @property
+    def run_id(self) -> str: ...
 
 
 class LocalPlanUpdate(LocalRun, Protocol):
     """Confirmed source checkpoint after an accepted plan edit."""
 
-    interrupt_id: str
-    plan_revision: int
+    @property
+    def interrupt_id(self) -> str: ...
+    @property
+    def plan_revision(self) -> int: ...
 
 
 class LocalInterruptValue(Protocol):
-    interrupt_id: str
-    plan: tuple[str, ...]
-    plan_revision: int
+    @property
+    def interrupt_id(self) -> str: ...
+    @property
+    def plan(self) -> tuple[str, ...]: ...
+    @property
+    def plan_revision(self) -> int: ...
 
 
 class LocalState(Protocol):
-    status: str | None
-    plan: tuple[str, ...]
-    plan_revision: int | None
-    final_answer: str | None
-    interrupt: LocalInterruptValue | None
+    @property
+    def status(self) -> str | None: ...
+    @property
+    def plan(self) -> tuple[str, ...]: ...
+    @property
+    def plan_revision(self) -> int | None: ...
+    @property
+    def final_answer(self) -> str | None: ...
+    @property
+    def interrupt(self) -> LocalInterruptValue | None: ...
 
 
 class LocalSource(Protocol):
@@ -57,7 +69,7 @@ class LocalSource(Protocol):
     async def update_plan(
         self, thread_id: str, *, interrupt_id: str, expected_revision: int, steps: Sequence[str]
     ) -> LocalPlanUpdate: ...
-    async def stream(self, run: LocalRun) -> AsyncIterator[object]: ...
+    def stream(self, run: LocalRun) -> AsyncIterator[object]: ...
 
 
 @dataclass(slots=True)

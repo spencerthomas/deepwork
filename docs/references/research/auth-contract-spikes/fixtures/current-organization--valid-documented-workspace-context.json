@@ -1,0 +1,30 @@
+{
+  "context_case": "valid-documented-workspace-context",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "current-organization",
+  "request": {
+    "body_schema": "no-body",
+    "headers": {
+      "X-Api-Key": "<redacted>",
+      "X-Organization-Id": "<organization-id>"
+    },
+    "host_class": "langsmith-platform-api",
+    "method": "GET",
+    "negative_input": null,
+    "route_template": "/api/v1/orgs/current"
+  },
+  "result": {
+    "expected_shape": "sanitized organization identity object",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "unconfirmed-live"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

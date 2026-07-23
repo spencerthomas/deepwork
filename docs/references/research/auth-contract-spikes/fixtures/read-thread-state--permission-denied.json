@@ -1,0 +1,31 @@
+{
+  "context_case": "permission-denied",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "read-thread-state",
+  "request": {
+    "body_schema": "thread_id path parameter",
+    "headers": {
+      "X-Api-Key": "<redacted>"
+    },
+    "host_class": "classic-agent-server",
+    "method": "GET",
+    "negative_input": {
+      "provider_outcome": "permission-denied-unconfirmed"
+    },
+    "route_template": "/threads/{thread_id}/state"
+  },
+  "result": {
+    "case": "permission-denied",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "unconfirmed-provider-behavior"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

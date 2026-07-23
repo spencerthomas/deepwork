@@ -93,6 +93,67 @@ describe("strict accepted task mapping", () => {
     });
   });
 
+  it("maps the accepted local-source identifiers and evidence class", () => {
+    const localDetail = {
+      ...waitingDetail,
+      runId: "run-local:2",
+      pendingInterrupt: {
+        ...waitingDetail.pendingInterrupt,
+        interruptId: "srcint-3",
+      },
+      proposedPlan: {
+        ...waitingDetail.proposedPlan,
+        evidenceRefs: [],
+      },
+      evidence: [],
+    };
+    const mapped = mapTaskDetail(localDetail, resolver("local-agent-server"));
+    if (!mapped.ok) {
+      throw new Error("Expected accepted local-source task detail.");
+    }
+    expect(mapped.value.run.runId).toBe("run-local:2");
+    expect(mapped.value.pendingInterrupt?.identity.interruptId).toBe("srcint-3");
+
+    const delta = mapTaskEvent(
+      "content.delta",
+      "5",
+      {
+        text: "Local Agent Server progress received.",
+        evidenceClass: "local-source",
+      },
+      {
+        taskId: mapped.value.taskId,
+        sourceThread: mapped.value.sourceThread,
+        run: mapped.value.run,
+      },
+    );
+    expect(delta).toMatchObject({
+      ok: true,
+      value: { evidenceClass: "local-source" },
+    });
+
+    const plan = mapTaskEvent(
+      "plan.proposed",
+      "6",
+      {
+        title: "Local Agent Server plan",
+        steps: ["Inspect the accepted contract"],
+        revision: 2,
+        evidenceRefs: [],
+        evidenceClass: "local-source",
+      },
+      {
+        taskId: mapped.value.taskId,
+        sourceThread: mapped.value.sourceThread,
+        run: mapped.value.run,
+      },
+    );
+    expect(plan).toMatchObject({
+      ok: true,
+      value: { evidenceClass: "local-source" },
+    });
+  });
+
   it("clones only exact public binding fields and rejects incoherent event context", () => {
     const resolverWithPrivateFields: TaskBindingResolver = {
       resolveTask(requested) {

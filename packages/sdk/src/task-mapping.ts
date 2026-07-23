@@ -27,6 +27,7 @@ import {
   threadId,
   type DecisionInput,
   type DecisionReceipt,
+  type EvidenceClass,
   type EvidenceRecord,
   type PlanEditInput,
   type PlanEditReceipt,
@@ -46,8 +47,7 @@ import {
 import { contractError, type SdkResult } from "./result.js";
 
 const TASK_ID_PATTERN = /^task_[0-9]{8}$/;
-const RUN_ID_PATTERN = /^run_[0-9]{8}$/;
-const INTERRUPT_ID_PATTERN = /^interrupt_[0-9]{8}$/;
+const SOURCE_SAFE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const EVIDENCE_ID_PATTERN = /^evidence_[0-9]{8}(?:_[0-9]{2})?$/;
 const MAX_TASK_LIST_ITEMS = 500;
 
@@ -82,6 +82,13 @@ function success<T>(value: T): SdkResult<T> {
 
 function fail<T>(message: string): SdkResult<T> {
   return Object.freeze({ ok: false, error: contractError(message) });
+}
+
+function evidenceClass(value: unknown, label: string): EvidenceClass {
+  if (value !== "fixture" && value !== "local-source") {
+    throw new TypeError(`${label} is invalid.`);
+  }
+  return value;
 }
 
 function attempt<T>(map: () => T, context: string): SdkResult<T> {
@@ -172,7 +179,9 @@ function canonicalEventContext(context: TaskEventMappingContext): TaskEventMappi
     sourceId(string(context.sourceThread.sourceId, "Task source identifier", 200)),
     threadId(string(context.sourceThread.threadId, "Task thread identifier", 200)),
   );
-  const mappedRunId = runId(identifier(context.run.runId, "Run identifier", RUN_ID_PATTERN));
+  const mappedRunId = runId(
+    identifier(context.run.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
+  );
   if (
     context.run.sourceId !== sourceThread.sourceId ||
     context.run.threadId !== sourceThread.threadId
@@ -194,7 +203,9 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
   );
   const mappedTaskId = taskId(identifier(wire.taskId, "Task identifier", TASK_ID_PATTERN));
   const sourceThread = bindingFor(mappedTaskId, resolver);
-  const mappedRunId = runId(identifier(wire.runId, "Run identifier", RUN_ID_PATTERN));
+  const mappedRunId = runId(
+    identifier(wire.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
+  );
   const run = sourceRunKey(sourceThread.sourceId, sourceThread.threadId, mappedRunId);
   const lastEventSequence = positiveInteger(wire.lastEventId, "Last event identifier");
   const lastEvent = sourceApplicationEventKey(
@@ -305,7 +316,9 @@ function mapInterrupt(
       task,
       sourceThread.threadId,
       run.runId,
-      interruptId(identifier(wire.interruptId, "Interrupt identifier", INTERRUPT_ID_PATTERN)),
+      interruptId(
+        identifier(wire.interruptId, "Interrupt identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
+      ),
     ),
     decisions: wire.decisions,
     planRevision: positiveInteger(wire.planRevision, "Interrupt plan revision"),
@@ -328,7 +341,7 @@ export function mapTaskAccepted(
       run: sourceRunKey(
         binding.sourceId,
         binding.threadId,
-        runId(identifier(wire.runId, "Run identifier", RUN_ID_PATTERN)),
+        runId(identifier(wire.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
       ),
       facts: factsForWireStatus("queued"),
     });
@@ -437,7 +450,7 @@ export function mapTaskResult(
       run: sourceRunKey(
         binding.sourceId,
         binding.threadId,
-        runId(identifier(wire.runId, "Run identifier", RUN_ID_PATTERN)),
+        runId(identifier(wire.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
       ),
       result: resultText(string(wire.result, "Task result", 18_048)),
     });
@@ -454,9 +467,13 @@ export function mapDecisionReceipt(
       sourceId(string(request.interrupt.sourceId, "Task source identifier", 200)),
       taskId(identifier(request.interrupt.taskId, "Task identifier", TASK_ID_PATTERN)),
       threadId(string(request.interrupt.threadId, "Task thread identifier", 200)),
-      runId(identifier(request.interrupt.runId, "Run identifier", RUN_ID_PATTERN)),
+      runId(identifier(request.interrupt.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
       interruptId(
-        identifier(request.interrupt.interruptId, "Interrupt identifier", INTERRUPT_ID_PATTERN),
+        identifier(
+          request.interrupt.interruptId,
+          "Interrupt identifier",
+          SOURCE_SAFE_IDENTIFIER_PATTERN,
+        ),
       ),
     );
     const wire = record(
@@ -500,9 +517,13 @@ export function mapPlanEditReceipt(
       sourceId(string(request.interrupt.sourceId, "Task source identifier", 200)),
       taskId(identifier(request.interrupt.taskId, "Task identifier", TASK_ID_PATTERN)),
       threadId(string(request.interrupt.threadId, "Task thread identifier", 200)),
-      runId(identifier(request.interrupt.runId, "Run identifier", RUN_ID_PATTERN)),
+      runId(identifier(request.interrupt.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
       interruptId(
-        identifier(request.interrupt.interruptId, "Interrupt identifier", INTERRUPT_ID_PATTERN),
+        identifier(
+          request.interrupt.interruptId,
+          "Interrupt identifier",
+          SOURCE_SAFE_IDENTIFIER_PATTERN,
+        ),
       ),
     );
     const wire = record(value, ["taskId", "runId", "interruptId", "plan"], "Plan-edit receipt");
@@ -622,14 +643,11 @@ export function mapTaskEvent(
       }
       case "content.delta": {
         const wire = record(data, ["text", "evidenceClass"], "content.delta event");
-        if (wire.evidenceClass !== "fixture") {
-          throw new TypeError("content.delta evidence class is invalid.");
-        }
         return Object.freeze({
           ...base,
           name: eventName,
           text: resultText(string(wire.text, "Content delta", 18_048)),
-          evidenceClass: "fixture",
+          evidenceClass: evidenceClass(wire.evidenceClass, "content.delta evidence class"),
         });
       }
       case "plan.proposed":
@@ -639,9 +657,6 @@ export function mapTaskEvent(
           ["title", "steps", "revision", "evidenceRefs", "evidenceClass"],
           `${eventName} event`,
         );
-        if (wire.evidenceClass !== "fixture") {
-          throw new TypeError(`${eventName} evidence class is invalid.`);
-        }
         return Object.freeze({
           ...base,
           name: eventName,
@@ -656,7 +671,7 @@ export function mapTaskEvent(
             canonical.sourceThread,
             canonical.run,
           ),
-          evidenceClass: "fixture",
+          evidenceClass: evidenceClass(wire.evidenceClass, `${eventName} evidence class`),
         });
       }
       case "evidence.recorded":
@@ -725,7 +740,9 @@ export function mapTaskEvent(
             canonical.taskId,
             canonical.sourceThread.threadId,
             canonical.run.runId,
-            interruptId(identifier(wire.interruptId, "Interrupt identifier", INTERRUPT_ID_PATTERN)),
+            interruptId(
+              identifier(wire.interruptId, "Interrupt identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
+            ),
           ),
           decision: wire.decision,
           commentProvided,

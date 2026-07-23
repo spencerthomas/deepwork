@@ -1,0 +1,8 @@
+{
+  "files_scanned": 9,
+  "finding_count": 0,
+  "findings": [],
+  "root": ".",
+  "schema_version": "plan-approval-scrub.v1",
+  "status": "clean"
+}

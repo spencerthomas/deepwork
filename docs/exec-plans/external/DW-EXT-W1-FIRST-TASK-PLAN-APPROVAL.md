@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL
 title: External dispatch - require a real plan before the first task executes
-status: ready-for-external-dispatch
+status: in-progress
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
 branch: external/research/first-task-plan-approval
 owner: external-plan-approval-contract-researcher
@@ -258,3 +258,76 @@ program/index records, starter agents, application adapters, normalized
 contracts, capability flags, or release scope. No worktree creation, push, merge,
 deployment, publication, production mutation, credential collection, or
 destructive cleanup is authorized by this packet.
+
+## Progress
+
+- [x] 2026-07-23: Verified the exact worktree, clean status, branch
+  `external/research/first-task-plan-approval`, seed
+  `886f6b12d812b1e34df2e45da3d839a0853d72e8`, and base
+  `fff1bfd278d550d01de6e8d74f553f45c4003a8c` ancestry before editing.
+- [x] 2026-07-23: Read the repository and documentation instructions, this full
+  packet, the owning task/HITL/quality specifications, the decision register,
+  security/reliability boundaries, and the pinned source ledger.
+- [x] 2026-07-23: Inspected coordinator-provenance commit
+  `758c1d4a2230b7c4261fcfbd0f3008634509e096` without integrating it. Its
+  `SPIKE-HITL-001`, `SPIKE-COMPOSE-001`, and `SPIKE-CONFIG-001` conclusions are
+  all `blocked-live-evidence`.
+- [x] 2026-07-23: Implemented and validated the isolated offline plan contract
+  harness with an append-only hash-chained checkpoint, current-authority checks,
+  immutable revision identity, non-widening boundaries, restart/reconnect replay,
+  local idempotent release, and explicit bypass rejection.
+- [x] 2026-07-23: Generated the complete deterministic template/scenario matrix
+  with 128 rows and retained
+  synthetic fixtures.
+- [ ] Run every required offline, matrix, bypass, scrub, documentation, and
+  base-qualified diff command.
+- [ ] Obtain fresh independent runtime-contract, security, and product review.
+- [ ] Commit only the three allowed path families and prepare coordinator
+  handoff.
+
+## Surprises and discoveries
+
+- The exact base contains no accepted artifacts for any consumed upstream gate.
+  The later LangChain research commit is provenance only and explicitly says no
+  capability is accepted or enabled.
+- The upstream HITL fixture confirms positional alignment and the normalized
+  `approve`, `edit`, `reject`, and `respond` decision values, but exact hosted
+  stale, duplicate, permission, lost-response, and resume behavior remains live
+  blocked. This packet therefore records those inputs without reclassifying or
+  re-probing them.
+- No sanctioned non-production classic sandbox, account tier, region,
+  authentication context, or server revision was supplied. Live commands remain
+  prohibited.
+- Invoking the packet's pytest command from the repository root initially
+  selected the root pytest configuration and unrelated package tests. The
+  isolated package now owns a local pytest entry point that pins its own config
+  and test directory while preserving the packet's exact command shape.
+- The sandbox denied the shared uv cache and all package-index access. The lock,
+  sync, and test workflow passes with `UV_OFFLINE=true` using the already
+  installed local uv cache for the first sync and a task-specific cache for all
+  retained validation.
+
+## Decision log
+
+- 2026-07-23: Limit executable assertions to plan-specific proposal identity,
+  revision/supersession, current actor/workspace/task/request authority,
+  permission and side-effect bounds, append-only audit, restart recovery, and
+  bypass resistance.
+- 2026-07-23: Treat cancellation as outside the normalized decision set and
+  local abandonment as a local terminal choice that never emits provider resume.
+- 2026-07-23: Keep every target gate and live-dependent row unaccepted on this
+  base. The only eligible outcome is an offline harness blocked on upstream
+  contracts and live evidence.
+- 2026-07-23: Preserve the text-only first-task path and the deterministic
+  `planApproval: false` fallback for every template/source combination.
+- 2026-07-23: Bind the engine's original task boundary and `respond` permission
+  into the first hash-chained event so a process/redeploy reconstruction with
+  drifted runtime config fails closed.
+- 2026-07-23: Treat `respond` as awaiting a new persisted plan revision; another
+  decision on the old revision cannot release protected work.
+
+## Outcomes and retrospective
+
+In progress. Final disposition, retained evidence, exact validations, independent
+review, remaining blockers, and commit identity will be recorded here before
+handoff.

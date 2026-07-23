@@ -1,0 +1,424 @@
+{
+  "config_version": "synthetic-v1",
+  "evidence_class": "deterministic-offline-fake",
+  "network": "denied",
+  "provider_resume": "not-implemented-or-invoked",
+  "scenarios": [
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "awaiting_decision",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "initial_proposal",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "released",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "approve_unchanged",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 5,
+      "final_status": "executing",
+      "observed_result": "released",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "edit_then_approve",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "plan_revised",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 2,
+      "final_status": "rejected",
+      "observed_result": "rejected",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "reject_without_reason",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded"
+      ]
+    },
+    {
+      "append_only_event_count": 2,
+      "final_status": "rejected",
+      "observed_result": "rejected",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "reject_with_reason",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded"
+      ]
+    },
+    {
+      "append_only_event_count": 2,
+      "final_status": "awaiting_revision",
+      "observed_result": "awaiting_revision",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "respond_permitted",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded"
+      ]
+    },
+    {
+      "append_only_event_count": 2,
+      "final_status": "awaiting_decision",
+      "observed_result": "local_only_no_provider_resume",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "local_abandonment",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "local_abandonment"
+      ]
+    },
+    {
+      "append_only_event_count": 5,
+      "final_status": "executing",
+      "observed_result": "released",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "explicit_restart_after_rejection",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "plan_restarted",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "wrong_request",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "wrong_plan",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "wrong_task",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "wrong_run",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "wrong_actor",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "stale_revision",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "plan_revised"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "superseded_revision",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "plan_revised"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "expired_actor",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "cross_workspace_replay",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "permission_widening",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "side_effect_widening",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "recovered_awaiting_decision",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "reconnect_before_decision",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 2,
+      "final_status": "approved",
+      "observed_result": "recovered_approved_no_resume",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "reconnect_after_decision_before_resume",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "recovered_executing_one_release",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "reconnect_after_resume",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "released",
+      "recovery_result": "process_restart_simulated_by_frozen_checkpoint_replay",
+      "scenario": "process_restart",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "released",
+      "recovery_result": "deployment_restart_simulated_by_frozen_checkpoint_replay",
+      "scenario": "deployment_restart",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "model_text_claims_approved",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "tool_output_imitates_decision",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "direct_resume",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "duplicate_suppressed",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "repeated_delivery",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 3,
+      "final_status": "executing",
+      "observed_result": "duplicate_suppressed",
+      "recovery_result": "lost_local_response_replayed_idempotently",
+      "scenario": "retry_after_timeout",
+      "side_effect_count_after_resume": 1,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed",
+        "decision_recorded",
+        "protected_effect_released"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ContractViolation",
+      "recovery_result": "runtime_binding_hash_rejected_drift",
+      "scenario": "config_template_drift",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "blocked:ValueError",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "cancellation_not_a_decision",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    },
+    {
+      "append_only_event_count": 1,
+      "final_status": "awaiting_decision",
+      "observed_result": "typed_unavailable_fallback",
+      "recovery_result": "durable-local-checkpoint-only",
+      "scenario": "unsupported_capability_false",
+      "side_effect_count_after_resume": 0,
+      "side_effect_count_before_approval": 0,
+      "state_transitions": [
+        "plan_proposed"
+      ]
+    }
+  ],
+  "schema_version": "plan-approval-transcript.v1",
+  "template": "blank",
+  "template_version": "synthetic-v1"
+}

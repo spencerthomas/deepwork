@@ -30,6 +30,13 @@ export function ApprovalCard({
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string>();
   const disabled = submitting || submittedDecision !== undefined;
+  const overLimit = unicodeLength(comment) > DECISION_COMMENT_MAX_LENGTH;
+  const shownError = validationError ?? error;
+  const countId = `comment-count-${interrupt.interruptId}`;
+  const errorId = `decision-error-${interrupt.interruptId}`;
+  const commentDescribedBy = [countId, shownError !== undefined ? errorId : null]
+    .filter((id): id is string => id !== null)
+    .join(" ");
 
   async function decide(decision: DecisionInput["decision"]) {
     const trimmed = comment.trim() === "" ? undefined : comment;
@@ -91,6 +98,8 @@ export function ApprovalCard({
             disabled={disabled}
             maxLength={DECISION_COMMENT_MAX_LENGTH * 2}
             placeholder="Add context for your decision…"
+            aria-invalid={validationError !== undefined || overLimit}
+            aria-describedby={commentDescribedBy}
             onChange={(event) => {
               setComment(event.target.value);
               setValidationError(undefined);
@@ -140,7 +149,13 @@ export function ApprovalCard({
                 {submittedDecision === "respond" ? "Sending…" : "Respond"}
               </button>
             )}
-            <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+            <span
+              id={countId}
+              className={cn(
+                "ml-auto text-[11px] tabular-nums",
+                overLimit ? "text-status-failed" : "text-muted-foreground",
+              )}
+            >
               {unicodeLength(comment).toLocaleString()} /{" "}
               {DECISION_COMMENT_MAX_LENGTH.toLocaleString()}
             </span>
@@ -153,12 +168,13 @@ export function ApprovalCard({
         </div>
       )}
 
-      {(validationError ?? error) && (
+      {shownError !== undefined && (
         <div
+          id={errorId}
           className="border-t border-status-failed/30 bg-status-failed-bg px-4 py-2.5"
           role="alert"
         >
-          <p className="text-[13px] text-status-failed">{validationError ?? error}</p>
+          <p className="text-[13px] text-status-failed">{shownError}</p>
         </div>
       )}
     </div>

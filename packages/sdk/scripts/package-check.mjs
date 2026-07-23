@@ -79,6 +79,7 @@ async function inspectArchive(archive, extractionRoot) {
   }
 }
 
+const offlineStore = runPnpm(["store", "path"], packageRoot).trim();
 const temporaryRoot = await mkdtemp(join(tmpdir(), "deepwork-sdk-package-check-"));
 
 try {
@@ -108,6 +109,8 @@ try {
     [
       "add",
       "--offline",
+      "--store-dir",
+      offlineStore,
       "--ignore-scripts",
       "--save-exact",
       domainArchive,

@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc --build tsconfig.json",
     "check-architecture": "node scripts/check-boundaries.mjs",
+    "contract": "vitest run tests/task-mapping.test.ts tests/task-services.test.ts",
     "format": "oxfmt .",
     "format-check": "oxfmt --check .",
     "lint": "oxlint .",

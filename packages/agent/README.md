@@ -17,11 +17,18 @@ package. `runtime_capabilities().managed_external_providers` is explicitly
 `"unavailable"`: a caller may inject a reviewed model, but this package does not
 select providers or manage provider credentials.
 
-Model-generated plans and final answers are marked `untrusted`. Approval is
-required by default before the protected `execute_plan` action. The interrupt
-payload preserves the ordered `approve`, `reject`, `respond` decision vocabulary.
-`respond` requires a bounded comment, replans through the injected model, and
-pauses on a fresh authoritative LangGraph interrupt before execution.
+Model-generated plans and final answers are marked `untrusted`. Plan approval is
+required by default before the protected `execute_plan` action, and every
+caller-provided tool is separately protected with the public Deep Agents
+`interrupt_on` contract. Approving a plan therefore never authorizes a later
+tool call implicitly. The interrupt payload preserves the ordered `approve`,
+`reject`, `respond` decision vocabulary. `respond` requires a bounded comment,
+replans through the injected model, and pauses on a fresh authoritative
+LangGraph interrupt before execution.
+
+Nested Deep Agents execution uses LangGraph's public streaming API. Custom
+progress events contain lifecycle and node names only; model, task, tool, and
+review content are not copied into those events.
 
 ## Public factory
 
@@ -144,7 +151,8 @@ credentials are managed.
 
 ## Local checks
 
-Python 3.12 and uv are required. From the repository root:
+Python 3.11 or newer (below Python 4) and uv are required. From the repository
+root:
 
 ```bash
 make -C packages/agent doctor
@@ -153,14 +161,17 @@ make -C packages/agent check
 make -C packages/agent package-check
 ```
 
-The test suite uses an official-compatible deterministic fake chat model, denies
-outbound sockets, and requires no API key. It proves plan production, the
-LangGraph pause/resume contract, approve, reject, respond/replan, and plan-edit
-paths, caller-tool identity binding alongside built-in Deep Agents tools, the
-final answer, and same-process state restoration. For journeys it additionally
-proves structured artifact declaration and validation, claim-basis labeling,
-citation downgrade flags, rubric pass/repair/cap/grader-error histories, the
-synchronous subagent path, and truthful capability reporting.
+The suite follows the LangChain package layout: `tests/unit_tests`,
+`tests/integration_tests`, `tests/evaluation`, and `tests/benchmarks`. The gated
+suites use an official-compatible deterministic fake chat model, deny outbound
+sockets, and require no API key. They prove plan production, nested tool
+authorization, sanitized streaming, the LangGraph pause/resume contract,
+approve, reject, respond/replan, plan editing, the final answer, and same-process
+state restoration. For journeys they additionally prove structured artifact
+declaration and validation, claim-basis labeling, citation downgrade flags,
+rubric pass/repair/cap/grader-error histories, the synchronous subagent path,
+and truthful capability reporting. Benchmarks remain an explicit local signal
+rather than a timing-sensitive CI gate.
 
 `package-check` builds twice, requires matching artifact hashes, installs the
 wheel with locked dependencies from the package-local uv cache in offline mode,

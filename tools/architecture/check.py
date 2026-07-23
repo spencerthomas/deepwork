@@ -237,6 +237,9 @@ class ArchitectureChecker:
             str(prefix): str(zone)
             for prefix, zone in graph.get("import_prefixes", {}).items()
         }
+        self.public_subpaths = {
+            str(specifier) for specifier in graph.get("public_subpaths", [])
+        }
         self.provider_modules = tuple(str(value) for value in graph.get("provider_modules", []))
         self.provider_locations = tuple(
             str(value).strip("/") for value in graph.get("provider_locations", [])
@@ -779,7 +782,11 @@ class ArchitectureChecker:
 
     def _is_private_import(self, specifier: str, zone: str) -> bool:
         target = self._target_zone(specifier)
-        if specifier.startswith(".") or target == zone:
+        if (
+            specifier.startswith(".")
+            or target == zone
+            or specifier in self.public_subpaths
+        ):
             return False
         normalized = specifier.replace(".", "/") if not specifier.startswith("@") else specifier
         segments = [part for part in normalized.split("/") if part not in {"", ".", ".."}]

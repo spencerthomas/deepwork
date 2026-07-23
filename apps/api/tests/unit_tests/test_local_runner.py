@@ -70,6 +70,7 @@ class _Source:
         expected_revision: int,
         steps: Sequence[str],
     ) -> _PlanUpdate:
+        _ = thread_id, interrupt_id, expected_revision, steps
         return _PlanUpdate()
 
     async def resume(
@@ -80,11 +81,13 @@ class _Source:
         decision: str,
         comment: str | None = None,
     ) -> _Run:
+        _ = thread_id, interrupt_id, decision
         if comment is not None:
             self.resume_comment = comment
         return _Run(run_id="run_2")
 
     async def stream(self, run: LocalRun) -> AsyncIterator[object]:
+        _ = run
         for event in self.events:
             yield event
 

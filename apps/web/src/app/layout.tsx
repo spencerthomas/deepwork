@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import { TasksProvider } from "@/lib/tasks-store";
 
+import "@deepwork/ui/status-panel.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

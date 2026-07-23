@@ -1,64 +1,103 @@
 SHELL := /bin/sh
 
-# Root command contract for humans and agents. Each target delegates to the
-# existing, reviewed per-workspace command so there is one stable entry point.
-# Targets that the scaffold has not yet implemented report the gap and fail
-# rather than inventing a passing substitute.
+PNPM ?= pnpm
+PYTHON ?= python3
+UV ?= uv
 
-.PHONY: help doctor bootstrap dev-demo check check-architecture check-docs \
+.PHONY: help doctor bootstrap dev-demo format format-check lint typecheck test build \
+	check check-ts check-python check-architecture check-docs contract package-check ci \
 	test-unit test-contract test-e2e-demo
 
 help:
 	@echo "Deep Work command contract:"
-	@echo "  make doctor             Report toolchain prerequisites (API + agent env + Node/pnpm)"
-	@echo "  make bootstrap          Install API, agent, and web dependencies"
+	@echo "  make doctor             Report all workspace toolchain prerequisites"
+	@echo "  make bootstrap          Install locked API, agent, and TypeScript dependencies"
 	@echo "  make dev-demo           Start the credential-free local product (./dev)"
-	@echo "  make check              Run all workspace checks (pnpm + API + agent)"
-	@echo "  make check-architecture Run architecture import/boundary checks"
-	@echo "  make check-docs         Validate and drift-check repository documentation"
-	@echo "  make test-unit          Run TypeScript and Python unit suites"
-	@echo "  make test-contract      Run the API contract suite"
-	@echo "  make test-e2e-demo      Not yet implemented (reports the gap)"
+	@echo "  make check              Run every TypeScript/Python/architecture/contract/docs gate"
+	@echo "  make package-check      Verify clean consumers for every publishable package"
+	@echo "  make ci                 Run the complete local CI-equivalent gate"
 
 doctor:
-	@echo "== API toolchain =="
+	@command -v $(PNPM) >/dev/null || { echo "missing pnpm; install the packageManager version from package.json" >&2; exit 1; }
+	@command -v $(PYTHON) >/dev/null || { echo "missing Python; apps/api requires Python 3.12" >&2; exit 1; }
+	@command -v $(UV) >/dev/null || { echo "missing uv; install it from https://docs.astral.sh/uv/" >&2; exit 1; }
+	@$(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else "Python 3.12 or newer is required for repository tooling")'
+	@$(PNPM) --version
+	@$(UV) --version
 	@$(MAKE) -C apps/api doctor
-	@echo "== Agent toolchain =="
 	@$(MAKE) -C packages/agent doctor
-	@echo "== Node.js =="
-	@node --version || { echo "Node.js >=24.14.0 <25 is required (or set DEEPWORK_NODE)" >&2; exit 2; }
-	@echo "== pnpm =="
-	@pnpm --version || { echo "pnpm is required; enable it with 'corepack enable'" >&2; exit 2; }
 
 bootstrap:
+	$(PNPM) install --frozen-lockfile
 	$(MAKE) -C apps/api bootstrap
 	$(MAKE) -C packages/agent bootstrap
-	pnpm install
 
 dev-demo:
 	./dev
 
-check:
-	pnpm check
+format:
+	$(PNPM) run format:ts
+	$(MAKE) -C apps/api format
+	$(MAKE) -C packages/agent format
+
+format-check:
+	$(PNPM) run format-check:ts
+	$(MAKE) -C apps/api format-check
+	$(MAKE) -C packages/agent format-check
+
+lint:
+	$(PNPM) run lint:ts
+	$(MAKE) -C apps/api lint
+	$(MAKE) -C packages/agent lint
+
+typecheck:
+	$(PNPM) run typecheck:ts
+	$(MAKE) -C apps/api typecheck
+	$(MAKE) -C packages/agent typecheck
+
+test:
+	$(PNPM) run test:ts
+	$(MAKE) -C apps/api test
+	$(MAKE) -C packages/agent test
+
+build:
+	$(PNPM) run build:ts
+	$(MAKE) -C apps/api build
+	$(MAKE) -C packages/agent build
+
+check-ts:
+	$(PNPM) run check:ts
+
+check-python:
 	$(MAKE) -C apps/api check
 	$(MAKE) -C packages/agent check
 
 check-architecture:
-	pnpm check-architecture
+	$(PNPM) run check-architecture:ts
+	$(MAKE) -C apps/api architecture
+	$(MAKE) -C packages/agent architecture
 
 check-docs:
-	python3 tools/docs/generate.py --check
-	python3 tools/docs/check.py
+	$(PYTHON) tools/docs/generate.py --check
+	$(PYTHON) tools/docs/check.py
 
-test-unit:
-	pnpm test
-	$(MAKE) -C apps/api test
-	$(MAKE) -C packages/agent test
-
-test-contract:
+contract:
+	$(PNPM) run contract:ts
 	$(MAKE) -C apps/api contract
 
+package-check:
+	$(PNPM) run package-check:ts
+	$(MAKE) -C apps/api package-check
+	$(MAKE) -C packages/agent package-check
+
+check: check-ts check-python check-architecture contract check-docs
+
+ci: check package-check
+
+test-unit: test
+
+test-contract: contract
+
 test-e2e-demo:
-	@echo "test-e2e-demo is not implemented yet (see DEBT-002 and the Wave 1 fixture" >&2
-	@echo "loop in docs/PLANS.md). Use 'make dev-demo' for a manual product run." >&2
+	@echo "test-e2e-demo is not implemented yet; use 'make dev-demo' for a manual product run." >&2
 	@exit 2

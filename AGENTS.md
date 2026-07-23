@@ -19,6 +19,7 @@ synchronize, backport, or modify the sibling from this repository.
 | UI and frontend | `docs/DESIGN.md`, `docs/FRONTEND.md` |
 | Security and operations | `docs/SECURITY.md`, `docs/RELIABILITY.md` |
 | Source and contract evidence | `docs/references/source-ledger.md` |
+| LangChain/OSS convention review | `.agents/skills/langchain-oss-maintainer/SKILL.md` |
 
 Read the nearest scoped `AGENTS.md` before editing. Generated views are outputs,
 not authority. Historical `docs/plan/`, `docs/research/`, and uncertain untracked

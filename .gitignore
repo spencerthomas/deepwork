@@ -25,6 +25,7 @@ src-tauri/target/
 .DS_Store
 *.log
 coverage/
+.coverage
 .vercel/
 *.tsbuildinfo
 .claude/

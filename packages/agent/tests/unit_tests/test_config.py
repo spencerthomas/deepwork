@@ -14,6 +14,7 @@ def test_default_config_requires_plan_approval() -> None:
     assert config.schema_version == 1
     assert config.runtime_mode == "local-runtime"
     assert config.require_plan_approval is True
+    assert config.require_tool_approval is True
     assert config.max_plan_steps == DEFAULT_MAX_PLAN_STEPS
 
 

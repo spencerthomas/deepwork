@@ -77,14 +77,17 @@ make test-contract # API contract suite
 The underlying commands still run directly if preferred:
 
 ```bash
-pnpm check
-python3 tools/docs/generate.py --check
-python3 tools/docs/check.py
+make doctor
+make check
+make package-check
 ```
 
-Continuous integration runs `make bootstrap`, `make check-docs`,
-`make check-architecture`, and `make check` on every pull request to `main`
-(`.github/workflows/checks.yml`), so the same contract gates merges.
+`pnpm check` delegates to the same complete repository check. It does not skip
+the Python API or agent projects. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+package-local iteration commands and pull-request conventions.
+
+Continuous integration runs the same `make ci` contract on every pull request
+to `main` (`.github/workflows/checks.yml`), so local and merge gates stay aligned.
 
 There is intentionally no executable `WORKFLOW.md`. Manual one-agent-per-worktree
 dispatch is current until `SPIKE-SYMPHONY-001` passes.

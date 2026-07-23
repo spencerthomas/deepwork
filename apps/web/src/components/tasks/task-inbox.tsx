@@ -11,6 +11,7 @@ import {
   Search,
   XCircle,
 } from "lucide-react";
+import { StatusPanel } from "@deepwork/ui";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -235,22 +236,13 @@ export function TaskInbox() {
       </div>
 
       {listError && (
-        <div
-          className="mb-4 flex items-center gap-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
-          role="alert"
-        >
-          <XCircle className="size-4 text-status-failed" />
-          <p className="min-w-0 flex-1 text-sm">
-            <span className="font-medium">Tasks unavailable.</span>{" "}
-            <span className="text-muted-foreground">{listError}</span>
-          </p>
-          <button
-            type="button"
-            onClick={refreshList}
-            className="shrink-0 text-[13px] font-medium text-status-failed hover:underline"
-          >
-            Try again
-          </button>
+        <div className="mb-4">
+          <StatusPanel
+            action={{ label: "Try again", onAction: refreshList }}
+            description={listError}
+            state="error"
+            title="Tasks unavailable"
+          />
         </div>
       )}
 

@@ -68,6 +68,11 @@
     "deepwork_api": "apps/api",
     "deepwork_agent": "packages/agent"
   },
+  "public_subpaths": [
+    "@deepwork/ui/status-panel.css",
+    "@deepwork/ui/tailwind-preset",
+    "@deepwork/ui/tokens.css"
+  ],
   "provider_modules": [
     "@anthropic-ai",
     "@langchain",

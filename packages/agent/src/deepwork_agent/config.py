@@ -19,6 +19,7 @@ class AgentConfig:
     schema_version: Literal[1] = 1
     runtime_mode: Literal["local-runtime"] = "local-runtime"
     require_plan_approval: bool = True
+    require_tool_approval: bool = True
     max_plan_steps: int = 6
 
     def __post_init__(self) -> None:

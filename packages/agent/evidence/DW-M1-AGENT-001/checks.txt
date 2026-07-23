@@ -1,11 +1,11 @@
-Recorded: 2026-07-23 AEST
+Recorded: 2026-07-23 UTC (journey-profile change, Linux CI worktree)
 make -C packages/agent doctor: PASS
 make -C packages/agent bootstrap: PASS (frozen package-local lock)
 make -C packages/agent lock-check: PASS
 make -C packages/agent format-check: PASS
 make -C packages/agent lint: PASS (Ruff, all checks passed)
 make -C packages/agent typecheck: PASS (ty, all checks passed)
-make -C packages/agent test: PASS (28 tests, outbound sockets disabled)
+make -C packages/agent test: PASS (73 tests, outbound sockets disabled)
 make -C packages/agent build: PASS (sdist and wheel)
 make -C packages/agent package-check: PASS
 git diff --check: PASS
@@ -16,7 +16,12 @@ production, authoritative LangGraph interrupt rotation, approval, rejection,
 bounded respond/replan, checkpoint plan editing with as_node="plan", caller-tool
 identity binding alongside Deep Agents built-ins, bounded plan parsing,
 final-answer trust, truthful managed-provider capability reporting, and
-restoration of completed state from the same in-memory local session.
+restoration of completed state from the same in-memory local session. The
+journey suite additionally proves structured artifact declaration and
+bounded validation, evidence/inference/unverified claim labeling, citation
+downgrade flags, rubric pass, repair-history, iteration-cap, and
+grader-error outcomes, the synchronous subagent task-tool path, rejection
+without artifact placeholders, and truthful journey capability reporting.
 
 The package-local forbidden-import tests scan every production Python import and
 prove an intentional FastAPI import is reported with its exact file and root.

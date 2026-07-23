@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function CommandBar({
   const { mode, tasks } = useTasksStore();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -62,6 +63,12 @@ export function CommandBar({
   );
 
   useEffect(() => setIndex(0), [query]);
+
+  // Keep the highlighted row in view as arrow/Home/End move it through an
+  // overflowing result list.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [index]);
 
   if (!open) return null;
 
@@ -87,6 +94,14 @@ export function CommandBar({
           if (event.key === "ArrowUp") {
             event.preventDefault();
             setIndex((current) => Math.max(current - 1, 0));
+          }
+          if (event.key === "Home" && filtered.length > 0) {
+            event.preventDefault();
+            setIndex(0);
+          }
+          if (event.key === "End" && filtered.length > 0) {
+            event.preventDefault();
+            setIndex(filtered.length - 1);
           }
           const selected = filtered[index];
           if (event.key === "Enter" && selected) run(selected.href);
@@ -118,6 +133,7 @@ export function CommandBar({
             return (
               <li key={command.id}>
                 <button
+                  ref={i === index ? activeRef : undefined}
                   type="button"
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => run(command.href)}

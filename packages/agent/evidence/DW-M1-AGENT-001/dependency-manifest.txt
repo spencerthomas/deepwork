@@ -1,0 +1,16 @@
+Recorded: 2026-07-23 AEST
+Resolution source: public PyPI index
+Runtime dependencies: none
+Development dependencies:
+- pytest==9.1.1
+- pytest-socket==0.8.0
+- ruff==0.15.22
+- ty==0.0.62
+Build backend:
+- hatchling==1.31.0
+
+Exact direct and transitive build/development hashes and provenance are retained
+in packages/agent/uv.lock. make build invokes Hatchling from that frozen environment.
+Installed distribution license metadata is retained in licenses.txt.
+No Deep Agents, LangChain, LangGraph, provider, application-service, or credential
+dependency is installed while SPIKE-CONFIG-001 remains open.

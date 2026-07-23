@@ -1,0 +1,20 @@
+{
+  "wheel": "deepwork_agent-0.0.0-py3-none-any.whl",
+  "wheel_sha256": "74854fabfc0acca1b2a1f859a7de408a3ac07f25a7e962d35377ad4537825d8c",
+  "source_distribution": "deepwork_agent-0.0.0.tar.gz",
+  "source_distribution_sha256": "699bd696eec25534786756b2ec0868e5e27a334f8a6193b8ec81ca69228ca233",
+  "py_typed": true,
+  "public_exports": [
+    "AgentPackageConfig",
+    "CONFIG_CONTRACT_GATE",
+    "RuntimeAvailability",
+    "RuntimeCapabilityUnavailable",
+    "UnavailableAgentState",
+    "create_graph",
+    "initial_unavailable_state",
+    "runtime_availability"
+  ],
+  "runtime_available": false,
+  "contract_gate": "SPIKE-CONFIG-001",
+  "install_index": "disabled"
+}

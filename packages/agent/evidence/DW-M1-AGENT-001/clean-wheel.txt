@@ -1,0 +1,9 @@
+Recorded: 2026-07-23 AEST
+Command: make -C packages/agent package-check
+Result: PASS
+
+The verifier built the wheel and source distribution, created a clean temporary
+Python 3.12 virtual environment, removed PYTHONPATH, installed the wheel with
+--no-index and --no-deps, imported every declared public export, found py.typed,
+confirmed runtime_available=false and SPIKE-CONFIG-001, and removed the temporary
+consumer. Exact artifact hashes are in artifacts.json.

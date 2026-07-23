@@ -251,18 +251,18 @@ Acceptance:
 ## Validation and proof
 
 The implementation must make these package-local commands real and retain their
-exact output; they do not exist merely because this draft names them:
+exact output; they do not exist merely because this plan names them:
 
 ```text
 make -C packages/agent doctor
 make -C packages/agent bootstrap
+make -C packages/agent lock-check
 make -C packages/agent format-check
 make -C packages/agent lint
 make -C packages/agent typecheck
 make -C packages/agent test
 make -C packages/agent build
 make -C packages/agent package-check
-uv lock --project packages/agent --check
 git diff --check
 git diff --name-only 3dbe6629d8053380ab6a8bff6d2fcb462f854256...HEAD
 ```
@@ -282,6 +282,22 @@ Expected proof:
 The coordinator must separately run root documentation, architecture, generated,
 and integration checks after integration. This cell cannot edit those tools or
 claim their success.
+
+Implementation results at 2026-07-23 12:33 AEST:
+
+- `doctor`, frozen `bootstrap`, Ruff format/lint, `ty`, pytest, build,
+  clean-wheel installation, lock check, and `git diff --check` passed.
+- The unit suite passed 11 tests with sockets disabled, including a direct blocked
+  socket assertion and an AST import-boundary scan.
+- The clean consumer used Python isolated mode, no `PYTHONPATH`, `--no-index`, and
+  `--no-deps`; it found `py.typed`, imported every public export, and observed only
+  the explicit `SPIKE-CONFIG-001` unavailable state.
+- Two consecutive builds produced identical SHA-256 values: wheel
+  `74854fabfc0acca1b2a1f859a7de408a3ac07f25a7e962d35377ad4537825d8c`
+  and source distribution
+  `699bd696eec25534786756b2ec0868e5e27a334f8a6193b8ec81ca69228ca233`.
+- Sanitized proof is retained under
+  `packages/agent/evidence/DW-M1-AGENT-001/`.
 
 ## Idempotence, rollback, and recovery
 
@@ -318,10 +334,16 @@ product integration.
   metadata, authority, scenarios, gate fallbacks, commands, and governed paths.
 - [x] 2026-07-23 - Plan promoted to `reviewed`; review and completed gate-review
   metadata recorded, blockers confirmed empty, and `dispatch_ready` set true.
-- [ ] Milestone 1 complete with retained toolchain/dependency evidence.
-- [ ] Milestone 2 complete with typed boundary and no-network evidence.
-- [ ] Milestone 3 complete with clean-wheel evidence.
-- [ ] Milestone 4 independent implementation review accepted and handed off.
+- [x] 2026-07-23 12:20 AEST - Milestone 1 complete; Python/uv and exact public
+  package pins retained in `toolchain.txt`, `dependency-manifest.txt`, and
+  `uv.lock`.
+- [x] 2026-07-23 12:28 AEST - Milestone 2 complete; deliberate typed exports,
+  explicit unavailable graph boundary, forbidden-import fixtures, and 11 no-network
+  unit tests pass.
+- [x] 2026-07-23 12:33 AEST - Milestone 3 complete; wheel/sdist build, isolated
+  no-index wheel install, `py.typed`, public exports, and reproducible hashes
+  retained in the evidence directory.
+- [ ] Milestone 4 - independent implementation review accepted and handed off.
 
 ## Surprises and discoveries
 
@@ -332,6 +354,23 @@ product integration.
 - 2026-07-23 - `SPIKE-WORKTREE-001` limits concurrent full-stack/product-demo
   work, not disjoint package-only planning. Consequence: this lane may be reviewed
   in parallel but may not start a product demo.
+- 2026-07-23 12:20 AEST - uv selected a cached managed CPython 3.12.11 for the
+  frozen environment while the package doctor used Homebrew CPython 3.12.7.
+  Consequence: `requires-python` is pinned to the reviewed Python 3.12 support
+  line, and both exact execution versions are retained rather than implying one
+  hidden interpreter.
+- 2026-07-23 12:33 AEST - The minimal standard-library runtime package builds
+  reproducibly without Deep Agents/LangChain/LangGraph dependencies. Consequence:
+  `SPIKE-CONFIG-001` stays open, `langgraph.json` stays absent, and later runtime
+  work can replace the explicit unavailable boundary only through a reviewed plan.
+- 2026-07-23 12:34 AEST - A raw `uv lock --check` attempted to initialize uv's
+  user cache outside the governed package and failed under workspace isolation.
+  Consequence: `make -C packages/agent lock-check` now applies the same package-
+  local cache/environment boundary as every other uv command.
+- 2026-07-23 12:38 AEST - A PEP 517-only Hatchling requirement did not place its
+  transitive build tools in the package lock. Consequence: exact Hatchling is also
+  a locked development tool, and `make build` invokes it from the frozen package
+  environment rather than resolving an isolated build environment at run time.
 
 ## Decision log
 
@@ -350,9 +389,32 @@ product integration.
   confirmed the exact base, package-only scope, scenario contribution, gate
   fallbacks, validation contract, and disjoint governed paths. Approved by:
   `api-package-reviewer`.
+- 2026-07-23 12:20 AEST - Decision: pin Hatchling 1.31.0, pytest 9.1.1,
+  pytest-socket 0.8.0, Ruff 0.15.22, and ty 0.0.62 in the package-owned manifest
+  and lock. Rationale: these current public-index releases resolved for Python
+  3.12 with no runtime dependencies; exact hashes remain in `uv.lock`.
+- 2026-07-23 12:28 AEST - Decision: expose `create_graph()` as a typed fail-closed
+  boundary and omit `langgraph.json`. Rationale: the accepted fallback prohibits
+  guessing configuration or graph-target contracts while `SPIKE-CONFIG-001` is
+  open. Consequence: imports and artifact checks are real, but runtime capability
+  remains explicitly unavailable.
+- 2026-07-23 12:34 AEST - Decision: make lock verification a package-local Make
+  target instead of relying on uv's default user cache. Rationale: all package
+  commands must be reproducible inside governed paths without hidden home state.
+- 2026-07-23 12:38 AEST - Decision: build through locked Hatchling instead of an
+  ephemeral PEP 517 environment. Rationale: the package lock must cover the actual
+  build backend and its transitive tools, not only lint/test/type dependencies.
 
 ## Outcomes and retrospective
 
-Pending. At completion, record the exact accepted commit, built artifacts,
-dependency/license evidence, command results, scenario contributions, deviations,
-remaining gates, coordinator integration needs, and any follow-up ExecPlan IDs.
+Implementation is complete and awaits a fresh independent review. The package is
+independently locked, typed, formatted, linted, type-checked, network-denied,
+buildable, clean-installable, and reproducible. It contributes enforceable package
+direction to `AC-DW-FND-001-03` and proves private runtime packages are not a
+default prerequisite for `AC-DW-FND-001-07`.
+
+No external runtime, provider call, credential, `langgraph.json`, application
+import, root/shared edit, migration, deployment, or publication was introduced.
+`SPIKE-HARNESS-ARCH-001` and `SPIKE-CONFIG-001` remain open under their reviewed
+fallbacks. The exact implementation commit, independent review result, and
+coordinator integration commit remain to be recorded after this author hands off.

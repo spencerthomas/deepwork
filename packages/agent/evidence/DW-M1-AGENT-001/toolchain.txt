@@ -1,0 +1,12 @@
+Recorded: 2026-07-23 AEST
+Base commit: bf2b68a5f5c32557eb8b6fced4887d28e6cf5162
+Host doctor Python: CPython 3.12.7
+Frozen uv environment Python: CPython 3.12.11
+uv: 0.11.8 (Homebrew 2026-04-27 aarch64-apple-darwin)
+ruff: 0.15.22
+ty: 0.0.62 (df75992e7 2026-07-21)
+pytest: 9.1.1
+pytest-socket: 0.8.0
+build backend: hatchling 1.31.0
+
+The package requires Python ==3.12.* and owns its uv environment and lock.

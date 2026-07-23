@@ -93,7 +93,7 @@ export function TaskDetail({
     >
       <header className="task-detail-header">
         <div>
-          <p className="eyebrow">Selected task</p>
+          <p className="eyebrow">Task · {task.taskId.slice(0, 12)}</p>
           <h2 id="task-detail-heading">{task.title}</h2>
           <div className="task-identifiers">
             <span>Task {task.taskId}</span>
@@ -124,77 +124,96 @@ export function TaskDetail({
         </div>
       ) : null}
 
-      {plan ? (
-        <>
-          <p
-            id={planFocusId}
-            className="plan-focus-status"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            tabIndex={-1}
-          >
-            {planError
-              ? `Plan review status: ${planError}`
-              : `Plan revision ${plan.revision} is ready for review.`}
-          </p>
-          <PlanReviewCard
-            key={`${activeInterrupt?.interruptId ?? "readonly"}:${plan.revision}`}
-            plan={plan}
-            activeInterrupt={activeInterrupt}
-            saving={updatingPlan}
-            error={planError}
-            onUpdate={onUpdatePlan}
-            returnFocusId={planFocusId}
-          />
-        </>
-      ) : null}
-
-      {activeInterrupt && !terminal ? (
-        <ApprovalCard
-          key={activeInterrupt.interruptId}
-          interrupt={activeInterrupt}
-          onDecide={onDecide}
-          submitting={submittingDecision}
-          submittedDecision={submittedDecision}
-          error={actionError}
-        />
-      ) : null}
-
-      <div className="run-section-heading">
-        <div>
-          <p className="eyebrow">Live activity</p>
-          <h2>Run timeline</h2>
-        </div>
-        <span>{events.length} events</span>
-      </div>
-
-      <RunTimeline events={events} />
-
-      <EvidencePanel evidence={evidence} />
-
-      {terminal ? (
-        <div className={`terminal-card terminal-${task.status}`} role="status" aria-live="polite">
-          <span className="terminal-icon" aria-hidden="true">
-            {task.status === "completed" ? "✓" : "×"}
-          </span>
-          <div>
-            <strong>
-              {task.status === "completed"
-                ? "Run completed"
-                : task.status === "rejected"
-                  ? "Run rejected"
-                  : "Run stopped"}
-            </strong>
-            <p>
-              {detail?.result ??
-                (task.status === "completed"
-                  ? "The task reached a successful terminal event."
-                  : "The task reached a terminal state without a successful result.")}
-            </p>
+      <div className="task-detail-layout">
+        <aside className="task-review-rail" aria-label="Run review and evidence">
+          <div className="review-rail-heading">
+            <div>
+              <p className="eyebrow">Run context</p>
+              <h2>Review and evidence</h2>
+            </div>
+            <span>Live controls</span>
           </div>
+
+          {plan ? (
+            <>
+              <p
+                id={planFocusId}
+                className="plan-focus-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                tabIndex={-1}
+              >
+                {planError
+                  ? `Plan review status: ${planError}`
+                  : `Plan revision ${plan.revision} is ready for review.`}
+              </p>
+              <PlanReviewCard
+                key={`${activeInterrupt?.interruptId ?? "readonly"}:${plan.revision}`}
+                plan={plan}
+                activeInterrupt={activeInterrupt}
+                saving={updatingPlan}
+                error={planError}
+                onUpdate={onUpdatePlan}
+                returnFocusId={planFocusId}
+              />
+            </>
+          ) : null}
+
+          {activeInterrupt && !terminal ? (
+            <ApprovalCard
+              key={activeInterrupt.interruptId}
+              interrupt={activeInterrupt}
+              onDecide={onDecide}
+              submitting={submittingDecision}
+              submittedDecision={submittedDecision}
+              error={actionError}
+            />
+          ) : null}
+
+          <EvidencePanel evidence={evidence} />
+        </aside>
+
+        <div className="task-thread-column">
+          <div className="run-section-heading">
+            <div>
+              <p className="eyebrow">Live activity</p>
+              <h2>Run timeline</h2>
+            </div>
+            <span>{events.length} events</span>
+          </div>
+
+          <RunTimeline events={events} />
+
+          {terminal ? (
+            <div
+              className={`terminal-card terminal-${task.status}`}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="terminal-icon" aria-hidden="true">
+                {task.status === "completed" ? "✓" : "×"}
+              </span>
+              <div>
+                <span className="terminal-label">Run result</span>
+                <strong>
+                  {task.status === "completed"
+                    ? "Run completed"
+                    : task.status === "rejected"
+                      ? "Run rejected"
+                      : "Run stopped"}
+                </strong>
+                <p>
+                  {detail?.result ??
+                    (task.status === "completed"
+                      ? "The task reached a successful terminal event."
+                      : "The task reached a terminal state without a successful result.")}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </section>
   );
 }

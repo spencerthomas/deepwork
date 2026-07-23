@@ -38,12 +38,15 @@ export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
     <section className="composer-card" aria-labelledby="composer-heading">
       <div className="composer-heading">
         <div>
-          <p className="eyebrow">Start something</p>
-          <h1 id="composer-heading">What should Deep Work take on?</h1>
+          <p className="eyebrow">Delegate work</p>
+          <h2 id="composer-heading">What should Deep Work take on?</h2>
         </div>
-        <span className="composer-badge">New task</span>
+        <span className="composer-badge">
+          <span aria-hidden="true" />
+          Local agent
+        </span>
       </div>
-      <form onSubmit={submit}>
+      <form className="composer-form" onSubmit={submit}>
         <label className="sr-only" htmlFor={promptId}>
           Task prompt
         </label>
@@ -57,7 +60,7 @@ export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
           }}
           onKeyDown={submitWithShortcut}
           placeholder="Describe the outcome, constraints, and what a good result looks like…"
-          rows={4}
+          rows={3}
           aria-describedby={hintId}
           disabled={busy}
         />
@@ -85,7 +88,9 @@ export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
             ) : (
               <>
                 Create task
-                <span aria-hidden="true">→</span>
+                <span className="submit-arrow" aria-hidden="true">
+                  ↵
+                </span>
               </>
             )}
           </button>

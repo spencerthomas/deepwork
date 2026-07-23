@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "observations": [
+    {
+      "source": "SRC-LC-MESSAGES",
+      "tier": "official-documented",
+      "result": "Standard image and file content blocks describe inline base64, URL reference, and provider-managed file ID candidate representations."
+    },
+    {
+      "source": "SRC-LG-RUNS",
+      "tier": "installed-public",
+      "result": "The examined public Classic client sends graph-defined JSON input and does not establish a generic attachment upload or acceptance schema."
+    },
+    {
+      "source": "non-production-live-profile",
+      "tier": "unknown",
+      "result": "Not supplied or authorized; hosted object, scanner, and runtime rows remain blocked-live-evidence."
+    }
+  ]
+}

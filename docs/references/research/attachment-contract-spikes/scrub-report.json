@@ -1,0 +1,14 @@
+{
+  "bytes_scanned": 4384123,
+  "files_scanned": 9,
+  "finding_count": 0,
+  "findings": [],
+  "scan_date": "2026-07-23",
+  "schema_version": "1.0",
+  "zero_customer_or_tenant_data": true,
+  "zero_raw_headers_or_cookies": true,
+  "zero_reusable_endpoints_or_grants": true,
+  "zero_secrets": true,
+  "zero_unsafe_binary_content": true,
+  "zero_unsanitized_absolute_paths": true
+}

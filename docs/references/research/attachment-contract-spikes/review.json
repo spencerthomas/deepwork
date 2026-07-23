@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "review_status": "pending-independent-review",
+  "reviewed_commit": null,
+  "reviewed_scope_sha256": "3b52de1224cdd46183ed35a3be2e9410b3f3985a921bc94be652ffed1f07ff6e",
+  "reviews": [
+    {
+      "role": "runtime-contract",
+      "reviewer": null,
+      "verdict": "pending",
+      "findings": []
+    },
+    {
+      "role": "security",
+      "reviewer": null,
+      "verdict": "pending",
+      "findings": []
+    },
+    {
+      "role": "product",
+      "reviewer": null,
+      "verdict": "pending",
+      "findings": []
+    }
+  ],
+  "finding_resolutions": [],
+  "per_conclusion_disposition": {
+    "accepted-fixture-only": "pending",
+    "blocked-live-evidence": "pending",
+    "rejected": "pending",
+    "unsupported": "pending",
+    "unknown": "pending"
+  },
+  "self_approval": false
+}

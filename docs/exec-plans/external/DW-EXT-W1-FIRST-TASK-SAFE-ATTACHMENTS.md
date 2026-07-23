@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS
 title: External dispatch - add a file to the first task safely
-status: ready-for-external-dispatch
+status: in-progress
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
 branch: external/research/first-task-safe-attachments
 owner: external-attachment-contract-researcher
@@ -253,3 +253,82 @@ application adapters, object/scanner configuration, capability flags, normalized
 contracts, or release scope. No worktree creation, push, merge, deployment,
 publication, production mutation, credential collection, external purchase, or
 destructive cleanup is authorized by this packet.
+
+## Progress
+
+- [x] 2026-07-23: Verified the exact clean worktree, branch
+  `external/research/first-task-safe-attachments`, seed
+  `e0f1087b3fd6af530288fb18e3213c7c08459add`, and base ancestry from
+  `fff1bfd278d550d01de6e8d74f553f45c4003a8c`.
+- [x] 2026-07-23: Read the repository and documentation instructions, this full
+  packet, and the canonical architecture, product, security, reliability,
+  attachment, quality, acceptance, glossary, and source-ledger references.
+- [x] 2026-07-23: Verified the read-only `SRC-LC`, `SRC-DA`, and `SRC-LG`
+  checkouts at their exact pinned commits.
+- [x] 2026-07-23: Created the isolated project manifest and locked only its
+  credential-free test dependency set using CPython 3.12.11.
+- [x] Freeze the immutable pre-observation scope and generate the complete
+  derived matrix without narrowing unsupported or unknown rows.
+- [x] Complete the deterministic no-network adapters, harmless fixtures, and
+  negative/recovery tests.
+- [x] Generate retained inventory, scrub, command, and report evidence; the
+  review record is staged with pending independent dispositions.
+- [x] Run every required validation, offline replay, scope, documentation, and
+  base-qualified diff command.
+- [ ] Resolve findings, obtain a fresh independent review, and commit only the
+  allowed paths.
+
+## Surprises and discoveries
+
+- The pinned Classic Agent Server contract accepts graph-defined JSON input; the
+  public generic server API does not establish a source-independent attachment
+  upload endpoint or media schema.
+- Pinned LangChain documentation defines standard message content blocks for
+  plain text, image, and generic file data using inline data, URL, and
+  provider-managed identifiers. That public message representation is not by
+  itself proof that a selected deployed graph, model, authorization boundary, or
+  Classic account accepts or safely retains any attachment.
+- No sanctioned non-production object store, scanner, or Classic runtime profile
+  was supplied with this dispatch. All rows needing hosted behavior therefore
+  remain `blocked-live-evidence`; the live suite is not authorized to run.
+- The immutable scope derives 912 rows: four media classes by two Deep Work byte
+  boundaries by one Classic baseline by 38 lifecycle/abuse operations by three
+  candidate content representations. The decided distribution is 624
+  `accepted-fixture-only`, 240 `blocked-live-evidence`, 16 `rejected`, 24
+  `unknown`, and 8 `unsupported`, with zero `accepted-live`.
+- The exact root-invoked pytest command initially selected the repository test
+  configuration. A project-owned pytest plugin now confines collection to the
+  isolated spike tests without modifying shared configuration.
+
+## Decision log
+
+- 2026-07-23: Keep the project dependency-light and deterministic. Standard
+  library code owns the matrix, fake adapters, inventory, and scrubber; the only
+  test dependency is exactly pinned.
+- 2026-07-23: Treat each discovered standard content-block form as a candidate
+  representation that expands the matrix. Do not promote it to an accepted
+  Classic transfer contract without graph, model, account, and live cleanup
+  evidence.
+- 2026-07-23: Preserve the packet fallback for every unaccepted media/source row:
+  attachment capability remains disabled and bounded pasted text remains the
+  separately validated path.
+- 2026-07-23: Commit `matrix-scope.json` alone before matrix generation. Its
+  validator compares the current bytes with the immutable add-commit blob and
+  rejects any observation commit that precedes or shares that add commit.
+- 2026-07-23: Treat deterministic `clean` as necessary but insufficient. Only a
+  separately bound transfer intent can move a fake object to transfer-ready, and
+  hosted behavior remains unaccepted.
+
+## Outcomes and retrospective
+
+The immutable scope and complete 912-row matrix are retained with deterministic
+no-network policy, quarantine, scanner-input, authorization, transfer, deletion,
+retry, and restart fixtures. All required ordinary, offline, scope, scrub,
+documentation, and base-qualified validation commands pass. Independent
+runtime-contract, security, and product review remains before final handoff.
+
+No attachment capability is enabled. Hosted object-store, scanner, and Classic
+runtime rows remain blocked without sanctioned non-production access. The
+credential-free fixture/demo and bounded pasted-text path remain usable. This
+packet remains supporting evidence only and neither blocks nor satisfies
+`E2E-V1-01-FIRST-VALUE`.

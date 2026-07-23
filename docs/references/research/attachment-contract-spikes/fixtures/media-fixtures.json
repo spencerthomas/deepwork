@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "fixtures": [
+    {
+      "media_class": "bounded-text-file",
+      "filename": "notes.txt",
+      "declared_media_type": "text/plain",
+      "encoding": "utf-8",
+      "content": "Synthetic bounded text attachment.\n"
+    },
+    {
+      "media_class": "image",
+      "filename": "pixel.png",
+      "declared_media_type": "image/png",
+      "encoding": "base64",
+      "content": "iVBORw0KGgo="
+    },
+    {
+      "media_class": "pdf",
+      "filename": "document.pdf",
+      "declared_media_type": "application/pdf",
+      "encoding": "utf-8",
+      "content": "%PDF-1.4\n% harmless synthetic fixture\n"
+    },
+    {
+      "media_class": "code",
+      "filename": "example.py.txt",
+      "declared_media_type": "text/plain",
+      "encoding": "utf-8",
+      "content": "result = 2 + 2  # inert text fixture\n"
+    }
+  ]
+}

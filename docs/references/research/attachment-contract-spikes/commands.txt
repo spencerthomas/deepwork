@@ -1,0 +1,89 @@
+SPIKE-ATTACH-001 command record
+date: 2026-07-23
+working directory: repository root
+environment dumps: not captured
+
+attempt 01
+command: uv lock --project tools/contract-spikes/attachments
+exit: 1
+result: sandbox denied access to the uv cache before dependency resolution
+resolution: reran with approved cache access; no project scope or dependency was broadened
+
+required command 01
+command: uv lock --project tools/contract-spikes/attachments
+exit: 0
+result: resolved 7 packages
+
+required command 02
+command: uv sync --project tools/contract-spikes/attachments --frozen
+exit: 0
+result: isolated CPython 3.12.11 environment synchronized
+
+required command 03
+command: uv run --project tools/contract-spikes/attachments --frozen pytest -m 'not live_contract'
+exit: 0
+result: 36 passed, 1 live-contract test deselected
+
+retained-output command
+command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.generate_matrix docs/references/research/attachment-contract-spikes/matrix-scope.json docs/references/research/attachment-contract-spikes/matrix.json
+exit: 0
+result: generated 912 rows
+
+required command 04
+command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.inventory --output docs/references/research/attachment-contract-spikes/versions.json
+exit: 0
+result: wrote sanitized version, source-pin, and fixture-hash inventory
+
+required command 05
+command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.validate_matrix docs/references/research/attachment-contract-spikes/matrix.json --scope docs/references/research/attachment-contract-spikes/matrix-scope.json --require-complete-cross-product --reject-unresolved-precedence-conflicts
+exit: 0
+result: 912 valid rows; accepted-fixture-only=624, blocked-live-evidence=240, rejected=16, unknown=24, unsupported=8, accepted-live=0
+
+required command 06
+command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.scrub docs/references/research/attachment-contract-spikes
+exit: 0
+result: zero findings
+
+required command 07
+command: uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.validate_scope --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
+exit: 0
+result: immutable scope and allowed-path validation passed
+
+required command 08
+command: uv lock --project tools/contract-spikes/attachments --check --offline
+exit: 0
+result: resolved 7 packages from local offline state
+
+required command 09
+command: UV_OFFLINE=true uv run --project tools/contract-spikes/attachments --frozen pytest -m 'not live_contract'
+exit: 0
+result: 36 passed, 1 live-contract test deselected
+
+required command 10
+command: python3 tools/docs/generate.py --check
+exit: 0
+result: 6 generated documents verified
+
+required command 11
+command: python3 tools/docs/check.py
+exit: 0
+result: documentation validation passed
+
+required command 12
+command: git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
+exit: 0
+result: no whitespace errors in committed base-qualified diff at execution time
+
+required command 13
+command: git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c
+exit: 0
+result: allowed paths only; final committed list recorded at handoff
+
+required command 14
+command: git status --short
+exit: 0
+result: candidate evidence was uncommitted at execution time; final clean status recorded after handoff commit
+
+live command
+status: not run
+reason: sanctioned non-production object-store, scanner, and Classic runtime dependencies were not supplied; live rows remain blocked-live-evidence

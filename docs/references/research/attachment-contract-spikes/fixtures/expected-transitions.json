@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "invariants": [
+    "Quarantine creation binds actor, workspace, task, and object while agent visibility is denied.",
+    "Clean scanner output is necessary but cannot alone authorize a transfer.",
+    "Unsafe, error, timeout, and unavailable scanner output remains invisible and fails closed.",
+    "Transfer intent and receipt verify destination, binding, expiry, hash, size, and idempotency.",
+    "Restart recovery cannot promote quarantined, unsafe, or unknown state to clean.",
+    "Local deletion and provider deletion are separately auditable."
+  ]
+}

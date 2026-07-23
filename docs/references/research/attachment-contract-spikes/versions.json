@@ -1,0 +1,44 @@
+{
+  "collection_date": "2026-07-23",
+  "evidence_pins": {
+    "SRC-DA": {
+      "commit": "7794b61a6e76230e8c7a49bdce808b3728305914",
+      "package": "deepagents",
+      "package_version": "0.6.12",
+      "role": "pinned reference behavior, not hosted-service authority"
+    },
+    "SRC-LC": {
+      "commit": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+      "role": "official documentation and public message content representations"
+    },
+    "SRC-LG": {
+      "commit": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+      "package": "langgraph-sdk",
+      "package_version": "0.4.2",
+      "role": "public Classic run input client, not attachment acceptance proof"
+    }
+  },
+  "fixture_sha256": {
+    "expected-transitions.json": "d6a2c30869718f93d73e2935e725afef92d3eff704b92579e3db525b19e2f481",
+    "media-fixtures.json": "e3ebe90118fe8b67e2adee566d417154661274875b82b28c2ff1de49590a4d13",
+    "public-observations.json": "b0167a01044f8662a7d8f5869459460c408f30c134b9a96b598ccf0d1dd257e7"
+  },
+  "live_dependencies": {
+    "account_tier": "unknown",
+    "authentication_context": "not-supplied",
+    "classic_runtime_server": "not-supplied",
+    "object_store": "not-supplied",
+    "region": "unknown",
+    "scanner": "not-supplied"
+  },
+  "platform": "darwin",
+  "project": {
+    "attachment-contract-spikes": "0.1.0",
+    "hatchling": "not-installed",
+    "pytest": "9.0.2"
+  },
+  "python": "3.12.11",
+  "schema_version": "1.0",
+  "scope_sha256": "3b52de1224cdd46183ed35a3be2e9410b3f3985a921bc94be652ffed1f07ff6e",
+  "uv": "uv 0.11.8 (Homebrew 2026-04-27 aarch64-apple-darwin)"
+}

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling==1.28.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "attachment-contract-spikes"
+version = "0.1.0"
+description = "Credential-free attachment contract matrix and deterministic safety harness"
+requires-python = ">=3.12,<3.15"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest==9.0.2",
+]
+
+[project.entry-points.pytest11]
+attachment-contract-spikes = "attachment_contract_spikes.pytest_plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/attachment_contract_spikes"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -q"
+testpaths = ["tests"]
+markers = [
+  "live_contract: requires explicitly sanctioned non-production object, scanner, and Classic runtime access",
+]

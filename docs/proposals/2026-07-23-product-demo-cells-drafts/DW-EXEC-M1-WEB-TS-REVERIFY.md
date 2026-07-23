@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: cad9d8a778c88f837d690d79ba84735660531f9d
 last_verified_commit: null
 risk: medium
-governed_paths: [docs/exec-plans/active/DW-EXEC-M1-WEB-TS-REVERIFY.md]
+governed_paths: [docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-WEB-TS-REVERIFY.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001, SPIKE-PWA-001]
 decision_gates: [DEC-004, DEC-006, DEC-022, DEC-023, DEC-025, DEC-033, DEC-034]
 gate_review_status: unreviewed
@@ -30,6 +30,15 @@ blockers: []
 ---
 
 # Reverify TypeScript packages, generated client, adapters, and web
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. It
+depends on `local:DW-M1-WEB-LOCK-EXTENSION-001`, a sibling draft in this same
+archive that is itself unreviewed and depends transitively on PR #9's
+unindexed `docs/proposals/2026-07-23-ts-proof-consumer-drafts/` archive. Treat
+every claim below as proposed, not authoritative, until a coordinator
+independently reviews, rebases, and resolves those references, and promotes a
+rewritten version to `docs/exec-plans/active/`.
 
 ## Purpose and observable result
 

@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: 9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2
 last_verified_commit: null
 risk: medium
-governed_paths: [apps/web/**, docs/exec-plans/active/DW-EXEC-M1-WEB-SHELL-HARNESS.md]
+governed_paths: [apps/web/**, docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-WEB-SHELL-HARNESS.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001, SPIKE-PWA-001]
 decision_gates: [DEC-004, DEC-006, DEC-007, DEC-033, DEC-034, DEC-042]
 gate_review_status: unreviewed
@@ -30,6 +30,16 @@ blockers: []
 ---
 
 # Responsive browser-local web shell harness
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. It
+depends on `local:DW-M1-TS-VERIFY-001`, which resolves only to an unindexed
+draft in PR #9's `docs/proposals/2026-07-23-ts-proof-consumer-drafts/` archive,
+and it cites a commit SHA (`26c698b30ff08d5122cfaeedbd4a95296a7884f4`, below)
+that does not exist in repo history. Treat every claim below as proposed, not
+authoritative, until a coordinator independently reviews, rebases, and
+resolves those references, and promotes a rewritten version to
+`docs/exec-plans/active/`.
 
 ## Purpose and observable result
 

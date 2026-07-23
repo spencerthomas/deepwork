@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: 9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2
 last_verified_commit: null
 risk: high
-governed_paths: [apps/api/src/deepwork_api/adapters/product_demo/**, apps/api/src/deepwork_api/bootstrap/product_demo.py, apps/api/src/deepwork_api/workers/product_demo_stack.py, apps/api/tests/integration_tests/product_demo/**, apps/web/src/product-demo/**, apps/web/tests/product-demo/**, tools/product_demo/**, docs/exec-plans/active/DW-EXEC-M1-PRODUCT-DEMO-INTEGRATION.md]
+governed_paths: [apps/api/src/deepwork_api/adapters/product_demo/**, apps/api/src/deepwork_api/bootstrap/product_demo.py, apps/api/src/deepwork_api/workers/product_demo_stack.py, apps/api/tests/integration_tests/product_demo/**, apps/web/src/product-demo/**, apps/web/tests/product-demo/**, tools/product_demo/**, docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-PRODUCT-DEMO-INTEGRATION.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001, SPIKE-WORKTREE-001, SPIKE-DEV-OBS-001, SPIKE-STREAM-001, SPIKE-HITL-001, SPIKE-ARTIFACT-001, SPIKE-MDA-001, SPIKE-FLEET-001, SPIKE-DIRECT-STREAM-001]
 decision_gates: [DEC-023, DEC-026, DEC-033, DEC-034, DEC-035, DEC-038]
 gate_review_status: unreviewed
@@ -30,6 +30,21 @@ blockers: [local:DW-M1-DUAL-STACK-POLICY-EXCEPTION-001]
 ---
 
 # Credential-free full product-demo integration and isolation acceptance
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. Its
+dependency list names `local:DW-M1-PRODUCT-DEMO-API-RUNTIME-LOCK-001` and
+`local:DW-M1-WEB-TS-REVERIFY-001` (both other drafts in this same archive) and
+`local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`, which resolves only to an unindexed
+draft in PR #9's `docs/proposals/2026-07-23-ts-proof-consumer-drafts/` archive.
+None of these are accepted, reviewed, or indexed ExecPlans. A sibling draft in
+this archive (`DW-EXEC-M1-FIXTURE-API-CONSUMER.md`) references a commit SHA
+(`3fbdb01be06152cc39e50f6378dfb625daed8998`) that does not exist in repo
+history; because this plan depends transitively on that consumer, resolve that
+reference too before treating this bundle as executable. Treat every claim
+below as proposed, not authoritative, until a coordinator
+independently reviews, rebases, and resolves all dependency and commit
+references, and promotes a rewritten version to `docs/exec-plans/active/`.
 
 ## Purpose and observable result
 

@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: 9e9dd1cbae54c315d726ca5debf0f2d76bb6c4a2
 last_verified_commit: null
 risk: medium
-governed_paths: [apps/api/Makefile, apps/api/openapi/deepwork-api-v1.json, apps/api/scripts/export_openapi.py, apps/api/src/deepwork_api/domain/product_demo.py, apps/api/src/deepwork_api/ports/product_demo.py, apps/api/src/deepwork_api/application/product_demo.py, apps/api/src/deepwork_api/adapters/fixture/**, apps/api/src/deepwork_api/contracts/product_demo.py, apps/api/src/deepwork_api/transport/product_demo.py, apps/api/src/deepwork_api/workers/product_demo.py, apps/api/src/deepwork_api/bootstrap/api.py, apps/api/src/deepwork_api/bootstrap/worker.py, apps/api/tests/**, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-API-CONSUMER.md]
+governed_paths: [apps/api/Makefile, apps/api/openapi/deepwork-api-v1.json, apps/api/scripts/export_openapi.py, apps/api/src/deepwork_api/domain/product_demo.py, apps/api/src/deepwork_api/ports/product_demo.py, apps/api/src/deepwork_api/application/product_demo.py, apps/api/src/deepwork_api/adapters/fixture/**, apps/api/src/deepwork_api/contracts/product_demo.py, apps/api/src/deepwork_api/transport/product_demo.py, apps/api/src/deepwork_api/workers/product_demo.py, apps/api/src/deepwork_api/bootstrap/api.py, apps/api/src/deepwork_api/bootstrap/worker.py, apps/api/tests/**, docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-FIXTURE-API-CONSUMER.md]
 contract_gates: [SPIKE-STREAM-001, SPIKE-HITL-001, SPIKE-CHECKPOINT-001, SPIKE-MDA-001, SPIKE-FLEET-001, SPIKE-DIRECT-STREAM-001]
 decision_gates: [DEC-023, DEC-026, DEC-033, DEC-034, DEC-035, DEC-036, DEC-037]
 gate_review_status: unreviewed
@@ -30,6 +30,13 @@ blockers: []
 ---
 
 # Credential-free fixture API consumer
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. It names
+`DW-EXEC-M1-FIXTURE-CONTRACT` as its accepted dependency but has not itself been
+reviewed, indexed, or gate-cleared. Treat every claim below as proposed, not
+authoritative, until a coordinator promotes a rebased version to
+`docs/exec-plans/active/`.
 
 ## Purpose and observable result
 

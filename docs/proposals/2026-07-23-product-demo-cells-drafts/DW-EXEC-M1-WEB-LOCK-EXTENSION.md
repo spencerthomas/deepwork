@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: cad9d8a778c88f837d690d79ba84735660531f9d
 last_verified_commit: null
 risk: medium
-governed_paths: [pnpm-lock.yaml, docs/exec-plans/active/DW-EXEC-M1-WEB-LOCK-EXTENSION.md]
+governed_paths: [pnpm-lock.yaml, docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-WEB-LOCK-EXTENSION.md]
 contract_gates: []
 decision_gates: [DEC-004, DEC-025]
 gate_review_status: unreviewed
@@ -30,6 +30,15 @@ blockers: []
 ---
 
 # Extend the shared TypeScript lock for the terminal web and generated client
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. It
+depends on `DW-EXEC-M1-WEB-SHELL-HARNESS` (an unreviewed draft in this same
+archive) and on `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001`, which resolves only
+to an unindexed draft in PR #9's
+`docs/proposals/2026-07-23-ts-proof-consumer-drafts/` archive. Treat every
+claim below as proposed, not authoritative, until a coordinator promotes a
+rebased version to `docs/exec-plans/active/`.
 
 ## Purpose and observable result
 

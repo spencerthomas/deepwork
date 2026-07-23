@@ -14,7 +14,7 @@ last_updated: 2026-07-23
 base_commit: cad9d8a778c88f837d690d79ba84735660531f9d
 last_verified_commit: null
 risk: medium
-governed_paths: [apps/api/pyproject.toml, apps/api/uv.lock, docs/exec-plans/active/DW-EXEC-M1-PRODUCT-DEMO-API-RUNTIME-LOCK.md]
+governed_paths: [apps/api/pyproject.toml, apps/api/uv.lock, docs/proposals/2026-07-23-product-demo-cells-drafts/DW-EXEC-M1-PRODUCT-DEMO-API-RUNTIME-LOCK.md]
 contract_gates: []
 decision_gates: [DEC-002, DEC-024, DEC-026]
 gate_review_status: unreviewed
@@ -30,6 +30,13 @@ blockers: []
 ---
 
 # Pin the product-demo PostgreSQL runtime manifest and lock
+
+Plan state: **prepared for independent review**. This plan is an unindexed,
+non-dispatchable draft carried over from an external planning bundle. It has not
+been reviewed, indexed, or gate-cleared, and it depends on
+`DW-EXEC-M1-FIXTURE-API-CONSUMER`, itself an unreviewed draft in this same
+archive. Treat every claim below as proposed, not authoritative, until a
+coordinator promotes a rebased version to `docs/exec-plans/active/`.
 
 ## Context and dispatch identity
 

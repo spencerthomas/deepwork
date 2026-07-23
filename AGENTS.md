@@ -31,10 +31,10 @@ The root `Makefile` is the stable command contract; each target delegates to the
 reviewed per-workspace command:
 
 ```bash
-make doctor              # report API env + Node/pnpm prerequisites
-make bootstrap           # install API and web dependencies
+make doctor              # report API + agent env + Node/pnpm prerequisites
+make bootstrap           # install API, agent, and web dependencies
 make dev-demo            # start the credential-free local product (./dev)
-make check               # pnpm check + apps/api check
+make check               # pnpm check + apps/api check + packages/agent check
 make check-architecture  # architecture import/boundary checks
 make check-docs          # tools/docs generate --check + check.py
 make test-unit           # TypeScript and Python unit suites

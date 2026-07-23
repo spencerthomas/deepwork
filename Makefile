@@ -10,10 +10,10 @@ SHELL := /bin/sh
 
 help:
 	@echo "Deep Work command contract:"
-	@echo "  make doctor             Report toolchain prerequisites (API env + Node/pnpm)"
-	@echo "  make bootstrap          Install API and web dependencies"
+	@echo "  make doctor             Report toolchain prerequisites (API + agent env + Node/pnpm)"
+	@echo "  make bootstrap          Install API, agent, and web dependencies"
 	@echo "  make dev-demo           Start the credential-free local product (./dev)"
-	@echo "  make check              Run all workspace checks (pnpm check + API check)"
+	@echo "  make check              Run all workspace checks (pnpm + API + agent)"
 	@echo "  make check-architecture Run architecture import/boundary checks"
 	@echo "  make check-docs         Validate and drift-check repository documentation"
 	@echo "  make test-unit          Run TypeScript and Python unit suites"
@@ -23,6 +23,8 @@ help:
 doctor:
 	@echo "== API toolchain =="
 	@$(MAKE) -C apps/api doctor
+	@echo "== Agent toolchain =="
+	@$(MAKE) -C packages/agent doctor
 	@echo "== Node.js =="
 	@node --version || { echo "Node.js >=24.14.0 <25 is required (or set DEEPWORK_NODE)" >&2; exit 2; }
 	@echo "== pnpm =="
@@ -30,6 +32,7 @@ doctor:
 
 bootstrap:
 	$(MAKE) -C apps/api bootstrap
+	$(MAKE) -C packages/agent bootstrap
 	pnpm install
 
 dev-demo:
@@ -38,6 +41,7 @@ dev-demo:
 check:
 	pnpm check
 	$(MAKE) -C apps/api check
+	$(MAKE) -C packages/agent check
 
 check-architecture:
 	pnpm check-architecture
@@ -49,6 +53,7 @@ check-docs:
 test-unit:
 	pnpm test
 	$(MAKE) -C apps/api test
+	$(MAKE) -C packages/agent test
 
 test-contract:
 	$(MAKE) -C apps/api contract

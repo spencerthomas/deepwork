@@ -68,7 +68,7 @@ The root `Makefile` is the stable command contract; each target delegates to the
 reviewed per-workspace command:
 
 ```bash
-make check         # pnpm check + apps/api check
+make check         # pnpm check + apps/api check + packages/agent check
 make check-docs    # tools/docs generate --check + check.py
 make test-unit     # TypeScript and Python unit suites
 make test-contract # API contract suite

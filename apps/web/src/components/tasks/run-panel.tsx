@@ -107,7 +107,10 @@ export function RunPanel({
                 role="tab"
                 id={`run-tab-${t.key}`}
                 aria-selected={isActive}
-                aria-controls="run-tabpanel"
+                // Only the active tab's panel is rendered, so only it claims the
+                // controls relationship; inactive tabs must not point at the
+                // active tab's panel.
+                aria-controls={isActive ? "run-tabpanel" : undefined}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setTab(t.key)}
                 className={cn(

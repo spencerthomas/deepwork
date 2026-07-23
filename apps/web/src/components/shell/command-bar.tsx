@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function CommandBar({
   const { mode, tasks } = useTasksStore();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -62,6 +63,18 @@ export function CommandBar({
   );
 
   useEffect(() => setIndex(0), [query]);
+
+  // Reopening the palette remounts the list with its scroll reset, so start the
+  // highlight back at the top each time it opens.
+  useEffect(() => {
+    if (open) setIndex(0);
+  }, [open]);
+
+  // Keep the highlighted row in view as the arrow keys move it — or as a new
+  // query re-filters the list under a held index — through an overflowing list.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [filtered, index]);
 
   if (!open) return null;
 
@@ -118,6 +131,7 @@ export function CommandBar({
             return (
               <li key={command.id}>
                 <button
+                  ref={i === index ? activeRef : undefined}
                   type="button"
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => run(command.href)}

@@ -11,8 +11,8 @@ supporting_feature_ids: [DW-FND-001, DW-FND-002, DW-FND-003, DW-FND-005]
 issue: local:DW-M1-FIXTURE-CONTRACT
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
-last_verified_commit: 7e404d96bb0c784d185b42125d477f5ab6581266
+base_commit: e614d9312bc8bbfe034249c0f2ab4da29b56f94b
+last_verified_commit: e614d9312bc8bbfe034249c0f2ab4da29b56f94b
 branch: codex/contracts/wave1-fixture-corpus
 worktree: /Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract
 risk: medium
@@ -566,6 +566,11 @@ Acceptance:
 
 ## Surprises & Discoveries
 
+- 2026-07-23 — Observation: repository publication rewrote pre-publication
+  history, so the recorded `base_commit`/`last_verified_commit` hashes no longer
+  exist and `python3 tools/docs/check.py` failed closed. Consequence: both fields
+  now name `e614d931`, the first published commit containing this plan; claims
+  tied to pre-publication hashes remain historical prose only.
 - 2026-07-23 AEST — The current TypeScript source cell was reopened after external
   review. Evidence:
   `docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md`.

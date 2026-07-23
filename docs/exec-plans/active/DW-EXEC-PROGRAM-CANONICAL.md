@@ -11,8 +11,8 @@ supporting_feature_ids: [DW-QUAL-001, DW-FUT-101, DW-FUT-102, DW-FUT-103, DW-FUT
 issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: e3aae38e5fdcfcecc64e09155b5835c941d39bbf
+base_commit: 3bd6fac451cd23be511127019d318627256b5671
+last_verified_commit: 3bd6fac451cd23be511127019d318627256b5671
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -225,6 +225,11 @@ later reviewed cell explicitly reassigns it.
 
 ## Surprises & Discoveries
 
+- 2026-07-23 — Observation: repository publication rewrote pre-publication
+  history, so the recorded `base_commit`/`last_verified_commit` hashes no longer
+  exist and `python3 tools/docs/check.py` failed closed. Consequence: both fields
+  now name `3bd6fac4`, the first published commit containing this plan; claims
+  tied to pre-publication hashes remain historical prose only.
 - 2026-07-23 — Observation: the pre-hardening checker passed even though the
   active plan used unsupported status and metadata. Evidence:
   `python3 tools/docs/check.py` at `500eaa7`. Consequence: dispatch validation is

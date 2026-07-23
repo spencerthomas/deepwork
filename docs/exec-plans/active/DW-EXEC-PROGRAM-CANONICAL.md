@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 7fedc6a3504f98ed2810d8c0dea1ea923fdf734a
+last_verified_commit: e3aae38e5fdcfcecc64e09155b5835c941d39bbf
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -45,15 +45,22 @@ Wave 0.1 dispatch hardening completed at
 `3dbe6629d8053380ab6a8bff6d2fcb462f854256`. The active Wave 1 scaffold plan is
 a non-dispatchable umbrella. Root TypeScript declarations and both Python package
 lanes are terminal. TypeScript package source is integrated through
-`03b019ab6a5d71e2911a6019013a089cca098101`, but a later external review reopened
-the cell for bounded source/proof rework before any shared lock is generated. The
-coordinator retains the sequential TypeScript lock and executable-verification
-cells. Four external accelerators independently own the worktree/architecture
-harness, LangChain contract research, documentation-harness acceptance, and
-API-key/header research. Their scopes are not duplicated internally and their
-results will not integrate before independently reviewed commit SHAs arrive. Classic
-responsive web remains the public baseline; every unproved external capability
-stays disabled with its documented fallback.
+`03b019ab6a5d71e2911a6019013a089cca098101`, but successive external reviews
+reopened the cell for bounded source/proof rework before any shared lock is
+generated; the current owner is repairing lexical import extraction and
+capability-evidence class validation after `76ec47d`. The coordinator retains the
+sequential TypeScript lock and executable-verification cells.
+
+The worktree/architecture harness is integrated through `cdcfc1c`; its real-tree
+checker passes while web/desktop coverage and the real two-stack product demo
+remain dependency-gated. Corrected LangChain evidence is integrated through
+`48dc5e6`, and auth/header evidence through `6d9da2d`; every live-dependent row
+remains blocked and no capability was enabled. Documentation, attachment,
+plan-approval, research/writing, and three coding-contract workers own disjoint
+external paths. The fixture-corpus plan is reviewed and sealed at dispatch seed
+`dff977b` without creating any corpus yet. Classic responsive web remains the
+public baseline; every unproved external capability stays disabled with its
+documented fallback.
 
 ## Scope
 
@@ -106,17 +113,22 @@ successor after its independent review and local commit.
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
 | DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
 | DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
-| DW-M1-TS-SCAFFOLD | 1 | second rework complete; fresh external review pending | `03b019a` integrated / lane `76ec47d` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | receive ACCEPTED FOR LOCK HANDOFF or bounded rework |
+| DW-M1-TS-SCAFFOLD | 1 | third bounded rework active after external `REWORK REQUIRED` | `03b019a` integrated / lane after `76ec47d` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close lexical-import and evidence-class P1s; fresh external review |
 | DW-M1-TS-LOCK-001 | 1 | blocked before execution | accepted TS rework | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
 | DW-M1-TS-VERIFY-001 | 1 | pending | terminal lock cell | package-local executable checks/fixes | TS lock terminal | independent executable review |
-| DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | reviewed implementation awaiting coordinator integration (`8cb2f76`) | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | architecture coverage dependency-gated; real product-demo peer absent | integrate bounded harness; keep both named spikes open |
-| DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | reviewed blocked evidence awaiting coordinator integration (`758c1d4`) | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | all 11 rows blocked on package/live evidence | integrate evidence only; enable nothing |
+| DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | integrated (`a9be010`, adaptation `cdcfc1c`) | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | web/desktop coverage and real product-demo peer absent | keep `SPIKE-HARNESS-ARCH-001` and `SPIKE-WORKTREE-001` open |
+| DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | integrated blocked evidence (`48dc5e6`) | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | all 11 rows blocked on package/live evidence | enable nothing; await approved package index/classic sandbox |
 | DW-EXT-W1-DOCS-HARNESS-ACCEPTANCE | 1 | active external | `b9d2444` / seed `552dca0` | `tools/docs/**`, docs fixtures/research/packet | current canonical corpus | await independently reviewed commit SHA |
-| DW-EXT-W1-AUTH-HEADER-CONTRACT-RESEARCH | 1 | active external | `b9d2444` / seed `9efbca4` | `tools/contract-spikes/auth/**`, auth research/packet | official/public evidence; optional non-production account only for live rows | await independently reviewed commit SHA |
+| DW-EXT-W1-AUTH-HEADER-CONTRACT-RESEARCH | 1 | integrated blocked evidence (`6d9da2d`) | `b9d2444` / seed `9efbca4` | `tools/contract-spikes/auth/**`, auth research/packet | 432 blocked, 184 rejected, zero accepted-live; origin/header conflicts open | keep `SPIKE-AUTH-002` and Agent Server origin discovery unresolved |
 | DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS | 1 | active external | `fff1bfd` / seed `e0f1087` | attachment contract probe/research/packet | public evidence; live object/scanner/runtime rows blocked | await independently reviewed clean commit SHA |
 | DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL | 1 | active external, offline harness only | `fff1bfd` / seed `886f6b1` | plan-approval contract probe/research/packet | HITL/compose/config rows blocked; live sandbox absent | await independently reviewed clean commit SHA; no target-spike acceptance |
-| DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT | 1 | ready for external dispatch | `fff1bfd` / seed pending | research/writing outcome probe/research/packet | upstream/public-package/live evidence blockers | create seed-only branch; zero E2E credit |
-| DW-M1-INTEGRATION | 1 | pending | accepted lane and external commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes and applicable gates | compose one credential-free product demo |
+| DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT | 1 | active external | `fff1bfd` / seed `ab13e25` | research/writing outcome probe/research/packet | upstream/public-package/live evidence blockers | await independently reviewed clean commit; zero E2E credit |
+| DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `5a518c4` | sandbox contract probe/research/packet | public/index evidence; sanctioned live sandbox absent | await reviewed commit; live rows blocked |
+| DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `cb8c6ee` | GitHub contract probe/research/packet | consumes accepted sandbox evidence for live proxy/egress | no PAT; zero or exactly one authorized draft PR |
+| DW-EXT-W1-CODING-REVIEW-SURFACES-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `f3d937f` | review-surface contract probe/research/packet | consumes accepted sandbox and GitHub evidence for live rows | no fake PTY/browser; await reviewed commit |
+| DW-M1-FIXTURE-CONTRACT | 1 | active implementation from reviewed dispatch seed | reviewed seed `dff977b` | `internal/fixtures/product-demo/**` plus living plan | terminal API/agent; no TS/install dependency | independently review install-free 13-positive/12-negative corpus |
+| DW-M1-INTEGRATION | 1 | next visible-product cell; plan preparation pending | accepted TS verification and fixture corpus | shared/root, `apps/web/**`, generated outputs | terminal TS executable proof and accepted fixture corpus only | compose one credential-free product demo with blocked/offline research fallbacks |
+| DW-W2-DURABLE-CORE-PLANNING | 2 | read-only decomposition active; no implementation dispatch | current coordinator integration | plan-only paths to be made disjoint before dispatch | demo/isolation gate before any colliding full stack | prepare persistence/session/object/job cells for post-demo fan-out |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
 
@@ -130,13 +142,15 @@ later reviewed cell explicitly reassigns it.
 | coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | sole integrator; TS lock paused; coordinating source rework and external results |
 | API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
 | agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
-| TS lane | TS package author; external reviewer pending | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | second bounded rework committed at `76ec47d`; lock paused pending fresh verdict |
-| external platform accelerator | worktree/architecture harness | `external/platform/worktree-architecture-harness` | `/Users/tomspencer/dev/deepwork/worktrees/external-worktree-architecture-harness` | task `019f8d02-8117-7791-a5dd-5a71d848f2e5`; reviewed clean `8cb2f76`; integration pending |
-| external research accelerator | LangChain contract spikes | `external/research/langchain-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes` | task `019f8d02-a16a-72a2-b74a-932da4a9132b`; reviewed clean `758c1d4`; all rows blocked |
-| external docs accelerator | documentation-harness acceptance | `external/platform/documentation-harness-acceptance` | `/Users/tomspencer/dev/deepwork/worktrees/external-documentation-harness-acceptance` | task `019f8d12-3be4-78c1-8591-936e853995d0`; external-owned; active |
-| external auth accelerator | API-key/header contract research | `external/research/auth-header-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-auth-header-contract-spikes` | task `019f8d12-4aba-75a0-9607-9cf8171cb3ae`; external-owned; active |
-| external attachment accelerator | safe first-task files | `external/research/first-task-safe-attachments` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-safe-attachments` | task `019f8d2d-104e-7592-862e-fe1f7a580072`; seed `e0f1087`; external-owned; active |
-| external plan accelerator | plan before execution | `external/research/first-task-plan-approval` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-plan-approval` | task `019f8d2d-079b-7e82-bea7-e5a02e710c15`; seed `886f6b1`; external-owned; active |
+| TS lane | bounded source rework after external review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | fixing two candidate-owned P1s after `76ec47d`; lock paused |
+| external docs accelerator | documentation-harness acceptance | `external/platform/documentation-harness-acceptance` | `/Users/tomspencer/dev/deepwork/worktrees/external-documentation-harness-acceptance` | recovery task `019f8da0-35cf-7d43-b6bb-c4b0cc78aaee`; external-owned; active |
+| external attachment accelerator | safe first-task files | `external/research/first-task-safe-attachments` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-safe-attachments` | continuation task `019f8da0-3f42-7542-b985-718e0e4aa763`; external-owned; active |
+| external plan accelerator | plan before execution | `external/research/first-task-plan-approval` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-plan-approval` | continuation task `019f8da0-487d-7233-a8b2-097f2063988f`; external-owned; active |
+| external research/writing accelerator | verifiable outcome contract | `external/research/research-writing-outcome-contract` | `/Users/tomspencer/dev/deepwork/worktrees/external-research-writing-outcome-contract` | task `019f8da1-001f-7a72-80e8-fc98d89cd31c`; seed `ab13e25`; active |
+| external coding sandbox accelerator | coding sandbox contracts | `external/research/coding-sandbox-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-sandbox-contracts` | task `019f8db1-7c00-7d22-a0a3-a986b060c137`; seed `5a518c4`; active |
+| external coding GitHub accelerator | GitHub/App/proxy/CI contracts | `external/research/coding-github-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-github-contracts` | task `019f8db1-85b4-7d20-81d4-4f032433d699`; seed `cb8c6ee`; active |
+| external coding review accelerator | file/diff/terminal/browser contracts | `external/research/coding-review-surfaces-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-review-surfaces-contracts` | task `019f8db1-9109-7d62-aa73-5e275dff9e77`; seed `f3d937f`; active |
+| fixture corpus lane | reviewed install-free corpus plan | `codex/contracts/wave1-fixture-corpus` | `/Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract` | task `019f8db6-b09a-7f42-8233-9c20a9ffc496`; exact seed `dff977b`; active |
 
 ## Progress
 
@@ -154,10 +168,12 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — TypeScript package source/static authoring passed two internal
   review rounds after bounded rework and integrated locally through
   `03b019ab6a5d71e2911a6019013a089cca098101`; no executable claim was made.
-- [ ] 2026-07-23 — A later external read-only review returned `REWORK REQUIRED`
-  with three P1, four P2, and two P3 findings. The original package lane is
-  addressing them before lock handoff; the coordinator has run no install or lock
-  command.
+- [ ] 2026-07-23 — Successive external reviews reduced the TypeScript source
+  blockers to two candidate-owned P1 findings: comment-aware lexical import
+  extraction and runtime membership validation for `evidenceClass`. A third
+  bounded rework is active in the original package lane; the architecture
+  checker/tool-config classification is separately accepted at `cdcfc1c`. The
+  coordinator has run no install or lock command.
 - [x] 2026-07-23 — External accelerators became active from exact implementation
   base `85187827e018d4aeee4a4e4bd685de49cb2f5a6a`, seed commits `7eb7900` and
   `4c03e09`, in their supplied worktrees. The coordinator will not duplicate
@@ -175,8 +191,32 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — Research/writing outcome packet passed final independent
   review at `7fedc6a`; all upstream/package/live dependencies remain blocked and
   the packet credits zero E2E acceptance.
+- [x] 2026-07-23 — The worktree/architecture harness and its real-tree source-root
+  adaptation integrated through `cdcfc1c`. Architecture, worktree, doctor, and
+  self-test proof is green, but real web/desktop coverage and dual-stack
+  acceptance remain open, so neither harness/worktree spike is closed.
+- [x] 2026-07-23 — Corrected LangChain contract evidence integrated through
+  `48dc5e6`; all 11 rows remain `blocked-live-evidence`, and no runtime capability
+  was enabled.
+- [x] 2026-07-23 — Auth/header evidence integrated through `6d9da2d`: 616 matrix
+  rows, 432 blocked, 184 locally rejected, and zero accepted live. `SPIKE-AUTH-002`,
+  the organization-header conflict, and Agent Server origin discovery stay open.
+- [x] 2026-07-23 — Three reviewed coding-contract packets were accepted at
+  `c718387` and seeded independently at `5a518c4`, `cb8c6ee`, and `f3d937f`.
+  Offline workers are active; live proof remains ordered sandbox to GitHub to
+  review surfaces, with no PAT, fake PTY/browser, or E2E credit.
+- [x] 2026-07-23 — The fixture-corpus plan fixed its dispatch lifecycle and
+  deterministic latency case, passed independent review at `7e404d9`, and was
+  sealed at exact implementation seed `dff977b`. The install-free corpus worker
+  is active as task `019f8db6-b09a-7f42-8233-9c20a9ffc496`.
 - [ ] Complete TypeScript source rework, then the coordinator-owned lock and executable-verification
   sequence.
+- [ ] Independently accept the fixture corpus, then dispatch the one permitted
+  credential-free `apps/web` product-demo cell as soon as TypeScript executable
+  proof is terminal. Optional attachment, plan-approval, research/writing, and
+  coding live rows are not prerequisites; consume their blocked/offline fallbacks.
+- [ ] Prepare reviewed, path-disjoint Wave 2 durable-core cells now, but do not
+  start a colliding full stack before the demo/isolation gate.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.
 - [ ] v1.x, v2, and v3 discovery briefs become reviewed executable plans and are
   implemented or retained behind exact human/external blocker entries.
@@ -222,10 +262,23 @@ later reviewed cell explicitly reassigns it.
   global network-denial, allowlist/path-containment, packed TypeScript-consumer,
   immutability, retry, heading, timestamp, and run-key gaps. Consequence: rescind
   lock handoff and require bounded rework plus fresh review.
-- 2026-07-23 — Observation: four user-owned external accelerator tasks now run in
-  dedicated worktrees from reviewed seed commits. Consequence: internal cells
-  exclude their allowed paths, and the coordinator waits for independently
-  reviewed commit SHAs before integration.
+- 2026-07-23 — Observation: the harness passed against its original seed but the
+  integrated tree added Node-run package tool configs. Consequence: architecture
+  coverage is now derived from declared source markers, with explicit
+  noncanonical/file/symlink rejection and positive Node-only Vitest-config proof,
+  rather than deleting correct `node:url` package tooling.
+- 2026-07-23 — Observation: public/installed auth evidence cannot resolve the
+  organization-header conjunction or discover a trustworthy Agent Server origin.
+  Consequence: integrate the 616-row matrix only as blocked/rejected evidence;
+  keep all positive live behavior unavailable.
+- 2026-07-23 — Observation: the first fixture plan made pre-dispatch acceptance
+  depend on a future implementation commit and omitted deterministic latency.
+  Consequence: seal the independently reviewed plan before implementation and
+  require fixed-tick enqueue, release, visibility, and completion evidence.
+- 2026-07-23 — Observation: multiple user-owned external accelerator tasks now
+  run in dedicated worktrees from reviewed seed commits. Consequence: internal
+  cells exclude every external allowed path, and the coordinator waits for an
+  independently reviewed clean commit SHA before integration.
 
 ## Decision Log
 
@@ -240,10 +293,25 @@ later reviewed cell explicitly reassigns it.
   first shared lock, and executable verification into sequential evidence cells.
   Rationale: the lock must include reviewed importers and frozen/no-drift proof
   cannot truthfully precede them.
-- 2026-07-23 — Decision: keep all four active external accelerator tasks
-  externally owned and disjoint. Rationale: the user dispatched them as
-  accelerators. Consequence: no internal agent duplicates those scopes; the
-  coordinator is the sole integrator after independent review.
+- 2026-07-23 — Decision: keep every active external accelerator task externally
+  owned and disjoint. Rationale: the user dispatched them as accelerators.
+  Consequence: no internal agent duplicates those scopes; the coordinator is the
+  sole integrator after independent review.
+- 2026-07-23 — Decision: integrate LangChain and auth/header results only as
+  bounded blocked/rejected contract evidence. Consequence: package-index,
+  sanctioned-sandbox, header, and origin blockers remain explicit and no
+  capability availability changes.
+- 2026-07-23 — Decision: run coding research offline in parallel while preserving
+  live order sandbox to GitHub to review surfaces. Consequence: no PAT, fabricated
+  PTY/browser, live proxy, or draft-PR claim may substitute for the missing gates.
+- 2026-07-23 — Decision: make terminal TypeScript executable proof plus the
+  accepted fixture corpus the critical path to the credential-free `apps/web`
+  demo. Consequence: optional research live rows neither block nor satisfy the
+  demo; their documented unavailable/offline fallbacks are consumed.
+- 2026-07-23 — Decision: prepare Wave 2 durable-core decomposition in parallel,
+  but do not start a colliding full-stack worktree before the demo/isolation gate.
+  Consequence: persistence, session, object, and job cells may fan out only after
+  their reviewed plans and the gate permit it.
 
 ## Detailed implementation approach
 
@@ -287,10 +355,14 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 Wave 0.1, root TypeScript declarations, the fixture-only API package, and the
 independent agent package are terminal local integration cells. TypeScript package
-source is integrated but active again after a later external review found nine
-additional gaps; lock and executable claims remain downstream and paused. The four
-external accelerator tasks are active and disjoint; no result is accepted without
-an independently reviewed commit SHA.
+source is in its third bounded repair with two source findings open; lock and
+executable claims remain downstream and paused. The architecture/worktree,
+LangChain, and auth/header integrations are retained without closing their live or
+real-product gates. Seven external research workers and the fixture-corpus worker
+remain path-disjoint; no result is accepted without an independently reviewed
+clean commit SHA. The next visible-product cell is one credential-free `apps/web`
+demo after terminal TypeScript proof and fixture acceptance, while Wave 2
+durable-core plans are prepared without starting another full stack.
 No protected `docs/plans/**` file, external credential, production system, push,
 merge, deployment, or publication has been touched. The terminal outcome remains
 the verified complete canonical vision through v3, or an exact blocker ledger

@@ -163,16 +163,27 @@ export function TaskInbox() {
   const runtimeCopy = taskRuntimePresentation(mode);
 
   // Mirror the view in the URL so a filtered/grouped inbox is shareable, and
-  // restore it on first load and on browser back/forward.
+  // restore it on first load and on browser back/forward. Discrete status and
+  // grouping changes push a history entry so back/forward step through prior
+  // views; a search keystroke only replaces the current entry so typing doesn't
+  // spam history.
   const commitView = useCallback((next: InboxView) => {
+    const prev = viewRef.current;
+    const statusSame = prev.filter.status === next.filter.status;
+    const groupedSame = prev.grouped === next.grouped;
+    const attentionSame = prev.filter.attentionOnly === next.filter.attentionOnly;
+    const querySame = prev.filter.query === next.filter.query;
+    if (statusSame && groupedSame && attentionSame && querySame) return;
     setView(next);
     const query = inboxViewToQuery(next);
     const { pathname } = window.location;
-    window.history.replaceState(
-      window.history.state,
-      "",
-      query ? `${pathname}?${query}` : pathname,
-    );
+    const url = query ? `${pathname}?${query}` : pathname;
+    const onlyQueryChanged = statusSame && groupedSame && attentionSame;
+    if (onlyQueryChanged) {
+      window.history.replaceState(window.history.state, "", url);
+    } else {
+      window.history.pushState(window.history.state, "", url);
+    }
   }, []);
 
   useEffect(() => {

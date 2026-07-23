@@ -9,6 +9,7 @@ from coding_github_spikes.contracts import (
     MutationLedger,
     ProxyIntent,
     ProxyPolicy,
+    WebhookExpectation,
     normalize_check_state,
     sanitize_branch,
     sign_webhook,
@@ -27,8 +28,12 @@ def binding() -> Binding:
         actor="ACTOR_TEST",
         task="TASK_123",
         sandbox="SANDBOX_TEST",
+        app_id="2002",
         installation="1001",
+        account_node="A_TEST",
         repository_node="R_TEST",
+        repository_owner="org",
+        repository_name="repo",
         base_ref="main",
         base_sha=BASE_SHA,
         head_ref="deep-work/task_123",
@@ -72,8 +77,17 @@ def test_ambiguous_create_spends_budget_until_reconciled() -> None:
 
 def test_proxy_exact_binding_and_nonce() -> None:
     bind = binding()
-    policy = ProxyPolicy(now=100, expected_binding_hash=bind.digest())
-    intent = ProxyIntent(bind.digest(), "github.com", "/org/repo.git", "git-upload-pack", "fetch", "installation", 200, "n1")
+    policy = ProxyPolicy(now=100, expected_binding=bind)
+    intent = ProxyIntent(
+        bind.digest(),
+        "github.com",
+        "/org/repo.git",
+        "git-upload-pack",
+        "fetch",
+        "github-installation:1001",
+        200,
+        "n1",
+    )
     policy.authorize(intent)
     with pytest.raises(ContractDenied, match="replay"):
         policy.authorize(intent)
@@ -82,14 +96,14 @@ def test_proxy_exact_binding_and_nonce() -> None:
 @pytest.mark.parametrize(
     "intent",
     [
-        ProxyIntent("wrong", "github.com", "/org/repo.git", "git-upload-pack", "fetch", "installation", 200, "n1"),
-        ProxyIntent("HASH", "evil.example", "/x", "GET", "read", "installation", 200, "n2"),
-        ProxyIntent("HASH", "github.com:8443", "/x", "git-upload-pack", "fetch", "installation", 200, "n3"),
-        ProxyIntent("HASH", "github.com", "/x", "git-receive-pack", "push", "installation", 99, "n4"),
+        ProxyIntent("wrong", "github.com", "/org/repo.git", "git-upload-pack", "fetch", "github-installation:1001", 200, "n1"),
+        ProxyIntent("HASH", "evil.example", "/x", "GET", "read", "github-installation:1001", 200, "n2"),
+        ProxyIntent("HASH", "github.com:8443", "/x", "git-upload-pack", "fetch", "github-installation:1001", 200, "n3"),
+        ProxyIntent("HASH", "github.com", "/x", "git-receive-pack", "push", "github-installation:1001", 99, "n4"),
     ],
 )
 def test_proxy_denies_wrong_scope(intent: ProxyIntent) -> None:
-    policy = ProxyPolicy(now=100, expected_binding_hash="HASH")
+    policy = ProxyPolicy(now=100, expected_binding=binding())
     with pytest.raises(ContractDenied):
         policy.authorize(intent)
 
@@ -101,8 +115,14 @@ def webhook_payload() -> dict:
         "tenant": bind.tenant,
         "workspace": bind.workspace,
         "installation": {"id": 1001},
-        "repository": {"node_id": bind.repository_node},
+        "hook": {"app_id": int(bind.app_id)},
+        "repository": {
+            "node_id": bind.repository_node,
+            "owner": {"node_id": bind.account_node, "login": bind.repository_owner},
+            "name": bind.repository_name,
+        },
         "pull_request": {
+            "node_id": "PR_1",
             "base": {"ref": bind.base_ref, "sha": bind.base_sha},
             "head": {"ref": bind.head_ref, "sha": HEAD_SHA},
         },
@@ -120,9 +140,12 @@ def test_webhook_signature_then_full_binding_and_dedupe() -> None:
         raw_body=raw,
         signature=signature,
         delivery_id="D1",
+        event_name="pull_request",
+        delivered_at=100,
+        now=100,
         seen_deliveries=seen,
-        payload=payload,
-        expected=binding(),
+        expected=WebhookExpectation(binding=binding(), pr_node="PR_1", current_head_sha=HEAD_SHA),
+        current_authorized_actor="ACTOR_TEST",
     )
     with pytest.raises(ContractDenied, match="duplicate"):
         verify_webhook(
@@ -130,9 +153,12 @@ def test_webhook_signature_then_full_binding_and_dedupe() -> None:
             raw_body=raw,
             signature=signature,
             delivery_id="D1",
+            event_name="pull_request",
+            delivered_at=100,
+            now=100,
             seen_deliveries=seen,
-            payload=payload,
-            expected=binding(),
+            expected=WebhookExpectation(binding=binding(), pr_node="PR_1", current_head_sha=HEAD_SHA),
+            current_authorized_actor="ACTOR_TEST",
         )
 
 
@@ -146,9 +172,12 @@ def test_webhook_rejects_cross_repository() -> None:
             raw_body=raw,
             signature=sign_webhook(b"fixture-secret", raw),
             delivery_id="D2",
+            event_name="pull_request",
+            delivered_at=100,
+            now=100,
             seen_deliveries=set(),
-            payload=payload,
-            expected=binding(),
+            expected=WebhookExpectation(binding=binding(), pr_node="PR_1", current_head_sha=HEAD_SHA),
+            current_authorized_actor="ACTOR_TEST",
         )
 
 
@@ -166,4 +195,3 @@ def test_webhook_rejects_cross_repository() -> None:
 )
 def test_check_state(status: str, conclusion: str | None, observed: str, expected: str) -> None:
     assert normalize_check_state(status, conclusion, observed, HEAD_SHA) == expected
-

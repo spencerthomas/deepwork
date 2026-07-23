@@ -30,6 +30,14 @@ def test_validator_rejects_fake_promoted_to_live() -> None:
         validate(matrix, load("matrix-scope.json"), load("upstream-lock.json"), ROOT / "fixtures")
 
 
+def test_validator_rejects_an_empty_evidence_list() -> None:
+    matrix = load("matrix.json")
+    matrix["rows"][0]["evidence"] = []
+    matrix["matrix_hash"] = canonical_hash(matrix["rows"])
+    with pytest.raises(ValidationError, match="non-empty ordered source list"):
+        validate(matrix, load("matrix-scope.json"), load("upstream-lock.json"), ROOT / "fixtures")
+
+
 def test_no_live_mutation_recorded() -> None:
     ledger = load("live-mutation-ledger.json")
     assert ledger["state"] == "not-run"

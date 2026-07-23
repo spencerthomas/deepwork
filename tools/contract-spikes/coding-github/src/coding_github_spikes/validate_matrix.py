@@ -47,16 +47,22 @@ def validate(matrix: dict, scope: dict, upstream: dict, fixtures_root: Path) -> 
         if item.get("schema_hash") != canonical_hash({"prefix": prefix, "operation": operation}):
             raise ValidationError(f"{item['id']}: row schema hash mismatch")
         evidence = item.get("evidence")
-        if not isinstance(evidence, str):
-            raise ValidationError(f"{item['id']}: evidence must be one exact source")
-        if evidence.startswith("fixtures/"):
-            evidence_path = fixtures_root.parent / evidence
-            if not evidence_path.is_file():
-                raise ValidationError(f"{item['id']}: fixture evidence missing")
-            if item["evidence_tier"] != "deterministic-fake":
-                raise ValidationError(f"{item['id']}: fixture tier mismatch")
-        elif not evidence.startswith("https://docs.github.com/"):
-            raise ValidationError(f"{item['id']}: unsupported evidence source")
+        sources = [evidence] if isinstance(evidence, str) else evidence
+        if (
+            not isinstance(sources, list)
+            or not sources
+            or not all(isinstance(source, str) and source for source in sources)
+        ):
+            raise ValidationError(f"{item['id']}: evidence must be a non-empty ordered source list")
+        for source in sources:
+            if source.startswith("fixtures/"):
+                evidence_path = fixtures_root.parent / source
+                if not evidence_path.is_file():
+                    raise ValidationError(f"{item['id']}: fixture evidence missing")
+                if item["evidence_tier"] != "deterministic-fake":
+                    raise ValidationError(f"{item['id']}: fixture tier mismatch")
+            elif not source.startswith("https://docs.github.com/"):
+                raise ValidationError(f"{item['id']}: unsupported evidence source")
     if upstream.get("state") != "accepted-live":
         promoted = [row["id"] for row in rows if row["state"] == "accepted-live"]
         if promoted:
@@ -78,22 +84,15 @@ def validate(matrix: dict, scope: dict, upstream: dict, fixtures_root: Path) -> 
     if any(scope["mutation_budget"][key] != 0 for key in forbidden):
         raise ValidationError("forbidden mutation budget is nonzero")
     exact_permissions = {
-        "administration": "read",
         "actions": "read",
         "checks": "read",
-        "commit_statuses": "read",
         "contents": "write",
         "metadata": "read",
         "pull_requests": "write",
     }
     if scope.get("app_permissions") != exact_permissions:
         raise ValidationError("GitHub App permissions differ from reviewed minimum")
-    exact_forbidden = {
-        "administration": "write",
-        "members": "any",
-        "secrets": "any",
-        "workflows": "write",
-    }
+    exact_forbidden = ["administration", "members", "secrets", "workflows:write"]
     if scope.get("forbidden_permissions") != exact_forbidden:
         raise ValidationError("forbidden permission ceiling changed")
     expected_fixtures = set(scope["required_fixtures"])
@@ -115,17 +114,10 @@ def validate(matrix: dict, scope: dict, upstream: dict, fixtures_root: Path) -> 
             or value.get("deterministic") is not True
             or value.get("network") != "denied"
             or value.get("credentials") != "none"
-            or not isinstance(value.get("request"), dict)
-            or not isinstance(value.get("transcript"), list)
-            or not value["transcript"]
-            or not isinstance(value.get("observed"), dict)
+            or not isinstance(value.get("input"), dict)
             or not isinstance(value.get("expected"), dict)
         ):
             raise ValidationError(f"{name}: fixture semantics incomplete")
-        unhashed_fixture = dict(value)
-        case_hash = unhashed_fixture.pop("case_hash", None)
-        if case_hash != canonical_hash(unhashed_fixture):
-            raise ValidationError(f"{name}: case hash mismatch")
         if manifest.get("hashes", {}).get(name) != canonical_hash(value):
             raise ValidationError(f"{name}: manifest hash mismatch")
     required_schemas = {

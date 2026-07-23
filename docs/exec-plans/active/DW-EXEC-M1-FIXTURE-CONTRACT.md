@@ -22,12 +22,12 @@ decision_gates: [DEC-021, DEC-022, DEC-023, DEC-033, DEC-034, DEC-035]
 gate_review_status: unreviewed
 gate_reviewed_by: []
 gate_reviewed_at: null
-authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-API-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-AGENT-SCAFFOLD.md]
+authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-API-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-AGENT-SCAFFOLD.md]
 scenario_ids: [AC-DW-FND-004-04, AC-DW-FND-004-05, AC-DW-FND-004-06, AC-DW-FND-001-07, AC-DW-FND-002-06, AC-DW-FND-003-05, AC-DW-FND-005-01]
 dispatch_kind: cell
 dispatch_ready: false
 agent_review_required: true
-dependencies: [local:DW-M1-API-001, local:DW-M1-AGENT-001, local:DW-M1-TS-SCAFFOLD]
+dependencies: [local:DW-M1-API-001, local:DW-M1-AGENT-001]
 blockers: []
 ---
 
@@ -71,9 +71,10 @@ At this base:
   fixture contract.
 - `local:DW-M1-TS-SCAFFOLD` source is integrated through
   `03b019ab6a5d71e2911a6019013a089cca098101`, but its plan is active again after
-  external review found correctness and proof gaps. Its current source-qualified
-  identity and capability vocabulary is useful orientation, not a frozen
-  executable dependency or authority for this corpus.
+  external review found correctness and proof gaps. It is not a dependency,
+  blocker, or authority for this cell. The corpus uses only canonical
+  product-specification vocabulary, and accepted TypeScript code is a downstream
+  consumer.
 - `internal/fixtures/` contains only shared TypeScript configuration ancestors;
   `internal/fixtures/product-demo/` does not exist.
 - The four external accelerator packets own only
@@ -172,14 +173,14 @@ neither consumer is implemented here.
 - Terminal package prerequisites are the accepted API and agent cells listed in
   Context. They establish legal package boundaries only; this cell imports
   neither package.
-- The active TypeScript source cell is a nonterminal source dependency. Corpus
-  implementation may proceed only after independent reviewers confirm that its
-  abstract vocabulary does not freeze the active TypeScript defects. Executable
-  TS decoding/reduction remains blocked on fresh TS-source acceptance, lock
-  integration, and executable verification.
-- `docs/exec-plans/index.md` registration is coordinator-owned. The expected
-  unindexed-plan diagnostic remains a known handoff gate, not permission for this
-  cell to edit the index.
+- There is no TypeScript source dependency. Corpus implementation relies on the
+  canonical specifications and decisions, not the current package implementation.
+  Executable TS decoding/reduction remains downstream and cannot claim parity
+  until fresh TS-source acceptance, lock integration, and executable verification
+  are independently terminal.
+- `docs/exec-plans/index.md` registration is coordinator-owned. The complete
+  draft/review diagnostic set, including the unindexed-plan error, remains a known
+  handoff gate, not permission for this cell to edit the index or reviewer fields.
 
 ### Open runtime-gate ledger and deterministic fallback
 
@@ -212,7 +213,9 @@ internal/fixtures/product-demo/
   README.md
   corpus.json
   hashes.sha256
+  update_evidence.py
   validate.py
+  verify_scope.py
   schema/
     fixture-envelope.json
     capability-manifest.json
@@ -229,7 +232,7 @@ internal/fixtures/product-demo/
     replay.json
     completion.json
     unknown.json
-    malformed.json
+    malformed-input.json
     partial-failure.json
     source-collision.json
   negative/
@@ -284,8 +287,12 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   timeout, or disconnect cannot infer completion.
 - Unknown preserves an unrecognized safe record as observable unknown content
   without promoting a new discriminator.
-- Malformed supplies bounded invalid structures and expected stable validator
-  errors; raw invalid data is never treated as a passing case.
+- Malformed input uses a schema-valid fixture envelope whose bounded `input`
+  member contains the deliberately malformed upstream-like value and whose
+  expectation names the safe classification. This positive case proves
+  classification without making invalid corpus structure pass. Raw
+  envelope/schema-invalid documents live only under `negative/` and must fail
+  with their declared validator rule code.
 - Partial failure keeps healthy synthetic source results and a source-qualified
   safe error for the failed source.
 - Source collision reuses external thread/run strings across two sources and
@@ -302,11 +309,11 @@ set only deliberately simulated product-demo cells to `available` with
 Unknown and permission-denied are not empty success. Gated HITL/checkpoint/stream
 operations remain non-callable even when the corpus contains a presentation case.
 
-### Validator and stable diagnostics
+### Pure corpus validator and stable diagnostics
 
 `validate.py` uses only the Python standard library, reads only this corpus, emits
-stable sorted output, and performs no socket, subprocess, environment-secret, or
-wall-clock access. It validates:
+stable sorted output, and performs no Git inspection, socket, subprocess,
+environment read, or wall-clock access. It validates:
 
 - corpus/schema/index integrity and exact version support;
 - unique/normalized IDs, fixed clock derivation, sequence/order, and case coverage;
@@ -321,9 +328,7 @@ wall-clock access. It validates:
   real-looking repositories/actors, and unsafe path content;
 - zero external host/URL entries and an allow-listed standard-library import set;
 - positive cases pass, each negative case fails with exactly its declared stable
-  rule code, and no expected diagnostic disappears; and
-- committed, staged, unstaged, and untracked scope against the exact two governed
-  path patterns when `--verify-scope` is used.
+  rule code, and no expected diagnostic disappears.
 
 Stable rule-code families are `FIXTURE_SCHEMA`, `FIXTURE_ID`, `FIXTURE_CLOCK`,
 `FIXTURE_ORDER`, `FIXTURE_CAPABILITY`, `FIXTURE_INTERRUPT`, `FIXTURE_HASH`,
@@ -335,6 +340,31 @@ IDs, rule-code coverage, scrub match count, external URL/host count, and validat
 import allow-list. It contains no runtime timestamp. The no-external-network
 evidence states only what this read-only validator proves; it cannot be reused as
 evidence that future API, browser, or provider consumers made no network calls.
+
+### Linked-worktree-safe Git scope runner
+
+`verify_scope.py` is a separate standard-library-only repository-policy helper.
+It contains no corpus validation and may invoke only a fixed `git` executable
+through `subprocess.run` without a shell. It accepts the repository path and exact
+base commit, then:
+
+1. resolves the worktree root with `git -C <repo> rev-parse --show-toplevel`;
+2. resolves and records the linked-worktree-safe absolute Git directory and
+   common directory with `git rev-parse --path-format=absolute --git-dir` and
+   `--git-common-dir`, instead of assuming `.git` is a directory;
+3. reads committed and staged/unstaged name-status records using NUL-delimited
+   Git output so both old and new paths of copies/renames are checked;
+4. reads untracked paths with
+   `git ls-files --others --exclude-standard -z`; and
+5. rejects absolute, parent-traversing, undecodable, or out-of-allow-list paths.
+
+The exact allow-list is `internal/fixtures/product-demo/**` plus
+`docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`. The runner covers
+committed changes from
+`fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD`, staged changes, unstaged
+changes, and untracked files independently. Its report names each state and path;
+an empty state remains explicit. It performs no network access, arbitrary command
+execution, corpus mutation, or Git mutation.
 
 ## Milestones
 
@@ -362,22 +392,31 @@ ordered.
 Acceptance:
 
 - positive coverage includes start/content/tool/ordered interrupt/checkpoint/
-  reconnect/replay/completion/unknown/malformed/partial failure/source collision;
+  reconnect/replay/completion/unknown/malformed-input classification/partial
+  failure/source collision;
 - replay and repeated-action cases have explicit expected order;
-- malformed fixtures stay only in the negative harness; and
+- the positive malformed-input case has a schema-valid envelope and expected safe
+  classification, while raw schema-invalid fixtures stay only under `negative/`;
+  and
 - scrub review finds no credential, real identity, endpoint, repository content,
   external URL, or production-like payload.
 
 ### Milestone 3 — Prove deterministic validation
 
-Implement the standard-library validator, read-only scope check, deterministic
-hash update mode, read-only validation mode, and stable evidence reports.
+Implement the pure standard-library corpus validator, a separate deterministic
+evidence writer, the separate linked-worktree-safe Git scope runner, and stable
+evidence reports.
 
 Acceptance:
 
 - two read-only runs produce byte-identical output and no diff;
 - each negative fixture fails only with its declared rule code;
 - hash, scrub, and no-external-network checks are part of the required command;
+- corpus validation invokes no subprocess and reads no Git or environment state;
+- the explicit evidence writer is the only corpus helper that may update hashes
+  and deterministic reports, and a second run produces identical bytes;
+- the Git scope runner resolves linked-worktree metadata through fixed Git
+  commands and never imports or mutates the corpus;
 - all committed/staged/unstaged/untracked paths are within the exact allow-list;
   and
 - `docs/plans/**` hashes remain unchanged from the base.
@@ -385,15 +424,16 @@ Acceptance:
 ### Milestone 4 — Independent review handoff
 
 Update the living sections and retain exact commands/results, corpus digest, file
-inventory, known unindexed-plan diagnostic, gate ledger, and downstream deferrals.
-Stop at independent Agent Review.
+inventory, the complete draft-state docs-check diagnostic set, gate ledger, and
+downstream deferrals. Stop at independent Agent Review.
 
 Acceptance:
 
 - the implementation author does not approve, index, merge, or begin consumer
   work;
 - reviewers accept or return bounded rework against only the two governed paths;
-  and
+- an accepted review hands the reviewer/coordinator the exact metadata and index
+  transition needed before dispatch; and
 - API adapters, TypeScript consumers, product-demo services, and live parity
   remain separate reviewed cells.
 
@@ -401,6 +441,10 @@ Acceptance:
 
 - [x] 2026-07-23 AEST — Draft candidate authored at exact base/branch/worktree;
   no fixture implementation performed.
+- [x] 2026-07-23 AEST — Independent plan review returned four bounded findings;
+  plan-only rework reconciled malformed-input semantics, split corpus/scope
+  validation, removed the nonterminal TS machine dependency, and documented the
+  complete draft-to-reviewed docs transition. Fresh review remains pending.
 - [ ] Independent plan review confirms ownership, disjoint paths, gates,
   dependencies, case semantics, and install-free validation.
 - [ ] Milestone 1 complete; exact fixture contract and inventory retained.
@@ -413,15 +457,35 @@ Acceptance:
 - 2026-07-23 AEST — The current TypeScript source cell was reopened after external
   review. Evidence:
   `docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md`.
-  Consequence: this corpus may use canonical specification vocabulary but cannot
-  freeze or claim executable parity with the active TypeScript implementation.
+  Consequence: canonical specifications are sufficient for this neutral corpus;
+  the TS cell is neither a dependency nor a blocker, and executable TS parity is
+  a downstream claim.
 - 2026-07-23 AEST — The current docs index contains all existing active plans and
-  passes before this candidate is added. Consequence: this cell must retain the
-  expected unindexed-plan diagnostic and leave index registration to the
-  coordinator.
+  passes before this candidate is added. Consequence: this cell must retain all
+  eight expected draft/review diagnostics and leave review metadata plus index
+  registration to independent reviewers/the coordinator.
 - 2026-07-23 AEST — The existing external fixture paths are
   `internal/fixtures/{architecture,worktree,docs}/**`. Consequence:
   `internal/fixtures/product-demo/**` is collision-free and must remain exact.
+- 2026-07-23 AEST — At plan commit
+  `5b55c65aec90422a85959d3ba53f04eaa216b286`,
+  `python3 -B tools/docs/check.py` reported exactly these eight draft/review
+  diagnostics and no others:
+
+  ```text
+  active ExecPlan is not indexed: docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md has unsupported active ExecPlan status 'draft'; expected reviewed or active
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md requires independent non-owner reviewer metadata
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md requires completed gate reviewer metadata
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md metadata reviewed_at must be YYYY-MM-DD
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md metadata gate_reviewed_at must be YYYY-MM-DD
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md metadata last_verified_commit must name an existing full commit
+  docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md gate_review_status must be reviewed-with-gates for its gate arrays
+  ```
+
+  Consequence: the author keeps truthful draft metadata and
+  `dispatch_ready: false`; every diagnostic must be cleared by the independent
+  review/coordinator transition below before dispatch.
 
 ## Decision Log
 
@@ -429,6 +493,15 @@ Acceptance:
   standard-library-only. Rationale: Python and TypeScript conformance harnesses
   need one neutral data source without a third lockfile. Consequence: consumers
   import data, not this validator as product code.
+- 2026-07-23 AEST — Decision: separate corpus validation from Git scope
+  enforcement. Rationale: a deterministic content validator must not acquire
+  subprocess/repository authority, while linked worktrees require Git-aware scope
+  inspection. Consequence: `validate.py` is pure and `verify_scope.py` invokes
+  only fixed, NUL-delimited Git queries without a shell.
+- 2026-07-23 AEST — Decision: use a schema-valid positive envelope for malformed
+  input classification. Rationale: a positive corpus case cannot simultaneously
+  be schema-invalid and expected to pass. Consequence: raw invalid envelopes exist
+  only as declared negative fixtures.
 - 2026-07-23 AEST — Decision: distinguish fixture envelope semantics from the
   future production event wire. Rationale: Pydantic/OpenAPI/event authority and
   exact upstream event names are not established in this cell. Consequence:
@@ -445,19 +518,24 @@ Acceptance:
 
 ## Detailed implementation approach
 
-1. Reconfirm exact base ancestry, branch, worktree, terminal API/agent plans,
-   active TS plan, and clean scope before editing.
+1. Reconfirm exact base ancestry, branch, worktree, terminal API/agent plans, no
+   TS machine dependency, and clean scope before editing.
 2. Create the documented directory layout and corpus index with fixed version,
    epoch, ID prefixes, case order, and capability manifests.
-3. Add small positive cases, then the negative rule-code matrix. Do not derive
-   payloads from provider docs, external research fixtures, prototype network
-   captures, or live services.
-4. Implement `validate.py` as a read-only standard-library checker. Add an
-   explicit maintainer-only hash/report update mode that writes only the two
-   deterministic evidence files; ordinary `--check` never writes.
-5. Run the exact install-free validation below twice, confirm scope and legacy
+3. Add small positive cases, including the schema-valid malformed-input
+   classification envelope, then add raw invalid documents only through the
+   negative rule-code matrix. Do not derive payloads from provider docs, external
+   research fixtures, prototype network captures, or live services.
+4. Implement `validate.py` as a pure read-only standard-library checker that
+   never writes or invokes a subprocess.
+5. Implement `update_evidence.py` as the explicit maintainer-only deterministic
+   writer for the hash manifest and two evidence reports. It performs no Git,
+   network, environment-secret, or wall-clock access.
+6. Implement `verify_scope.py` separately with fixed, shell-free Git queries and
+   linked-worktree-safe root/Git-directory discovery.
+7. Run the exact install-free validation below twice, confirm scope and legacy
    preservation, update this plan, and commit only the two governed path sets.
-6. Hand the commit to fresh independent review. Do not run package tooling or
+8. Hand the commit to fresh independent review. Do not run package tooling or
    start API/web/product-demo processes.
 
 ## Validation and proof
@@ -470,7 +548,8 @@ test "$(git branch --show-current)" = "codex/contracts/wave1-fixture-corpus"
 git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c HEAD
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --verify-scope --repo . --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
 python3 -B tools/docs/generate.py --check
 python3 -B tools/docs/check.py
 git diff --check
@@ -483,12 +562,14 @@ Required observations:
 
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
-  no writes;
-- `--verify-scope` fails on any committed, staged, unstaged, or untracked path
-  outside `internal/fixtures/product-demo/**` and this plan;
+  no writes or subprocess invocation;
+- the separate scope runner reports linked worktree/common Git directories and
+  fails on any committed, staged, unstaged, or untracked path outside
+  `internal/fixtures/product-demo/**` and this plan;
 - generated docs remain drift-free;
-- docs validation has no failure other than the exact coordinator-owned
-  unindexed active-plan diagnostic until the index is updated elsewhere;
+- before independent review/index transition, docs validation reports exactly the
+  eight draft/review diagnostics retained above and no others;
+- after the reviewed metadata/index transition below, docs validation passes;
 - base-relative and worktree whitespace checks pass;
 - the final implementation commit contains only governed paths; and
 - the final author handoff is clean.
@@ -500,7 +581,8 @@ Retain in this plan:
 - positive-case and negative-rule-code coverage;
 - scrub/no-external-network report summary;
 - base-relative changed-file inventory and scope result;
-- exact known unindexed-plan diagnostic;
+- exact complete docs-check diagnostic set before transition and the later green
+  result;
 - fresh independent reviewer identity/result; and
 - explicit statement that no API, agent, TS consumer, app integration, provider
   contract, live parity, external network, credential, or `docs/plans/**` change
@@ -508,12 +590,39 @@ Retain in this plan:
 
 The plan-authoring step may run only documentation/static checks because the
 fixture validator does not yet exist. It must commit this one plan file only and
-report the expected unindexed-plan check without editing the index.
+report all eight expected draft/review diagnostics without editing the index or
+claiming review.
+
+### Required reviewed metadata and index transition before dispatch
+
+This author/rework commit deliberately keeps `status: draft`,
+`dispatch_ready: false`, empty reviewer fields, null review dates, null
+`last_verified_commit`, and `gate_review_status: unreviewed`. After fresh
+independent plan acceptance, a reviewer/coordinator—not the author—must make one
+reviewed transition that:
+
+1. sets `status: reviewed`;
+2. records at least one independent non-owner in `reviewed_by` and the actual
+   `reviewed_at` date;
+3. records `gate_review_status: reviewed-with-gates`, independent
+   `gate_reviewed_by`, and the actual `gate_reviewed_at` date without closing the
+   open runtime gates;
+4. records an existing full `last_verified_commit` for the accepted plan state;
+5. adds this plan to `docs/exec-plans/index.md` in the coordinator-owned change;
+6. reruns generation, docs validation, base/working-tree whitespace, exact scope,
+   and clean-status checks; and
+7. keeps `agent_review_required: true`.
+
+Only after all seven facts are committed and `python3 -B tools/docs/check.py`
+passes may a coordinator deliberately set `dispatch_ready: true` in reviewed
+metadata. This rework does not authorize that transition and leaves
+`dispatch_ready: false`.
 
 ## Idempotence, rollback, and recovery
 
-All corpus inputs use fixed clocks and IDs. `--check` is read-only and rerunnable;
-the explicit hash/report update mode is deterministic, then a second `--check`
+All corpus inputs use fixed clocks and IDs. `validate.py --check` is read-only and
+rerunnable. `update_evidence.py` is the sole deterministic writer for hashes and
+reports; a second write must produce identical bytes, then a second validation
 must produce no diff. A partial validator failure leaves all source files and
 diagnostics intact. Recovery changes only the invalid governed fixture or this
 plan; it never weakens a rule, deletes a negative case, changes external evidence,
@@ -533,8 +642,8 @@ consumer parity, not the neutral corpus.
 ## Rollout and handoff
 
 There is no production rollout. After fresh independent acceptance, hand the
-exact fixture commit, corpus digest, validation transcript, gate ledger, known
-index diagnostic, and clean scope proof to the coordinator.
+exact fixture commit, corpus digest, validation transcript, gate ledger, complete
+pre-transition docs diagnostic set, and clean scope proof to the coordinator.
 
 Downstream reviewed cells may then:
 

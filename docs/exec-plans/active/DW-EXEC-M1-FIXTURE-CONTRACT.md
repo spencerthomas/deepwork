@@ -1,31 +1,31 @@
 ---
 exec_plan_id: DW-EXEC-M1-FIXTURE-CONTRACT
 title: Wave 1 deterministic product-demo fixture contract
-status: draft
+status: reviewed
 superseded_by: null
 owner: fixture-contracts
-reviewed_by: []
-reviewed_at: null
+reviewed_by: [external-fixture-plan-reviewer]
+reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-004
 supporting_feature_ids: [DW-FND-001, DW-FND-002, DW-FND-003, DW-FND-005]
 issue: local:DW-M1-FIXTURE-CONTRACT
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
-last_verified_commit: null
+last_verified_commit: 7e404d96bb0c784d185b42125d477f5ab6581266
 branch: codex/contracts/wave1-fixture-corpus
 worktree: /Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract
 risk: medium
 governed_paths: [internal/fixtures/product-demo/**, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md]
 contract_gates: [SPIKE-STREAM-001, SPIKE-STREAM-002, SPIKE-STREAM-003, SPIKE-HITL-001, SPIKE-CANCEL-001, SPIKE-CHECKPOINT-001, SPIKE-SUBAGENT-001, SPIKE-ARTIFACT-001, SPIKE-MDA-001, SPIKE-FLEET-001, SPIKE-DIRECT-STREAM-001]
 decision_gates: [DEC-021, DEC-022, DEC-023, DEC-033, DEC-034, DEC-035]
-gate_review_status: unreviewed
-gate_reviewed_by: []
-gate_reviewed_at: null
+gate_review_status: reviewed-with-gates
+gate_reviewed_by: [external-fixture-plan-reviewer]
+gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-API-SCAFFOLD.md, docs/exec-plans/completed/DW-EXEC-M1-AGENT-SCAFFOLD.md]
 scenario_ids: [AC-DW-FND-004-04, AC-DW-FND-004-05, AC-DW-FND-004-06, AC-DW-FND-001-07, AC-DW-FND-002-06, AC-DW-FND-003-05, AC-DW-FND-005-01]
 dispatch_kind: cell
-dispatch_ready: false
+dispatch_ready: true
 agent_review_required: true
 dependencies: [local:DW-M1-API-001, local:DW-M1-AGENT-001]
 blockers: []
@@ -545,10 +545,20 @@ Acceptance:
 - [x] 2026-07-23 AEST — Bounded rework from
   `d2cb53c2301a6dd6c5c5b402990314dbebfff825` removes the circular initial
   dispatch transition and adds the DW-FND-004 fixed-logical-tick delay plus its
-  exact negative coverage. Fresh independent plan review remains pending; no
-  fixture implementation performed.
-- [ ] Independent plan review confirms ownership, disjoint paths, gates,
-  dependencies, case semantics, and install-free validation.
+  exact negative coverage. No fixture implementation was performed.
+- [x] 2026-07-23 AEST — Independent fixture-plan review task
+  `019f8da6-933a-7213-9834-94cd95d15731` accepted exact candidate
+  `7e404d96bb0c784d185b42125d477f5ab6581266` for dispatch packet sealing with
+  no blocking findings. The reviewer reproduced the one-plan scope, exact eight
+  expected draft diagnostics, dependency and fixed-tick arithmetic checks, and
+  confirmed the initial lifecycle is non-circular.
+- [x] 2026-07-23 AEST — The coordinator made this direct-child dispatch seal,
+  recording the independent reviewer/gate metadata, accepted plan SHA,
+  `dispatch_ready: true`, and the active index entry. The transition inventory is
+  exactly this plan plus `docs/exec-plans/index.md`; generation reports
+  `verified 6 generated documents`, docs validation exits 0, range whitespace
+  and scope checks exit 0, `internal/fixtures/product-demo` remains absent, and
+  the committed handoff is clean.
 - [ ] Milestone 1 complete; exact fixture contract and inventory retained.
 - [ ] Milestone 2 complete; positive and negative corpus retained.
 - [ ] Milestone 3 complete; deterministic validator and evidence retained.

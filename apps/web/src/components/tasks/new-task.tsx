@@ -131,7 +131,7 @@ export function NewTask() {
             rows={5}
             maxLength={PROMPT_MAX_LENGTH * 2}
             placeholder="Describe the outcome you want. The agent plans its own steps and pauses for your review."
-            aria-invalid={validationError !== undefined || overLimit}
+            aria-invalid={shownError !== undefined || overLimit}
             aria-describedby={promptDescribedBy}
             onChange={(event) => {
               setPrompt(event.target.value);

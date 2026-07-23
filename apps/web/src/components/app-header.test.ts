@@ -5,12 +5,13 @@ import { describe, expect, it } from "vitest";
 import { AppHeader, PRIMARY_NAVIGATION } from "./app-header";
 
 describe("AppHeader product navigation", () => {
-  it("exposes the delivered Tasks and Approvals destinations as working links", () => {
+  it("exposes the delivered destinations as working links", () => {
     const delivered = PRIMARY_NAVIGATION.filter((item) => item.href !== undefined);
 
     expect(delivered).toEqual([
       { href: "/", label: "Tasks" },
       { href: "/approvals", label: "Approvals" },
+      { href: "/activity", label: "Activity" },
     ]);
   });
 
@@ -26,7 +27,8 @@ describe("AppHeader product navigation", () => {
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain('aria-disabled="true"');
     expect(markup).toContain('href="/approvals"');
-    expect(markup.match(/>Soon</g)).toHaveLength(5);
+    expect(markup).toContain('href="/activity"');
+    expect(markup.match(/>Soon</g)).toHaveLength(4);
     expect(markup).toContain('aria-label="Use dark theme"');
     expect(markup).toContain('aria-pressed="false"');
   });

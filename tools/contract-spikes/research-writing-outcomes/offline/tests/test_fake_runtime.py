@@ -7,6 +7,7 @@ from research_writing_outcome_spikes.fake_runtime import (
     evaluate_required_criteria,
     normalize_subagent_event,
     promote_artifact,
+    substitution_rejected,
 )
 
 from support import OfflineTestCase
@@ -85,13 +86,70 @@ class FakeRuntimeTests(OfflineTestCase):
             "iteration": 1,
             "verdict_id": "v1",
             "supersedes_verdict_id": None,
+            "identity": IDENTITY,
+            "candidate_hash": "a" * 64,
+            "evidence_versions": {"ev-1": "1"},
         }
         second = {
             "iteration": 2,
             "verdict_id": "v2",
             "supersedes_verdict_id": "v1",
+            "identity": IDENTITY,
+            "candidate_hash": "b" * 64,
+            "evidence_versions": {"ev-1": "2"},
         }
         history = append_repair([], first)
         updated = append_repair(history, second)
         self.assertEqual(["v1"], [item["verdict_id"] for item in history])
         self.assertEqual(["v1", "v2"], [item["verdict_id"] for item in updated])
+
+    def test_missing_identity_and_malformed_rubric_fail_closed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "identity fields"):
+            promote_artifact(
+                {"identity": {}, "content_hash": "x"},
+                {
+                    "identity": {},
+                    "candidate_hash": "x",
+                    "artifact_id": "a",
+                    "version": "1",
+                    "attestation_id": "p",
+                },
+            )
+        with self.assertRaisesRegex(ValueError, "identity fields"):
+            normalize_subagent_event(
+                {
+                    "identity": {},
+                    "state": "progress",
+                    "display_summary": "x",
+                    "subagent_id": "s",
+                    "namespace": "n",
+                },
+                {},
+            )
+        with self.assertRaisesRegex(ValueError, "criterion state"):
+            evaluate_required_criteria(
+                [{"criterion_id": "c", "semantics": "required", "state": "malformed"}]
+            )
+        with self.assertRaisesRegex(ValueError, "identity fields"):
+            bind_verdict(
+                {
+                    "identity": {},
+                    "attempt_id": "a",
+                    "template_id": "t",
+                    "rubric_version": "1",
+                },
+                [
+                    {
+                        "identity": {},
+                        "evidence_id": "e",
+                        "version": "1",
+                        "required": True,
+                        "state": "valid",
+                    }
+                ],
+                FakeModel(),
+            )
+
+    def test_substitution_requires_distinct_presented_value(self) -> None:
+        self.assertTrue(substitution_rejected("tenant-1", "tenant-2"))
+        self.assertFalse(substitution_rejected("tenant-1", "tenant-1"))

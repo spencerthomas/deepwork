@@ -1,6 +1,9 @@
 {
+  "approval_artifact": "docs/references/program/package-index-approvals/research-writing-outcomes.json",
+  "approval_commit": null,
+  "approval_failure": null,
   "approved": false,
-  "checked_at": "2026-07-23T06:28:09.954910+00:00",
+  "checked_at": "2026-07-23T06:45:31.268769+00:00",
   "failure_class": null,
   "mode": "no-index",
   "network_request_performed": false,

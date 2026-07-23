@@ -15,6 +15,7 @@ from .common import (
     exact_identity,
     load_json,
     require,
+    sha256_file,
 )
 
 
@@ -91,8 +92,22 @@ EVIDENCE_TIERS = {
     "unknown",
 }
 
+LIVE_BLOCKED_CAPABILITIES = {
+    ("artifact", "access"),
+    ("artifact", "range_size"),
+    ("artifact", "expiry_revocation"),
+    ("artifact", "retention_deletion"),
+    ("artifact", "unavailable_stale"),
+    ("rubric", "interrupt"),
+}
 
-def validate_matrix(data: dict[str, Any], *, installed_public_blocked: bool) -> None:
+
+def validate_matrix(
+    data: dict[str, Any],
+    *,
+    installed_public_blocked: bool,
+    evidence_root: Path | None = None,
+) -> None:
     require(data.get("schema_version") == "dw.research-writing-matrix.v1", "matrix schema drifted")
     require(tuple(data.get("identity_fields", ())) == IDENTITY_FIELDS, "identity tuple drifted")
     upstream = data.get("upstream_dependencies", {})
@@ -112,6 +127,22 @@ def validate_matrix(data: dict[str, Any], *, installed_public_blocked: bool) -> 
         )
         require(public.get("lock_created") is False, "blocked installed-public project cannot be locked")
         require(public.get("commands_run") is False, "blocked installed-public project cannot run")
+    else:
+        require(
+            public.get("state") == "accepted-installed-public-conformance",
+            "installed-public conformance result missing",
+        )
+        require(public.get("lock_created") is True, "installed-public conformance lock missing")
+        require(public.get("commands_run") is True, "installed-public conformance commands missing")
+        pins = public.get("distribution_pins")
+        require(isinstance(pins, list) and pins, "installed-public distribution pins missing")
+        for pin in pins:
+            require(isinstance(pin.get("name"), str) and pin["name"], "distribution name missing")
+            require(isinstance(pin.get("version"), str) and pin["version"], "distribution version missing")
+            require(
+                isinstance(pin.get("sha256"), str) and len(pin["sha256"]) == 64,
+                "distribution hash missing",
+            )
 
     evidence_items = data.get("evidence", [])
     evidence_by_id: dict[str, dict[str, Any]] = {}
@@ -120,8 +151,22 @@ def validate_matrix(data: dict[str, Any], *, installed_public_blocked: bool) -> 
         require(isinstance(evidence_id, str) and evidence_id, "evidence id missing")
         require(evidence_id not in evidence_by_id, f"duplicate evidence: {evidence_id}")
         exact_identity(item.get("identity"), label=f"evidence {evidence_id}")
+        require(item.get("owner_stream") in STREAMS, f"evidence owner stream invalid: {evidence_id}")
         require(item.get("immutable") is True, f"evidence must be immutable: {evidence_id}")
         require(isinstance(item.get("version"), str) and item["version"], f"evidence version missing: {evidence_id}")
+        path_value = item.get("path")
+        require(isinstance(path_value, str) and path_value, f"evidence path missing: {evidence_id}")
+        path = Path(path_value)
+        require(not path.is_absolute() and ".." not in path.parts, f"unsafe evidence path: {evidence_id}")
+        require(
+            isinstance(item.get("content_sha256"), str)
+            and len(item["content_sha256"]) == 64,
+            f"evidence hash missing: {evidence_id}",
+        )
+        if evidence_root is not None:
+            resolved = evidence_root / path
+            require(resolved.is_file(), f"evidence file missing: {evidence_id}")
+            require(sha256_file(resolved) == item["content_sha256"], f"evidence hash mismatch: {evidence_id}")
         evidence_by_id[evidence_id] = item
 
     rows = data.get("rows", [])
@@ -154,19 +199,47 @@ def validate_matrix(data: dict[str, Any], *, installed_public_blocked: bool) -> 
             referenced_evidence.add(evidence_id)
             owner = evidence_by_id[evidence_id]["identity"]
             require(owner == identity, f"cross-owner evidence substitution in {row_id}")
+            require(
+                evidence_by_id[evidence_id]["owner_stream"] == stream,
+                f"cross-stream evidence substitution in {row_id}",
+            )
         if row.get("case") == "substitution":
             dimension = row.get("substitution_dimension")
             seen_substitutions[stream].add(dimension)
+            expected = row.get("expected_value")
+            presented = row.get("presented_value")
+            require(isinstance(expected, str) and expected, f"expected binding missing in {row_id}")
+            require(isinstance(presented, str) and presented, f"presented binding missing in {row_id}")
+            require(expected != presented, f"substitution did not change value in {row_id}")
+            if dimension in IDENTITY_FIELDS:
+                require(expected == identity[dimension], f"identity substitution target drifted in {row_id}")
+            if dimension == "evidence_id":
+                require(expected in row.get("evidence_refs", []), f"evidence substitution target drifted in {row_id}")
             require(row.get("result") == "rejected-substitution", f"substitution accepted in {row_id}")
             require(row.get("automatic_pass") is False, f"substitution auto-passed in {row_id}")
-        if row.get("required_evidence_state") in {"fail", "uncertain", "not_evaluated", "missing"}:
+        if row.get("required_evidence_state") in {"fail", "uncertain", "not_evaluated", "missing", "invalid"}:
             require(row.get("automatic_pass") is False, f"required evidence auto-passed in {row_id}")
+        if row.get("capability") == "manual_fallback":
+            require(row.get("result") == "manual-fallback", f"manual fallback result drifted in {row_id}")
+            require(row.get("automatic_pass") is False, f"manual fallback auto-passed in {row_id}")
+            require(
+                row.get("normalized_verdict") in {"manually_reviewed", "unsupported"},
+                f"manual fallback verdict drifted in {row_id}",
+            )
         if row.get("result") == "accepted-deterministic-normalization":
             require(row.get("evidence_tier") == "deterministic-fake", f"fake tier mismatch in {row_id}")
             require(row.get("provider_proof") is False, f"fake promoted to provider proof in {row_id}")
         if row.get("result") == "blocked-live-evidence":
             require(isinstance(row.get("blocker"), str) and row["blocker"], f"live blocker missing in {row_id}")
             require(row.get("automatic_pass") is False, f"blocked live row passed in {row_id}")
+        if (stream, row.get("capability")) in LIVE_BLOCKED_CAPABILITIES:
+            require(row.get("result") == "blocked-live-evidence", f"live-blocked capability promoted in {row_id}")
+        if stream == "rubric" and row.get("capability") == "interrupt":
+            blockers = set(row.get("blockers", []))
+            require(
+                {"SPIKE-HITL-001", "sanctioned-non-production-classic-sandbox"} <= blockers,
+                f"interrupt blockers incomplete in {row_id}",
+            )
         if stream == "artifact" and row.get("artifact_state") == "working":
             require(row.get("promoted") is False, f"working file confused with artifact in {row_id}")
         if stream == "subagent":
@@ -197,7 +270,12 @@ def main() -> int:
     parser.add_argument("--reject-unresolved-precedence-conflicts", action="store_true")
     args = parser.parse_args()
     try:
-        validate_matrix(load_json(Path(args.matrix)), installed_public_blocked=args.require_installed_public_blocked)
+        matrix_path = Path(args.matrix)
+        validate_matrix(
+            load_json(matrix_path),
+            installed_public_blocked=args.require_installed_public_blocked,
+            evidence_root=matrix_path.parent,
+        )
     except ValidationError as exc:
         print(f"matrix validation failed: {exc}")
         return 1

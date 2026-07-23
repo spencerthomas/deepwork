@@ -28,7 +28,7 @@
   "offline_project": {
     "dependencies": [],
     "lock_mode": "frozen-offline",
-    "network_policy": "globally-denied-in-tests",
+    "network_policy": "python-process-audit-hook-plus-test-assertions",
     "proof_limit": "Deep Work normalization only; not Deep Agents behavior",
     "test_runner": "stdlib-unittest"
   },

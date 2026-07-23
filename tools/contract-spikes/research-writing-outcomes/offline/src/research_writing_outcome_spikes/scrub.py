@@ -12,14 +12,28 @@ from .common import dump_json
 
 PATTERNS = {
     "credential_assignment": re.compile(r"(?i)(api[_-]?key|password|secret|token)\s*[:=]\s*[\"']?[A-Za-z0-9_-]{12,}"),
+    "unlabelled_secret": re.compile(
+        r"\b(sk-(?:proj|live)-[A-Za-z0-9_-]{8,}|AKIA[A-Z0-9]{16}|gh[pousr]_[A-Za-z0-9]{20,})\b"
+    ),
     "authorization_header": re.compile(r"(?i)authorization\s*:\s*(bearer|basic)\s+"),
-    "cookie_header": re.compile(r"(?i)(set-cookie|cookie)\s*:"),
+    "raw_header": re.compile(
+        r"(?im)^\s*(authorization|proxy-authorization|x-api-key|set-cookie|cookie)\s*:"
+    ),
     "private_key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     "hidden_reasoning": re.compile(
         r"(?i)(chain[- ]of[- ]thought|hidden_reasoning\s*[:=]|private_reasoning\s*[:=])"
     ),
     "unsafe_html": re.compile(r"(?i)<(script|iframe|object|embed)\b|javascript:"),
-    "absolute_user_path": re.compile(r"/Users/[A-Za-z0-9._-]+/"),
+    "absolute_user_path": re.compile(
+        r"(?:(?:/Users|/home)/[A-Za-z0-9._-]+/|[A-Za-z]:\\\\Users\\\\[A-Za-z0-9._-]+\\\\)"
+    ),
+    "reusable_endpoint": re.compile(
+        r"https?://(?![A-Za-z0-9.-]*example\.invalid\b)[^\s\"']+"
+        r"(?:[?&](?:token|signature|sig|key|expires)=|/signed/)"
+    ),
+    "customer_data": re.compile(
+        r"(?i)(customer_(?:name|email|address)|production_tenant|real_customer|customer_record)\s*[:=]"
+    ),
 }
 
 SKIP = {"scrub-report.json", "hashes.json", "review.json"}
@@ -60,16 +74,7 @@ def main() -> int:
         "covered_max_mtime_ns": max_mtime_ns,
         "finding_count": len(findings),
         "findings": findings,
-        "categories": [
-            "secrets",
-            "credentials",
-            "customer_or_tenant_data",
-            "reusable_endpoints",
-            "headers_or_cookies",
-            "hidden_reasoning",
-            "unsafe_html_or_urls",
-            "absolute_paths",
-        ],
+        "categories": sorted(PATTERNS),
     }
     dump_json(root / "scrub-report.json", report)
     if findings:

@@ -50,7 +50,6 @@ BLOCKED_PUBLIC = {
     ("subagent", "parent_attribution"),
     ("subagent", "terminal_states"),
     ("rubric", "immutable_ordered_rubric"),
-    ("rubric", "interrupt"),
 }
 
 
@@ -183,13 +182,52 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                 ],
             },
             "citation_cases": [
-                {"case": "valid", "evidence_id": "ev-citation-valid", "state": "valid"},
-                {"case": "missing", "evidence_id": "ev-citation-missing", "state": "missing"},
-                {"case": "unreachable", "evidence_id": "ev-citation-unreachable", "state": "invalid"},
-                {"case": "mismatched", "evidence_id": "ev-citation-mismatched", "state": "invalid"},
-                {"case": "fabricated", "evidence_id": "ev-citation-fabricated", "state": "invalid"},
+                {
+                    "case": "valid",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-citation-valid",
+                    "evidence_version": "citation-v1",
+                    "state": "valid",
+                    "required": True,
+                    "expected_verdict": "passed",
+                },
+                {
+                    "case": "missing",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-citation-missing",
+                    "evidence_version": "missing-v1",
+                    "state": "missing",
+                    "required": True,
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "unreachable",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-citation-unreachable",
+                    "evidence_version": "unreachable-v1",
+                    "state": "invalid",
+                    "required": True,
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "mismatched",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-citation-mismatched",
+                    "evidence_version": "mismatch-v1",
+                    "state": "invalid",
+                    "required": True,
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "fabricated",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-citation-fabricated",
+                    "evidence_version": "fabricated-v1",
+                    "state": "invalid",
+                    "required": True,
+                    "expected_verdict": "failed",
+                },
             ],
-            "expected_verdict": "failed",
             "truth_limit": "Citation presence does not establish factual truth.",
         },
         "writing-transcript.json": {
@@ -208,16 +246,80 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                 "content_hash": sha256_bytes(writing_body),
                 "attestation_id": "promotion-001",
             },
-            "negative_cases": ["missing", "empty", "stale", "working-only"],
-            "expected_verdict": "failed-without-promoted-final",
+            "source_attribution": {
+                "identity": IDENTITY,
+                "evidence_id": "ev-writing-transcript",
+                "source_id": IDENTITY["source_id"],
+                "state": "valid",
+            },
+            "cases": [
+                {
+                    "case": "valid-promoted",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-writing-promoted",
+                    "candidate_hash": sha256_bytes(writing_body),
+                    "artifact_state": "promoted",
+                    "expected_verdict": "passed",
+                },
+                {
+                    "case": "missing",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-writing-missing",
+                    "candidate_hash": None,
+                    "artifact_state": "missing",
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "empty",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-writing-empty",
+                    "candidate_hash": sha256_bytes(b""),
+                    "artifact_state": "promoted",
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "stale",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-writing-stale",
+                    "candidate_hash": sha256_bytes(b"Stale synthetic draft.\n"),
+                    "artifact_state": "stale",
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "working-only",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-writing-working-only",
+                    "candidate_hash": sha256_bytes(b"Synthetic draft.\n"),
+                    "artifact_state": "working",
+                    "expected_verdict": "failed",
+                },
+            ],
         },
         "coding-negative-transcript.json": {
             "schema_version": "dw.fixture.coding-negative.v1",
             "identity": IDENTITY,
             "template_id": "coding-negative-only-v1",
             "model_output": "Everything passed.",
-            "test_evidence": {"evidence_id": "ev-test-failed", "state": "fail", "exit_status": 1},
-            "expected_verdict": "failed",
+            "cases": [
+                {
+                    "case": "failed-tests",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-test-failed",
+                    "evidence_version": "test-v1",
+                    "state": "fail",
+                    "exit_status": 1,
+                    "expected_verdict": "failed",
+                },
+                {
+                    "case": "missing-tests",
+                    "identity": IDENTITY,
+                    "evidence_id": "ev-test-missing",
+                    "evidence_version": "missing-v1",
+                    "state": "missing",
+                    "exit_status": None,
+                    "expected_verdict": "failed",
+                },
+            ],
             "scope_limit": "Evidence-binding negative only; no coding journey credit.",
         },
         "artifact-manifest.json": {
@@ -269,6 +371,14 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
             "identity": IDENTITY,
             "subagent_id": "subagent-sync-01",
             "namespace": "parent/subagent-sync-01",
+            "input_summary": {
+                "text": "Inspect two synthetic evidence records and return bounded source facts.",
+                "max_characters": 120,
+                "actual_characters": len(
+                    "Inspect two synthetic evidence records and return bounded source facts."
+                ),
+                "truncated": False,
+            },
             "events": [
                 {"sequence": 1, "state": "spawned", "display_summary": "Synthetic subagent started."},
                 {"sequence": 2, "state": "progress", "display_summary": "One bounded source fact was supplied."},
@@ -286,6 +396,15 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                 "malformed-content",
                 "duplicate-event",
                 "out-of-order-event",
+            ],
+            "normalized_outcomes": [
+                {"sequence": 1, "outcome": "projected", "state": "spawned"},
+                {"sequence": 2, "outcome": "projected", "state": "progress"},
+                {"sequence": 2, "outcome": "ignored-duplicate", "state": "progress"},
+                {"sequence": 4, "outcome": "projected", "state": "completed"},
+                {"sequence": 3, "outcome": "ignored-out-of-order", "state": "reconnected"},
+                {"case": "malformed-content", "outcome": "safe-unknown-parent-event"},
+                {"case": "wrong-parent-identity", "outcome": "rejected-substitution"},
             ],
             "fallback": "generic-parent-timeline",
             "public_api_state": "blocked-package-index-evidence",
@@ -323,6 +442,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "evidence_versions": {"ev-citation-missing": "1"},
                     "state": "failed",
                     "supersedes_verdict_id": None,
+                    "identity": IDENTITY,
                 },
                 {
                     "iteration": 2,
@@ -331,6 +451,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "evidence_versions": {"ev-citation-valid": "2"},
                     "state": "passed",
                     "supersedes_verdict_id": "verdict-001",
+                    "identity": IDENTITY,
                 },
                 {
                     "iteration": 3,
@@ -339,6 +460,7 @@ def fixture_evidence(root: Path) -> list[dict[str, Any]]:
                     "evidence_versions": {"ev-citation-valid": "3"},
                     "state": "capped",
                     "supersedes_verdict_id": "verdict-002",
+                    "identity": IDENTITY,
                 },
             ],
             "restart_checkpoint": {"last_iteration": 3, "last_verdict_id": "verdict-003"},
@@ -398,7 +520,12 @@ def make_row(
     *,
     result: str = "accepted-deterministic-normalization",
 ) -> dict[str, Any]:
-    if result == "accepted-deterministic-normalization":
+    if result in {
+        "accepted-deterministic-normalization",
+        "rejected-invalid-evidence",
+        "rejected-substitution",
+        "manual-fallback",
+    }:
         tier = "deterministic-fake"
         blocker = None
     elif result == "blocked-package-index-evidence":
@@ -428,6 +555,7 @@ def make_row(
         }[stream],
         "acceptance_ids": ACCEPTANCE_BY_STREAM[stream],
         "automatic_pass": result == "accepted-deterministic-normalization",
+        "normalized_verdict": "passed" if result == "accepted-deterministic-normalization" else "unsupported",
         "provider_proof": False,
         "artifact_state": "working" if stream == "artifact" and capability == "working_vs_promoted" else None,
         "promoted": False if stream == "artifact" and capability == "working_vs_promoted" else None,
@@ -451,10 +579,14 @@ def build_matrix(evidence: list[dict[str, Any]]) -> dict[str, Any]:
             result = "accepted-deterministic-normalization"
             if stream == "artifact" and capability in BLOCKED_LIVE_ARTIFACT:
                 result = "blocked-live-evidence"
+            elif stream == "rubric" and capability == "interrupt":
+                result = "blocked-live-evidence"
             elif (stream, capability) in BLOCKED_PUBLIC:
                 result = "blocked-package-index-evidence"
             evidence_id = evidence_by_stream[stream]
-            if capability == "research_citation_negatives":
+            if stream == "artifact" and capability == "working_vs_promoted":
+                evidence_id = "ev-artifact-working"
+            elif capability == "research_citation_negatives":
                 evidence_id = "ev-citation-missing"
             elif capability == "research_provenance":
                 evidence_id = "ev-citation-valid"
@@ -467,33 +599,77 @@ def build_matrix(evidence: list[dict[str, Any]]) -> dict[str, Any]:
                 row["required_evidence_state"] = "missing" if capability != "coding_test_negative" else "fail"
                 row["automatic_pass"] = False
                 row["result"] = "rejected-invalid-evidence"
+                row["normalized_verdict"] = "failed"
+            if capability == "manual_fallback":
+                row["required_evidence_state"] = "not_evaluated"
+                row["automatic_pass"] = False
+                row["result"] = "manual-fallback"
+                row["normalized_verdict"] = "manually_reviewed"
+            if stream == "rubric" and capability == "interrupt":
+                row["blocker"] = "SPIKE-HITL-001-and-sanctioned-non-production-classic-sandbox"
+                row["blockers"] = [
+                    "SPIKE-HITL-001",
+                    "sanctioned-non-production-classic-sandbox",
+                ]
             rows.append(row)
             counter += 1
 
-    # Ensure every retained evidence record participates in the cross-stream closure.
+    # Ensure every retained evidence record participates without promoting its state.
     used = {ref for row in rows for ref in row["evidence_refs"]}
     for item in evidence:
         if item["evidence_id"] not in used:
+            capability = sorted(REQUIRED_CAPABILITIES[item["owner_stream"]])[0]
+            result = "accepted-deterministic-normalization"
+            required_state = None
+            normalized_verdict = "passed"
+            if item["evidence_id"] == "ev-artifact-working":
+                capability = "working_vs_promoted"
+                normalized_verdict = "not-promoted"
+            elif item["evidence_id"] in {
+                "ev-citation-unreachable",
+                "ev-citation-mismatched",
+                "ev-citation-fabricated",
+            }:
+                capability = "research_citation_negatives"
+                result = "rejected-invalid-evidence"
+                required_state = "invalid"
+                normalized_verdict = "failed"
             row = make_row(
                 item["owner_stream"],
-                sorted(REQUIRED_CAPABILITIES[item["owner_stream"]])[0],
+                capability,
                 counter,
                 item["evidence_id"],
+                result=result,
             )
             row["row_id"] = f"{item['owner_stream']}-{counter:03d}-evidence-closure-{item['evidence_id']}"
+            row["automatic_pass"] = result == "accepted-deterministic-normalization"
+            row["required_evidence_state"] = required_state
+            row["normalized_verdict"] = normalized_verdict
             rows.append(row)
             counter += 1
 
     for stream in STREAMS:
         for dimension in sorted(SUBSTITUTION_DIMENSIONS[stream]):
             row = make_row(stream, f"substitution_{dimension}", counter, evidence_by_stream[stream])
+            expected_values = {
+                **IDENTITY,
+                "evidence_id": evidence_by_stream[stream],
+                "artifact_id": "artifact-final-01",
+                "subagent_id": "subagent-sync-01",
+                "criterion_id": "criterion-provenance",
+                "candidate_hash": sha256_bytes(b"candidate-1"),
+                "template_id": "research-v1",
+                "rubric_version": "1",
+            }
             row.update(
                 {
                     "case": "substitution",
                     "substitution_dimension": dimension,
+                    "expected_value": expected_values[dimension],
                     "presented_value": f"wrong-{dimension}",
                     "result": "rejected-substitution",
                     "automatic_pass": False,
+                    "normalized_verdict": "failed",
                     "transitions": ["received", "identity-rejected"],
                 }
             )
@@ -565,7 +741,8 @@ promoted deliverables, or test records produce a failed verdict.
 ## Evidence boundary
 
 The no-index project has no dependencies, uses only `unittest`, denies network
-access globally in tests, and runs frozen and offline. It proves deterministic
+access across the offline Python process with an audit hook, asserts the denial
+again in every test class, and runs frozen and offline. It proves deterministic
 normalization, substitution rejection, append-only repair history, and manual
 fallbacks. It does not prove Deep Agents behavior.
 
@@ -627,26 +804,6 @@ end-to-end behavior.
 """
 
 
-COMMANDS = """# exit-status<TAB>command
-0\tpython3 tools/contract-spikes/research-writing-outcomes/index_preflight.py --mode no-index --output docs/references/research/research-writing-outcomes/index-status.json
-0\tuv lock --project tools/contract-spikes/research-writing-outcomes/offline --offline
-0\tuv sync --project tools/contract-spikes/research-writing-outcomes/offline --frozen --offline
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m unittest discover -s tools/contract-spikes/research-writing-outcomes/offline/tests -p 'test_*.py'
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.inventory --output docs/references/research/research-writing-outcomes/versions.json
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.validate_matrix docs/references/research/research-writing-outcomes/matrix.json --require-all-streams --require-complete-cross-product --require-installed-public-blocked --reject-orphaned-evidence --reject-blocked-dependency-promotion --reject-unresolved-precedence-conflicts
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.scrub docs/references/research/research-writing-outcomes
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.hash_evidence docs/references/research/research-writing-outcomes --output docs/references/research/research-writing-outcomes/hashes.json
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.validate_evidence docs/references/research/research-writing-outcomes --require-command-statuses --require-fixture-hash-closure --require-fresh-scrub
-0\tUV_OFFLINE=true uv run --project tools/contract-spikes/research-writing-outcomes/offline --frozen python -m research_writing_outcome_spikes.validate_scope --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
-0\tuv lock --project tools/contract-spikes/research-writing-outcomes/offline --check --offline
-0\tpython3 tools/docs/generate.py --check
-0\tpython3 tools/docs/check.py
-0\tgit diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c...HEAD
-0\tgit diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c
-0\tgit status --short
-"""
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
@@ -657,7 +814,6 @@ def main() -> int:
     evidence = fixture_evidence(root)
     dump_json(root / "matrix.json", build_matrix(evidence))
     (root / "report.md").write_text(REPORT)
-    (root / "commands.txt").write_text(COMMANDS)
     print("deterministic corpus generated")
     return 0
 

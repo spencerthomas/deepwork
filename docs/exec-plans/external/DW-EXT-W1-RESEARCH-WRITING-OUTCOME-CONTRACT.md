@@ -419,7 +419,7 @@ destructive cleanup is authorized by this packet.
   and repository/documentation instructions.
 - [x] Implemented the dependency-free offline project with a local PEP 517
   backend, frozen lock, stdlib `unittest` suite, deterministic fake normalizer,
-  and global socket/DNS denial.
+  Python-process audit-hook network denial, and per-test socket/DNS assertions.
 - [x] Implemented fail-closed package-index preflight and the separate,
   deliberately unlocked and unexecuted installed-public conformance cell.
 - [x] Generated the correlated artifact/subagent/rubric/verifier matrix, closed
@@ -428,12 +428,19 @@ destructive cleanup is authorized by this packet.
 - [x] Kept COMPOSE-001, CONFIG-001, STREAM-003, and HITL-001 blocked at reviewed
   head `758c1d4a2230b7c4261fcfbd0f3008634509e096`; no upstream row was copied,
   accepted, or reclassified.
-- [x] Completed all exact no-index validations after final corpus fixes: 15
-  stdlib tests, 78 matrix rows, 12 evidence records, 19-file retained hash
+- [x] Completed all exact no-index validations after final corpus fixes: 24
+  stdlib tests, 77 matrix rows, 12 evidence records, 19-file retained hash
   closure, zero scrub findings, fresh evidence, governed scope, offline lock,
   documentation generation/check, and diff checks.
-- [ ] Commit a clean candidate, obtain distinct runtime-contract/security/product
-  final reviews, resolve findings, and create the review-only attestation commit.
+- [x] Froze candidate `7347ebd6d4bc542ee11f72f0434908b197aa4c64`
+  and obtained independent runtime-contract, security, and product reviews. All
+  three requested changes; no attestation was created from the rejected candidate.
+- [x] Resolved every first-review finding in a replacement candidate: executable
+  identity/substitution/case negatives, truthful blocked/manual rows, exact
+  command enforcement and execution-derived statuses, expanded scrub coverage,
+  process-wide Python network denial, and committed-blob review validation.
+- [ ] Commit the replacement candidate, obtain three distinct final acceptances,
+  and create the review-only attestation commit.
 - [ ] Validate the attestation, send the coordinator the reviewed SHA and exact
   evidence, then stop.
 
@@ -449,6 +456,12 @@ destructive cleanup is authorized by this packet.
   reasoning detector. The detector is now scoped to persisted reasoning fields
   and chain-of-thought markers, so the report can state the prohibition without
   becoming a false positive.
+- The first independent review exposed that several retained rows described the
+  intended rejection but did not execute it. It also found auto-passed invalid
+  citations/manual fallback, absent per-case writing/coding evidence, incomplete
+  command/scrub enforcement, and a self-referential review SHA design. The first
+  candidate was rejected and retained in Git history; all findings were treated
+  as contract defects rather than review exceptions.
 
 ## Decision log
 
@@ -465,6 +478,18 @@ destructive cleanup is authorized by this packet.
   and stream-specific identity in negative rows.
   Rationale: this makes cross-stream ownership explicit and lets the validator
   reject both orphaned evidence and replay/substitution.
+- Decision: derive the attestation commit from the validator's explicit Git
+  object argument and read `review.json`/`matrix.json` from committed blobs.
+  Rationale: a commit cannot contain its own SHA without a self-reference
+  paradox, and working-tree JSON cannot be trusted as immutable attestation
+  evidence.
+- Decision: require the approved-index mode to consume a separately owned,
+  already committed coordinator approval artifact.
+  Rationale: a caller-provided environment string is not reviewer authorization;
+  the current checkout has no such artifact, so the cell remains blocked.
+- Decision: record the exact command set by executing it through the fixed
+  offline recorder, then rerun scrub/hash/evidence after `commands.txt` changes.
+  Rationale: hard-coded zero statuses were not acceptable execution evidence.
 
 ## Outcomes and retrospective
 

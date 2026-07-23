@@ -33,7 +33,7 @@ def main() -> int:
         "uv": _uv_version(),
         "offline_project": {
             "dependencies": [],
-            "network_policy": "globally-denied-in-tests",
+            "network_policy": "python-process-audit-hook-plus-test-assertions",
             "test_runner": "stdlib-unittest",
             "lock_mode": "frozen-offline",
             "proof_limit": "Deep Work normalization only; not Deep Agents behavior",

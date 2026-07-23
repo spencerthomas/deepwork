@@ -41,6 +41,7 @@ def build_wheel(wheel_directory: str, config_settings=None, metadata_directory=N
     entries: dict[str, bytes] = {}
     for source in sorted((root / "src" / NAME).glob("*.py")):
         entries[f"{NAME}/{source.name}"] = source.read_bytes()
+    entries["sitecustomize.py"] = (root / "src" / "sitecustomize.py").read_bytes()
     entries[f"{_dist_info()}/METADATA"] = _metadata()
     entries[f"{_dist_info()}/WHEEL"] = _wheel()
     record_path = f"{_dist_info()}/RECORD"

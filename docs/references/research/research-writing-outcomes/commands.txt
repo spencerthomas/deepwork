@@ -1,4 +1,4 @@
-# exit-status<TAB>command
+# execution-derived exit-status<TAB>exact-command
 0	python3 tools/contract-spikes/research-writing-outcomes/index_preflight.py --mode no-index --output docs/references/research/research-writing-outcomes/index-status.json
 0	uv lock --project tools/contract-spikes/research-writing-outcomes/offline --offline
 0	uv sync --project tools/contract-spikes/research-writing-outcomes/offline --frozen --offline

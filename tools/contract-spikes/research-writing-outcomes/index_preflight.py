@@ -4,15 +4,49 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
-APPROVAL_ENV = "DW_APPROVED_PUBLIC_INDEX_PREFLIGHT"
 PUBLIC_SIMPLE_INDEX = "https://pypi.org/simple/deepagents/"
+APPROVAL_ARTIFACT = Path(
+    "docs/references/program/package-index-approvals/research-writing-outcomes.json"
+)
+
+
+def _reviewed_approval() -> tuple[bool, str | None, str | None]:
+    """Accept only a separately owned, committed coordinator approval artifact."""
+    try:
+        committed = subprocess.run(
+            ["git", "show", f"HEAD:{APPROVAL_ARTIFACT}"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        approval = json.loads(committed)
+        approval_commit = subprocess.run(
+            ["git", "log", "-1", "--format=%H", "--", str(APPROVAL_ARTIFACT)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout.strip()
+        approved = (
+            len(approval_commit) == 40
+            and approval.get("schema_version") == "dw.package-index-approval.v1"
+            and approval.get("approved") is True
+            and approval.get("scope") == "research-writing-outcomes-installed-public"
+            and approval.get("packages") == ["deepagents", "pytest"]
+            and isinstance(approval.get("reviewer_id"), str)
+            and approval["reviewer_id"]
+        )
+        return approved, approval_commit or None, None if approved else "approval-artifact-invalid"
+    except (OSError, json.JSONDecodeError, subprocess.SubprocessError):
+        return False, None, "approval-artifact-absent-or-invalid"
 
 
 def main() -> int:
@@ -27,9 +61,10 @@ def main() -> int:
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    approval_present = (
-        args.mode == "approved-public-index"
-        and os.environ.get(APPROVAL_ENV) == "reviewer-approved"
+    approval_present, approval_commit, approval_failure = (
+        _reviewed_approval()
+        if args.mode == "approved-public-index"
+        else (False, None, None)
     )
     request_performed = False
     reachable = False
@@ -69,6 +104,9 @@ def main() -> int:
             )
         ),
         "failure_class": failure,
+        "approval_artifact": str(APPROVAL_ARTIFACT),
+        "approval_commit": approval_commit,
+        "approval_failure": approval_failure,
     }
     output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     return 0 if args.mode == "no-index" or approved else 2

@@ -3,30 +3,89 @@
     {
       "case": "valid",
       "evidence_id": "ev-citation-valid",
+      "evidence_version": "citation-v1",
+      "expected_verdict": "passed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "required": true,
       "state": "valid"
     },
     {
       "case": "missing",
       "evidence_id": "ev-citation-missing",
+      "evidence_version": "missing-v1",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "required": true,
       "state": "missing"
     },
     {
       "case": "unreachable",
       "evidence_id": "ev-citation-unreachable",
+      "evidence_version": "unreachable-v1",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "required": true,
       "state": "invalid"
     },
     {
       "case": "mismatched",
       "evidence_id": "ev-citation-mismatched",
+      "evidence_version": "mismatch-v1",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "required": true,
       "state": "invalid"
     },
     {
       "case": "fabricated",
       "evidence_id": "ev-citation-fabricated",
+      "evidence_version": "fabricated-v1",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
+      "required": true,
       "state": "invalid"
     }
   ],
-  "expected_verdict": "failed",
   "identity": {
     "actor_id": "actor-synthetic-reviewer",
     "attempt_id": "attempt-001",

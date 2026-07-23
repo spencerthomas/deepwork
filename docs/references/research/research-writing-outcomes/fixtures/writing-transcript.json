@@ -1,5 +1,86 @@
 {
-  "expected_verdict": "failed-without-promoted-final",
+  "cases": [
+    {
+      "artifact_state": "promoted",
+      "candidate_hash": "0e921506e3abf3f421d8ef59eb04620464e20031b33c4bc7ffc0c0d7a07eecb6",
+      "case": "valid-promoted",
+      "evidence_id": "ev-writing-promoted",
+      "expected_verdict": "passed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      }
+    },
+    {
+      "artifact_state": "missing",
+      "candidate_hash": null,
+      "case": "missing",
+      "evidence_id": "ev-writing-missing",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      }
+    },
+    {
+      "artifact_state": "promoted",
+      "candidate_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "case": "empty",
+      "evidence_id": "ev-writing-empty",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      }
+    },
+    {
+      "artifact_state": "stale",
+      "candidate_hash": "c354d3598793371cac497645a6bb3077946acd1d88a2ed68ba73d0d38868bf2d",
+      "case": "stale",
+      "evidence_id": "ev-writing-stale",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      }
+    },
+    {
+      "artifact_state": "working",
+      "candidate_hash": "44150324db0f40d78a1659db3c8f3ed853e60303deffdb80152563e5123e91ed",
+      "case": "working-only",
+      "evidence_id": "ev-writing-working-only",
+      "expected_verdict": "failed",
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      }
+    }
+  ],
   "identity": {
     "actor_id": "actor-synthetic-reviewer",
     "attempt_id": "attempt-001",
@@ -10,12 +91,6 @@
     "workspace_id": "workspace-synthetic-01"
   },
   "model_output": "Everything passed.",
-  "negative_cases": [
-    "missing",
-    "empty",
-    "stale",
-    "working-only"
-  ],
   "promotion": {
     "artifact_id": "artifact-final-01",
     "attestation_id": "promotion-001",
@@ -23,6 +98,20 @@
     "state": "promoted"
   },
   "schema_version": "dw.fixture.writing.v1",
+  "source_attribution": {
+    "evidence_id": "ev-writing-transcript",
+    "identity": {
+      "actor_id": "actor-synthetic-reviewer",
+      "attempt_id": "attempt-001",
+      "run_id": "run-outcome-contract-001",
+      "source_id": "source-fake-normalizer-v1",
+      "task_id": "task-outcome-contract-001",
+      "tenant_id": "tenant-synthetic-01",
+      "workspace_id": "workspace-synthetic-01"
+    },
+    "source_id": "source-fake-normalizer-v1",
+    "state": "valid"
+  },
   "template_id": "writing-v1",
   "working_file": {
     "artifact_id": "working-draft-01",

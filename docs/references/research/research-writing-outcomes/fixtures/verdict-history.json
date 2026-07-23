@@ -5,6 +5,15 @@
       "evidence_versions": {
         "ev-citation-missing": "1"
       },
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
       "iteration": 1,
       "state": "failed",
       "supersedes_verdict_id": null,
@@ -15,6 +24,15 @@
       "evidence_versions": {
         "ev-citation-valid": "2"
       },
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
+      },
       "iteration": 2,
       "state": "passed",
       "supersedes_verdict_id": "verdict-001",
@@ -24,6 +42,15 @@
       "candidate_hash": "40863b146a36aedfe80491a58026de35a518a7dc0c2b45307c5aee6d860a9d25",
       "evidence_versions": {
         "ev-citation-valid": "3"
+      },
+      "identity": {
+        "actor_id": "actor-synthetic-reviewer",
+        "attempt_id": "attempt-001",
+        "run_id": "run-outcome-contract-001",
+        "source_id": "source-fake-normalizer-v1",
+        "task_id": "task-outcome-contract-001",
+        "tenant_id": "tenant-synthetic-01",
+        "workspace_id": "workspace-synthetic-01"
       },
       "iteration": 3,
       "state": "capped",

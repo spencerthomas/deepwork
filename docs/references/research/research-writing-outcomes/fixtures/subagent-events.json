@@ -37,6 +37,12 @@
     "tenant_id": "tenant-synthetic-01",
     "workspace_id": "workspace-synthetic-01"
   },
+  "input_summary": {
+    "actual_characters": 71,
+    "max_characters": 120,
+    "text": "Inspect two synthetic evidence records and return bounded source facts.",
+    "truncated": false
+  },
   "namespace": "parent/subagent-sync-01",
   "negative_cases": [
     "wrong-parent-identity",
@@ -46,6 +52,41 @@
     "malformed-content",
     "duplicate-event",
     "out-of-order-event"
+  ],
+  "normalized_outcomes": [
+    {
+      "outcome": "projected",
+      "sequence": 1,
+      "state": "spawned"
+    },
+    {
+      "outcome": "projected",
+      "sequence": 2,
+      "state": "progress"
+    },
+    {
+      "outcome": "ignored-duplicate",
+      "sequence": 2,
+      "state": "progress"
+    },
+    {
+      "outcome": "projected",
+      "sequence": 4,
+      "state": "completed"
+    },
+    {
+      "outcome": "ignored-out-of-order",
+      "sequence": 3,
+      "state": "reconnected"
+    },
+    {
+      "case": "malformed-content",
+      "outcome": "safe-unknown-parent-event"
+    },
+    {
+      "case": "wrong-parent-identity",
+      "outcome": "rejected-substitution"
+    }
   ],
   "public_api_state": "blocked-package-index-evidence",
   "schema_version": "dw.fixture.subagent-events.v1",

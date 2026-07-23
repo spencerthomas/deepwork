@@ -11,7 +11,8 @@ promoted deliverables, or test records produce a failed verdict.
 ## Evidence boundary
 
 The no-index project has no dependencies, uses only `unittest`, denies network
-access globally in tests, and runs frozen and offline. It proves deterministic
+access across the offline Python process with an audit hook, asserts the denial
+again in every test class, and runs frozen and offline. It proves deterministic
 normalization, substitution rejection, append-only repair history, and manual
 fallbacks. It does not prove Deep Agents behavior.
 

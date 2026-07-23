@@ -36,7 +36,7 @@
       "version": "artifact-v1"
     },
     {
-      "content_sha256": "7c921f01720b86240fd70cabc89bd5f3686ae72e753abaad7bde4b8babe42c9d",
+      "content_sha256": "245ea7f2eb6a9f321b781c985ef2a43f5919a68beb336e61346cfe6558179f06",
       "evidence_id": "ev-subagent-events",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -70,7 +70,7 @@
       "version": "rubric-v1"
     },
     {
-      "content_sha256": "9f6d1cff42939bcbadaffe168ae6dbc25c2e631c67fec45772b5649af6211625",
+      "content_sha256": "c4a4daaebebd931376fe8bef0029c9f9dba554edfad4eae7b65e53366dba4d14",
       "evidence_id": "ev-verdict-history",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -87,7 +87,7 @@
       "version": "history-v1"
     },
     {
-      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "content_sha256": "0ecbb8374aa258ff4122a2a2c7391bcd45f9f0d8ad7fab6fa656fbb6b85c1736",
       "evidence_id": "ev-citation-valid",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -104,7 +104,7 @@
       "version": "citation-v1"
     },
     {
-      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "content_sha256": "0ecbb8374aa258ff4122a2a2c7391bcd45f9f0d8ad7fab6fa656fbb6b85c1736",
       "evidence_id": "ev-citation-missing",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -121,7 +121,7 @@
       "version": "missing-v1"
     },
     {
-      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "content_sha256": "0ecbb8374aa258ff4122a2a2c7391bcd45f9f0d8ad7fab6fa656fbb6b85c1736",
       "evidence_id": "ev-citation-unreachable",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -138,7 +138,7 @@
       "version": "unreachable-v1"
     },
     {
-      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "content_sha256": "0ecbb8374aa258ff4122a2a2c7391bcd45f9f0d8ad7fab6fa656fbb6b85c1736",
       "evidence_id": "ev-citation-mismatched",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -155,7 +155,7 @@
       "version": "mismatch-v1"
     },
     {
-      "content_sha256": "29e556fcd22dbc77f9cae6efad9ff9ca04a4edf444ae07ba57aed3ef5d1ca6af",
+      "content_sha256": "0ecbb8374aa258ff4122a2a2c7391bcd45f9f0d8ad7fab6fa656fbb6b85c1736",
       "evidence_id": "ev-citation-fabricated",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -172,7 +172,7 @@
       "version": "fabricated-v1"
     },
     {
-      "content_sha256": "36c5b87811f5400bc443d6619a9f0730685a502ca3c4224fa699db4699108a75",
+      "content_sha256": "418bc10d875f771b880cfff332dd9d29dd43d67b5b85620cbcdcefd2dbb698d2",
       "evidence_id": "ev-test-failed",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -189,7 +189,7 @@
       "version": "test-v1"
     },
     {
-      "content_sha256": "83ceabc54d32ce471a402c82ceb0f3f2ec2a205f95193019292abc8209788c53",
+      "content_sha256": "fe756afe278b99c538e9b6949e7c52935634db9f9a4e6612977cbc56956c654f",
       "evidence_id": "ev-writing-transcript",
       "identity": {
         "actor_id": "actor-synthetic-reviewer",
@@ -255,6 +255,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -293,6 +294,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -331,6 +333,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -369,6 +372,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -407,6 +411,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -445,6 +450,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -483,6 +489,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.artifact.v1",
       "promoted": null,
       "provider_proof": false,
@@ -506,7 +513,7 @@
       "capability": "working_vs_promoted",
       "case": "positive-or-fallback",
       "evidence_refs": [
-        "ev-artifact-promoted"
+        "ev-artifact-working"
       ],
       "evidence_tier": "deterministic-fake",
       "fact_origin": null,
@@ -521,6 +528,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.artifact.v1",
       "promoted": false,
       "provider_proof": false,
@@ -559,6 +567,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -597,6 +606,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -635,6 +645,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -673,6 +684,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -711,6 +723,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -749,6 +762,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -787,6 +801,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -825,6 +840,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
@@ -865,6 +881,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -905,6 +922,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -945,6 +963,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -985,6 +1004,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1006,7 +1026,11 @@
       ],
       "artifact_state": null,
       "automatic_pass": false,
-      "blocker": "approved-public-package-index-access",
+      "blocker": "SPIKE-HITL-001-and-sanctioned-non-production-classic-sandbox",
+      "blockers": [
+        "SPIKE-HITL-001",
+        "sanctioned-non-production-classic-sandbox"
+      ],
       "capability": "interrupt",
       "case": "positive-or-fallback",
       "evidence_refs": [
@@ -1025,11 +1049,12 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
-      "result": "blocked-package-index-evidence",
+      "result": "blocked-live-evidence",
       "row_id": "rubric-021-interrupt",
       "stream": "rubric",
       "transitions": [
@@ -1065,6 +1090,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1105,6 +1131,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1145,6 +1172,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1187,6 +1215,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1229,6 +1258,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1252,7 +1282,7 @@
         "AC-DW-HITL-002-04"
       ],
       "artifact_state": null,
-      "automatic_pass": true,
+      "automatic_pass": false,
       "blocker": null,
       "capability": "manual_fallback",
       "case": "positive-or-fallback",
@@ -1272,11 +1302,13 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "manually_reviewed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
-      "result": "accepted-deterministic-normalization",
+      "required_evidence_state": "not_evaluated",
+      "result": "manual-fallback",
       "row_id": "verification-027-manual_fallback",
       "stream": "verification",
       "transitions": [
@@ -1314,6 +1346,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1356,6 +1389,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1399,6 +1433,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1441,6 +1476,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1484,6 +1520,7 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "passed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
@@ -1499,44 +1536,6 @@
     },
     {
       "acceptance_ids": [
-        "AC-DW-TASK-005-02"
-      ],
-      "artifact_state": null,
-      "automatic_pass": true,
-      "blocker": null,
-      "capability": "access",
-      "case": "positive-or-fallback",
-      "evidence_refs": [
-        "ev-artifact-working"
-      ],
-      "evidence_tier": "deterministic-fake",
-      "fact_origin": null,
-      "fallback": "metadata-and-authorized-source-native-link-only",
-      "history_mode": null,
-      "identity": {
-        "actor_id": "actor-synthetic-reviewer",
-        "attempt_id": "attempt-001",
-        "run_id": "run-outcome-contract-001",
-        "source_id": "source-fake-normalizer-v1",
-        "task_id": "task-outcome-contract-001",
-        "tenant_id": "tenant-synthetic-01",
-        "workspace_id": "workspace-synthetic-01"
-      },
-      "output_schema": "dw.artifact.v1",
-      "promoted": null,
-      "provider_proof": false,
-      "request_schema": "dw.artifact-request.v1",
-      "result": "accepted-deterministic-normalization",
-      "row_id": "artifact-033-evidence-closure-ev-artifact-working",
-      "stream": "artifact",
-      "transitions": [
-        "received",
-        "validated",
-        "normalized"
-      ]
-    },
-    {
-      "acceptance_ids": [
         "AC-DW-TASK-005-01",
         "AC-DW-HITL-002-01",
         "AC-DW-HITL-002-02",
@@ -1544,9 +1543,9 @@
         "AC-DW-HITL-002-04"
       ],
       "artifact_state": null,
-      "automatic_pass": true,
+      "automatic_pass": false,
       "blocker": null,
-      "capability": "cap_cancel_error_resume",
+      "capability": "research_citation_negatives",
       "case": "positive-or-fallback",
       "evidence_refs": [
         "ev-citation-unreachable"
@@ -1564,12 +1563,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
-      "result": "accepted-deterministic-normalization",
-      "row_id": "verification-034-evidence-closure-ev-citation-unreachable",
+      "required_evidence_state": "invalid",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-033-evidence-closure-ev-citation-unreachable",
       "stream": "verification",
       "transitions": [
         "received",
@@ -1586,9 +1587,9 @@
         "AC-DW-HITL-002-04"
       ],
       "artifact_state": null,
-      "automatic_pass": true,
+      "automatic_pass": false,
       "blocker": null,
-      "capability": "cap_cancel_error_resume",
+      "capability": "research_citation_negatives",
       "case": "positive-or-fallback",
       "evidence_refs": [
         "ev-citation-mismatched"
@@ -1606,12 +1607,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
-      "result": "accepted-deterministic-normalization",
-      "row_id": "verification-035-evidence-closure-ev-citation-mismatched",
+      "required_evidence_state": "invalid",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-034-evidence-closure-ev-citation-mismatched",
       "stream": "verification",
       "transitions": [
         "received",
@@ -1628,9 +1631,9 @@
         "AC-DW-HITL-002-04"
       ],
       "artifact_state": null,
-      "automatic_pass": true,
+      "automatic_pass": false,
       "blocker": null,
-      "capability": "cap_cancel_error_resume",
+      "capability": "research_citation_negatives",
       "case": "positive-or-fallback",
       "evidence_refs": [
         "ev-citation-fabricated"
@@ -1648,12 +1651,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
-      "result": "accepted-deterministic-normalization",
-      "row_id": "verification-036-evidence-closure-ev-citation-fabricated",
+      "required_evidence_state": "invalid",
+      "result": "rejected-invalid-evidence",
+      "row_id": "verification-035-evidence-closure-ev-citation-fabricated",
       "stream": "verification",
       "transitions": [
         "received",
@@ -1674,6 +1679,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "actor-synthetic-reviewer",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1686,13 +1692,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-actor_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-037-substitution_actor_id",
+      "row_id": "artifact-036-substitution_actor_id",
       "stream": "artifact",
       "substitution_dimension": "actor_id",
       "transitions": [
@@ -1713,6 +1720,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "artifact-final-01",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1725,13 +1733,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-artifact_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-038-substitution_artifact_id",
+      "row_id": "artifact-037-substitution_artifact_id",
       "stream": "artifact",
       "substitution_dimension": "artifact_id",
       "transitions": [
@@ -1752,6 +1761,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "attempt-001",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1764,13 +1774,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-attempt_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-039-substitution_attempt_id",
+      "row_id": "artifact-038-substitution_attempt_id",
       "stream": "artifact",
       "substitution_dimension": "attempt_id",
       "transitions": [
@@ -1791,6 +1802,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "ev-artifact-promoted",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1803,13 +1815,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-evidence_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-040-substitution_evidence_id",
+      "row_id": "artifact-039-substitution_evidence_id",
       "stream": "artifact",
       "substitution_dimension": "evidence_id",
       "transitions": [
@@ -1830,6 +1843,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "run-outcome-contract-001",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1842,13 +1856,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-run_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-041-substitution_run_id",
+      "row_id": "artifact-040-substitution_run_id",
       "stream": "artifact",
       "substitution_dimension": "run_id",
       "transitions": [
@@ -1869,6 +1884,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "source-fake-normalizer-v1",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1881,13 +1897,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-source_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-042-substitution_source_id",
+      "row_id": "artifact-041-substitution_source_id",
       "stream": "artifact",
       "substitution_dimension": "source_id",
       "transitions": [
@@ -1908,6 +1925,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "task-outcome-contract-001",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1920,13 +1938,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-task_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-043-substitution_task_id",
+      "row_id": "artifact-042-substitution_task_id",
       "stream": "artifact",
       "substitution_dimension": "task_id",
       "transitions": [
@@ -1947,6 +1966,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "tenant-synthetic-01",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1959,13 +1979,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-tenant_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-044-substitution_tenant_id",
+      "row_id": "artifact-043-substitution_tenant_id",
       "stream": "artifact",
       "substitution_dimension": "tenant_id",
       "transitions": [
@@ -1986,6 +2007,7 @@
         "ev-artifact-promoted"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "workspace-synthetic-01",
       "fact_origin": null,
       "fallback": "metadata-and-authorized-source-native-link-only",
       "history_mode": null,
@@ -1998,13 +2020,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.artifact.v1",
       "presented_value": "wrong-workspace_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.artifact-request.v1",
       "result": "rejected-substitution",
-      "row_id": "artifact-045-substitution_workspace_id",
+      "row_id": "artifact-044-substitution_workspace_id",
       "stream": "artifact",
       "substitution_dimension": "workspace_id",
       "transitions": [
@@ -2025,6 +2048,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "actor-synthetic-reviewer",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2037,13 +2061,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-actor_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-046-substitution_actor_id",
+      "row_id": "subagent-045-substitution_actor_id",
       "stream": "subagent",
       "substitution_dimension": "actor_id",
       "transitions": [
@@ -2064,6 +2089,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "attempt-001",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2076,13 +2102,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-attempt_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-047-substitution_attempt_id",
+      "row_id": "subagent-046-substitution_attempt_id",
       "stream": "subagent",
       "substitution_dimension": "attempt_id",
       "transitions": [
@@ -2103,6 +2130,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "ev-subagent-events",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2115,13 +2143,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-evidence_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-048-substitution_evidence_id",
+      "row_id": "subagent-047-substitution_evidence_id",
       "stream": "subagent",
       "substitution_dimension": "evidence_id",
       "transitions": [
@@ -2142,6 +2171,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "run-outcome-contract-001",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2154,13 +2184,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-run_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-049-substitution_run_id",
+      "row_id": "subagent-048-substitution_run_id",
       "stream": "subagent",
       "substitution_dimension": "run_id",
       "transitions": [
@@ -2181,6 +2212,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "source-fake-normalizer-v1",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2193,13 +2225,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-source_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-050-substitution_source_id",
+      "row_id": "subagent-049-substitution_source_id",
       "stream": "subagent",
       "substitution_dimension": "source_id",
       "transitions": [
@@ -2220,6 +2253,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "subagent-sync-01",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2232,13 +2266,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-subagent_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-051-substitution_subagent_id",
+      "row_id": "subagent-050-substitution_subagent_id",
       "stream": "subagent",
       "substitution_dimension": "subagent_id",
       "transitions": [
@@ -2259,6 +2294,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "task-outcome-contract-001",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2271,13 +2307,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-task_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-052-substitution_task_id",
+      "row_id": "subagent-051-substitution_task_id",
       "stream": "subagent",
       "substitution_dimension": "task_id",
       "transitions": [
@@ -2298,6 +2335,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "tenant-synthetic-01",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2310,13 +2348,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-tenant_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-053-substitution_tenant_id",
+      "row_id": "subagent-052-substitution_tenant_id",
       "stream": "subagent",
       "substitution_dimension": "tenant_id",
       "transitions": [
@@ -2337,6 +2376,7 @@
         "ev-subagent-events"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "workspace-synthetic-01",
       "fact_origin": "source-supplied",
       "fallback": "generic-parent-timeline-with-source-supplied-facts-only",
       "history_mode": null,
@@ -2349,13 +2389,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.subagent.v1",
       "presented_value": "wrong-workspace_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "rejected-substitution",
-      "row_id": "subagent-054-substitution_workspace_id",
+      "row_id": "subagent-053-substitution_workspace_id",
       "stream": "subagent",
       "substitution_dimension": "workspace_id",
       "transitions": [
@@ -2378,6 +2419,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "actor-synthetic-reviewer",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2390,13 +2432,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-actor_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-055-substitution_actor_id",
+      "row_id": "rubric-054-substitution_actor_id",
       "stream": "rubric",
       "substitution_dimension": "actor_id",
       "transitions": [
@@ -2419,6 +2462,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "attempt-001",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2431,13 +2475,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-attempt_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-056-substitution_attempt_id",
+      "row_id": "rubric-055-substitution_attempt_id",
       "stream": "rubric",
       "substitution_dimension": "attempt_id",
       "transitions": [
@@ -2460,6 +2505,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "criterion-provenance",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2472,13 +2518,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-criterion_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-057-substitution_criterion_id",
+      "row_id": "rubric-056-substitution_criterion_id",
       "stream": "rubric",
       "substitution_dimension": "criterion_id",
       "transitions": [
@@ -2501,6 +2548,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "ev-rubric-history",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2513,13 +2561,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-evidence_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-058-substitution_evidence_id",
+      "row_id": "rubric-057-substitution_evidence_id",
       "stream": "rubric",
       "substitution_dimension": "evidence_id",
       "transitions": [
@@ -2542,6 +2591,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "run-outcome-contract-001",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2554,13 +2604,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-run_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-059-substitution_run_id",
+      "row_id": "rubric-058-substitution_run_id",
       "stream": "rubric",
       "substitution_dimension": "run_id",
       "transitions": [
@@ -2583,6 +2634,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "source-fake-normalizer-v1",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2595,13 +2647,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-source_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-060-substitution_source_id",
+      "row_id": "rubric-059-substitution_source_id",
       "stream": "rubric",
       "substitution_dimension": "source_id",
       "transitions": [
@@ -2624,6 +2677,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "task-outcome-contract-001",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2636,13 +2690,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-task_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-061-substitution_task_id",
+      "row_id": "rubric-060-substitution_task_id",
       "stream": "rubric",
       "substitution_dimension": "task_id",
       "transitions": [
@@ -2665,6 +2720,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "tenant-synthetic-01",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2677,13 +2733,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-tenant_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-062-substitution_tenant_id",
+      "row_id": "rubric-061-substitution_tenant_id",
       "stream": "rubric",
       "substitution_dimension": "tenant_id",
       "transitions": [
@@ -2706,6 +2763,7 @@
         "ev-rubric-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "workspace-synthetic-01",
       "fact_origin": null,
       "fallback": "immutable-manual-checklist-without-automatic-score",
       "history_mode": "append-only",
@@ -2718,13 +2776,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.rubric.v1",
       "presented_value": "wrong-workspace_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "rejected-substitution",
-      "row_id": "rubric-063-substitution_workspace_id",
+      "row_id": "rubric-062-substitution_workspace_id",
       "stream": "rubric",
       "substitution_dimension": "workspace_id",
       "transitions": [
@@ -2749,6 +2808,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "actor-synthetic-reviewer",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2761,13 +2821,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-actor_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-064-substitution_actor_id",
+      "row_id": "verification-063-substitution_actor_id",
       "stream": "verification",
       "substitution_dimension": "actor_id",
       "transitions": [
@@ -2792,6 +2853,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "attempt-001",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2804,13 +2866,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-attempt_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-065-substitution_attempt_id",
+      "row_id": "verification-064-substitution_attempt_id",
       "stream": "verification",
       "substitution_dimension": "attempt_id",
       "transitions": [
@@ -2835,6 +2898,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "fed53ee6b0ddd474f9f2d93dfdb7c00321eb6538ec02a4572f6b986724403584",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2847,13 +2911,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-candidate_hash",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-066-substitution_candidate_hash",
+      "row_id": "verification-065-substitution_candidate_hash",
       "stream": "verification",
       "substitution_dimension": "candidate_hash",
       "transitions": [
@@ -2878,6 +2943,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "ev-verdict-history",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2890,13 +2956,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-evidence_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-067-substitution_evidence_id",
+      "row_id": "verification-066-substitution_evidence_id",
       "stream": "verification",
       "substitution_dimension": "evidence_id",
       "transitions": [
@@ -2921,6 +2988,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "1",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2933,13 +3001,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-rubric_version",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-068-substitution_rubric_version",
+      "row_id": "verification-067-substitution_rubric_version",
       "stream": "verification",
       "substitution_dimension": "rubric_version",
       "transitions": [
@@ -2964,6 +3033,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "run-outcome-contract-001",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -2976,13 +3046,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-run_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-069-substitution_run_id",
+      "row_id": "verification-068-substitution_run_id",
       "stream": "verification",
       "substitution_dimension": "run_id",
       "transitions": [
@@ -3007,6 +3078,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "source-fake-normalizer-v1",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -3019,13 +3091,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-source_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-070-substitution_source_id",
+      "row_id": "verification-069-substitution_source_id",
       "stream": "verification",
       "substitution_dimension": "source_id",
       "transitions": [
@@ -3050,6 +3123,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "task-outcome-contract-001",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -3062,13 +3136,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-task_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-071-substitution_task_id",
+      "row_id": "verification-070-substitution_task_id",
       "stream": "verification",
       "substitution_dimension": "task_id",
       "transitions": [
@@ -3093,6 +3168,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "research-v1",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -3105,13 +3181,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-template_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-072-substitution_template_id",
+      "row_id": "verification-071-substitution_template_id",
       "stream": "verification",
       "substitution_dimension": "template_id",
       "transitions": [
@@ -3136,6 +3213,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "tenant-synthetic-01",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -3148,13 +3226,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-tenant_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-073-substitution_tenant_id",
+      "row_id": "verification-072-substitution_tenant_id",
       "stream": "verification",
       "substitution_dimension": "tenant_id",
       "transitions": [
@@ -3179,6 +3258,7 @@
         "ev-verdict-history"
       ],
       "evidence_tier": "deterministic-fake",
+      "expected_value": "workspace-synthetic-01",
       "fact_origin": null,
       "fallback": "unsupported-or-manually-reviewed",
       "history_mode": null,
@@ -3191,13 +3271,14 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "failed",
       "output_schema": "dw.verification.v1",
       "presented_value": "wrong-workspace_id",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.verification-request.v1",
       "result": "rejected-substitution",
-      "row_id": "verification-074-substitution_workspace_id",
+      "row_id": "verification-073-substitution_workspace_id",
       "stream": "verification",
       "substitution_dimension": "workspace_id",
       "transitions": [
@@ -3230,12 +3311,13 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "blocked-package-index-evidence",
-      "row_id": "subagent-075-installed_public_create_deep_agent",
+      "row_id": "subagent-074-installed_public_create_deep_agent",
       "stream": "subagent",
       "transitions": [
         "received",
@@ -3270,12 +3352,13 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.rubric.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.rubric-request.v1",
       "result": "blocked-package-index-evidence",
-      "row_id": "rubric-076-installed_public_RubricMiddleware",
+      "row_id": "rubric-075-installed_public_RubricMiddleware",
       "stream": "rubric",
       "transitions": [
         "received",
@@ -3308,12 +3391,13 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "blocked-package-index-evidence",
-      "row_id": "subagent-077-installed_public_SubAgent",
+      "row_id": "subagent-076-installed_public_SubAgent",
       "stream": "subagent",
       "transitions": [
         "received",
@@ -3346,12 +3430,13 @@
         "tenant_id": "tenant-synthetic-01",
         "workspace_id": "workspace-synthetic-01"
       },
+      "normalized_verdict": "unsupported",
       "output_schema": "dw.subagent.v1",
       "promoted": null,
       "provider_proof": false,
       "request_schema": "dw.subagent-request.v1",
       "result": "blocked-package-index-evidence",
-      "row_id": "subagent-078-installed_public_SubAgentMiddleware",
+      "row_id": "subagent-077-installed_public_SubAgentMiddleware",
       "stream": "subagent",
       "transitions": [
         "received",

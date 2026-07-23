@@ -487,7 +487,7 @@ Acceptance:
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
   `negative/matrix.json` indexes exactly 55 single-code negative files and one
-  immutable 139-probe semantic matrix, for 194 exact single-code checks covering
+  immutable 140-probe semantic matrix, for 195 exact single-code checks covering
   all stable rule-code families, the two mandatory logical-delay negatives,
   tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
   decision arrays, actual decision/resume/accepted-data presence, ordinary and
@@ -1133,10 +1133,10 @@ declared code. The semantic matrix SHA-256 is
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`257c420864e2b44744f102901eb3ef3c44b7a453aced70079fd6eb8199ccaaba`.
+`50b6baf586663a6c707cd57925d64b3d0efe816b8c0668402fd88b3b62219679`.
 The 76-entry hash closure includes validator source SHA-256
-`ef8931da27f8b25dd73de0f9a022c3a62e4d25c0eb39a2e953a1061e4bb8a5d6`.
-The generated validation and isolation reports record 13 cases, 194 intentional
+`96cfd837283ce6c1a28a4a79eb92890bae570d155f3f4783943d2e902e9c82f7`.
+The generated validation and isolation reports record 13 cases, 195 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, and AST-derived zero counts for import violations, filesystem-write
 calls/references, process calls/imports, dynamic accesses, network calls/imports,
@@ -1147,8 +1147,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=257c42...caaba; validation-report=d541bc...9162f;
-no-external-network=c627ce...7f209; first updated_files contained all 3 targets
+exit 0; hashes.sha256=50b6ba...19679; validation-report=49c09f...b9e83;
+no-external-network=accb9f...7594; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1157,7 +1157,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=257c42...caaba; 13 case IDs; 194 single-code negatives;
+exit 0; corpus_digest=50b6ba...19679; 13 case IDs; 195 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator import-violation/process/dynamic/network/environment/wall-clock-wait/
 write-call/write-reference counts=0

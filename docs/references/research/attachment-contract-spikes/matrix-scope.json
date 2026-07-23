@@ -1,0 +1,306 @@
+{
+  "schema_version": "1.0",
+  "scope_revision": 1,
+  "scope_status": "immutable-pre-observation",
+  "created_date": "2026-07-23",
+  "packet_id": "DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS",
+  "gate_id": "SPIKE-ATTACH-001",
+  "base_commit": "fff1bfd278d550d01de6e8d74f553f45c4003a8c",
+  "seed_commit": "e0f1087b3fd6af530288fb18e3213c7c08459add",
+  "evidence_pins": {
+    "SRC-LC": {
+      "commit": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+      "role": "official documentation and public message content representations"
+    },
+    "SRC-DA": {
+      "commit": "7794b61a6e76230e8c7a49bdce808b3728305914",
+      "package": "deepagents",
+      "package_version": "0.6.12",
+      "role": "pinned reference behavior, not hosted-service authority"
+    },
+    "SRC-LG": {
+      "commit": "31f90df3e6b0268fa77fd2d118a917d420b84a68",
+      "package": "langgraph-sdk",
+      "package_version": "0.4.2",
+      "role": "public Classic run input client, not attachment acceptance proof"
+    }
+  },
+  "public_observation_sources": [
+    {
+      "id": "SRC-LC-MESSAGES",
+      "path": "src/oss/langchain/messages.mdx",
+      "pin": "SRC-LC",
+      "claim_limit": "Defines candidate standard message content blocks; does not prove a graph, model, account, object store, scanner, or Classic deployment accepts them."
+    },
+    {
+      "id": "SRC-LC-DEEPAGENTS-MULTIMODAL",
+      "path": "src/oss/deepagents/multimodal.mdx",
+      "pin": "SRC-LC",
+      "claim_limit": "Documents model-dependent multimodal input and filesystem behavior; does not define a source-independent Classic attachment endpoint."
+    },
+    {
+      "id": "SRC-LG-RUNS",
+      "path": "libs/sdk-py/langgraph_sdk/_async/runs.py",
+      "pin": "SRC-LG",
+      "claim_limit": "Shows graph-defined JSON input to Classic runs; no generic attachment upload or media acceptance schema is established."
+    }
+  ],
+  "excluded_sources": [
+    "managed-deep-agents",
+    "fleet"
+  ],
+  "matrix_dimensions": {
+    "media_classes": [
+      {
+        "id": "bounded-text-file",
+        "safe_fixture_name": "notes.txt",
+        "declared_media_type": "text/plain"
+      },
+      {
+        "id": "image",
+        "safe_fixture_name": "pixel.png",
+        "declared_media_type": "image/png"
+      },
+      {
+        "id": "pdf",
+        "safe_fixture_name": "document.pdf",
+        "declared_media_type": "application/pdf"
+      },
+      {
+        "id": "code",
+        "safe_fixture_name": "example.py.txt",
+        "declared_media_type": "text/plain"
+      }
+    ],
+    "byte_boundaries": [
+      {
+        "id": "deep-work-quarantine",
+        "agent_visibility": "denied",
+        "authority": "Deep Work actor and workspace scoped quarantine metadata"
+      },
+      {
+        "id": "deep-work-object",
+        "agent_visibility": "denied-until-clean-authorized-transfer",
+        "authority": "Deep Work actor, workspace, task, object, and lifecycle binding"
+      }
+    ],
+    "target_sources": [
+      {
+        "id": "classic-langsmith-deployment-public-baseline",
+        "account_tier": "unknown",
+        "region": "unknown",
+        "server_version": "unknown",
+        "authentication_context": "not-supplied",
+        "live_access": "not-authorized"
+      }
+    ],
+    "transfer_representations": [
+      {
+        "id": "standard-content-inline-base64",
+        "public_shape": "LangChain standard image/file content block with base64 and mime_type",
+        "source": "SRC-LC-MESSAGES",
+        "pre_observation_support": "candidate-not-classic-proof"
+      },
+      {
+        "id": "standard-content-url-reference",
+        "public_shape": "LangChain standard image/file content block with URL",
+        "source": "SRC-LC-MESSAGES",
+        "pre_observation_support": "candidate-not-classic-proof"
+      },
+      {
+        "id": "standard-content-provider-file-id",
+        "public_shape": "LangChain standard image/file content block with provider-managed file_id",
+        "source": "SRC-LC-MESSAGES",
+        "pre_observation_support": "candidate-not-classic-proof"
+      }
+    ],
+    "lifecycle_operations": [
+      {
+        "id": "preflight-accept",
+        "expected_conclusion_class": "policy-allow-only"
+      },
+      {
+        "id": "preflight-reject-count",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-declared-type",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-size",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-empty",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-unsafe-filename",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-traversal-name",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-duplicate",
+        "expected_conclusion_class": "must-reject-or-idempotently-deduplicate"
+      },
+      {
+        "id": "preflight-reject-hash-mismatch",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "preflight-reject-unsupported-media",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "quarantine-create",
+        "expected_conclusion_class": "must-bind-actor-workspace-object-and-deny-agent"
+      },
+      {
+        "id": "metadata-hash-detected-type",
+        "expected_conclusion_class": "must-verify"
+      },
+      {
+        "id": "detected-type-mismatch",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "scan-clean",
+        "expected_conclusion_class": "necessary-not-sufficient"
+      },
+      {
+        "id": "scan-unsafe",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "scan-error",
+        "expected_conclusion_class": "must-fail-closed"
+      },
+      {
+        "id": "scan-timeout",
+        "expected_conclusion_class": "must-fail-closed"
+      },
+      {
+        "id": "scan-unavailable",
+        "expected_conclusion_class": "must-fail-closed"
+      },
+      {
+        "id": "transfer-intent",
+        "expected_conclusion_class": "must-bind-destination-auth-expiry-idempotency-hash-size"
+      },
+      {
+        "id": "transfer-receipt",
+        "expected_conclusion_class": "requires-live-acceptance"
+      },
+      {
+        "id": "transfer-reject-stale-grant",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-wrong-actor",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-wrong-workspace",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-wrong-task",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-wrong-destination",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-replay",
+        "expected_conclusion_class": "must-reject-or-return-original-receipt"
+      },
+      {
+        "id": "transfer-reject-redirect",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-range-partial",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "transfer-reject-capability-mismatch",
+        "expected_conclusion_class": "must-reject"
+      },
+      {
+        "id": "remove-before-transfer",
+        "expected_conclusion_class": "must-deny-future-transfer"
+      },
+      {
+        "id": "delete-after-transfer",
+        "expected_conclusion_class": "must-audit-local-and-provider-outcomes-separately"
+      },
+      {
+        "id": "retention-expiry",
+        "expected_conclusion_class": "must-expire-and-clean"
+      },
+      {
+        "id": "provider-deletion-failure",
+        "expected_conclusion_class": "must-record-unverified-and-retry"
+      },
+      {
+        "id": "orphan-cleanup",
+        "expected_conclusion_class": "must-be-idempotent"
+      },
+      {
+        "id": "retry",
+        "expected_conclusion_class": "must-not-broaden-authority-or-duplicate-visibility"
+      },
+      {
+        "id": "restart-recovery",
+        "expected_conclusion_class": "must-preserve-unsafe-and-unknown-verdicts"
+      },
+      {
+        "id": "source-unavailable",
+        "expected_conclusion_class": "must-fail-closed-with-fallback"
+      },
+      {
+        "id": "unavailable-or-error",
+        "expected_conclusion_class": "must-fail-closed-with-auditable-state"
+      }
+    ]
+  },
+  "cartesian_product": [
+    "media_classes",
+    "byte_boundaries",
+    "target_sources",
+    "lifecycle_operations",
+    "transfer_representations"
+  ],
+  "expected_row_count": 912,
+  "evidence_tiers": [
+    "accepted-live",
+    "installed-public",
+    "official-documented",
+    "pinned-reference",
+    "deterministic-fake",
+    "unknown"
+  ],
+  "conclusion_states": [
+    "accepted-live",
+    "accepted-fixture-only",
+    "blocked-live-evidence",
+    "rejected",
+    "unsupported",
+    "unknown"
+  ],
+  "required_fallback": {
+    "attachment_capability": "disabled",
+    "bounded_pasted_text": "available-through-separately-validated-path",
+    "local_draft_metadata": "preserved-without-upload-success-claim",
+    "unsafe_unknown_expired_mismatched_scanner_unavailable": "reject",
+    "quarantined_agent_model_previewer_extractor_transfer": "deny",
+    "credential_free_fixture_demo": "remains-usable",
+    "e2e_v1_01_effect": "neither-blocks-nor-satisfies"
+  },
+  "scope_revision_rule": "A newly discovered public Classic transfer representation requires a separately reviewed immutable scope revision before observations for that representation are recorded."
+}

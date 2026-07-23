@@ -487,7 +487,7 @@ Acceptance:
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
   `negative/matrix.json` indexes exactly 55 single-code negative files and one
-  immutable 141-probe semantic matrix, for 196 exact single-code checks covering
+  immutable 142-probe semantic matrix, for 197 exact single-code checks covering
   all stable rule-code families, the two mandatory logical-delay negatives,
   tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
   decision arrays, actual decision/resume/accepted-data presence, ordinary and
@@ -707,6 +707,13 @@ Acceptance:
   evidence was regenerated twice with an empty second update; fresh exact-SHA
   review remains required, and the duplicate-negative and Git scope blockers
   remain open.
+- [x] 2026-07-23 AEST — Bounded rework closes the third reproduced false green:
+  all file-negative and semantic-probe IDs now form one unique inventory before
+  result-map lookup, while a SHA-pinned semantic probe duplicates a file-negative
+  ID and requires `FIXTURE_SCHEMA_NEGATIVE_INDEX`. Deterministic evidence was
+  regenerated twice with an empty second update. Fresh exact-SHA review remains
+  required; the newly reproduced manifest state/path-identity false greens and
+  the Git scope blocker remain open.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -1125,7 +1132,7 @@ three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
 `FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
-`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 141
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 142
 single-code probes. It retains the prior 66 category-semantic, depth,
 confusable-key, and generic-network probes, then adds two coherent delay-drift
 cases, seven abbreviated/octal/local/scheme host forms, six JSON type-alias
@@ -1133,18 +1140,18 @@ cases, corpus-wide record-ID collision, closed delay-object coverage, all 39
 case/tenant/workspace fixed-ID mutations, coordinated interrupt-signature
 mutation, three token forms, tilde-path content, two normalized direct-host
 forms, three case-integrated host forms, and the adversarial validator-purity
-source probe, the exact missing-ID-policy probe, and the exact available
-capability-name inventory probe. Every one of the 196 combined negatives
-produced exactly its
+source probe, the exact missing-ID-policy probe, the exact available
+capability-name inventory probe, and the cross-matrix negative-ID collision
+probe. Every one of the 197 combined negatives produced exactly its
 declared code. The semantic matrix SHA-256 is
-`c4fa961807d465bb57a253c88648442678088a28f79b35946889a00bb3ff3a6d`.
+`bbdeec9121c0baeda653ba9ad84aea66801daf32cde3a10300f6c80f24b3da8c`.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`d3aa733d92dc17b9a360d968f8e6102326d632f45c527aa18055844ee50de84d`.
+`4c171bbf72bd31781cef0ba50a642b51cde66827a6d82747dc3aa01c9c32a12b`.
 The 76-entry hash closure includes validator source SHA-256
-`3d55838eb20e55bb745c219c1da6684370784f638c145d43979e8008b202e668`.
-The generated validation and isolation reports record 13 cases, 196 intentional
+`57926dd97f6d8a31352f8829570bdaa93bef937a8cac1a0bac83f44d44d4765a`.
+The generated validation and isolation reports record 13 cases, 197 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, and AST-derived zero counts for import violations, filesystem-write
 calls/references, process calls/imports, dynamic accesses, network calls/imports,
@@ -1155,8 +1162,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=d3aa73...de84d; validation-report=12fee0...61223;
-no-external-network=4039a2...fbe4; first updated_files contained all 3 targets
+exit 0; hashes.sha256=4c171b...2a12b; validation-report=6e65e1...8a3fc;
+no-external-network=7aea63...6d3d8; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1165,7 +1172,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=d3aa73...de84d; 13 case IDs; 196 single-code negatives;
+exit 0; corpus_digest=4c171b...2a12b; 13 case IDs; 197 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator import-violation/process/dynamic/network/environment/wall-clock-wait/
 write-call/write-reference counts=0

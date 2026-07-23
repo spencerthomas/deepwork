@@ -254,7 +254,7 @@ Acceptance:
 - [x] 2026-07-23 AEST — Milestone 2 complete. The public side-effect-free
   `create_app()` factory, process-only `/health`, fixture-only
   `/api/v1/demo/status`, and separate unavailable-durability worker smoke are
-  covered by 9 no-external-socket tests and 5 focused contract tests.
+  covered by 12 no-external-socket tests and 5 focused contract tests.
 - [x] 2026-07-23 AEST — Milestone 3 complete. Formatting, lint, strict typing,
   unit/contract tests, source/wheel builds, artifact inspection, and offline clean-
   target wheel install/import/entry-point checks pass from the frozen lock; the
@@ -262,6 +262,12 @@ Acceptance:
 - [x] 2026-07-23 AEST — Milestone 4 implementation packet assembled. The changed-
   path audit is confined to `apps/api/**` and this plan, and the exact results and
   qualification are recorded below. Fresh independent acceptance remains pending.
+- [x] 2026-07-23 AEST — Independent review returned rework for eager public-import
+  dependencies, implicit uv network eligibility outside bootstrap, and incomplete
+  installed-launcher/artifact proof. The three findings are addressed by a lazy
+  public factory wrapper, enforced offline commands with cold-state failure, and
+  exact installed-wheel launcher/content/process checks. Fresh re-review remains
+  pending.
 
 Implementation is complete and stopped at the required independent-review handoff.
 This author has not approved the implementation or changed review metadata.
@@ -293,6 +299,28 @@ This author has not approved the implementation or changed review metadata.
   but full documentation validation reports this active cell plan is not in the
   shared active-plan index. Consequence: the implementation does not edit the
   coordinator-owned index; that single integration check remains a handoff item.
+- 2026-07-23 AEST — Observation: `import deepwork_api` re-exported the bootstrap
+  factory eagerly, which imported FastAPI/Pydantic framework code during the
+  nominally side-effect-free public import. Consequence: the public package now
+  exposes a typed lazy wrapper; a fresh subprocess replaces `os.environ` with a
+  deny-on-read mapping and proves the public symbol imports without framework,
+  model, bootstrap, or environment access.
+- 2026-07-23 AEST — Observation: `--frozen` prevents dependency drift but does not
+  by itself prohibit uv from consulting indexes or downloading Python. Consequence:
+  every non-bootstrap uv command now includes `--offline --no-python-downloads`
+  and checks for an explicit bootstrapped environment/cache. A cold package state
+  exits 2 with the instruction to run the sole network-eligible bootstrap.
+- 2026-07-23 AEST — Observation: a target-directory wheel import did not create or
+  exercise console launchers and substring checks did not prove their mappings.
+  Consequence: package proof now validates the exact console-script mappings,
+  installs the wheel into a temporary virtual environment, executes both installed
+  launchers, scans wheel bytes for checkout paths and secret-shaped material, and
+  performs a bounded API loopback start attempt.
+- 2026-07-23 AEST — Observation: the installed API process cannot bind loopback in
+  this sandbox and exits with `EPERM`. Consequence: package proof records that exact
+  sandbox boundary, while installed `deepwork-api --help`, installed
+  `deepwork-worker --check`, public factory creation, and in-process ASGI contracts
+  provide the truthful non-bind evidence. No live-listener claim is made.
 
 ## Decision Log
 
@@ -330,6 +358,20 @@ This author has not approved the implementation or changed review metadata.
   project wheel rather than duplicate index access. Consequence: the check proves
   the wheel is independently laid out and importable, but does not claim a second
   dependency resolution. Approval: pending fresh review.
+- 2026-07-23 AEST — Decision: make `bootstrap` the only network-eligible package
+  command and fail all other commands closed when the frozen local package state
+  is absent. Rationale: explicit dependency bootstrap is the sole reviewed network
+  permission. Consequence: doctor, format, lint, typecheck, tests, contracts, build,
+  and package proof cannot silently fetch an index package or Python runtime.
+  Approval: pending fresh review.
+- 2026-07-23 AEST — Decision: execute the wheel-installed API and worker console
+  scripts from a temporary virtual environment while supplying only the already
+  frozen runtime dependency directory. Rationale: `--no-deps` keeps the proof
+  offline and the installed project wheel first on its interpreter path, while
+  still exercising real generated launchers. Consequence: entry-point creation,
+  mapping, import origin, package data, help, worker fallback, and bounded process
+  startup are proven without claiming a second dependency resolution. Approval:
+  pending fresh review.
 
 ## Detailed implementation approach
 
@@ -398,19 +440,20 @@ package-only cell and must not be reported as passing.
   PyPI lock resolved 32 packages, the package-local frozen sync checked 31
   installed packages, and a subsequent `uv lock --check --offline` completed from
   cache. No credential or private index was used.
-- Static checks: `ruff format --check` reported 23 files unchanged, `ruff check`
-  passed, and strict mypy with the Pydantic plugin reported no issues in 23 source,
+- Static checks: `ruff format --check` reported 24 files unchanged, `ruff check`
+  passed, and strict mypy with the Pydantic plugin reported no issues in 24 source,
   test, and package-check files.
-- Behavioral checks: the no-IP-socket suite passed 9 tests and the focused
+- Behavioral checks: the no-IP-socket suite passed 12 tests and the focused
   no-IP-socket contract suite passed 5 tests. In-process contracts cover process-
   only health, deterministic fixture evidence, unavailable live capabilities,
   forbidden secret/proxy shapes, absence of `/v1/deepagents`, and worker output
   containing `"durability":"unavailable"`.
 - Artifact checks: Hatchling built both sdist and wheel; inspection found declared
-  public modules, `py.typed`, and both console entry points, with no tests, evidence
-  logs, cache paths, or checkout paths. The wheel installed offline with `--no-deps`
-  into a clean temporary target, the import origin was that target, `create_app()`
-  loaded, and `deepwork-worker --check` retained the unavailable fallback.
+  public modules, `py.typed`, and the exact two console mappings, with no tests,
+  evidence logs, cache/checkout paths, or recognized secret material. The wheel
+  installed offline with `--no-deps` into a temporary virtual environment, the
+  import origin was that installation, both generated launchers executed, and the
+  worker retained the unavailable fallback.
 - Repeatability: the final chained `doctor`, frozen `bootstrap`, `check`,
   `package-check`, offline lock check, and `git diff --check` completed successfully
   without modifying an implementation file.
@@ -437,6 +480,42 @@ Scenario contribution is deliberately partial:
 - `AC-DW-FND-003-08`: the present public fixture schema/OpenAPI contains no
   credential reference or proxy field; persisted authorized source views do not
   yet exist and therefore the full scenario is not satisfied.
+
+### Independent-review rework results — 2026-07-23 AEST
+
+- Lazy import: a fresh Python subprocess replaced `os.environ` with a mapping that
+  raises on every read, imported `deepwork_api.create_app`, and confirmed FastAPI,
+  Pydantic, and the bootstrap module remained unloaded. The wrapper loads the
+  concrete factory only when called.
+- Offline command policy: Makefile inspection proves the bootstrap sync is the
+  only recipe using network-eligible uv. Doctor, format, lint, strict typing,
+  tests, contracts, build, and package proof execute with
+  `--offline --no-python-downloads`. An empty environment/cache doctor invocation
+  exited 2 with `offline package state is not bootstrapped; run 'make -C apps/api
+  bootstrap' explicitly`; it made no implicit download attempt.
+- Static and behavioral checks: Ruff reported 24 files formatted and all lint
+  checks passing; strict mypy reported no issues in 24 files; the no-IP-socket
+  suite passed 12 tests and the focused no-IP-socket contract suite passed 5.
+- Installed artifact proof: the wheel's console-script table exactly maps
+  `deepwork-api` to `deepwork_api.bootstrap.api:main` and `deepwork-worker` to
+  `deepwork_api.bootstrap.worker:main`. Wheel contents include `py.typed`, exclude
+  repository-only paths, and contain no checkout path, `authRef`, private-key, or
+  recognized AWS/GitHub/OpenAI token shape.
+- Installed launcher proof: the wheel was installed offline with `--no-deps` into
+  a temporary virtual environment and imported from that environment while using
+  only the already frozen runtime dependency directory. The generated
+  `deepwork-api --help` launcher succeeded and the generated
+  `deepwork-worker --check` launcher returned fixture mode with durability
+  unavailable.
+- Bounded API process proof: the installed API launcher attempted its fixed
+  `127.0.0.1` loopback start on ephemeral port 0 and reached the sandbox bind
+  boundary, which returned `EPERM`. This is recorded as an environment limitation,
+  not a running-server result. In-process ASGI contracts remain the HTTP behavior
+  proof.
+- Repeatability and docs: the complete offline doctor/check/package-check/lock-
+  check chain passed, `python3 tools/docs/generate.py --check` verified 6 generated
+  documents, and `git diff --check` passed. `python3 tools/docs/check.py` retains
+  only the coordinator-owned active-plan-index error.
 
 ## Idempotence, rollback, and recovery
 
@@ -483,6 +562,14 @@ frozen lock. The implementation needed two bounded validation adjustments: allow
 the asyncio event loop's local Unix socket pair while denying IP sockets, and
 separate wheel-isolation proof from already frozen dependency installation. The
 only repository-level failure is the coordinator-owned active-plan index entry.
+
+Independent-review rework made the public import lazy and environment-read-free,
+made bootstrap the only network-eligible package command, added explicit cold-
+state failure, and upgraded artifact proof from target-directory import to exact
+entry-point inspection plus execution of both installed console launchers. The
+wheel is also scanned for checkout and secret-shaped material. A real loopback
+listener cannot be proven in this sandbox because bind returns `EPERM`; that
+limitation is explicit and no server-running claim is made.
 
 `SPIKE-AUTH-002`, `SPIKE-SOURCE-001`, and `SPIKE-STREAM-001` remain open with the
 reviewed unavailable fallbacks intact. Durable application state, auth, sources,

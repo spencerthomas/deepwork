@@ -29,5 +29,8 @@ make check
 ```
 
 `make bootstrap` is the only command permitted to resolve dependencies from
-reviewed public package indexes. Normal tests deny sockets and require no `.env`,
-provider account, or external service.
+reviewed public package indexes. Every other package command forces uv offline and
+disables Python downloads. A cold package state fails closed with an instruction
+to run the explicit bootstrap; it never falls through to an implicit download.
+Normal tests deny IP sockets and require no `.env`, provider account, or external
+service.

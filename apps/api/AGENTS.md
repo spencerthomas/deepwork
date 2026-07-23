@@ -12,6 +12,8 @@ status, and an honest worker-unavailable smoke result.
   private upstream internals.
 - No credential, `authRef`, arbitrary endpoint/header, provider cursor, or copied
   production content may enter schemas, logs, fixtures, tests, or evidence.
-- External dependency resolution is limited to explicit bootstrap. Runtime and
-  tests make no provider/service calls; unit and contract tests deny sockets.
+- External dependency resolution is limited to explicit bootstrap. Every other uv
+  command is offline and disables Python downloads; an unbootstrapped state fails
+  closed. Runtime and tests make no provider/service calls; unit and contract tests
+  deny IP sockets and allow only asyncio's local Unix socket pair.
 - Run `make check` and `make package-check` from this directory before handoff.

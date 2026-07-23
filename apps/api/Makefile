@@ -2,42 +2,49 @@ SHELL := /bin/sh
 
 UV := uv
 PYTHON_VERSION := 3.12
+OFFLINE_UV := $(UV) --offline --no-python-downloads
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
 
-.PHONY: bootstrap build check contract doctor format format-check lint package-check test typecheck
+.PHONY: bootstrap build check contract doctor format format-check lint offline-ready package-check test typecheck
 
-doctor:
-	@$(UV) --version
-	@$(UV) python find $(PYTHON_VERSION)
-	@$(UV) run --frozen python --version
+offline-ready:
+	@test -x "$(UV_PROJECT_ENVIRONMENT)/bin/python" -a -d "$(UV_CACHE_DIR)" || { \
+		echo "offline package state is not bootstrapped; run 'make -C apps/api bootstrap' explicitly" >&2; \
+		exit 2; \
+	}
+
+doctor: offline-ready
+	@$(OFFLINE_UV) --version
+	@$(OFFLINE_UV) python find $(PYTHON_VERSION)
+	@$(OFFLINE_UV) run --frozen python --version
 
 bootstrap:
 	$(UV) sync --python $(PYTHON_VERSION) --frozen --all-groups
 
-format:
-	$(UV) run --frozen ruff format .
-	$(UV) run --frozen ruff check --fix .
+format: offline-ready
+	$(OFFLINE_UV) run --frozen ruff format .
+	$(OFFLINE_UV) run --frozen ruff check --fix .
 
-format-check:
-	$(UV) run --frozen ruff format --check .
+format-check: offline-ready
+	$(OFFLINE_UV) run --frozen ruff format --check .
 
-lint:
-	$(UV) run --frozen ruff check .
+lint: offline-ready
+	$(OFFLINE_UV) run --frozen ruff check .
 
-typecheck:
-	$(UV) run --frozen mypy src tests scripts
+typecheck: offline-ready
+	$(OFFLINE_UV) run --frozen mypy src tests scripts
 
-test:
-	$(UV) run --frozen pytest --disable-socket --allow-unix-socket
+test: offline-ready
+	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket
 
-contract:
-	$(UV) run --frozen pytest --disable-socket --allow-unix-socket tests/contract_tests
+contract: offline-ready
+	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket tests/contract_tests
 
-build:
-	$(UV) build --no-sources
+build: offline-ready
+	$(OFFLINE_UV) build --no-sources
 
-package-check: build
-	$(UV) run --frozen python scripts/check_package.py
+package-check: offline-ready build
+	$(OFFLINE_UV) run --frozen python scripts/check_package.py
 
 check: format-check lint typecheck test contract build

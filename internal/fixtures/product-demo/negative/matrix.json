@@ -1,5 +1,6 @@
 {
   "matrixVersion": "1.0.0",
+  "semanticMatrixPath": "negative/semantic-matrix.json",
   "negativePaths": [
     "negative/invalid-schema.json",
     "negative/invalid-schema-expected-type.json",

@@ -368,12 +368,17 @@ environment read, or wall-clock access. It validates:
 - capability metadata and fixture/live evidence separation;
 - ordered interrupt positional array alignment, repeated-name preservation,
   canonical decision vocabulary, and rejection of unknown decision values;
-- expected replay dedupe, terminal authority, unknown/malformed handling, and
-  partial-failure assertions;
+- immutable plan-owned semantic signatures for every required case category,
+  including exact start/content/checkpoint/reconnect behavior, expected replay
+  dedupe, terminal authority, unknown/malformed handling, distinct partial-failure
+  scope, and actual logical-delay record binding;
+- a maximum JSON nesting depth before recursive schema evaluation, iterative
+  scrub/network traversal, and stable fail-closed handling of malformed shapes;
 - exact sorted SHA-256 hashes for all governed data/schema assets;
 - scrub rules for credential-shaped field names/content, `authRef`, authorization
   material, private keys, token-like values, operational endpoints, external URLs,
-  real-looking repositories/actors, and unsafe path content;
+  real-looking repositories/actors, Unicode-confusable field names, and unsafe
+  path content;
 - zero external host/URL entries and an allow-listed standard-library import set;
 - positive cases pass, each negative case fails with exactly its declared stable
   rule code, and no expected diagnostic disappears.
@@ -470,7 +475,8 @@ Acceptance:
   reconnect/replay/logical delay/completion/unknown/malformed-input
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
-  `negative/matrix.json` indexes exactly 55 single-code negative files covering
+  `negative/matrix.json` indexes exactly 55 single-code negative files and one
+  immutable 66-probe semantic matrix, for 121 exact single-code checks covering
   all stable rule-code families, the two mandatory logical-delay negatives,
   tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
   decision arrays, actual decision/resume/accepted-data presence, ordinary and
@@ -478,7 +484,8 @@ Acceptance:
   structural and semantic-shape failures, endpoint/Bearer/
   long-short-unpadded-Basic-secret/path/actor-and-identity-key scrub bypasses,
   generic bare external hosts, and external values in or below machine-reference
-  positions;
+  positions, plus every required positive-case semantic, generic schemes,
+  local/numeric hosts, maximum nesting, and Unicode-confusable keys;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
@@ -624,6 +631,23 @@ Acceptance:
   fixture shapes, exact ordered per-action decision arrays, category-aware
   source qualification, and value-qualified internal-reference exemptions. The
   matrix expands from 39 to 55 exact negatives before a new clean review.
+- [x] 2026-07-23 AEST — Fresh independent reviews rejected exact candidate
+  `75228c07dfa867f677fc176c1bb2423c7113aff8`. An 81-probe adversarial review
+  found that 75 invalid plan-semantic mutations still passed: start, content,
+  checkpoint, and reconnect had no semantic branch; completion, unknown, and
+  malformed-input checked only fragments. Additional review found self-declared
+  replay, logical-delay, partial-failure, and tool-boundedness assertions,
+  repeated-action subject-order loss, generic scheme/local/numeric host bypasses,
+  recursion escape, and Unicode-confusable identity keys.
+- [x] 2026-07-23 AEST — Consolidated successor rework adds immutable
+  plan-owned semantics for all 13 categories, exact repeated-action subject order,
+  replay-only durable-ID duplication, bounded non-JSON tool summaries, distinct
+  failed-source scope, iterative traversal plus maximum nesting, generic
+  scheme/local/numeric host detection, and fail-closed confusable-key scrubbing.
+  The original 55 file negatives are retained and joined by a SHA-pinned
+  66-probe semantic matrix; all 121 checks produce exactly their declared single
+  code. Deterministic evidence was rendered twice with an empty second update and
+  then matched disk byte-for-byte.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -1010,9 +1034,10 @@ register itself in the index, or start consumer implementation.
 ## Outcomes & Retrospective
 
 Bounded implementation rework is complete and fresh independent implementation
-review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`
-and `8291218590e3f6a91a5383ae91d6e909e71b1fbe`, and
-`8ee2347e595c685be8d799f106aaf806937efc3e` remain rejected and must not be
+review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`,
+`8291218590e3f6a91a5383ae91d6e909e71b1fbe`,
+`8ee2347e595c685be8d799f106aaf806937efc3e`, and
+`75228c07dfa867f677fc176c1bb2423c7113aff8` remain rejected and must not be
 integrated.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
@@ -1033,13 +1058,18 @@ three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
 `FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
-`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. Every negative produced exactly its one
-declared code.
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 66
+single-code probes: five start, six content, three tool, one HITL subject-order,
+five checkpoint, seven reconnect, five replay/durable-ID, three actual
+logical-delay-record, five completion, six unknown, seven malformed-input, two
+partial-failure, one maximum-depth, three Unicode-confusable-key, and seven
+generic-scheme/local/numeric-host checks. Every one of the 121 combined
+negatives produced exactly its declared code.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`b21e4fe57f573f27f103b8c5eed81af9cf1b4bcb190e0a050a842804b9c02521`.
-The generated validation and isolation reports record 13 cases, 55 intentional
+`b4a29faf7c3f2edfcb7871f13ab0a74d60c487ac3f3af9f82d55dd6d52901423`.
+The generated validation and isolation reports record 13 cases, 121 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
 reads, zero waits, and zero writes.
@@ -1048,8 +1078,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=b21e4fe...02521; validation-report=ca1076...57794;
-no-external-network=547f18...677b8; first updated_files contained all 3 targets
+exit 0; hashes.sha256=b4a29f...01423; validation-report=e68b5c...f646a;
+no-external-network=1cc623...28789; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1058,7 +1088,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=b21e4fe...02521; 13 case IDs; 55 single-code negatives;
+exit 0; corpus_digest=b4a29f...01423; 13 case IDs; 121 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator subprocess/environment/wall-clock/write counts=0
 

@@ -57,6 +57,7 @@
     "cases/partial-failure.json",
     "cases/source-collision.json",
     "negative/matrix.json",
+    "negative/semantic-matrix.json",
     "negative/invalid-schema.json",
     "negative/invalid-schema-expected-type.json",
     "negative/invalid-schema-payload-type.json",

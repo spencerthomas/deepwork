@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 
@@ -15,6 +16,14 @@ ROOT = Path(__file__).resolve().parent
 EPOCH = "2026-07-23T00:00:00Z"
 TICK_MS = 250
 FORMAT_VERSION = "1.0.0"
+MAX_DOCUMENT_DEPTH = 64
+TOOL_SUMMARY_MAX_CHARS = 160
+TOOL_SAFE_SUMMARY = "Synthetic result with no external content."
+SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
+EXPECTED_SEMANTIC_PROBE_COUNT = 66
+SEMANTIC_MATRIX_SHA256 = (
+    "2768a3e369ec5c1cc5a85fc0b53e461b6d80e863584e33ff0e393c9bc2e0499c"
+)
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
     "cases/content.json",
@@ -183,6 +192,7 @@ VALIDATOR_IMPORT_ALLOWLIST = [
     "pathlib",
     "re",
     "sys",
+    "unicodedata",
 ]
 FORBIDDEN_FIELD_FRAGMENTS = (
     "accesskey",
@@ -205,7 +215,7 @@ FORBIDDEN_FIELD_FRAGMENTS = (
 )
 IDENTITY_FIELD_FRAGMENTS = ("actor", "email", "identity", "owner", "user")
 EXTERNAL_SCHEME_RE = re.compile(
-    r"(?:https?|wss?|ftp|file|data|ssh|git)://",
+    r"(?<![a-z0-9_])[a-z][a-z0-9+.-]*://",
     re.IGNORECASE,
 )
 EXTERNAL_HOST_RE = re.compile(
@@ -217,6 +227,14 @@ EXTERNAL_HOST_RE = re.compile(
 IP_ADDRESS_RE = re.compile(
     r"(?<![a-z0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![a-z0-9])|"
     r"(?<![a-z0-9])(?:[a-f0-9]{0,4}:){2,}[a-f0-9]{0,4}(?![a-z0-9])",
+    re.IGNORECASE,
+)
+LOCAL_OR_NUMERIC_HOST_RE = re.compile(
+    r"(?<![a-z0-9_-])(?:"
+    r"localhost(?::[0-9]{1,5})?"
+    r"|0x[0-9a-f]{7,8}(?::[0-9]{1,5})?"
+    r"|[0-9]{8,10}(?::[0-9]{1,5})?"
+    r")(?=[/:]|$)",
     re.IGNORECASE,
 )
 UNSAFE_PATH_RE = re.compile(
@@ -283,14 +301,29 @@ def tick_timestamp(tick):
 
 
 def _walk(value, path=""):
-    yield path, value
-    if isinstance(value, dict):
-        for key in sorted(value):
-            child_path = f"{path}/{key}"
-            yield from _walk(value[key], child_path)
-    elif isinstance(value, list):
-        for index, item in enumerate(value):
-            yield from _walk(item, f"{path}/{index}")
+    stack = [(path, value)]
+    while stack:
+        current_path, current = stack.pop()
+        yield current_path, current
+        if isinstance(current, dict):
+            for key in sorted(current, reverse=True):
+                stack.append((f"{current_path}/{key}", current[key]))
+        elif isinstance(current, list):
+            for index in range(len(current) - 1, -1, -1):
+                stack.append((f"{current_path}/{index}", current[index]))
+
+
+def _exceeds_max_document_depth(value):
+    stack = [(value, 0)]
+    while stack:
+        current, depth = stack.pop()
+        if depth > MAX_DOCUMENT_DEPTH:
+            return True
+        if isinstance(current, dict):
+            stack.extend((child, depth + 1) for child in current.values())
+        elif isinstance(current, list):
+            stack.extend((child, depth + 1) for child in current)
+    return False
 
 
 def scrub_diagnostics(value):
@@ -298,7 +331,10 @@ def scrub_diagnostics(value):
     for path, item in _walk(value):
         if isinstance(item, dict):
             for key, child in item.items():
-                normalized = re.sub(r"[^a-z0-9]", "", key.lower())
+                normalized_key = unicodedata.normalize("NFKC", key).casefold()
+                normalized = re.sub(r"[^a-z0-9]", "", normalized_key)
+                if not key.isascii():
+                    diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", f"{path}/{key}"))
                 if any(fragment in normalized for fragment in FORBIDDEN_FIELD_FRAGMENTS):
                     diagnostics.append(("FIXTURE_SCRUB_FORBIDDEN_FIELD", f"{path}/{key}"))
                 if (
@@ -323,6 +359,7 @@ def _expected_hashed_assets():
     return {
         "corpus.json",
         "negative/matrix.json",
+        SEMANTIC_MATRIX_PATH,
         *SCHEMA_PATHS,
         *MANIFEST_PATHS,
         *EXPECTED_CASE_PATHS,
@@ -333,6 +370,8 @@ def _expected_hashed_assets():
 def _is_allowed_internal_reference(path, value):
     if path == "/negativeMatrixPath":
         return value == "negative/matrix.json"
+    if path == "/semanticMatrixPath":
+        return value == SEMANTIC_MATRIX_PATH
     if path == "/capabilityManifestRef":
         return value in MANIFEST_PATHS
     indexed_references = (
@@ -360,6 +399,7 @@ def network_diagnostics(value):
             EXTERNAL_SCHEME_RE.search(item)
             or EXTERNAL_HOST_RE.search(item)
             or IP_ADDRESS_RE.search(item)
+            or LOCAL_OR_NUMERIC_HOST_RE.search(item)
         ):
             diagnostics.append(("FIXTURE_NETWORK_EXTERNAL_URL", path))
     return diagnostics
@@ -456,6 +496,8 @@ def _required_case_fields():
 
 
 def _validate_manifest(manifest):
+    if _exceeds_max_document_depth(manifest):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     structural_diagnostics = structural_schema_diagnostics(
         manifest,
         read_json("schema/capability-manifest.json"),
@@ -515,7 +557,15 @@ def _validate_manifest(manifest):
 def validate_manifest(manifest):
     try:
         return _validate_manifest(manifest)
-    except (AttributeError, IndexError, KeyError, OverflowError, TypeError, ValueError):
+    except (
+        AttributeError,
+        IndexError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+    ):
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
 
 
@@ -540,8 +590,239 @@ def _validate_scope(scope):
     return []
 
 
+def _canonical_record(
+    case,
+    *,
+    record_id,
+    durable_event_id,
+    sequence,
+    tick,
+    kind,
+    payload,
+    identity=None,
+):
+    source_id, thread_id, run_id = identity or (
+        case["scope"]["sourceId"],
+        case["scope"]["threadId"],
+        case["scope"]["runId"],
+    )
+    return {
+        "recordId": record_id,
+        "durableEventId": durable_event_id,
+        "sequence": sequence,
+        "tick": tick,
+        "observedAt": tick_timestamp(tick),
+        "kind": kind,
+        "sourceId": source_id,
+        "threadId": thread_id,
+        "runId": run_id,
+        "payload": payload,
+    }
+
+
+def _validate_start_case(case):
+    records = case["records"]
+    expected = case["expected"]
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_start",
+            durable_event_id="fx_event_start",
+            sequence=1,
+            tick=1,
+            kind="fixture-start",
+            payload={"status": "active"},
+        )
+    ]
+    canonical_expected = {
+        "orderedRecordIds": ["fx_record_start"],
+        "status": "active",
+        "providerCreateCall": False,
+    }
+    if (
+        records != canonical_records
+        or expected != canonical_expected
+        or case["clock"]["observedTick"] != 1
+    ):
+        return ["FIXTURE_EXPECTATION_START"]
+    return []
+
+
+def _validate_content_case(case):
+    records = case["records"]
+    expected = case["expected"]
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_content_a",
+            durable_event_id="fx_event_content_a",
+            sequence=1,
+            tick=2,
+            kind="fixture-content",
+            payload={
+                "chunkIndex": 0,
+                "text": "Synthetic visible content.",
+                "trust": "untrusted",
+            },
+        ),
+        _canonical_record(
+            case,
+            record_id="fx_record_content_b",
+            durable_event_id="fx_event_content_b",
+            sequence=2,
+            tick=3,
+            kind="fixture-content",
+            payload={
+                "chunkIndex": 1,
+                "text": "Synthetic bounded continuation.",
+                "trust": "untrusted",
+            },
+        ),
+    ]
+    canonical_expected = {
+        "orderedRecordIds": [
+            "fx_record_content_a",
+            "fx_record_content_b",
+        ],
+        "visibleTextOrder": [
+            "Synthetic visible content.",
+            "Synthetic bounded continuation.",
+        ],
+        "privateReasoningPresent": False,
+    }
+    if (
+        records != canonical_records
+        or expected != canonical_expected
+        or case["clock"]["observedTick"] != 3
+    ):
+        return ["FIXTURE_EXPECTATION_CONTENT"]
+    return []
+
+
+def _validate_checkpoint_case(case):
+    records = case["records"]
+    expected = case["expected"]
+    checkpoint_id = "fx_checkpoint_alpha"
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_checkpoint",
+            durable_event_id="fx_event_checkpoint",
+            sequence=1,
+            tick=12,
+            kind="fixture-checkpoint-observed",
+            payload={
+                "checkpointId": checkpoint_id,
+                "qualifiedCheckpointKey": (
+                    f"{case['scope']['sourceId']}:{case['scope']['threadId']}:"
+                    f"{checkpoint_id}"
+                ),
+            },
+        )
+    ]
+    canonical_expected = {
+        "orderedRecordIds": ["fx_record_checkpoint"],
+        "checkpointId": checkpoint_id,
+        "forkCapabilityState": "gated",
+        "forkPerformed": False,
+    }
+    if (
+        records != canonical_records
+        or expected != canonical_expected
+        or case["clock"]["observedTick"] != 12
+    ):
+        return ["FIXTURE_EXPECTATION_CHECKPOINT"]
+    return []
+
+
+def _validate_reconnect_case(case):
+    records = case["records"]
+    expected = case["expected"]
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_reconnect_durable",
+            durable_event_id="fx_event_reconnect_durable",
+            sequence=1,
+            tick=18,
+            kind="fixture-content",
+            payload={
+                "text": "Last durable synthetic projection.",
+                "trust": "untrusted",
+            },
+        ),
+        _canonical_record(
+            case,
+            record_id="fx_record_reconnect_boundary",
+            durable_event_id="fx_event_reconnect_boundary",
+            sequence=2,
+            tick=20,
+            kind="fixture-recovery-boundary",
+            payload={
+                "freshness": "reconnecting",
+                "applicationRecoveryMarker": "fx_recovery_boundary_alpha",
+            },
+        ),
+    ]
+    canonical_expected = {
+        "orderedRecordIds": [
+            "fx_record_reconnect_durable",
+            "fx_record_reconnect_boundary",
+        ],
+        "retainedRecordIds": ["fx_record_reconnect_durable"],
+        "freshness": "reconnecting",
+        "terminalInferred": False,
+        "cancelInferred": False,
+        "providerRecoveryMechanism": "unspecified",
+    }
+    if (
+        records != canonical_records
+        or expected != canonical_expected
+        or case["clock"]["observedTick"] != 20
+    ):
+        return ["FIXTURE_EXPECTATION_RECONNECT"]
+    return []
+
+
 def _validate_logical_delay(case):
     expected = case["expected"]
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_delay_start",
+            durable_event_id="fx_event_delay_start",
+            sequence=1,
+            tick=40,
+            kind="fixture-start",
+            payload={"status": "active"},
+        ),
+        _canonical_record(
+            case,
+            record_id="fx_record_delay_content",
+            durable_event_id="fx_event_delay_content",
+            sequence=2,
+            tick=44,
+            kind="fixture-content",
+            payload={
+                "text": "Synthetic logically delayed content.",
+                "trust": "untrusted",
+            },
+        ),
+        _canonical_record(
+            case,
+            record_id="fx_record_delay_complete",
+            durable_event_id="fx_event_delay_complete",
+            sequence=3,
+            tick=45,
+            kind="fixture-completion",
+            payload={"status": "completed", "authoritative": "fixture"},
+        ),
+    ]
+    if (
+        case["records"] != canonical_records
+        or case["clock"]["observedTick"] != 45
+    ):
+        return ["FIXTURE_EXPECTATION_DELAY_VISIBILITY"]
     if expected["enqueueTick"] + expected["delayTicks"] != expected["releaseTick"]:
         return ["FIXTURE_CLOCK_DELAY_MISMATCH"]
     if expected["lastPreReleaseTick"] != expected["releaseTick"] - 1:
@@ -603,6 +884,9 @@ def _validate_tool_case(case):
         or not start_payload["displayName"]
         or not isinstance(result_payload["summary"], str)
         or not result_payload["summary"]
+        or len(result_payload["summary"]) > TOOL_SUMMARY_MAX_CHARS
+        or result_payload["summary"] != TOOL_SAFE_SUMMARY
+        or result_payload["summary"].lstrip().startswith(("{", "["))
         or start_payload["trust"] != "untrusted"
         or result_payload["trust"] != "untrusted"
         or result_payload["bounded"] is not True
@@ -622,6 +906,37 @@ def _validate_tool_case(case):
         or len(set(correlation_ids)) != 1
     ):
         return ["FIXTURE_EXPECTATION_TOOL_CORRELATION"]
+    canonical_records = [
+        _canonical_record(
+            case,
+            record_id="fx_record_tool_start",
+            durable_event_id="fx_event_tool_start",
+            sequence=1,
+            tick=4,
+            kind="fixture-tool-start",
+            payload={
+                "toolCallId": "fx_tool_call_alpha",
+                "displayName": "Synthetic lookup",
+                "trust": "untrusted",
+            },
+        ),
+        _canonical_record(
+            case,
+            record_id="fx_record_tool_result",
+            durable_event_id="fx_event_tool_result",
+            sequence=2,
+            tick=5,
+            kind="fixture-tool-result",
+            payload={
+                "toolCallId": "fx_tool_call_alpha",
+                "summary": TOOL_SAFE_SUMMARY,
+                "trust": "untrusted",
+                "bounded": True,
+            },
+        ),
+    ]
+    if records != canonical_records or case["clock"]["observedTick"] != 5:
+        return ["FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY"]
     return []
 
 
@@ -629,6 +944,10 @@ def _semantic_diagnostics(case):
     category = case["category"]
     expected = case["expected"]
     records = case["records"]
+    if category == "start":
+        return _validate_start_case(case)
+    if category == "content":
+        return _validate_content_case(case)
     if category == "tool":
         return _validate_tool_case(case)
     if category == "ordered-interrupt":
@@ -662,11 +981,11 @@ def _semantic_diagnostics(case):
         if (
             set(payload) != payload_fields
             or set(expected) != expected_fields
-            or any(
-                not isinstance(payload[field], str)
-                or not payload[field].startswith("fx_")
-                for field in ("interruptId", "version")
-            )
+            or payload["interruptId"] != "fx_interrupt_alpha"
+            or payload["version"] != "fx_interrupt_version_3"
+            or records[0]["durableEventId"] != "fx_event_interrupt"
+            or records[0]["tick"] != 8
+            or case["clock"]["observedTick"] != 8
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         requests = payload["actionRequests"]
@@ -702,11 +1021,13 @@ def _semantic_diagnostics(case):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         if request_names != ["review", "review"]:
             return ["FIXTURE_INTERRUPT_REPEATED_NAME"]
+        request_subjects = [item["args"]["subject"] for item in requests]
         if (
             expected["actionRequestOrder"] != request_names
             or expected["reviewConfigOrder"] != config_names
             or expected["positionalAlignment"] is not True
             or expected["repeatedActionNamesPreserved"] != request_names
+            or request_subjects != ["fx_change_a", "fx_change_b"]
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         for config in configs:
@@ -729,6 +1050,24 @@ def _semantic_diagnostics(case):
             or expected["submissionCapabilityState"] != "gated"
         ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+        canonical_requests = [
+            {
+                "name": "review",
+                "args": {"subject": "fx_change_a"},
+                "description": "Review synthetic change A.",
+            },
+            {
+                "name": "review",
+                "args": {"subject": "fx_change_b"},
+                "description": "Review synthetic change B.",
+            },
+        ]
+        if requests != canonical_requests:
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+    elif category == "checkpoint":
+        return _validate_checkpoint_case(case)
+    elif category == "reconnect":
+        return _validate_reconnect_case(case)
     elif category == "replay":
         seen = set()
         visible = []
@@ -742,8 +1081,56 @@ def _semantic_diagnostics(case):
                 seen.add(event_id)
                 durable.append(event_id)
                 visible.append(record["recordId"])
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_replay_a",
+                durable_event_id="fx_event_replay_a",
+                sequence=1,
+                tick=21,
+                kind="fixture-content",
+                payload={"text": "Synthetic replay item A.", "trust": "untrusted"},
+            ),
+            _canonical_record(
+                case,
+                record_id="fx_record_replay_a_duplicate",
+                durable_event_id="fx_event_replay_a",
+                sequence=2,
+                tick=22,
+                kind="fixture-content",
+                payload={"text": "Synthetic replay item A.", "trust": "untrusted"},
+            ),
+            _canonical_record(
+                case,
+                record_id="fx_record_replay_b",
+                durable_event_id="fx_event_replay_b",
+                sequence=3,
+                tick=24,
+                kind="fixture-content",
+                payload={"text": "Synthetic replay item B.", "trust": "untrusted"},
+            ),
+        ]
+        canonical_expected = {
+            "inputRecordIds": [
+                "fx_record_replay_a",
+                "fx_record_replay_a_duplicate",
+                "fx_record_replay_b",
+            ],
+            "deduplicatedDurableEventIds": [
+                "fx_event_replay_a",
+                "fx_event_replay_b",
+            ],
+            "ignoredRecordIds": ["fx_record_replay_a_duplicate"],
+            "visibleRecordIds": [
+                "fx_record_replay_a",
+                "fx_record_replay_b",
+            ],
+        }
         if (
-            expected["deduplicatedDurableEventIds"] != durable
+            records != canonical_records
+            or expected != canonical_expected
+            or case["clock"]["observedTick"] != 24
+            or expected["deduplicatedDurableEventIds"] != durable
             or expected["ignoredRecordIds"] != ignored
             or expected["visibleRecordIds"] != visible
         ):
@@ -751,15 +1138,30 @@ def _semantic_diagnostics(case):
     elif category == "logical-delay":
         return _validate_logical_delay(case)
     elif category == "completion":
-        authority_id = expected["terminalAuthorityRecordId"]
-        matching = [
-            record
-            for record in records
-            if record["recordId"] == authority_id
-            and record["kind"] == "fixture-completion"
-            and record["payload"].get("authoritative") == "fixture"
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_completion",
+                durable_event_id="fx_event_completion",
+                sequence=1,
+                tick=30,
+                kind="fixture-completion",
+                payload={"status": "completed", "authoritative": "fixture"},
+            )
         ]
-        if len(matching) != 1 or expected["terminalStatus"] != "completed":
+        canonical_expected = {
+            "orderedRecordIds": ["fx_record_completion"],
+            "terminalStatus": "completed",
+            "terminalAuthorityRecordId": "fx_record_completion",
+            "absenceInfersTerminal": False,
+            "timeoutInfersTerminal": False,
+            "disconnectInfersTerminal": False,
+        }
+        if (
+            records != canonical_records
+            or expected != canonical_expected
+            or case["clock"]["observedTick"] != 30
+        ):
             return ["FIXTURE_EXPECTATION_TERMINAL_AUTHORITY"]
     elif category == "source-collision":
         if len(records) != 2:
@@ -774,17 +1176,79 @@ def _semantic_diagnostics(case):
             f"{record['sourceId']}:{record['threadId']}:{record['runId']}"
             for record in records
         ]
+        canonical_expected = {
+            "orderedRecordIds": [
+                "fx_record_collision_alpha",
+                "fx_record_collision_beta",
+            ],
+            "sharedThreadId": "fx_thread_shared_external",
+            "sharedRunId": "fx_run_shared_external",
+            "distinctQualifiedThreadKeys": qualified_threads,
+            "distinctQualifiedRunKeys": qualified_runs,
+        }
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_collision_alpha",
+                durable_event_id="fx_event_collision_alpha",
+                sequence=1,
+                tick=38,
+                kind="fixture-source-result",
+                payload={
+                    "qualifiedThreadKey": (
+                        "fx_source_alpha:fx_thread_shared_external"
+                    ),
+                    "qualifiedRunKey": (
+                        "fx_source_alpha:fx_thread_shared_external:"
+                        "fx_run_shared_external"
+                    ),
+                },
+                identity=(
+                    "fx_source_alpha",
+                    "fx_thread_shared_external",
+                    "fx_run_shared_external",
+                ),
+            ),
+            _canonical_record(
+                case,
+                record_id="fx_record_collision_beta",
+                durable_event_id="fx_event_collision_beta",
+                sequence=2,
+                tick=39,
+                kind="fixture-source-result",
+                payload={
+                    "qualifiedThreadKey": (
+                        "fx_source_beta:fx_thread_shared_external"
+                    ),
+                    "qualifiedRunKey": (
+                        "fx_source_beta:fx_thread_shared_external:"
+                        "fx_run_shared_external"
+                    ),
+                },
+                identity=(
+                    "fx_source_beta",
+                    "fx_thread_shared_external",
+                    "fx_run_shared_external",
+                ),
+            ),
+        ]
         if (
-            len(set(source_ids)) != 2
+            records != canonical_records
+            or case["clock"]["observedTick"] != 39
+            or len(set(source_ids)) != 2
+            or [record["kind"] for record in records]
+            != ["fixture-source-result", "fixture-source-result"]
             or set(thread_ids) != {expected["sharedThreadId"]}
             or set(run_ids) != {expected["sharedRunId"]}
+            or expected != canonical_expected
             or expected["distinctQualifiedThreadKeys"] != qualified_threads
             or expected["distinctQualifiedRunKeys"] != qualified_runs
             or any(
-                record["payload"].get("qualifiedThreadKey")
-                != qualified_threads[index]
-                or record["payload"].get("qualifiedRunKey")
-                != qualified_runs[index]
+                record["payload"]
+                != {
+                    "qualifiedThreadKey": qualified_threads[index],
+                    "qualifiedRunKey": qualified_runs[index],
+                }
                 for index, record in enumerate(records)
             )
             or case["scope"]["sourceId"] != source_ids[0]
@@ -795,7 +1259,33 @@ def _semantic_diagnostics(case):
         ):
             return ["FIXTURE_ID_SOURCE_COLLISION"]
     elif category == "malformed-input":
-        if expected["envelopeValid"] is not True or expected["safeErrorCode"] != "FIXTURE_INPUT_MALFORMED":
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_malformed",
+                durable_event_id="fx_event_malformed",
+                sequence=1,
+                tick=34,
+                kind="fixture-malformed-input",
+                payload={
+                    "input": {"upstreamLikeValue": ["unexpected", 7, False]},
+                    "safeClassification": "malformed-input",
+                    "safeErrorCode": "FIXTURE_INPUT_MALFORMED",
+                    "rawBodyRetained": False,
+                },
+            )
+        ]
+        canonical_expected = {
+            "orderedRecordIds": ["fx_record_malformed"],
+            "classification": "malformed-input",
+            "safeErrorCode": "FIXTURE_INPUT_MALFORMED",
+            "envelopeValid": True,
+        }
+        if (
+            records != canonical_records
+            or expected != canonical_expected
+            or case["clock"]["observedTick"] != 34
+        ):
             return ["FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION"]
     elif category == "partial-failure":
         expected_fields = {
@@ -814,8 +1304,42 @@ def _semantic_diagnostics(case):
         healthy, failed = records
         failed_thread_key = f"{failed['sourceId']}:{failed['threadId']}"
         failed_run_key = f"{failed_thread_key}:{failed['runId']}"
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_partial_healthy",
+                durable_event_id="fx_event_partial_healthy",
+                sequence=1,
+                tick=36,
+                kind="fixture-source-result",
+                payload={
+                    "result": "Synthetic healthy source result.",
+                    "trust": "untrusted",
+                },
+            ),
+            _canonical_record(
+                case,
+                record_id="fx_record_partial_error",
+                durable_event_id="fx_event_partial_error",
+                sequence=2,
+                tick=37,
+                kind="fixture-source-error",
+                payload={
+                    "safeErrorCode": "SOURCE_UNAVAILABLE",
+                    "safeSummary": "Synthetic source is unavailable.",
+                    "sourceQualified": True,
+                },
+                identity=(
+                    "fx_source_beta",
+                    "fx_thread_partial_beta",
+                    "fx_run_partial_beta",
+                ),
+            ),
+        ]
         if (
-            healthy["kind"] != "fixture-source-result"
+            records != canonical_records
+            or case["clock"]["observedTick"] != 37
+            or healthy["kind"] != "fixture-source-result"
             or (
                 healthy["sourceId"],
                 healthy["threadId"],
@@ -846,15 +1370,54 @@ def _semantic_diagnostics(case):
             or expected["healthyRecordIds"] != [healthy["recordId"]]
             or expected["partialErrorRecordIds"] != [failed["recordId"]]
             or expected["aggregateUsable"] is not True
+            or (
+                failed["sourceId"],
+                failed["threadId"],
+                failed["runId"],
+            )
+            == (
+                healthy["sourceId"],
+                healthy["threadId"],
+                healthy["runId"],
+            )
         ):
             return ["FIXTURE_EXPECTATION_PARTIAL_FAILURE"]
     elif category == "unknown":
-        if expected["classification"] != "unknown" or expected["promotedDiscriminator"] is not False:
+        canonical_records = [
+            _canonical_record(
+                case,
+                record_id="fx_record_unknown",
+                durable_event_id="fx_event_unknown",
+                sequence=1,
+                tick=32,
+                kind="fixture-unknown",
+                payload={
+                    "originalKind": "fx_unrecognized_kind",
+                    "safeSummary": "Unsupported synthetic content preserved as unknown.",
+                    "trust": "untrusted",
+                },
+            )
+        ]
+        canonical_expected = {
+            "orderedRecordIds": ["fx_record_unknown"],
+            "classification": "unknown",
+            "observable": True,
+            "promotedDiscriminator": False,
+        }
+        if (
+            records != canonical_records
+            or expected != canonical_expected
+            or case["clock"]["observedTick"] != 32
+        ):
             return ["FIXTURE_EXPECTATION_UNKNOWN"]
+    else:
+        return ["FIXTURE_SCHEMA_CASE_COVERAGE"]
     return []
 
 
 def _validate_case(case):
+    if _exceeds_max_document_depth(case):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     structural_diagnostics = structural_schema_diagnostics(
         case,
         read_json("schema/fixture-envelope.json"),
@@ -929,13 +1492,26 @@ def _validate_case(case):
         diagnostics.append("FIXTURE_ID_QUALIFICATION")
     if len(record_ids) != len(set(record_ids)):
         diagnostics.append("FIXTURE_ID_DUPLICATE_RECORD")
+    durable_event_ids = [
+        record["durableEventId"]
+        for record in records
+        if isinstance(record, dict) and "durableEventId" in record
+    ]
+    if (
+        case["category"] != "replay"
+        and len(durable_event_ids) != len(set(durable_event_ids))
+    ):
+        diagnostics.append("FIXTURE_EXPECTATION_REPLAY_DEDUPE")
     if sequences != list(range(1, len(records) + 1)):
         diagnostics.append("FIXTURE_ORDER_SEQUENCE")
     if "orderedRecordIds" in case["expected"] and case["expected"]["orderedRecordIds"] != record_ids:
         diagnostics.append("FIXTURE_EXPECTATION_ORDER")
-    diagnostics.extend(_semantic_diagnostics(case))
-    diagnostics.extend(code for code, _ in scrub_diagnostics(case))
-    diagnostics.extend(code for code, _ in network_diagnostics(case))
+    scrub_codes = [code for code, _ in scrub_diagnostics(case)]
+    network_codes = [code for code, _ in network_diagnostics(case)]
+    diagnostics.extend(scrub_codes)
+    diagnostics.extend(network_codes)
+    if not diagnostics:
+        diagnostics.extend(_semantic_diagnostics(case))
     if structural_invalid and not diagnostics:
         diagnostics.append("FIXTURE_SCHEMA_REQUIRED_FIELD")
     return sorted(set(diagnostics))
@@ -944,7 +1520,15 @@ def _validate_case(case):
 def validate_case(case):
     try:
         return _validate_case(case)
-    except (AttributeError, IndexError, KeyError, OverflowError, TypeError, ValueError):
+    except (
+        AttributeError,
+        IndexError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+    ):
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
 
 
@@ -974,6 +1558,13 @@ def _apply_mutation(document, mutation):
     return result
 
 
+def _apply_mutations(document, mutations):
+    result = document
+    for mutation in mutations:
+        result = _apply_mutation(result, mutation)
+    return result
+
+
 def diagnose_negative(negative):
     if "probe" in negative:
         probe = negative["probe"]
@@ -982,9 +1573,45 @@ def diagnose_negative(negative):
             return [] if actual == probe["claimedSha256"] else ["FIXTURE_HASH_MISMATCH"]
         if probe.get("kind") == "network-diagnostic":
             return sorted({code for code, _ in network_diagnostics(probe["value"])})
+        if probe.get("kind") == "deep-nesting":
+            nested = "fx_leaf"
+            for _ in range(probe["depth"]):
+                nested = {"child": nested}
+            mutated = _apply_mutations(
+                read_json(probe["basePath"]),
+                [
+                    {
+                        "operation": "replace",
+                        "path": probe["path"],
+                        "value": nested,
+                    }
+                ],
+            )
+            return validate_case(mutated)
+        if probe.get("kind") == "normalized-reverse-records":
+            mutated = read_json(probe["basePath"])
+            reversed_records = list(reversed(mutated["records"]))
+            normalized_records = []
+            ordered_ticks = sorted(record["tick"] for record in mutated["records"])
+            for sequence, record in enumerate(reversed_records, 1):
+                normalized_record = copy.deepcopy(record)
+                normalized_record["sequence"] = sequence
+                normalized_record["tick"] = ordered_ticks[sequence - 1]
+                normalized_record["observedAt"] = tick_timestamp(
+                    normalized_record["tick"]
+                )
+                normalized_records.append(normalized_record)
+            mutated["records"] = normalized_records
+            mutated["expected"]["orderedRecordIds"] = [
+                record["recordId"] for record in normalized_records
+            ]
+            return validate_case(mutated)
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     base_path = negative["basePath"]
-    mutated = _apply_mutation(read_json(base_path), negative["mutation"])
+    mutations = negative.get("mutations")
+    if mutations is None:
+        mutations = [negative["mutation"]]
+    mutated = _apply_mutations(read_json(base_path), mutations)
     if base_path.startswith("manifests/"):
         return validate_manifest(mutated)
     return validate_case(mutated)
@@ -1028,13 +1655,23 @@ def analyze_sources():
     corpus = read_json("corpus.json")
     cases = [read_json(path) for path in corpus["casePaths"]]
     matrix = read_json(corpus["negativeMatrixPath"])
+    semantic_matrix = read_json(matrix["semanticMatrixPath"])
     negative_results = {}
+    negative_order = []
     for path in matrix["negativePaths"]:
         negative = read_json(path)
+        negative_order.append(negative["negativeId"])
         negative_results[negative["negativeId"]] = {
             "path": path,
             "declaredRuleCode": negative["declaredRuleCode"],
             "observedRuleCodes": diagnose_negative(negative),
+        }
+    for probe in semantic_matrix["probes"]:
+        negative_order.append(probe["negativeId"])
+        negative_results[probe["negativeId"]] = {
+            "path": SEMANTIC_MATRIX_PATH,
+            "declaredRuleCode": probe["declaredRuleCode"],
+            "observedRuleCodes": diagnose_negative(probe),
         }
     scrub_matches = []
     external_urls = []
@@ -1046,7 +1683,9 @@ def analyze_sources():
         "corpus": corpus,
         "cases": cases,
         "matrix": matrix,
+        "semanticMatrix": semantic_matrix,
         "negativeResults": negative_results,
+        "negativeOrder": negative_order,
         "scrubMatches": scrub_matches,
         "externalUrls": external_urls,
         "imports": validator_imports(),
@@ -1064,9 +1703,13 @@ def render_validation_report(analysis=None):
         "corpusDigest": analysis["corpusDigest"],
         "caseIds": sorted(case["caseId"] for case in analysis["cases"]),
         "caseCategories": [case["category"] for case in analysis["cases"]],
+        "fileNegativeCount": len(analysis["matrix"]["negativePaths"]),
+        "semanticProbeCount": len(analysis["semanticMatrix"]["probes"]),
+        "negativeCheckCount": len(analysis["negativeOrder"]),
+        "semanticMatrixSha256": SEMANTIC_MATRIX_SHA256,
         "negativeRuleCodes": [
-            analysis["negativeResults"][read_json(path)["negativeId"]]["declaredRuleCode"]
-            for path in analysis["matrix"]["negativePaths"]
+            analysis["negativeResults"][negative_id]["declaredRuleCode"]
+            for negative_id in analysis["negativeOrder"]
         ],
         "structuralSchemaPaths": SCHEMA_PATHS,
         "structuralSchemaApplicationCount": len(analysis["cases"]) + len(MANIFEST_PATHS),
@@ -1127,8 +1770,28 @@ def _validate_index_and_closure(analysis):
     matrix = analysis["matrix"]
     if matrix["negativePaths"] != EXPECTED_NEGATIVE_PATHS:
         diagnostics.append("FIXTURE_SCHEMA_NEGATIVE_INDEX")
+    if matrix.get("semanticMatrixPath") != SEMANTIC_MATRIX_PATH:
+        diagnostics.append("FIXTURE_SCHEMA_NEGATIVE_INDEX")
     if matrix["expectedRuleCodes"] != EXPECTED_RULE_CODES:
         diagnostics.append("FIXTURE_SCHEMA_RULE_INDEX")
+    semantic_matrix = analysis["semanticMatrix"]
+    semantic_probes = semantic_matrix.get("probes")
+    if (
+        semantic_matrix.get("matrixVersion") != FORMAT_VERSION
+        or not isinstance(semantic_probes, list)
+        or len(semantic_probes) != EXPECTED_SEMANTIC_PROBE_COUNT
+        or len(
+            {
+                probe.get("negativeId")
+                for probe in semantic_probes
+                if isinstance(probe, dict)
+            }
+        )
+        != EXPECTED_SEMANTIC_PROBE_COUNT
+        or hashlib.sha256(read_bytes(SEMANTIC_MATRIX_PATH)).hexdigest()
+        != SEMANTIC_MATRIX_SHA256
+    ):
+        diagnostics.append("FIXTURE_SCHEMA_SEMANTIC_PROBE_INDEX")
     expected_assets = sorted(_expected_hashed_assets())
     if sorted(corpus["hashedAssets"]) != expected_assets or len(corpus["hashedAssets"]) != len(set(corpus["hashedAssets"])):
         diagnostics.append("FIXTURE_HASH_CLOSURE")
@@ -1214,7 +1877,13 @@ def main():
     print(f"corpus_digest={analysis['corpusDigest']}")
     print("case_ids=" + ",".join(sorted(case["caseId"] for case in analysis["cases"])))
     print("case_categories=" + ",".join(case["category"] for case in analysis["cases"]))
-    print("negative_rule_codes=" + ",".join(EXPECTED_RULE_CODES))
+    print(
+        "negative_rule_codes="
+        + ",".join(
+            analysis["negativeResults"][negative_id]["declaredRuleCode"]
+            for negative_id in analysis["negativeOrder"]
+        )
+    )
     print("scrub_match_count=0")
     print("external_url_host_count=0")
     print("logical_delay=enqueue:41,delay:3,release:44,completion:45")

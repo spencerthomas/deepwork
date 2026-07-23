@@ -1,7 +1,7 @@
 ---
 exec_plan_id: DW-EXEC-M1-AGENT-SCAFFOLD
 title: Wave 1 independent Python agent package scaffold
-status: reviewed
+status: completed
 superseded_by: null
 owner: agent
 reviewed_by: [api-package-reviewer]
@@ -12,9 +12,9 @@ issue: local:DW-M1-AGENT-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
-last_verified_commit: 3dbe6629d8053380ab6a8bff6d2fcb462f854256
+last_verified_commit: e991700cb25e5be8020ace8d905c5ecbefa6600e
 risk: medium
-governed_paths: [packages/agent/**, docs/exec-plans/active/DW-EXEC-M1-AGENT-SCAFFOLD.md]
+governed_paths: [packages/agent/**, docs/exec-plans/completed/DW-EXEC-M1-AGENT-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001, SPIKE-CONFIG-001]
 decision_gates: [DEC-003, DEC-024, DEC-028, DEC-031, DEC-032, DEC-043]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/PLANS.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/agents/dw-agent-003-create-draft-import-export-and-deploy.md, docs/product-specs/agents/dw-agent-005-tools-connectors-permissions-skills-memory-and-subagents.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/SECURITY.md, docs/references/source-ledger.md]
 scenario_ids: [AC-DW-FND-001-03, AC-DW-FND-001-07]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: []
 blockers: []
@@ -352,7 +352,8 @@ product integration.
   evidence. Rework now separates explicit evidence refresh from immutable checks,
   compares two fresh builds, and proves the full frozen check leaves tracked
   status clean.
-- [ ] Milestone 4 - independent implementation review accepted and handed off.
+- [x] 2026-07-23 - Milestone 4 accepted by independent implementation review at
+  integrated commit `e991700cb25e5be8020ace8d905c5ecbefa6600e`.
 
 ## Surprises and discoveries
 
@@ -426,16 +427,20 @@ product integration.
 
 ## Outcomes and retrospective
 
-Implementation rework is complete and awaits fresh independent review. The package
-is independently locked, typed, formatted, linted, type-checked, network-denied,
+Implementation and rework are complete and independently accepted. The package is
+independently locked, typed, formatted, linted, type-checked, network-denied,
 buildable, clean-installable, and reproducible across two fresh builds. Artifact
 evidence is refreshed only through an explicit action; ordinary verification is
-immutable and leaves the tracked checkout clean. The package contributes
-enforceable package direction to `AC-DW-FND-001-03` and proves private runtime
-packages are not a default prerequisite for `AC-DW-FND-001-07`.
+immutable and leaves the tracked checkout clean. The accepted wheel hash is
+`d48e7e836f33a653f4fe0b628081555b4c6fce3717328d998be558ac39146378`
+and the accepted sdist hash is
+`a5f58d1f14a606fc46064395654fd8b82abc4ff7937f8f7d810b182e83e17c3a`.
+The package contributes enforceable package direction to `AC-DW-FND-001-03` and
+proves private runtime packages are not a default prerequisite for
+`AC-DW-FND-001-07`.
 
 No external runtime, provider call, credential, `langgraph.json`, application
 import, root/shared edit, migration, deployment, or publication was introduced.
 `SPIKE-HARNESS-ARCH-001` and `SPIKE-CONFIG-001` remain open under their reviewed
-fallbacks. The exact implementation commit, independent review result, and
-coordinator integration commit remain to be recorded after this author hands off.
+fallbacks. Independent re-review accepted the immutable double-build proof and
+clean worktree at the integrated commit.

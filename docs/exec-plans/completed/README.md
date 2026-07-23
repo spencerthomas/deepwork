@@ -6,3 +6,5 @@ execution evidence; do not rewrite it into a product specification.
 
 - [Root TypeScript workspace baseline](DW-EXEC-M1-ROOT-TS-HARNESS.md) — exact
   Node/pnpm/Turbo/tool declarations and strict shared compiler profiles.
+- [Wave 1 independent Python agent package scaffold](DW-EXEC-M1-AGENT-SCAFFOLD.md)
+  — typed, independently locked package boundary with immutable artifact proof.

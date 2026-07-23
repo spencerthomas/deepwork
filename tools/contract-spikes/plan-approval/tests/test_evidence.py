@@ -80,7 +80,10 @@ def test_scrubber_rejects_sensitive_patterns(tmp_path):
     [
         ("Authorization: Basic dXNlcjpwYXNzd29yZA==", "secrets_or_credentials"),
         ("X-API-Key: synthetic-key-material", "raw_headers_or_cookies"),
+        ("Cookie: session=synthetic-session-material", "raw_headers_or_cookies"),
         ("customer@example.com", "customer_or_tenant_data"),
+        ("https://service.vendor.test/reusable", "reusable_endpoints"),
+        ("chain-of-thought transcript", "hidden_reasoning"),
         ("/home/person/private/report.json", "unsanitized_absolute_paths"),
         (r"C:\Users\person\private\report.json", "unsanitized_absolute_paths"),
     ],

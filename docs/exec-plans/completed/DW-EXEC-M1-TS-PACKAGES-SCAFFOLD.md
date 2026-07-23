@@ -1,10 +1,10 @@
 ---
 exec_plan_id: DW-EXEC-M1-TS-PACKAGES-SCAFFOLD
 title: Wave 1 TypeScript domain, SDK, and UI package scaffold
-status: reviewed
+status: completed
 superseded_by: null
 owner: typescript-packages
-reviewed_by: [ts-package-boundary-reviewer]
+reviewed_by: [ts-package-boundary-reviewer, ts-package-final-reviewer]
 reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-001
 supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
@@ -12,9 +12,9 @@ issue: local:DW-M1-TS-SCAFFOLD
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: b1189ce7a1236fbc6b7751a0552159687e940521
-last_verified_commit: b1189ce7a1236fbc6b7751a0552159687e940521
+last_verified_commit: 1bf66e1df2169297572b78acd58f6906a1987b21
 risk: medium
-governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
+governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/completed/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
 decision_gates: [DEC-022, DEC-025, DEC-031, DEC-042]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, packages/ui/AGENTS.md, docs/PLANS.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md]
 scenario_ids: [AC-DW-FND-001-03, AC-DW-FND-002-06, AC-DW-FND-004-06, AC-DW-FND-005-01]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: [local:DW-M1-ROOT-TS-001]
 blockers: []
@@ -334,11 +334,22 @@ Acceptance:
   import-type, CommonJS, malformed-source, and five-line-terminator by
   computed/template matrices. Both capability constructors now validate evidence
   class membership. Install-free JSON, inventory, import, JavaScript syntax,
-  scope, and whitespace checks are clean. Lock-resolved parser, scanner, fixture,
-  unit, and package execution remains downstream and fresh independent review is
-  required.
-- [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
-  executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
+  scope, and whitespace checks are clean. At that point lock-resolved parser,
+  scanner, fixture, unit, and package execution remained downstream and the
+  independent final verdict was still pending.
+- [x] 2026-07-23 AEST — Fresh independent final review accepted exact candidate
+  `1bf66e1df2169297572b78acd58f6906a1987b21` for lock handoff. It closed the
+  comment-obfuscated/static/dynamic import and `evidenceClass` trust-boundary
+  findings, confirmed 68 governed files and a clean branch, and kept all
+  dependency-backed execution explicitly deferred.
+- [x] 2026-07-23 AEST — The coordinator integrated the accepted three-commit
+  remediation lineage locally through
+  `c145091039e6228dc85705d80165abe7cacd2ebb`; the governed package and plan bytes
+  match the accepted candidate, while the separate coordinator architecture
+  adaptation remains green.
+- [x] Source/static handoff accepted for `local:DW-M1-TS-LOCK-001`; the lock cell
+  has not run. After its independently reviewed terminal success, executable
+  validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
 ## Surprises & Discoveries
 
@@ -535,6 +546,31 @@ and tests and retain static evidence only. It may not invoke pnpm, install, crea
 a lock, execute authored tests, or claim build/pack/consumer/accessibility success.
 The coordinator lock cell and subsequent executable-verification cell remain
 strictly sequential and independently reviewed.
+
+Fresh independent final source-review evidence on 2026-07-23 AEST:
+
+```text
+git rev-parse HEAD -> 1bf66e1df2169297572b78acd58f6906a1987b21
+git branch --show-current -> codex/domain/wave1-ts-scaffold
+clean branch and index checks -> pass
+full governed diff from b1189ce -> 68 files; no rejected paths
+third-remediation diff from 76ec47d -> 15 governed files
+both git diff --check ranges -> pass
+six permitted package/main-tsconfig JSON parses -> pass
+static module parsing and exact-source evidenceClass runtime matrix -> pass
+python3 tools/docs/generate.py --check -> verified 6 generated documents
+python3 tools/docs/check.py -> sole coordinator-owned unindexed-plan diagnostic
+test ! -e pnpm-lock.yaml -> pass
+verdict -> ACCEPTED FOR LOCK HANDOFF
+```
+
+The final reviewer inspected AST coverage for static imports, re-exports,
+import-equals, import types, dynamic import, and `require`; all five valid line
+terminators crossed with computed and template dynamic imports; fail-closed
+malformed syntax; exact parser-version assertions; and runtime evidence-class
+membership in both capability constructors. No package install, parser-backed
+scanner execution, Vitest, compiler, build, pack, consumer, network, or
+accessibility command ran.
 
 Author implementation evidence on 2026-07-23 AEST:
 
@@ -949,7 +985,8 @@ The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. The initial independent findings were addressed, but fresh independent
-implementation review of the third bounded remediation is still required.
+deviations. Fresh independent final review accepted exact candidate
+`1bf66e1df2169297572b78acd58f6906a1987b21`, and the coordinator integrated the
+accepted lineage through `c145091039e6228dc85705d80165abe7cacd2ebb`.
 `SPIKE-HARNESS-ARCH-001` remains open, and sequential proof remains with
 `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: e3aae38e5fdcfcecc64e09155b5835c941d39bbf
+last_verified_commit: c145091039e6228dc85705d80165abe7cacd2ebb
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -44,12 +44,12 @@ Wave 0 is reviewed at `500eaa7faff57def970963160b3d8f1e90c94398`, and
 Wave 0.1 dispatch hardening completed at
 `3dbe6629d8053380ab6a8bff6d2fcb462f854256`. The active Wave 1 scaffold plan is
 a non-dispatchable umbrella. Root TypeScript declarations and both Python package
-lanes are terminal. TypeScript package source is integrated through
-`03b019ab6a5d71e2911a6019013a089cca098101`, but successive external reviews
-reopened the cell for bounded source/proof rework before any shared lock is
-generated; the current owner is repairing lexical import extraction and
-capability-evidence class validation after `76ec47d`. The coordinator retains the
-sequential TypeScript lock and executable-verification cells.
+lanes are terminal. Fresh independent review accepted exact TypeScript source
+candidate `1bf66e1df2169297572b78acd58f6906a1987b21` for lock handoff, and the
+coordinator integrated its remediation lineage through
+`c145091039e6228dc85705d80165abe7cacd2ebb`. No shared lock, dependency install,
+or package execution has run. The coordinator retains the sequential TypeScript
+lock and executable-verification cells.
 
 The worktree/architecture harness is integrated through `cdcfc1c`; its real-tree
 checker passes while web/desktop coverage and the real two-stack product demo
@@ -113,8 +113,8 @@ successor after its independent review and local commit.
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
 | DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
 | DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
-| DW-M1-TS-SCAFFOLD | 1 | third bounded rework active after external `REWORK REQUIRED` | `03b019a` integrated / lane after `76ec47d` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close lexical-import and evidence-class P1s; fresh external review |
-| DW-M1-TS-LOCK-001 | 1 | blocked before execution | accepted TS rework | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
+| DW-M1-TS-SCAFFOLD | 1 | completed source/static (`1bf66e1`, integrated `c145091`) | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | terminal; executable claims remain downstream |
+| DW-M1-TS-LOCK-001 | 1 | next plan-only cell; execution not started | accepted TS source `1bf66e1` | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | storage preflight, pinned Node/pnpm first-lock, frozen install, no-drift |
 | DW-M1-TS-VERIFY-001 | 1 | pending | terminal lock cell | package-local executable checks/fixes | TS lock terminal | independent executable review |
 | DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | integrated (`a9be010`, adaptation `cdcfc1c`) | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | web/desktop coverage and real product-demo peer absent | keep `SPIKE-HARNESS-ARCH-001` and `SPIKE-WORKTREE-001` open |
 | DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | integrated blocked evidence (`48dc5e6`) | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | all 11 rows blocked on package/live evidence | enable nothing; await approved package index/classic sandbox |
@@ -126,8 +126,8 @@ successor after its independent review and local commit.
 | DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `5a518c4` | sandbox contract probe/research/packet | public/index evidence; sanctioned live sandbox absent | await reviewed commit; live rows blocked |
 | DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `cb8c6ee` | GitHub contract probe/research/packet | consumes accepted sandbox evidence for live proxy/egress | no PAT; zero or exactly one authorized draft PR |
 | DW-EXT-W1-CODING-REVIEW-SURFACES-CONTRACT-RESEARCH | 1 | active external offline phase | `b224310` / seed `f3d937f` | review-surface contract probe/research/packet | consumes accepted sandbox and GitHub evidence for live rows | no fake PTY/browser; await reviewed commit |
-| DW-M1-FIXTURE-CONTRACT | 1 | active implementation from reviewed dispatch seed | reviewed seed `dff977b` | `internal/fixtures/product-demo/**` plus living plan | terminal API/agent; no TS/install dependency | independently review install-free 13-positive/12-negative corpus |
-| DW-M1-INTEGRATION | 1 | next visible-product cell; plan preparation pending | accepted TS verification and fixture corpus | shared/root, `apps/web/**`, generated outputs | terminal TS executable proof and accepted fixture corpus only | compose one credential-free product demo with blocked/offline research fallbacks |
+| DW-M1-FIXTURE-CONTRACT | 1 | rework pending fresh review; `47c1cee` rejected | reviewed seed `dff977b` | `internal/fixtures/product-demo/**` plus living plan | terminal API/agent; no TS/install dependency | accept bounded HITL/source/schema/scrub rework before integration |
+| DW-M1-INTEGRATION | 1 | product-demo draft `2f5ba82` rejected; plan preparation pending | accepted TS verification, fixture corpus, and fixture consumer | coordinator-owned shared/root plus bounded `apps/web/**`/API worker paths | terminal TS executable proof and accepted fixture-consumer proof | correct ownership, sealing, worker, disk, and acceptance-scope findings before dispatch |
 | DW-W2-DURABLE-CORE-PLANNING | 2 | read-only decomposition active; no implementation dispatch | current coordinator integration | plan-only paths to be made disjoint before dispatch | demo/isolation gate before any colliding full stack | prepare persistence/session/object/job cells for post-demo fan-out |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
@@ -142,7 +142,7 @@ later reviewed cell explicitly reassigns it.
 | coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | sole integrator; TS lock paused; coordinating source rework and external results |
 | API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
 | agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
-| TS lane | bounded source rework after external review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | fixing two candidate-owned P1s after `76ec47d`; lock paused |
+| TS lane | accepted source/static handoff | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | clean at accepted `1bf66e1`; integrated through `c145091`; lock not started |
 | external docs accelerator | documentation-harness acceptance | `external/platform/documentation-harness-acceptance` | `/Users/tomspencer/dev/deepwork/worktrees/external-documentation-harness-acceptance` | recovery task `019f8da0-35cf-7d43-b6bb-c4b0cc78aaee`; external-owned; active |
 | external attachment accelerator | safe first-task files | `external/research/first-task-safe-attachments` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-safe-attachments` | continuation task `019f8da0-3f42-7542-b985-718e0e4aa763`; external-owned; active |
 | external plan accelerator | plan before execution | `external/research/first-task-plan-approval` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-plan-approval` | continuation task `019f8da0-487d-7233-a8b2-097f2063988f`; external-owned; active |
@@ -150,7 +150,7 @@ later reviewed cell explicitly reassigns it.
 | external coding sandbox accelerator | coding sandbox contracts | `external/research/coding-sandbox-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-sandbox-contracts` | task `019f8db1-7c00-7d22-a0a3-a986b060c137`; seed `5a518c4`; active |
 | external coding GitHub accelerator | GitHub/App/proxy/CI contracts | `external/research/coding-github-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-github-contracts` | task `019f8db1-85b4-7d20-81d4-4f032433d699`; seed `cb8c6ee`; active |
 | external coding review accelerator | file/diff/terminal/browser contracts | `external/research/coding-review-surfaces-contracts` | `/Users/tomspencer/dev/deepwork/worktrees/external-coding-review-surfaces-contracts` | task `019f8db1-9109-7d62-aa73-5e275dff9e77`; seed `f3d937f`; active |
-| fixture corpus lane | reviewed install-free corpus plan | `codex/contracts/wave1-fixture-corpus` | `/Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract` | task `019f8db6-b09a-7f42-8233-9c20a9ffc496`; exact seed `dff977b`; active |
+| fixture corpus lane | bounded corpus review rework | `codex/contracts/wave1-fixture-corpus` | `/Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract` | `47c1cee` rejected; governed rework validated locally and awaiting exact commit plus fresh independent review |
 
 ## Progress
 
@@ -168,12 +168,12 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — TypeScript package source/static authoring passed two internal
   review rounds after bounded rework and integrated locally through
   `03b019ab6a5d71e2911a6019013a089cca098101`; no executable claim was made.
-- [ ] 2026-07-23 — Successive external reviews reduced the TypeScript source
-  blockers to two candidate-owned P1 findings: comment-aware lexical import
-  extraction and runtime membership validation for `evidenceClass`. A third
-  bounded rework is active in the original package lane; the architecture
-  checker/tool-config classification is separately accepted at `cdcfc1c`. The
-  coordinator has run no install or lock command.
+- [x] 2026-07-23 — Fresh independent final review accepted exact TypeScript
+  candidate `1bf66e1df2169297572b78acd58f6906a1987b21` for lock handoff after
+  closing comment-aware module extraction and runtime `evidenceClass` membership.
+  The coordinator integrated its three-commit lineage through
+  `c145091039e6228dc85705d80165abe7cacd2ebb`. No install, shared lock, package
+  test, build, pack, clean-consumer, network, or accessibility proof is claimed.
 - [x] 2026-07-23 — External accelerators became active from exact implementation
   base `85187827e018d4aeee4a4e4bd685de49cb2f5a6a`, seed commits `7eb7900` and
   `4c03e09`, in their supplied worktrees. The coordinator will not duplicate
@@ -209,8 +209,10 @@ later reviewed cell explicitly reassigns it.
   deterministic latency case, passed independent review at `7e404d9`, and was
   sealed at exact implementation seed `dff977b`. The install-free corpus worker
   is active as task `019f8db6-b09a-7f42-8233-9c20a9ffc496`.
-- [ ] Complete TypeScript source rework, then the coordinator-owned lock and executable-verification
-  sequence.
+- [x] Complete and independently accept TypeScript source/static authoring.
+- [ ] Prepare, independently review, and then run the coordinator-owned lock and
+  executable-verification sequence, subject to storage readiness and sequential
+  install discipline.
 - [ ] Independently accept the fixture corpus, then dispatch the one permitted
   credential-free `apps/web` product-demo cell as soon as TypeScript executable
   proof is terminal. Optional attachment, plan-approval, research/writing, and
@@ -279,6 +281,12 @@ later reviewed cell explicitly reassigns it.
   run in dedicated worktrees from reviewed seed commits. Consequence: internal
   cells exclude every external allowed path, and the coordinator waits for an
   independently reviewed clean commit SHA before integration.
+- 2026-07-23 — Observation: fresh review accepted TypeScript source candidate
+  `1bf66e1`, while the fixture candidate `47c1cee` and product-demo plan candidate
+  `2f5ba82` each returned `REWORK REQUIRED`. Consequence: close only the TS
+  source/static cell; keep the shared lock unstarted, hold fixture integration for
+  a fresh exact-commit verdict, and rework the demo plan around terminal
+  TS-verification and fixture-consumer dependencies.
 
 ## Decision Log
 
@@ -355,13 +363,14 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 Wave 0.1, root TypeScript declarations, the fixture-only API package, and the
 independent agent package are terminal local integration cells. TypeScript package
-source is in its third bounded repair with two source findings open; lock and
-executable claims remain downstream and paused. The architecture/worktree,
+source is independently accepted at `1bf66e1` and integrated through `c145091`;
+lock and executable claims remain downstream and unstarted. The architecture/worktree,
 LangChain, and auth/header integrations are retained without closing their live or
-real-product gates. Seven external research workers and the fixture-corpus worker
-remain path-disjoint; no result is accepted without an independently reviewed
-clean commit SHA. The next visible-product cell is one credential-free `apps/web`
-demo after terminal TypeScript proof and fixture acceptance, while Wave 2
+real-product gates. Dirty external research worktrees remain preserved and
+unintegrated. Fixture candidate `47c1cee` and product-demo plan candidate
+`2f5ba82` remain rejected pending bounded rework and fresh review. The next
+visible-product cell is one credential-free `apps/web` demo after terminal
+TypeScript proof and fixture-corpus/consumer acceptance, while Wave 2
 durable-core plans are prepared without starting another full stack.
 No protected `docs/plans/**` file, external credential, production system, push,
 merge, deployment, or publication has been touched. The terminal outcome remains

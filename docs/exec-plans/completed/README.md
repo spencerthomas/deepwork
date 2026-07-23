@@ -10,3 +10,6 @@ execution evidence; do not rewrite it into a product specification.
   — typed, independently locked package boundary with immutable artifact proof.
 - [Wave 1 independently installable fixture-only API scaffold](DW-EXEC-M1-API-SCAFFOLD.md)
   — offline-verified FastAPI and worker package with fixture-only behavior.
+- [Wave 1 TypeScript domain, SDK, and UI package scaffold](DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md)
+  — independently accepted source/static package surfaces at `1bf66e1`, integrated
+  through `c145091`, awaiting sequential shared-lock and executable proof.

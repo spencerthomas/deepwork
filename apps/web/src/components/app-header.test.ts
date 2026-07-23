@@ -12,6 +12,7 @@ describe("AppHeader product navigation", () => {
       { href: "/", label: "Tasks" },
       { href: "/approvals", label: "Approvals" },
       { href: "/agents", label: "Agents" },
+      { href: "/schedules", label: "Schedules" },
       { href: "/activity", label: "Activity" },
     ]);
   });
@@ -29,8 +30,9 @@ describe("AppHeader product navigation", () => {
     expect(markup).toContain('aria-disabled="true"');
     expect(markup).toContain('href="/approvals"');
     expect(markup).toContain('href="/agents"');
+    expect(markup).toContain('href="/schedules"');
     expect(markup).toContain('href="/activity"');
-    expect(markup.match(/>Soon</g)).toHaveLength(3);
+    expect(markup.match(/>Soon</g)).toHaveLength(2);
     expect(markup).toContain('aria-label="Use dark theme"');
     expect(markup).toContain('aria-pressed="false"');
   });

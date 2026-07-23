@@ -21,7 +21,7 @@ export const PRIMARY_NAVIGATION: readonly PrimaryNavigationItem[] = [
   { href: "/", label: "Tasks" },
   { href: "/approvals", label: "Approvals" },
   { href: "/agents", label: "Agents" },
-  { label: "Schedules" },
+  { href: "/schedules", label: "Schedules" },
   { href: "/activity", label: "Activity" },
   { label: "Observability" },
   { label: "Settings" },

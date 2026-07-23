@@ -19,6 +19,7 @@ import {
   EVENT_SEQUENCE_MAX,
   PLAN_REVISION_MAX,
   TASK_EVIDENCE_MAX_COUNT,
+  taskDetail,
 } from "./task-model.js";
 import type { TaskStatus } from "./view-state.js";
 
@@ -37,6 +38,7 @@ export interface TaskProjection {
   readonly task: TaskDetail;
   readonly status: TaskStatus;
   readonly facts: TaskProjectionFacts;
+  readonly resultPending: boolean;
   readonly reconnecting: boolean;
   readonly stale: boolean;
   readonly quarantined: boolean;
@@ -50,11 +52,13 @@ export interface TaskProjection {
 
 export interface TaskEventFingerprint {
   readonly key: string;
-  readonly fingerprint: string | null;
+  readonly fingerprint: string;
+  readonly checkpointReplayFingerprints?: readonly string[];
 }
 
 const MAX_SEEN_EVENT_KEYS = 2_048;
 const MAX_EVENT_FINGERPRINT_CODE_UNITS = 100_000;
+const MAX_CHECKPOINT_FINGERPRINT_CODE_UNITS = 1_000_000;
 
 function factsFromTask(task: TaskDetail): TaskProjectionFacts {
   return task.facts;
@@ -63,6 +67,7 @@ function factsFromTask(task: TaskDetail): TaskProjectionFacts {
 function freezeProjection(input: {
   readonly task: TaskDetail;
   readonly facts: TaskProjectionFacts;
+  readonly resultPending: boolean;
   readonly reconnecting: boolean;
   readonly stale: boolean;
   readonly quarantined: boolean;
@@ -79,31 +84,51 @@ function freezeProjection(input: {
     status: deriveTaskStatus(input.facts),
     facts: Object.freeze({ ...input.facts }),
     seenEventFingerprints: Object.freeze(
-      input.seenEventFingerprints.map((entry) => Object.freeze({ ...entry })),
+      input.seenEventFingerprints.map((entry) =>
+        Object.freeze({
+          ...entry,
+          ...(entry.checkpointReplayFingerprints === undefined
+            ? {}
+            : {
+                checkpointReplayFingerprints: Object.freeze([
+                  ...entry.checkpointReplayFingerprints,
+                ]),
+              }),
+        }),
+      ),
     ),
   });
 }
 
 export function createTaskProjection(task: TaskDetail): TaskProjection {
-  if (!taskBaseBindingValid(task) || !taskNestedBindingsValid(task)) {
+  const acceptedTask = canonicalTaskDetail(task);
+  if (acceptedTask === undefined) {
     throw new TypeError("Task detail identity bindings are incoherent.");
   }
-  const facts = factsFromTask(task);
+  const facts = factsFromTask(acceptedTask);
+  const checkpoint = taskCheckpointFingerprint(acceptedTask);
+  if (checkpoint === undefined) {
+    throw new TypeError("Task detail checkpoint exceeds its accepted fingerprint bound.");
+  }
   return freezeProjection({
-    task,
+    task: acceptedTask,
     facts,
+    resultPending: false,
     reconnecting: false,
     stale: false,
     quarantined: false,
     recovered: false,
     sourceHealth: "healthy",
-    ...(task.proposedPlan === undefined ? {} : { planRevision: task.proposedPlan.revision }),
-    lastAppliedEvent: task.lastEvent,
-    lastAppliedSequence: task.lastEventSequence,
+    ...(acceptedTask.proposedPlan === undefined
+      ? {}
+      : { planRevision: acceptedTask.proposedPlan.revision }),
+    lastAppliedEvent: acceptedTask.lastEvent,
+    lastAppliedSequence: acceptedTask.lastEventSequence,
     seenEventFingerprints: [
       Object.freeze({
-        key: sourceApplicationEventKeyString(task.lastEvent),
-        fingerprint: null,
+        key: sourceApplicationEventKeyString(acceptedTask.lastEvent),
+        fingerprint: checkpoint,
+        checkpointReplayFingerprints: checkpointReplayFingerprints(acceptedTask),
       }),
     ],
   });
@@ -176,16 +201,25 @@ function sameBinding(projection: TaskProjection, event: TaskApplicationEvent): b
   );
 }
 
-function taskBaseBindingValid(task: TaskDetail): boolean {
-  return (
-    task.sourceThread.sourceId === task.run.sourceId &&
-    task.sourceThread.threadId === task.run.threadId &&
-    task.lastEvent.sourceId === task.sourceThread.sourceId &&
-    task.lastEvent.taskId === task.taskId &&
-    task.lastEvent.threadId === task.sourceThread.threadId &&
-    task.lastEvent.runId === task.run.runId &&
-    task.lastEvent.eventId === String(task.lastEventSequence)
-  );
+function canonicalTaskDetail(input: TaskDetail): TaskDetail | undefined {
+  try {
+    return taskDetail({
+      taskId: input.taskId,
+      sourceThread: input.sourceThread,
+      run: input.run,
+      title: input.title,
+      objective: input.objective,
+      facts: input.facts,
+      lastEvent: input.lastEvent,
+      lastEventSequence: input.lastEventSequence,
+      evidence: input.evidence,
+      ...(input.pendingInterrupt === undefined ? {} : { pendingInterrupt: input.pendingInterrupt }),
+      ...(input.proposedPlan === undefined ? {} : { proposedPlan: input.proposedPlan }),
+      ...(input.result === undefined ? {} : { result: input.result }),
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 function appendEventFingerprint(
@@ -200,7 +234,12 @@ function appendEventFingerprint(
   );
 }
 
-function canonicalFingerprint(value: unknown, seen: Set<object>, depth: number): string {
+function canonicalFingerprint(
+  value: unknown,
+  seen: Set<object>,
+  depth: number,
+  maximumCodeUnits: number,
+): string {
   if (depth > 12) {
     throw new TypeError("Task event fingerprint is too deeply nested.");
   }
@@ -221,7 +260,9 @@ function canonicalFingerprint(value: unknown, seen: Set<object>, depth: number):
   }
   seen.add(value);
   const fingerprint = Array.isArray(value)
-    ? `[${value.map((entry) => canonicalFingerprint(entry, seen, depth + 1)).join(",")}]`
+    ? `[${value
+        .map((entry) => canonicalFingerprint(entry, seen, depth + 1, maximumCodeUnits))
+        .join(",")}]`
     : `{${Object.keys(value)
         .sort()
         .map(
@@ -230,22 +271,54 @@ function canonicalFingerprint(value: unknown, seen: Set<object>, depth: number):
               (value as Record<string, unknown>)[key],
               seen,
               depth + 1,
+              maximumCodeUnits,
             )}`,
         )
         .join(",")}}`;
   seen.delete(value);
-  if (fingerprint.length > MAX_EVENT_FINGERPRINT_CODE_UNITS) {
-    throw new TypeError("Task event fingerprint exceeds its accepted bound.");
+  if (fingerprint.length > maximumCodeUnits) {
+    throw new TypeError("Task fingerprint exceeds its accepted bound.");
   }
   return fingerprint;
 }
 
 function taskEventFingerprint(event: TaskApplicationEvent): string | undefined {
   try {
-    return canonicalFingerprint(event, new Set<object>(), 0);
+    return canonicalFingerprint(event, new Set<object>(), 0, MAX_EVENT_FINGERPRINT_CODE_UNITS);
   } catch {
     return undefined;
   }
+}
+
+function taskCheckpointFingerprint(detail: TaskDetail): string | undefined {
+  try {
+    return canonicalFingerprint(
+      detail,
+      new Set<object>(),
+      0,
+      MAX_CHECKPOINT_FINGERPRINT_CODE_UNITS,
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function checkpointReplayFingerprints(detail: TaskDetail): readonly string[] {
+  const base = {
+    identity: detail.lastEvent,
+    sequence: detail.lastEventSequence,
+    taskId: detail.taskId,
+    sourceThread: detail.sourceThread,
+    run: detail.run,
+  };
+  const candidates: TaskApplicationEvent[] = [];
+  if (detail.facts.queued) {
+    candidates.push({ ...base, name: "task.created" });
+  }
+  const fingerprints = candidates
+    .map(taskEventFingerprint)
+    .filter((fingerprint): fingerprint is string => fingerprint !== undefined);
+  return Object.freeze([...new Set(fingerprints)]);
 }
 
 function samePlan(first: ProposedPlan, second: ProposedPlan): boolean {
@@ -367,17 +440,6 @@ function interruptBindingMatches(task: TaskDetail, interrupt: PendingInterrupt):
   );
 }
 
-function taskNestedBindingsValid(task: TaskDetail): boolean {
-  return (
-    task.evidence.every((evidence) => evidenceBindingMatches(task, evidence)) &&
-    (task.proposedPlan === undefined || planBindingsMatch(task, task.proposedPlan)) &&
-    (task.pendingInterrupt === undefined ||
-      (interruptBindingMatches(task, task.pendingInterrupt) &&
-        task.proposedPlan !== undefined &&
-        task.pendingInterrupt.planRevision === task.proposedPlan.revision))
-  );
-}
-
 function eventNestedBindingsValid(
   projection: TaskProjection,
   event: TaskApplicationEvent,
@@ -467,12 +529,14 @@ function eventTask(
 ): {
   readonly task: TaskDetail;
   readonly facts: TaskProjectionFacts;
+  readonly resultPending: boolean;
   readonly planRevision?: number;
   readonly stale: boolean;
   readonly quarantined: boolean;
 } {
   let task = projection.task;
   let facts = projection.facts;
+  let resultPending = projection.resultPending;
   let planRevision = projection.planRevision;
   let stale = projection.stale;
   let quarantined = projection.quarantined;
@@ -626,7 +690,8 @@ function eventTask(
         terminalFailure: event.outcome === "failure" || event.outcome === "rejected",
         terminalSuccess: event.outcome === "success",
       });
-      {
+      resultPending = event.outcome === "success";
+      if (!resultPending) {
         const { pendingInterrupt: _removedInterrupt, ...taskWithoutInterrupt } = task;
         task = Object.freeze({
           ...taskWithoutInterrupt,
@@ -637,15 +702,18 @@ function eventTask(
       break;
   }
 
-  task = Object.freeze({
-    ...task,
-    facts,
-    status: deriveTaskStatus(facts),
-  });
+  if (!resultPending) {
+    task = Object.freeze({
+      ...task,
+      facts,
+      status: deriveTaskStatus(facts),
+    });
+  }
 
   return {
     task,
     facts,
+    resultPending,
     ...(planRevision === undefined ? {} : { planRevision }),
     stale,
     quarantined,
@@ -663,8 +731,7 @@ export function reduceTaskEvent(
     return quarantineTaskProjection(projection);
   }
   if (
-    !taskBaseBindingValid(projection.task) ||
-    !taskNestedBindingsValid(projection.task) ||
+    canonicalTaskDetail(projection.task) === undefined ||
     !eventNestedBindingsValid(projection, event)
   ) {
     return quarantineTaskProjection(projection);
@@ -677,7 +744,8 @@ export function reduceTaskEvent(
   }
   const seen = projection.seenEventFingerprints.find((entry) => entry.key === eventKey);
   if (seen !== undefined) {
-    return seen.fingerprint === null || seen.fingerprint === fingerprint
+    return seen.fingerprint === fingerprint ||
+      seen.checkpointReplayFingerprints?.includes(fingerprint) === true
       ? projection
       : quarantineTaskProjection(projection);
   }
@@ -716,14 +784,17 @@ export function reduceTaskEvent(
   }
 
   const applied = eventTask(projection, event);
-  const task = Object.freeze({
-    ...applied.task,
-    lastEvent: event.identity,
-    lastEventSequence: event.sequence,
-  });
+  const task = applied.resultPending
+    ? applied.task
+    : Object.freeze({
+        ...applied.task,
+        lastEvent: event.identity,
+        lastEventSequence: event.sequence,
+      });
   return freezeProjection({
     task,
     facts: applied.facts,
+    resultPending: applied.resultPending,
     reconnecting: projection.reconnecting,
     stale: applied.stale,
     quarantined: applied.quarantined,
@@ -750,48 +821,64 @@ export function reconcileTaskProjection(
   projection: TaskProjection,
   hydrated: TaskDetail,
 ): TaskProjection {
+  const acceptedHydrated = canonicalTaskDetail(hydrated);
+  if (acceptedHydrated === undefined) {
+    return quarantineTaskProjection(projection);
+  }
   if (
-    projection.task.taskId !== hydrated.taskId ||
+    projection.task.taskId !== acceptedHydrated.taskId ||
     sourceThreadKeyString(projection.task.sourceThread) !==
-      sourceThreadKeyString(hydrated.sourceThread) ||
-    sourceRunKeyString(projection.task.run) !== sourceRunKeyString(hydrated.run)
+      sourceThreadKeyString(acceptedHydrated.sourceThread) ||
+    sourceRunKeyString(projection.task.run) !== sourceRunKeyString(acceptedHydrated.run)
   ) {
     return markTaskStale(projection);
   }
-  if (!taskBaseBindingValid(hydrated) || !taskNestedBindingsValid(hydrated)) {
-    return quarantineTaskProjection(projection);
-  }
-  if (hydrated.lastEventSequence < projection.lastAppliedSequence) {
+  if (acceptedHydrated.lastEventSequence < projection.lastAppliedSequence) {
     return markTaskStale(projection);
   }
   if (
-    hydrated.lastEventSequence === projection.lastAppliedSequence &&
-    !sameTaskDetail(projection.task, hydrated)
+    acceptedHydrated.lastEventSequence > projection.lastAppliedSequence &&
+    (projection.facts.cancellationConfirmed ||
+      projection.facts.terminalFailure ||
+      projection.facts.terminalSuccess)
+  ) {
+    return quarantineTaskProjection(projection);
+  }
+  if (
+    acceptedHydrated.lastEventSequence === projection.lastAppliedSequence &&
+    !sameTaskDetail(projection.task, acceptedHydrated) &&
+    !pendingResultHydrationMatches(projection, acceptedHydrated)
   ) {
     return quarantineTaskProjection(projection);
   }
 
-  const facts = factsFromTask(hydrated);
+  const facts = factsFromTask(acceptedHydrated);
+  const checkpoint = taskCheckpointFingerprint(acceptedHydrated);
+  if (checkpoint === undefined) {
+    return quarantineTaskProjection(projection);
+  }
   return freezeProjection({
-    task: hydrated,
+    task: acceptedHydrated,
     facts,
+    resultPending: false,
     reconnecting: false,
     stale: false,
     quarantined: false,
     recovered: true,
     sourceHealth: projection.sourceHealth,
-    ...(hydrated.proposedPlan === undefined
+    ...(acceptedHydrated.proposedPlan === undefined
       ? {}
-      : { planRevision: hydrated.proposedPlan.revision }),
-    lastAppliedEvent: hydrated.lastEvent,
-    lastAppliedSequence: hydrated.lastEventSequence,
+      : { planRevision: acceptedHydrated.proposedPlan.revision }),
+    lastAppliedEvent: acceptedHydrated.lastEvent,
+    lastAppliedSequence: acceptedHydrated.lastEventSequence,
     seenEventFingerprints: appendEventFingerprint(
       projection.seenEventFingerprints.filter(
-        (entry) => entry.key !== sourceApplicationEventKeyString(hydrated.lastEvent),
+        (entry) => entry.key !== sourceApplicationEventKeyString(acceptedHydrated.lastEvent),
       ),
       {
-        key: sourceApplicationEventKeyString(hydrated.lastEvent),
-        fingerprint: null,
+        key: sourceApplicationEventKeyString(acceptedHydrated.lastEvent),
+        fingerprint: checkpoint,
+        checkpointReplayFingerprints: checkpointReplayFingerprints(acceptedHydrated),
       },
     ),
   });
@@ -807,8 +894,64 @@ export function withTaskResult(projection: TaskProjection, result: TaskResult): 
   ) {
     throw new TypeError("Task result identity does not match the task projection.");
   }
+  if (!projection.resultPending) {
+    if (projection.task.result === result.result) {
+      return projection;
+    }
+    throw new TypeError("Task projection is not awaiting an authoritative result.");
+  }
+  const facts = Object.freeze({
+    cancellationConfirmed: false,
+    pendingCurrentInterrupt: false,
+    runActive: false,
+    queued: false,
+    terminalFailure: false,
+    terminalSuccess: true,
+  });
+  const { pendingInterrupt: _removedInterrupt, ...taskWithoutInterrupt } = projection.task;
   return freezeProjection({
     ...projection,
-    task: Object.freeze({ ...projection.task, result: result.result }),
+    task: taskDetail({
+      ...taskWithoutInterrupt,
+      facts,
+      lastEvent: projection.lastAppliedEvent,
+      lastEventSequence: projection.lastAppliedSequence,
+      result: result.result,
+    }),
+    facts,
+    resultPending: false,
   });
+}
+
+function pendingResultHydrationMatches(projection: TaskProjection, hydrated: TaskDetail): boolean {
+  if (
+    !projection.resultPending ||
+    hydrated.result === undefined ||
+    !hydrated.facts.terminalSuccess ||
+    hydrated.facts.terminalFailure ||
+    hydrated.facts.runActive ||
+    hydrated.facts.queued ||
+    hydrated.facts.pendingCurrentInterrupt ||
+    hydrated.pendingInterrupt !== undefined ||
+    sourceApplicationEventKeyString(hydrated.lastEvent) !==
+      sourceApplicationEventKeyString(projection.lastAppliedEvent)
+  ) {
+    return false;
+  }
+  const prior = projection.task;
+  return (
+    prior.taskId === hydrated.taskId &&
+    sourceThreadKeyString(prior.sourceThread) === sourceThreadKeyString(hydrated.sourceThread) &&
+    sourceRunKeyString(prior.run) === sourceRunKeyString(hydrated.run) &&
+    prior.title === hydrated.title &&
+    prior.objective === hydrated.objective &&
+    (prior.proposedPlan === undefined || hydrated.proposedPlan === undefined
+      ? prior.proposedPlan === hydrated.proposedPlan
+      : samePlan(prior.proposedPlan, hydrated.proposedPlan)) &&
+    prior.evidence.length === hydrated.evidence.length &&
+    prior.evidence.every(
+      (record, index) =>
+        hydrated.evidence[index] !== undefined && sameEvidence(record, hydrated.evidence[index]),
+    )
+  );
 }

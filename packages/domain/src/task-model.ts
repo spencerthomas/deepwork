@@ -1,10 +1,22 @@
-import type {
-  SourceApplicationEventKey,
-  SourceEvidenceKey,
-  SourceInterruptKey,
-  SourceRunKey,
-  SourceThreadKey,
-  TaskId,
+import {
+  applicationEventId,
+  evidenceId,
+  interruptId,
+  runId,
+  sourceApplicationEventKey,
+  sourceEvidenceKey,
+  sourceId,
+  sourceInterruptKey,
+  sourceRunKey,
+  sourceThreadKey,
+  taskId,
+  threadId,
+  type SourceApplicationEventKey,
+  type SourceEvidenceKey,
+  type SourceInterruptKey,
+  type SourceRunKey,
+  type SourceThreadKey,
+  type TaskId,
 } from "./identity.js";
 import type { TaskStatus } from "./view-state.js";
 
@@ -332,10 +344,76 @@ function taskFactsAreCoherent(facts: TaskStateFacts): boolean {
   return terminalCount <= 1;
 }
 
+function exactTaskFacts(facts: TaskStateFacts): TaskStateFacts {
+  if (
+    typeof facts.cancellationConfirmed !== "boolean" ||
+    typeof facts.pendingCurrentInterrupt !== "boolean" ||
+    typeof facts.runActive !== "boolean" ||
+    typeof facts.queued !== "boolean" ||
+    typeof facts.terminalFailure !== "boolean" ||
+    typeof facts.terminalSuccess !== "boolean"
+  ) {
+    throw new TypeError("Task lifecycle facts must be booleans.");
+  }
+  const exact = Object.freeze({
+    cancellationConfirmed: facts.cancellationConfirmed,
+    pendingCurrentInterrupt: facts.pendingCurrentInterrupt,
+    runActive: facts.runActive,
+    queued: facts.queued,
+    terminalFailure: facts.terminalFailure,
+    terminalSuccess: facts.terminalSuccess,
+  });
+  if (!taskFactsAreCoherent(exact)) {
+    throw new TypeError("Task lifecycle facts are incoherent.");
+  }
+  return exact;
+}
+
+function exactSourceThread(key: SourceThreadKey): SourceThreadKey {
+  return sourceThreadKey(sourceId(key.sourceId), threadId(key.threadId));
+}
+
+function exactSourceRun(key: SourceRunKey): SourceRunKey {
+  return sourceRunKey(sourceId(key.sourceId), threadId(key.threadId), runId(key.runId));
+}
+
+function exactSourceEvidence(key: SourceEvidenceKey): SourceEvidenceKey {
+  return sourceEvidenceKey(
+    sourceId(key.sourceId),
+    taskId(key.taskId),
+    threadId(key.threadId),
+    runId(key.runId),
+    evidenceId(key.evidenceId),
+  );
+}
+
+function exactSourceInterrupt(key: SourceInterruptKey): SourceInterruptKey {
+  return sourceInterruptKey(
+    sourceId(key.sourceId),
+    taskId(key.taskId),
+    threadId(key.threadId),
+    runId(key.runId),
+    interruptId(key.interruptId),
+  );
+}
+
+function exactSourceApplicationEvent(key: SourceApplicationEventKey): SourceApplicationEventKey {
+  return sourceApplicationEventKey(
+    sourceId(key.sourceId),
+    taskId(key.taskId),
+    threadId(key.threadId),
+    runId(key.runId),
+    applicationEventId(key.eventId),
+  );
+}
+
 export function taskAccepted(input: Omit<TaskAccepted, "status">): TaskAccepted {
-  const facts = Object.freeze({ ...input.facts });
+  const acceptedTaskId = taskId(input.taskId);
+  const acceptedRun = exactSourceRun(input.run);
+  const facts = exactTaskFacts(input.facts);
   return Object.freeze({
-    ...input,
+    taskId: acceptedTaskId,
+    run: acceptedRun,
     facts,
     status: deriveTaskStatus(facts),
   });
@@ -359,7 +437,7 @@ export function proposedPlan(input: {
     revision: positiveRevision(input.revision, "Plan revision"),
     title: displayText(input.title, "Plan title", 100),
     steps: Object.freeze(input.steps.map(planStep)),
-    evidenceRefs: Object.freeze([...input.evidenceRefs]),
+    evidenceRefs: Object.freeze(input.evidenceRefs.map(exactSourceEvidence)),
   });
 }
 
@@ -377,13 +455,27 @@ export function evidenceRecord(input: {
   if (!(EVIDENCE_SOURCES as readonly string[]).includes(input.source)) {
     throw new TypeError("Evidence source is not accepted by the task contract.");
   }
+  if (
+    typeof input.verified !== "boolean" ||
+    !["task-detail", "application-event"].includes(input.provenance.observedThrough) ||
+    (input.provenance.evidenceClass !== undefined &&
+      !(EVIDENCE_CLASSES as readonly string[]).includes(input.provenance.evidenceClass))
+  ) {
+    throw new TypeError("Evidence provenance is not accepted by the task contract.");
+  }
   return Object.freeze({
-    identity: input.identity,
+    identity: exactSourceEvidence(input.identity),
     kind: input.kind,
     summary: displayText(input.summary, "Evidence summary", 300),
     source: input.source,
     verified: input.verified,
-    provenance: Object.freeze({ ...input.provenance }),
+    provenance: Object.freeze({
+      sourceThread: exactSourceThread(input.provenance.sourceThread),
+      observedThrough: input.provenance.observedThrough,
+      ...(input.provenance.evidenceClass === undefined
+        ? {}
+        : { evidenceClass: input.provenance.evidenceClass }),
+    }),
   });
 }
 
@@ -402,7 +494,7 @@ export function pendingInterrupt(input: {
     throw new TypeError("Interrupt decisions must be a non-empty unique accepted set.");
   }
   return Object.freeze({
-    identity: input.identity,
+    identity: exactSourceInterrupt(input.identity),
     decisions: Object.freeze([...input.decisions]),
     planRevision: positiveRevision(input.planRevision, "Interrupt plan revision"),
     ...(input.question === undefined
@@ -419,28 +511,33 @@ export function taskSummary(
     readonly objective: string;
   },
 ): TaskSummary {
+  const acceptedTaskId = taskId(input.taskId);
+  const acceptedSourceThread = exactSourceThread(input.sourceThread);
+  const acceptedRun = exactSourceRun(input.run);
+  const acceptedLastEvent = exactSourceApplicationEvent(input.lastEvent);
+  const lastEventSequence = positiveEventSequence(input.lastEventSequence, "Last event sequence");
   if (
-    input.sourceThread.sourceId !== input.run.sourceId ||
-    input.sourceThread.threadId !== input.run.threadId ||
-    input.lastEvent.sourceId !== input.sourceThread.sourceId ||
-    input.lastEvent.taskId !== input.taskId ||
-    input.lastEvent.threadId !== input.sourceThread.threadId ||
-    input.lastEvent.runId !== input.run.runId ||
-    input.lastEvent.eventId !== String(input.lastEventSequence)
+    acceptedSourceThread.sourceId !== acceptedRun.sourceId ||
+    acceptedSourceThread.threadId !== acceptedRun.threadId ||
+    acceptedLastEvent.sourceId !== acceptedSourceThread.sourceId ||
+    acceptedLastEvent.taskId !== acceptedTaskId ||
+    acceptedLastEvent.threadId !== acceptedSourceThread.threadId ||
+    acceptedLastEvent.runId !== acceptedRun.runId ||
+    acceptedLastEvent.eventId !== String(lastEventSequence)
   ) {
     throw new TypeError("Task summary identity and event cursor are incoherent.");
   }
-  if (!taskFactsAreCoherent(input.facts)) {
-    throw new TypeError("Task lifecycle facts are incoherent.");
-  }
-  const facts = Object.freeze({ ...input.facts });
+  const facts = exactTaskFacts(input.facts);
   return Object.freeze({
-    ...input,
+    taskId: acceptedTaskId,
+    sourceThread: acceptedSourceThread,
+    run: acceptedRun,
     title: displayText(input.title, "Task title", 80),
     objective: objectiveText(input.objective),
     facts,
     status: deriveTaskStatus(facts),
-    lastEventSequence: positiveEventSequence(input.lastEventSequence, "Last event sequence"),
+    lastEvent: acceptedLastEvent,
+    lastEventSequence,
   });
 }
 
@@ -456,13 +553,43 @@ export function taskDetail(
     );
   }
   const summary = taskSummary(input);
+  const evidence = input.evidence.map((record) =>
+    evidenceRecord({
+      identity: record.identity,
+      kind: record.kind,
+      summary: record.summary,
+      source: record.source,
+      verified: record.verified,
+      provenance: record.provenance,
+    }),
+  );
+  const plan =
+    input.proposedPlan === undefined
+      ? undefined
+      : proposedPlan({
+          revision: input.proposedPlan.revision,
+          title: input.proposedPlan.title,
+          steps: input.proposedPlan.steps,
+          evidenceRefs: input.proposedPlan.evidenceRefs,
+        });
+  const interrupt =
+    input.pendingInterrupt === undefined
+      ? undefined
+      : pendingInterrupt({
+          identity: input.pendingInterrupt.identity,
+          decisions: input.pendingInterrupt.decisions,
+          planRevision: input.pendingInterrupt.planRevision,
+          ...(input.pendingInterrupt.question === undefined
+            ? {}
+            : { question: input.pendingInterrupt.question }),
+        });
   const matchesTaskBinding = (key: SourceEvidenceKey | SourceInterruptKey): boolean =>
     key.sourceId === summary.sourceThread.sourceId &&
     key.taskId === summary.taskId &&
     key.threadId === summary.sourceThread.threadId &&
     key.runId === summary.run.runId;
   if (
-    input.evidence.some(
+    evidence.some(
       (record) =>
         !matchesTaskBinding(record.identity) ||
         record.provenance.sourceThread.sourceId !== summary.sourceThread.sourceId ||
@@ -470,21 +597,29 @@ export function taskDetail(
         (record.provenance.observedThrough === "application-event" &&
           record.provenance.evidenceClass !== "fixture"),
     ) ||
-    input.proposedPlan?.evidenceRefs.some((reference) => !matchesTaskBinding(reference)) === true ||
-    (input.pendingInterrupt !== undefined &&
-      (!matchesTaskBinding(input.pendingInterrupt.identity) ||
-        input.proposedPlan === undefined ||
-        input.pendingInterrupt.planRevision !== input.proposedPlan.revision)) ||
-    summary.facts.pendingCurrentInterrupt !== (input.pendingInterrupt !== undefined) ||
+    plan?.evidenceRefs.some((reference) => !matchesTaskBinding(reference)) === true ||
+    (interrupt !== undefined &&
+      (!matchesTaskBinding(interrupt.identity) ||
+        plan === undefined ||
+        interrupt.planRevision !== plan.revision)) ||
+    summary.facts.pendingCurrentInterrupt !== (interrupt !== undefined) ||
     summary.facts.terminalSuccess !== (input.result !== undefined)
   ) {
     throw new TypeError("Task detail nested state is incoherent.");
   }
   return Object.freeze({
-    ...summary,
-    ...(input.pendingInterrupt === undefined ? {} : { pendingInterrupt: input.pendingInterrupt }),
-    ...(input.proposedPlan === undefined ? {} : { proposedPlan: input.proposedPlan }),
-    evidence: Object.freeze([...input.evidence]),
+    taskId: summary.taskId,
+    sourceThread: summary.sourceThread,
+    run: summary.run,
+    title: summary.title,
+    objective: summary.objective,
+    facts: summary.facts,
+    status: summary.status,
+    lastEvent: summary.lastEvent,
+    lastEventSequence: summary.lastEventSequence,
+    ...(interrupt === undefined ? {} : { pendingInterrupt: interrupt }),
+    ...(plan === undefined ? {} : { proposedPlan: plan }),
+    evidence: Object.freeze(evidence),
     ...(input.result === undefined ? {} : { result: resultText(input.result) }),
   });
 }
@@ -495,7 +630,8 @@ export function taskResult(
   },
 ): TaskResult {
   return Object.freeze({
-    ...input,
+    taskId: taskId(input.taskId),
+    run: exactSourceRun(input.run),
     status: "done",
     result: resultText(input.result),
   });
@@ -517,7 +653,7 @@ export function decisionInput(input: {
     throw new TypeError("Respond requires a non-blank decision comment.");
   }
   return Object.freeze({
-    interrupt: input.interrupt,
+    interrupt: exactSourceInterrupt(input.interrupt),
     expectedPlanRevision: positiveRevision(
       input.expectedPlanRevision,
       "Expected decision plan revision",
@@ -536,7 +672,7 @@ export function planEditInput(input: {
     throw new TypeError(`A plan must contain between 1 and ${PLAN_STEP_MAX_COUNT} steps.`);
   }
   return Object.freeze({
-    interrupt: input.interrupt,
+    interrupt: exactSourceInterrupt(input.interrupt),
     expectedRevision: positiveRevision(input.expectedRevision, "Expected plan revision"),
     steps: Object.freeze(input.steps.map(planStep)),
   });

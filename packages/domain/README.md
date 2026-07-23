@@ -20,6 +20,11 @@ turns them into explicit underlying facts, and the domain derives `needs-review`
 missing/malformed events, and stream unsubscribe never infer a terminal outcome.
 Evidence projection is capped at 256 records; overflow or an event-sequence gap
 quarantines incremental reduction until authoritative hydration.
+Successful completion events mark a bounded projection-level `resultPending`
+fact while retaining the last valid public `TaskDetail`; a correlated result or
+equal-cursor authoritative detail finalizes the immutable success detail.
+Authoritative checkpoints retain a non-null bounded canonical fingerprint, and
+only replay semantics that the checkpoint can prove are suppressed.
 Opaque identity segments are capped at 200 Unicode code points. Plan revisions
 and event sequences have distinct public constants, each currently capped at
 `2_147_483_647`. The current API exposes no independent task resource revision,

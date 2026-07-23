@@ -470,11 +470,13 @@ Acceptance:
   reconnect/replay/logical delay/completion/unknown/malformed-input
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
-  `negative/matrix.json` indexes exactly 26 single-code negative files covering
+  `negative/matrix.json` indexes exactly 39 single-code negative files covering
   all stable rule-code families, the two mandatory logical-delay negatives,
-  unknown HITL decisions, false source-collision evidence, nested structural
-  type failures, endpoint/Bearer/Basic-secret/path/identity scrub bypasses, and a
-  generic bare external host;
+  unknown HITL decisions, actual decision/resume/accepted-data presence, false
+  source-collision evidence, nested structural and semantic-shape failures,
+  endpoint/Bearer/long-short-unpadded-Basic-secret/path/actor-and-identity-key
+  scrub bypasses, a generic bare external host, and a nested-host attempt below
+  an otherwise exempt machine-index pointer;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
@@ -598,6 +600,18 @@ Acceptance:
   bare hosts escaped scrub/network detection. Rework now fails closed on unsafe
   structural shapes before semantics and expands the matrix to 26 exact
   single-code negatives. Deterministic evidence is regenerated before handoff.
+- [x] 2026-07-23 AEST — Fresh review rejected exact candidate
+  `8291218590e3f6a91a5383ae91d6e909e71b1fbe`: additional malformed semantic
+  members could still raise `TypeError`, `KeyError`, or `ValueError`, and short
+  valid Basic credentials escaped the scrub expression. The validator now maps
+  malformed case/manifest evaluation exceptions to the stable schema diagnostic,
+  restricts machine-index host exemptions to exact scalar pointers rather than
+  descendants, and covers exception classes plus long, short-padded, and
+  short-unpadded Basic credentials. A converging external review also found that
+  decision/resume/accepted payload fields were not inspected and actor/identity
+  key variants escaped field-name scrubbing; the same rework now validates
+  actual HITL payload absence and those key variants. The matrix expands from
+  26 to 39 exact negatives.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -984,21 +998,22 @@ register itself in the index, or start consumer implementation.
 ## Outcomes & Retrospective
 
 Bounded implementation rework is complete and fresh independent implementation
-review is pending. Candidate `47c1cee121a9b3105f00f37404cd29114b6d04d5`
-remains rejected and must not be integrated.
+review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`
+and `8291218590e3f6a91a5383ae91d6e909e71b1fbe` remain rejected and must not be
+integrated.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
 `replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
 `partial-failure`, and `source-collision`.
 
-The exact ordered negative rule inventory is three
+The exact ordered negative rule inventory is seven
 `FIXTURE_SCHEMA_REQUIRED_FIELD` cases, `FIXTURE_ID_PREFIX`,
 `FIXTURE_CLOCK_DERIVATION`, `FIXTURE_ORDER_SEQUENCE`,
-`FIXTURE_CAPABILITY_EVIDENCE`, `FIXTURE_INTERRUPT_ALIGNMENT`,
+`FIXTURE_CAPABILITY_EVIDENCE`, four `FIXTURE_INTERRUPT_ALIGNMENT` cases,
 `FIXTURE_INTERRUPT_DECISION_VALUE`, `FIXTURE_ID_SOURCE_COLLISION`,
-`FIXTURE_HASH_MISMATCH`, four `FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, two
-`FIXTURE_SCRUB_SECRET_VALUE` cases, `FIXTURE_SCRUB_UNSAFE_PATH`, two
-`FIXTURE_SCRUB_REAL_IDENTITY` cases, three
+`FIXTURE_HASH_MISMATCH`, four `FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, four
+`FIXTURE_SCRUB_SECRET_VALUE` cases, `FIXTURE_SCRUB_UNSAFE_PATH`, five
+`FIXTURE_SCRUB_REAL_IDENTITY` cases, four
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
 `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. Every negative produced exactly its one
@@ -1006,8 +1021,8 @@ declared code.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`628e615f4122f09599925b5c06fcf13f580c0e6298ed68575c414b8e982409f7`.
-The generated validation and isolation reports record 13 cases, 26 intentional
+`7bfca89fa15f7dbca547141eef0fbc139d63de3db5d5bef2ff60009f1ca1d352`.
+The generated validation and isolation reports record 13 cases, 39 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
 reads, zero waits, and zero writes.
@@ -1016,8 +1031,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=628e615...2409f7; validation-report=1ba943...fa9c5;
-no-external-network=ec36e5...fc09b; first updated_files contained all 3 targets
+exit 0; hashes.sha256=7bfca89...1d352; validation-report=5bc8a3...1226b6;
+no-external-network=ba0af5...ccc38d; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1026,7 +1041,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=628e615...2409f7; 13 case IDs; 26 single-code negatives;
+exit 0; corpus_digest=7bfca89...1d352; 13 case IDs; 39 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator subprocess/environment/wall-clock/write counts=0
 

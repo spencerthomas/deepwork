@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_schema_semantic_list",
+  "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+  "basePath": "cases/ordered-interrupt.json",
+  "mutation": {"operation": "replace", "path": "/records/0/payload/actionRequests", "value": null}
+}

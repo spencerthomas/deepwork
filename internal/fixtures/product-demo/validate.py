@@ -49,11 +49,18 @@ EXPECTED_NEGATIVE_PATHS = [
     "negative/invalid-schema.json",
     "negative/invalid-schema-expected-type.json",
     "negative/invalid-schema-payload-type.json",
+    "negative/invalid-schema-semantic-list.json",
+    "negative/invalid-schema-unhashable-decision.json",
+    "negative/invalid-schema-semantic-required.json",
+    "negative/invalid-schema-clock-range.json",
     "negative/invalid-id.json",
     "negative/invalid-clock.json",
     "negative/invalid-order.json",
     "negative/invalid-capability.json",
     "negative/invalid-interrupt.json",
+    "negative/invalid-interrupt-decisions-present.json",
+    "negative/invalid-interrupt-resume-payload.json",
+    "negative/invalid-interrupt-accepted.json",
     "negative/invalid-interrupt-decision.json",
     "negative/invalid-source-collision.json",
     "negative/invalid-hash.json",
@@ -62,13 +69,19 @@ EXPECTED_NEGATIVE_PATHS = [
     "negative/invalid-scrub-api-key.json",
     "negative/invalid-scrub-secret.json",
     "negative/invalid-scrub-basic.json",
+    "negative/invalid-scrub-basic-short.json",
+    "negative/invalid-scrub-basic-unpadded.json",
     "negative/invalid-scrub-path.json",
     "negative/invalid-scrub-identity.json",
     "negative/invalid-scrub-actor.json",
+    "negative/invalid-scrub-current-actor.json",
+    "negative/invalid-scrub-requested-actor.json",
+    "negative/invalid-scrub-identity-field.json",
     "negative/invalid-scrub-repository.json",
     "negative/invalid-network.json",
     "negative/invalid-network-host.json",
     "negative/invalid-network-ip.json",
+    "negative/invalid-network-exempt-descendant.json",
     "negative/invalid-expectation.json",
     "negative/invalid-logical-delay.json",
     "negative/invalid-logical-delay-visibility.json",
@@ -77,10 +90,17 @@ EXPECTED_RULE_CODES = [
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_ID_PREFIX",
     "FIXTURE_CLOCK_DERIVATION",
     "FIXTURE_ORDER_SEQUENCE",
     "FIXTURE_CAPABILITY_EVIDENCE",
+    "FIXTURE_INTERRUPT_ALIGNMENT",
+    "FIXTURE_INTERRUPT_ALIGNMENT",
+    "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_ALIGNMENT",
     "FIXTURE_INTERRUPT_DECISION_VALUE",
     "FIXTURE_ID_SOURCE_COLLISION",
@@ -90,10 +110,16 @@ EXPECTED_RULE_CODES = [
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
     "FIXTURE_SCRUB_SECRET_VALUE",
     "FIXTURE_SCRUB_SECRET_VALUE",
+    "FIXTURE_SCRUB_SECRET_VALUE",
+    "FIXTURE_SCRUB_SECRET_VALUE",
     "FIXTURE_SCRUB_UNSAFE_PATH",
     "FIXTURE_SCRUB_REAL_IDENTITY",
     "FIXTURE_SCRUB_REAL_IDENTITY",
+    "FIXTURE_SCRUB_REAL_IDENTITY",
+    "FIXTURE_SCRUB_REAL_IDENTITY",
+    "FIXTURE_SCRUB_REAL_IDENTITY",
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
@@ -145,15 +171,7 @@ FORBIDDEN_FIELD_FRAGMENTS = (
     "token",
     "webhookurl",
 )
-IDENTITY_FIELD_NAMES = {
-    "actor",
-    "actorid",
-    "email",
-    "owner",
-    "ownerid",
-    "userid",
-    "username",
-}
+IDENTITY_FIELD_FRAGMENTS = ("actor", "email", "identity", "owner", "user")
 EXTERNAL_SCHEME_RE = re.compile(
     r"(?:https?|wss?|ftp|file|data|ssh|git)://",
     re.IGNORECASE,
@@ -179,7 +197,7 @@ REAL_IDENTITY_RE = re.compile(
     re.IGNORECASE,
 )
 SECRET_VALUE_RE = re.compile(
-    r"(?:basic\s+[a-z0-9+/]{8,}={0,2}(?![a-z0-9+/=])|"
+    r"(?:basic\s+[a-z0-9+/]{2,}={0,2}(?![a-z0-9+/=])|"
     r"bearer\s+[a-z0-9._~+/-]+=*|"
     r"-----BEGIN [A-Z ]+PRIVATE KEY-----|"
     r"(?:sk|gh[opsu]|xox[abprs])_[a-z0-9_-]{8,}|"
@@ -252,9 +270,11 @@ def scrub_diagnostics(value):
                 if any(fragment in normalized for fragment in FORBIDDEN_FIELD_FRAGMENTS):
                     diagnostics.append(("FIXTURE_SCRUB_FORBIDDEN_FIELD", f"{path}/{key}"))
                 if (
-                    normalized in IDENTITY_FIELD_NAMES
-                    and isinstance(child, str)
-                    and not child.startswith("fx_")
+                    any(fragment in normalized for fragment in IDENTITY_FIELD_FRAGMENTS)
+                    and (
+                        not isinstance(child, str)
+                        or not child.startswith("fx_")
+                    )
                 ):
                     diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", f"{path}/{key}"))
         elif isinstance(item, str):
@@ -275,12 +295,16 @@ def network_diagnostics(value):
         internal_reference = (
             path == "/negativeMatrixPath"
             or path == "/capabilityManifestRef"
-            or path.startswith("/casePaths/")
-            or path.startswith("/schemaPaths/")
-            or path.startswith("/manifestPaths/")
-            or path.startswith("/hashedAssets/")
-            or path.startswith("/negativePaths/")
-            or path.startswith("/properties/capabilityManifestRef/enum/")
+            or re.fullmatch(
+                r"/(?:casePaths|schemaPaths|manifestPaths|hashedAssets|negativePaths)/[0-9]+",
+                path,
+            )
+            is not None
+            or re.fullmatch(
+                r"/properties/capabilityManifestRef/enum/[0-9]+",
+                path,
+            )
+            is not None
         )
         if internal_reference:
             continue
@@ -383,7 +407,7 @@ def _required_case_fields():
     }
 
 
-def validate_manifest(manifest):
+def _validate_manifest(manifest):
     structural_diagnostics = structural_schema_diagnostics(
         manifest,
         read_json("schema/capability-manifest.json"),
@@ -438,6 +462,13 @@ def validate_manifest(manifest):
     if structural_invalid and not diagnostics:
         diagnostics.append("FIXTURE_SCHEMA_REQUIRED_FIELD")
     return sorted(set(diagnostics))
+
+
+def validate_manifest(manifest):
+    try:
+        return _validate_manifest(manifest)
+    except (AttributeError, IndexError, KeyError, OverflowError, TypeError, ValueError):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
 
 
 def _validate_scope(scope):
@@ -502,9 +533,24 @@ def _semantic_diagnostics(case):
     expected = case["expected"]
     records = case["records"]
     if category == "ordered-interrupt":
+        if len(records) != 1 or records[0]["kind"] != "fixture-interrupt":
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         payload = records[0]["payload"]
         requests = payload.get("actionRequests", [])
         configs = payload.get("reviewConfigs", [])
+        if any(
+            (
+                "resume" in normalized
+                or "accepted" in normalized
+                or ("decision" in normalized and normalized != "alloweddecisions")
+            )
+            for record in records
+            for _, item in _walk(record["payload"])
+            if isinstance(item, dict)
+            for key in item
+            for normalized in (re.sub(r"[^a-z0-9]", "", key.lower()),)
+        ):
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
         if any(
             not isinstance(request, dict)
             or set(request) not in (
@@ -641,7 +687,7 @@ def _semantic_diagnostics(case):
     return []
 
 
-def validate_case(case):
+def _validate_case(case):
     structural_diagnostics = structural_schema_diagnostics(
         case,
         read_json("schema/fixture-envelope.json"),
@@ -714,6 +760,13 @@ def validate_case(case):
     return sorted(set(diagnostics))
 
 
+def validate_case(case):
+    try:
+        return _validate_case(case)
+    except (AttributeError, IndexError, KeyError, OverflowError, TypeError, ValueError):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+
+
 def _apply_mutation(document, mutation):
     result = copy.deepcopy(document)
     parts = [part.replace("~1", "/").replace("~0", "~") for part in mutation["path"].split("/")[1:]]
@@ -743,10 +796,12 @@ def _apply_mutation(document, mutation):
 def diagnose_negative(negative):
     if "probe" in negative:
         probe = negative["probe"]
-        if probe.get("kind") != "claimed-asset-hash":
-            return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
-        actual = hashlib.sha256(read_bytes(probe["assetPath"])).hexdigest()
-        return [] if actual == probe["claimedSha256"] else ["FIXTURE_HASH_MISMATCH"]
+        if probe.get("kind") == "claimed-asset-hash":
+            actual = hashlib.sha256(read_bytes(probe["assetPath"])).hexdigest()
+            return [] if actual == probe["claimedSha256"] else ["FIXTURE_HASH_MISMATCH"]
+        if probe.get("kind") == "network-diagnostic":
+            return sorted({code for code, _ in network_diagnostics(probe["value"])})
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     base_path = negative["basePath"]
     mutated = _apply_mutation(read_json(base_path), negative["mutation"])
     if base_path.startswith("manifests/"):

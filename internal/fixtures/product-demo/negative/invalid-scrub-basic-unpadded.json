@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_basic_unpadded",
+  "declaredRuleCode": "FIXTURE_SCRUB_SECRET_VALUE",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "Basic YTpi"}
+}

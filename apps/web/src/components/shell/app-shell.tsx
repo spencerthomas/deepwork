@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Inbox,
   Plus,
+  Search,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -120,17 +121,19 @@ export function AppShell({
 
       {/* Header: navbar (56px) + tab row (40px) */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-[92rem] items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-[92rem] items-center gap-2 px-4 sm:gap-4 sm:px-6">
           <Logo />
           <span className="text-border">/</span>
           <WorkspaceSelector />
 
           <button
             type="button"
+            aria-label="Search or run a command"
             onClick={() => setCmdOpen(true)}
-            className="ml-auto flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-foreground/[0.03] px-3.5 text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] sm:max-w-sm"
+            className="ml-auto flex size-9 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-foreground/[0.03] px-0 text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] sm:h-9 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-start sm:px-3.5 sm:max-w-sm"
           >
-            <span className="truncate">Search or run a command…</span>
+            <Search aria-hidden className="size-4 shrink-0" />
+            <span className="hidden truncate sm:inline">Search or run a command…</span>
             <kbd className="ml-auto hidden items-center gap-0.5 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] sm:flex">
               ⌘K
             </kbd>

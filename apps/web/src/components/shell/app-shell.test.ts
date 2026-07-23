@@ -31,4 +31,28 @@ describe("AppShell accessibility landmarks", () => {
       `aria-label="Workspace: ${workspace.workspaceLabel} — ${workspace.workspaceSubtitle}"`,
     );
   });
+
+  it("renders a compact search icon and restores the text and shortcut at sm", () => {
+    const markup = renderToStaticMarkup(
+      createElement(AppShell, {
+        active: "Tasks",
+        children: createElement("p", null, "Task content"),
+      }),
+    );
+
+    expect(markup).toContain('aria-label="Search or run a command"');
+    expect(markup).toContain("lucide-search");
+    const searchIcon = markup.indexOf("lucide-search");
+    const searchButton = markup.slice(
+      markup.lastIndexOf("<button", searchIcon),
+      markup.indexOf("</button>", searchIcon),
+    );
+    expect(searchButton).toContain('aria-hidden="true"');
+    expect(markup).toContain("size-9 shrink-0");
+    expect(markup).toContain("gap-2 px-4 sm:gap-4");
+    expect(markup).toContain("sm:flex-1");
+    expect(markup).toContain('class="hidden truncate sm:inline"');
+    expect(markup).toContain("Search or run a command…");
+    expect(markup).toContain("⌘K");
+  });
 });

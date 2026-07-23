@@ -11,6 +11,7 @@ from deepwork_api.domain import (
     DecisionRecord,
     DecisionValue,
     EventData,
+    EvidenceClass,
     EvidenceRecord,
     InterruptMismatchError,
     InvalidEventCursorError,
@@ -175,6 +176,7 @@ class InMemoryTaskRepository:
         *,
         plan: ProposedPlan,
         event_name: TaskEventName,
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> TaskEvent:
         """Store and replay a runner-owned proposed or revised plan."""
 
@@ -191,7 +193,7 @@ class InMemoryTaskRepository:
                     ("steps", plan.steps),
                     ("revision", plan.revision),
                     ("evidenceRefs", plan.evidence_refs),
-                    ("evidenceClass", "fixture"),
+                    ("evidenceClass", evidence_class.value),
                 ),
             )
             task.events.append(event)
@@ -205,6 +207,7 @@ class InMemoryTaskRepository:
         interrupt_id: str,
         expected_revision: int,
         steps: tuple[str, ...],
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> PlanUpdateRecord:
         """Edit only the current plan for the exact pending interrupt and revision."""
 
@@ -243,7 +246,7 @@ class InMemoryTaskRepository:
                         ("steps", updated.steps),
                         ("revision", updated.revision),
                         ("evidenceRefs", updated.evidence_refs),
-                        ("evidenceClass", "fixture"),
+                        ("evidenceClass", evidence_class.value),
                     ),
                 )
             )

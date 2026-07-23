@@ -25,6 +25,7 @@ from deepwork_api.domain import (
     DecisionValue,
     EventData,
     EventDataValue,
+    EvidenceClass,
     EvidenceKind,
     EvidenceRecord,
     EvidenceSource,
@@ -383,6 +384,7 @@ class SQLiteTaskRepository:
         *,
         plan: ProposedPlan,
         event_name: TaskEventName,
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> TaskEvent:
         """Store and replay a runner-owned proposed or revised plan."""
 
@@ -394,6 +396,7 @@ class SQLiteTaskRepository:
             steps,
             references,
             event_name,
+            evidence_class,
         )
 
     async def update_plan(
@@ -403,6 +406,7 @@ class SQLiteTaskRepository:
         interrupt_id: str,
         expected_revision: int,
         steps: tuple[str, ...],
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> PlanUpdateRecord:
         """Edit the current plan for an exact pending interrupt/revision."""
 
@@ -416,6 +420,7 @@ class SQLiteTaskRepository:
             expected_revision,
             steps,
             encoded_steps,
+            evidence_class,
         )
 
     async def events_after(self, task_id: str, event_id: int) -> tuple[TaskEvent, ...]:
@@ -867,6 +872,7 @@ class SQLiteTaskRepository:
         encoded_steps: str,
         encoded_references: str,
         event_name: TaskEventName,
+        evidence_class: EvidenceClass,
     ) -> TaskEvent:
         connection = self._connect()
         try:
@@ -895,7 +901,7 @@ class SQLiteTaskRepository:
             event = TaskEvent(
                 event_id=self._next_event_id_sync(connection, task_id),
                 name=event_name,
-                data=_plan_event_data(plan),
+                data=_plan_event_data(plan, evidence_class),
             )
             self._insert_event_sync(connection, task_id, event)
             connection.commit()
@@ -913,6 +919,7 @@ class SQLiteTaskRepository:
         expected_revision: int,
         steps: tuple[str, ...],
         encoded_steps: str,
+        evidence_class: EvidenceClass,
     ) -> PlanUpdateRecord:
         connection = self._connect()
         try:
@@ -942,7 +949,7 @@ class SQLiteTaskRepository:
             event = TaskEvent(
                 event_id=self._next_event_id_sync(connection, task_id),
                 name=TaskEventName.PLAN_UPDATED,
-                data=_plan_event_data(updated),
+                data=_plan_event_data(updated, evidence_class),
             )
             self._insert_event_sync(connection, task_id, event)
             connection.commit()
@@ -1364,13 +1371,13 @@ def _validate_evidence_references(
         )
 
 
-def _plan_event_data(plan: ProposedPlan) -> EventData:
+def _plan_event_data(plan: ProposedPlan, evidence_class: EvidenceClass) -> EventData:
     return (
         ("title", plan.title),
         ("steps", plan.steps),
         ("revision", plan.revision),
         ("evidenceRefs", plan.evidence_refs),
-        ("evidenceClass", "fixture"),
+        ("evidenceClass", evidence_class.value),
     )
 
 

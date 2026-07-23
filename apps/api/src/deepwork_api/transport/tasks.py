@@ -18,6 +18,7 @@ from deepwork_api.application import (
     TaskEvent,
     TaskNotFoundError,
     TaskService,
+    TaskSourceContractError,
     TaskSourceUnavailableError,
     TaskStatus,
 )
@@ -49,6 +50,12 @@ def build_task_router(service: TaskService) -> APIRouter:
     async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse | JSONResponse:
         try:
             task = await service.create_task(request.prompt)
+        except TaskSourceContractError:
+            return _problem(
+                502,
+                "local_source_contract_mismatch",
+                "The configured local task source broke its supported contract.",
+            )
         except TaskSourceUnavailableError:
             return _problem(
                 503,
@@ -159,6 +166,12 @@ def build_task_router(service: TaskService) -> APIRouter:
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
+        except TaskSourceContractError:
+            return _problem(
+                502,
+                "local_source_contract_mismatch",
+                "The configured local task source broke its supported contract.",
+            )
         except TaskSourceUnavailableError:
             return _problem(
                 503,

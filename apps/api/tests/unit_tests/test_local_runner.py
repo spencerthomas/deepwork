@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
@@ -62,12 +62,25 @@ class _Source:
         self.state_reads += 1
         return _State()
 
-    async def update_plan(self, thread_id: str, **_: object) -> _PlanUpdate:
+    async def update_plan(
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: Sequence[str],
+    ) -> _PlanUpdate:
         return _PlanUpdate()
 
-    async def resume(self, thread_id: str, **kwargs: object) -> _Run:
-        comment = kwargs.get("comment")
-        if isinstance(comment, str):
+    async def resume(
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        decision: str,
+        comment: str | None = None,
+    ) -> _Run:
+        if comment is not None:
             self.resume_comment = comment
         return _Run(run_id="run_2")
 

@@ -8,6 +8,7 @@ from deepwork_api.domain import (
     DecisionRecord,
     DecisionValue,
     EventData,
+    EvidenceClass,
     EvidenceRecord,
     PlanUpdateRecord,
     ProposedPlan,
@@ -58,6 +59,7 @@ class TaskRepository(Protocol):
         *,
         plan: ProposedPlan,
         event_name: TaskEventName,
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> TaskEvent:
         """Store and replay a runner-owned proposed or revised plan."""
 
@@ -68,6 +70,7 @@ class TaskRepository(Protocol):
         interrupt_id: str,
         expected_revision: int,
         steps: tuple[str, ...],
+        evidence_class: EvidenceClass = EvidenceClass.FIXTURE,
     ) -> PlanUpdateRecord:
         """Edit the current plan for an exact pending interrupt/revision."""
 

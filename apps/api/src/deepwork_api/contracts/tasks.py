@@ -33,8 +33,13 @@ from deepwork_api.domain import (
 )
 
 TaskId = Annotated[str, StringConstraints(pattern=r"^task_[0-9]{8}$")]
-RunId = Annotated[str, StringConstraints(pattern=r"^run_[0-9]{8}$")]
-InterruptId = Annotated[str, StringConstraints(pattern=r"^interrupt_[0-9]{8}$")]
+# Run and interrupt identities may be application-generated fixture values or
+# source-qualified identifiers minted by the configured local Agent Server.
+# Both stay inside one bounded safe-identifier alphabet; task and evidence
+# identities remain application-owned and strict.
+_SOURCE_SAFE_IDENTIFIER = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+RunId = Annotated[str, StringConstraints(pattern=_SOURCE_SAFE_IDENTIFIER)]
+InterruptId = Annotated[str, StringConstraints(pattern=_SOURCE_SAFE_IDENTIFIER)]
 EvidenceId = Annotated[
     str,
     StringConstraints(pattern=r"^evidence_[0-9]{8}(?:_[0-9]{2})?$"),
@@ -47,6 +52,7 @@ type TaskWireStatus = Literal[
     "rejected",
     "failed",
 ]
+type TaskEvidenceClass = Literal["fixture", "local-source"]
 
 
 def _reject_unsafe_controls(value: str) -> str:
@@ -337,7 +343,7 @@ class RunStartedEventData(_TaskWireModel):
 
 class ContentDeltaEventData(_TaskWireModel):
     text: str = Field(min_length=1, max_length=MAX_TASK_RESULT_LENGTH)
-    evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
+    evidence_class: TaskEvidenceClass = Field(alias="evidenceClass")
 
 
 class PlanProposedEventData(_TaskWireModel):
@@ -345,7 +351,7 @@ class PlanProposedEventData(_TaskWireModel):
     steps: tuple[str, ...] = Field(min_length=1, max_length=8)
     revision: int = Field(strict=True, ge=1, le=MAX_PLAN_REVISION)
     evidence_refs: tuple[EvidenceId, ...] = Field(alias="evidenceRefs")
-    evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
+    evidence_class: TaskEvidenceClass = Field(alias="evidenceClass")
 
 
 class InterruptRequestedEventData(_TaskWireModel):

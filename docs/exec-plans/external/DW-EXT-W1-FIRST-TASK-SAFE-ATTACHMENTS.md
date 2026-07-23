@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS
 title: External dispatch - add a file to the first task safely
-status: prepared-for-independent-review
+status: ready-for-external-dispatch
 base_commit: fff1bfd278d550d01de6e8d74f553f45c4003a8c
 branch: external/research/first-task-safe-attachments
 owner: external-attachment-contract-researcher
@@ -11,8 +11,8 @@ acceptance_ids: [SPIKE-ATTACH-001, AC-DW-TASK-002-03, AC-DW-QUAL-001-03, AC-DW-Q
 allowed_paths: [tools/contract-spikes/attachments/**, docs/references/research/attachment-contract-spikes/**, docs/exec-plans/external/DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS.md]
 dependencies: [SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-object-scanner-runtime]
 created: 2026-07-23
-reviewed_at: null
-review_result: pending
+reviewed_at: 2026-07-23
+review_result: accepted
 ---
 
 # External dispatch - add a file to the first task safely

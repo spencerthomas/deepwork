@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 35b3adb606218b8272bca3ec2f6754a719c51d66
+last_verified_commit: 089167809592488b11ee9260ac8ec076b231c7a1
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -113,6 +113,9 @@ successor after its independent review and local commit.
 | DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | active external | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | pinned public/source evidence; optional sandbox only for live acceptance | await independently reviewed commit SHA |
 | DW-EXT-W1-DOCS-HARNESS-ACCEPTANCE | 1 | active external | `b9d2444` / seed `552dca0` | `tools/docs/**`, docs fixtures/research/packet | current canonical corpus | await independently reviewed commit SHA |
 | DW-EXT-W1-AUTH-HEADER-CONTRACT-RESEARCH | 1 | active external | `b9d2444` / seed `9efbca4` | `tools/contract-spikes/auth/**`, auth research/packet | official/public evidence; optional non-production account only for live rows | await independently reviewed commit SHA |
+| DW-EXT-W1-FIRST-TASK-SAFE-ATTACHMENTS | 1 | ready for external dispatch | `fff1bfd` / seed pending | attachment contract probe/research/packet | public evidence; live object/scanner/runtime rows blocked | create seed-only branch; external launcher owns implementation |
+| DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL | 1 | ready for external dispatch, offline harness only | `fff1bfd` / seed pending | plan-approval contract probe/research/packet | HITL/compose/config rows blocked; live sandbox absent | create seed-only branch; no target-spike acceptance |
+| DW-EXT-W1-RESEARCH-WRITING-OUTCOME-CONTRACT | 1 | packet rework before dispatch | `fff1bfd` | research/writing outcome probe/research/packet | upstream/public-package/live evidence blockers | close independent packet-review findings |
 | DW-M1-INTEGRATION | 1 | pending | accepted lane and external commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes and applicable gates | compose one credential-free product demo |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
@@ -161,6 +164,13 @@ later reviewed cell explicitly reassigns it.
   independent read-only review, were recorded at `35b3adb`, and became active
   external tasks from seeds `552dca0` and `9efbca4`. Their paths remain
   external-owned.
+- [x] 2026-07-23 — Safe-attachment and plan-approval packets passed independent
+  read-only review at `0891678`; both are dispatch-only research cells from
+  `fff1bfd`. Plan approval remains offline-harness-only and cannot accept its
+  target spikes on that base.
+- [ ] 2026-07-23 — Research/writing outcome packet remains under bounded
+  amendment and independent re-review; no seed or external implementation
+  authority exists yet.
 - [ ] Complete TypeScript source rework, then the coordinator-owned lock and executable-verification
   sequence.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.

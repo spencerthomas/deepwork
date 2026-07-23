@@ -12,8 +12,9 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -30,21 +31,34 @@ import {
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "@/components/task-inbox-filter";
+import {
+  INBOX_GROUP_ORDER,
+  moveInboxFocus,
+  orderedInboxIds,
+} from "@/components/tasks/task-inbox-navigation";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import type { ClientMode, TaskStatus, TaskSummary } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
-const groupOrder: TaskStatus[] = [
-  "waiting-approval",
-  "running",
-  "queued",
-  "failed",
-  "rejected",
-  "cancelled",
-  "completed",
-  "unknown",
-];
+const groupOrder: readonly TaskStatus[] = INBOX_GROUP_ORDER;
+
+const INTERACTIVE_TARGET_SELECTOR =
+  'a[href], button, input, textarea, select, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [contenteditable="true"]';
+
+/**
+ * Yield the shortcut keys whenever focus is on a control the user is operating —
+ * a search field, a sidebar filter, the grouping toggle, "Review now," or a row
+ * link. Otherwise a window-level Enter would hijack the control's own
+ * activation and typing would move the highlight. The highlight itself never
+ * takes DOM focus, so the ordinary j/k flow (focus resting on the body) is
+ * unaffected.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return target.closest(INTERACTIVE_TARGET_SELECTOR) !== null;
+}
 
 interface ViewDef {
   key: TaskStatusFilter;
@@ -64,12 +78,31 @@ const views: ViewDef[] = [
   { key: "cancelled", label: "Cancelled", icon: XCircle, always: false },
 ];
 
-function TaskRow({ mode, task }: { mode: ClientMode; task: TaskSummary }) {
+function TaskRow({
+  mode,
+  task,
+  focused,
+}: {
+  mode: ClientMode;
+  task: TaskSummary;
+  focused: boolean;
+}) {
   const runtimeCopy = taskRuntimePresentation(mode);
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [focused]);
+
   return (
     <Link
+      ref={ref}
       href={`/tasks/${task.taskId}`}
-      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-accent/50"
+      data-focused={focused || undefined}
+      className={cn(
+        "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-accent/50",
+        focused && "bg-accent/60 ring-2 ring-inset ring-brand/40",
+      )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -105,16 +138,57 @@ function SkeletonRows() {
   );
 }
 
+function KbdHint({ children }: { children: string }) {
+  return (
+    <kbd className="rounded-[5px] border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] leading-none">
+      {children}
+    </kbd>
+  );
+}
+
 export function TaskInbox() {
+  const router = useRouter();
   const { tasks, loadingTasks, listError, refreshList, mode } = useTasksStore();
   const [filter, setFilter] = useState<TaskInboxFilter>(EMPTY_TASK_INBOX_FILTER);
   const [grouped, setGrouped] = useState(true);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const runtimeCopy = taskRuntimePresentation(mode);
 
   const counts = countTasks(tasks);
-  const visible = filterTasks(tasks, filter);
+  const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
   const filterActive = hasActiveTaskFilter(filter);
   const needsYou = counts.byStatus["waiting-approval"];
+
+  const orderedIds = useMemo(
+    () => orderedInboxIds(visible, grouped, filter.status),
+    [visible, grouped, filter.status],
+  );
+
+  // Release a highlight that filtering, grouping, or a refresh removed from view.
+  useEffect(() => {
+    if (focusedId !== null && !orderedIds.includes(focusedId)) setFocusedId(null);
+  }, [orderedIds, focusedId]);
+
+  // Roving keyboard navigation: j/k or arrows move the highlight, Enter opens it.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isInteractiveTarget(event.target)) return;
+      if (orderedIds.length === 0) return;
+      if (event.key === "j" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setFocusedId((current) => moveInboxFocus(current, orderedIds, 1));
+      } else if (event.key === "k" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setFocusedId((current) => moveInboxFocus(current, orderedIds, -1));
+      } else if (event.key === "Enter" && focusedId !== null) {
+        event.preventDefault();
+        router.push(`/tasks/${focusedId}`);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [orderedIds, focusedId, router]);
 
   const sidebar = (
     <nav className="flex flex-col gap-1">
@@ -300,7 +374,12 @@ export function TaskInbox() {
                 </div>
                 <div className="divide-y divide-border">
                   {group.map((task) => (
-                    <TaskRow key={task.taskId} mode={mode} task={task} />
+                    <TaskRow
+                      key={task.taskId}
+                      mode={mode}
+                      task={task}
+                      focused={task.taskId === focusedId}
+                    />
                   ))}
                 </div>
               </div>
@@ -309,18 +388,34 @@ export function TaskInbox() {
         ) : (
           <div className="divide-y divide-border">
             {visible.map((task) => (
-              <TaskRow key={task.taskId} mode={mode} task={task} />
+              <TaskRow
+                key={task.taskId}
+                mode={mode}
+                task={task}
+                focused={task.taskId === focusedId}
+              />
             ))}
           </div>
         )}
       </div>
 
       {tasks.length > 0 && (
-        <p className="mt-3 text-[12px] tabular-nums text-muted-foreground" role="status">
-          {filterActive
-            ? `Showing ${visible.length} of ${counts.total} loaded tasks · ${counts.attention} need attention`
-            : `${counts.total} loaded ${counts.total === 1 ? "task" : "tasks"} · ${counts.attention} ${counts.attention === 1 ? "needs" : "need"} attention`}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-[12px] tabular-nums text-muted-foreground" role="status">
+            {filterActive
+              ? `Showing ${visible.length} of ${counts.total} loaded tasks · ${counts.attention} need attention`
+              : `${counts.total} loaded ${counts.total === 1 ? "task" : "tasks"} · ${counts.attention} ${counts.attention === 1 ? "needs" : "need"} attention`}
+          </p>
+          {orderedIds.length > 1 && (
+            <p className="hidden items-center gap-1.5 text-[12px] text-muted-foreground sm:flex">
+              <KbdHint>J</KbdHint>
+              <KbdHint>K</KbdHint>
+              <span>to move</span>
+              <KbdHint>↵</KbdHint>
+              <span>to open</span>
+            </p>
+          )}
+        </div>
       )}
     </AppShell>
   );

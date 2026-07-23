@@ -1,8 +1,18 @@
 "use client";
 
-import { BookText, ChevronDown, Plus, Settings } from "lucide-react";
+import {
+  Activity,
+  BookText,
+  Bot,
+  Calendar,
+  CheckCheck,
+  ChevronDown,
+  Inbox,
+  Plus,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useState } from "react";
 
 import { runtimeDisclosure, shellRuntimePresentation } from "@/lib/runtime-disclosure";
@@ -12,12 +22,19 @@ import { cn } from "@/lib/utils";
 import { CommandBar } from "./command-bar";
 import { ThemeToggle } from "./theme-toggle";
 
-const tabs = [
-  { label: "Tasks", href: "/tasks" },
-  { label: "Approvals", href: "/approvals" },
-  { label: "Agents", href: "/agents" },
-  { label: "Schedules", href: "/schedules" },
-  { label: "Activity", href: "/activity" },
+interface Destination {
+  label: string;
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
+/** The primary destinations, shared by the desktop tab row and the phone bottom bar. */
+const tabs: readonly Destination[] = [
+  { label: "Tasks", href: "/tasks", icon: Inbox },
+  { label: "Approvals", href: "/approvals", icon: CheckCheck },
+  { label: "Agents", href: "/agents", icon: Bot },
+  { label: "Schedules", href: "/schedules", icon: Calendar },
+  { label: "Activity", href: "/activity", icon: Activity },
 ];
 
 function Logo() {
@@ -148,9 +165,10 @@ export function AppShell({
           </Link>
         </div>
 
+        {/* Desktop tab row; the phone bottom bar (below) replaces it under lg. */}
         <nav
           aria-label="Primary navigation"
-          className="mx-auto flex h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6"
+          className="mx-auto hidden h-10 max-w-[92rem] items-center gap-1 px-4 sm:px-6 lg:flex"
         >
           {tabs.map((tab) => {
             const isActive = active === tab.label;
@@ -176,8 +194,9 @@ export function AppShell({
         </nav>
       </header>
 
-      {/* Body: sidebar + content + rail */}
-      <div className="mx-auto flex max-w-[92rem] px-4 sm:px-6">
+      {/* Body: sidebar + content + rail. Extra bottom padding on phones clears
+          the fixed bottom bar. */}
+      <div className="mx-auto flex max-w-[92rem] px-4 pb-24 sm:px-6 lg:pb-0">
         {sidebar && (
           <aside className="hidden w-64 shrink-0 py-8 pr-6 lg:block xl:w-72">
             <div className="sticky top-[136px]">{sidebar}</div>
@@ -194,6 +213,32 @@ export function AppShell({
           </aside>
         )}
       </div>
+
+      {/* Phone bottom navigation — the primary destinations under lg. */}
+      <nav
+        aria-label="Primary navigation"
+        className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {tabs.map((tab) => {
+          const isActive = active === tab.label;
+          const Icon = tab.icon;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
+                isActive ? "text-brand" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-5" />
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 """Application use cases."""
 
+from deepwork_api.application.local_runner import LocalAgentServerRunner
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
@@ -11,6 +12,7 @@ from deepwork_api.domain import (
     StaleInterruptError,
     TaskEvent,
     TaskNotFoundError,
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 
@@ -19,6 +21,7 @@ __all__ = [
     "DeterministicFixtureRunner",
     "InterruptMismatchError",
     "InvalidEventCursorError",
+    "LocalAgentServerRunner",
     "PlanRevisionConflictError",
     "PlanUnavailableError",
     "StaleInterruptError",
@@ -26,5 +29,6 @@ __all__ = [
     "TaskEvent",
     "TaskNotFoundError",
     "TaskService",
+    "TaskSourceUnavailableError",
     "TaskStatus",
 ]

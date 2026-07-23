@@ -21,7 +21,9 @@ from deepwork_api.domain import (
 class TaskRepository(Protocol):
     """Persist and signal local task state behind application semantics."""
 
-    async def create_task(self, *, title: str, objective: str) -> TaskSnapshot:
+    async def create_task(
+        self, *, title: str, objective: str, run_id: str | None = None
+    ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:

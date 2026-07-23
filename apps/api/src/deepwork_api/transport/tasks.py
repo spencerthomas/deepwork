@@ -18,6 +18,7 @@ from deepwork_api.application import (
     TaskEvent,
     TaskNotFoundError,
     TaskService,
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 from deepwork_api.contracts import (
@@ -46,7 +47,14 @@ def build_task_router(service: TaskService) -> APIRouter:
 
     @router.post("", response_model=TaskAcceptedResponse, status_code=202)
     async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse:
-        task = await service.create_task(request.prompt)
+        try:
+            task = await service.create_task(request.prompt)
+        except TaskSourceUnavailableError:
+            return _problem(
+                503,
+                "local_source_unavailable",
+                "The configured local task source is unavailable.",
+            )
         return TaskAcceptedResponse.from_domain(task)
 
     @router.get("", response_model=TaskListResponse)
@@ -151,6 +159,12 @@ def build_task_router(service: TaskService) -> APIRouter:
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
+        except TaskSourceUnavailableError:
+            return _problem(
+                503,
+                "local_source_unavailable",
+                "The configured local task source is unavailable.",
+            )
         except InterruptMismatchError:
             return _problem(
                 409,

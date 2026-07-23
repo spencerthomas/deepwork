@@ -65,7 +65,9 @@ class InMemoryTaskRepository:
         self._tasks: dict[str, _StoredTask] = {}
         self._next_task_number = 1
 
-    async def create_task(self, *, title: str, objective: str) -> TaskSnapshot:
+    async def create_task(
+        self, *, title: str, objective: str, run_id: str | None = None
+    ) -> TaskSnapshot:
         """Create a queued task containing only its sanitized objective."""
 
         async with self._condition:
@@ -74,7 +76,7 @@ class InMemoryTaskRepository:
             suffix = f"{number:08d}"
             task = _StoredTask(
                 task_id=f"task_{suffix}",
-                run_id=f"run_{suffix}",
+                run_id=run_id or f"run_{suffix}",
                 title=title,
                 objective=objective,
                 status=TaskStatus.QUEUED,

@@ -320,11 +320,13 @@ class SQLiteTaskRepository:
         else:
             self._closed = True
 
-    async def create_task(self, *, title: str, objective: str) -> TaskSnapshot:
+    async def create_task(
+        self, *, title: str, objective: str, run_id: str | None = None
+    ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 
         _validate_task_input(title=title, objective=objective)
-        return await self._mutate(self._create_task_sync, title, objective)
+        return await self._mutate(self._create_task_sync, title, objective, run_id)
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""
@@ -677,7 +679,9 @@ class SQLiteTaskRepository:
                     "local task database foreign keys are unsupported"
                 )
 
-    def _create_task_sync(self, title: str, objective: str) -> TaskSnapshot:
+    def _create_task_sync(
+        self, title: str, objective: str, external_run_id: str | None = None
+    ) -> TaskSnapshot:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -696,7 +700,7 @@ class SQLiteTaskRepository:
                 raise SQLiteTaskRepositoryDataError("local task identifier bound exhausted")
             suffix = f"{number:08d}"
             task_id = f"task_{suffix}"
-            run_id = f"run_{suffix}"
+            run_id = external_run_id or f"run_{suffix}"
             connection.execute(
                 "UPDATE tasks SET task_id = ?, run_id = ? WHERE task_number = ?",
                 (task_id, run_id, number),

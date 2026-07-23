@@ -1,0 +1,2325 @@
+{
+  "matrix_hash": "sha256:33f6393abd57c21bf3eb7a2456933c516ba9592372dc73b91bd083a5c6429c0a",
+  "rows": [
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.app-install",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "app-install",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:8b37e8b35610620d6e40eb58db17182d323fb4066cfccec854073ddfbe3be5fe",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.app-reconfigure",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "app-reconfigure",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:3114b562c1db7904c3b0325efce5cdbab355174536847b0f3c7e555899cf7062",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.app-suspend",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "app-suspend",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ad1d04534f71f192e8a087fdc718d25ceaf2ae400fc11ee59156dc569a8e7ce1",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.app-delete",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "app-delete",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0e57b831f7d106027f7e36068013b7b7dd3bf069de1e6e0e69bb95314cd32a60",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.callback-state-expiry",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "callback-state-expiry",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:69c0117930fd0e84052a3902988fa11c38e7aaaa13f6c2ddb2a083dba8000ec3",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.selected-account-repositories",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "selected-account-repositories",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:8413e6ce4fba941dac1db0a1dd9bffa272f845b197fbf359921911605259a599",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.actor-workspace-authorization",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "actor-workspace-authorization",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ed17841d13a6e2ff83d9c8b6b9bcdc8df31aed61fca4134f66a71f9bdfcbccb4",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.repository-pagination-search",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "repository-pagination-search",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:d08ab04186fa5e1bc68b9a641762eaf376a30e1b45bf84109588f7d86310c7bc",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.grant-revoked-changed",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "grant-revoked-changed",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:158260d84a77f70563cd4c77eed7e6d77e2b5dd9422317d0b16e63cdae3ce969",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-audience",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-audience",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b14e8d5b6912cb822dd5de29e4b2760201de7fa14dcc118db1aacc4d8076f088",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-repository-scope",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-repository-scope",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:994bc5ff88f02ff9937e6b381f988e6bf33e27f09d91ae0e438be9047f3436dc",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-permission-scope",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-permission-scope",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:72956b3d948fdb3415a7d728e0bb4874cfc614db02dd54f99fa0e508e4455bcb",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-ttl-refresh-expiry-revocation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-ttl-refresh-expiry-revocation",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0e22c3eb14af7db1c69db3874773f5ca9efe872314b3e81bc71339f0b5820dfd",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-wrong-binding",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-wrong-binding",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:e2fc4050e21c3bc83eab46adb1f1f362a39cb4a66743d4098e4fdc39c195653e",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.installation-token-rate-limit",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "installation-token-rate-limit",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:d4f4764d957b99b4b4f47f64f4fad570b6d00f86989c7e62168cb6ecd37f407b",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.repository-id-base-ref-sha-preflight",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "repository-id-base-ref-sha-preflight",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ae84e387116b9a4d41ea0885c89a4edfb98e4bbfb604af9beecf53938527e7b5",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.branch-name-sanitization",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "branch-name-sanitization",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:9912be3b25c093d42e9bbd95b1452aa7559573816080b28dcc63cdeb3f88ab49",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.branch-collision-ours",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "branch-collision-ours",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:a5a8c2ab8a58722ade988b3e6c8a15633ed2a4dbaffd7da4c67d1e44eb3d9218",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.branch-collision-unknown",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "branch-collision-unknown",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:05e8053534d8b7e600aaeea0c8b3e35b85612c018aed3e1699231cd51afe409a",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.create-ref-idempotency-no-overwrite",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "create-ref-idempotency-no-overwrite",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:a11361951e447a2ec3fe4b48aba84954377fe0cdf3d395e3229407518c5f5267",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.force-push-denied",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "force-push-denied",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:9af4894c98f5ca1ebc49852091898856030215252dbb5fd36dd28938cb1a9d12",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.head-reconciliation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "head-reconciliation",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:debdf659ecadc88e9420f918251d4429b4da685d8e27c656adaf33fb268f99f5",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.clone-fetch",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "clone-fetch",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:2e2927fccf8d8437aa0e34e63ef56c8369c1bb43788cdb5468d516c62aede65a",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.bounded-edit-test-commit",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "bounded-edit-test-commit",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:22942a31e0196c539029e60ce958c9a1b547e520129851e8b9488deead3c688f",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.push",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "push",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:9b003d5809d4079bb4f64101ad3e9cad9cb0dee69d47a2c3fdd121845f06d776",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.authoritative-head-refetch",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "authoritative-head-refetch",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ece852096f9b61d8c9cf0cfbd1fbf0c5b0298a07450011f30575a773841fb50a",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-create-read",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-create-read",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:07eef49d582b8195a5e007c2637a63c086d85a239db98d9e76cf810f63688979",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-timeout-reconcile",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-timeout-reconcile",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:64f983b4ca57463c1dd0e1b3b56164ed961f8a6aba636dee2264fbd77e0be492",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-repeated-command",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-repeated-command",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:adff946ebd3d9b17fe43547bd134129320b9ef3c9e50fdf8aa43b4e38dcf290c",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-existing-match",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-existing-match",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0e660fec761e4d6fd2e35f0c7271f48a7764366963eb8dcfcd7464ac7370e611",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-wrong-head-base",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-wrong-head-base",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b97fbc80f1db6362bcc700401711a7b7a9c521f1aae2b94c3eab08c1317d554f",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-permission-loss-provider-error",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-permission-loss-provider-error",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:f8cfea63f8e67c3c6d9c065d9f1ac1bdb11272958998060181386cb9f8c8090e",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.draft-pr-duplicate-prevention",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-duplicate-prevention",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:22c5b6af861a0f9a1a1b45a0c49b15f7137ef6c3c2d009ba1dd7ddcd702e3eae",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.merge-methods-read",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "merge-methods-read",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:1ea33d210f20b7494f373eb3e02a6c487e486be41ee6696b8173adba28f054d3",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.protection-permission-read",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "protection-permission-read",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ee9bbbbbcd321b8ba27dad565c22c4a0b2edeef8f3739472bdee1616eb2f68dd",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.mutation-ledger-zero-without-authority",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "mutation-ledger-zero-without-authority",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:6e59c6d12932a0ae4513ef471a73e8d1f7d47f574beca8a64194ff492c5010a6",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "github.mutation-ledger-one-and-read-only-after",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "mutation-ledger-one-and-read-only-after",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ab71fff96c91b8c50fc60d371d600035f6477be763093b906283cb7ffbe5b790",
+      "spike_id": "SPIKE-GITHUB-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.callback-provider-auth",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "callback-provider-auth",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:e8bba739aa7191185fe5adaf30baf80797e4c0343aca9a0cb6f8c2bc2de63b02",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.callback-binding",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "callback-binding",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:1bc4dc3908096f347e46d0bc8fde611695b88c6b28d82afe70ee382b46a90a26",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.intent-host-path-method-use",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "intent-host-path-method-use",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:a546bac29e21dd80066983c93f63c8773bde22e01685966901ed4d10444c2457",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.intent-audience-scope-ttl",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "intent-audience-scope-ttl",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:1546b1a0ee544f3593c899f3b3fde30c5d787ebf8e7b65bebe9527e7316c2879",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.nonce-replay",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "nonce-replay",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:6e2c27ced312088c86e2f6ff0a15981dca7e2cfb176ff6e20537c977b06dbcea",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.concurrency",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "concurrency",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:d4f0b0fcb6a173a61d9ca6cf5852a9070c5860c6d31e7e88d1b17e29f1ddb233",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.refresh-expiry-revocation-policy-update",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "refresh-expiry-revocation-policy-update",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:61f9b140f6899f34d6966d168681ce255e158b2be0b095586bbcc832aa4b72f8",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.https-clone",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "https-clone",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ae762258d7bef7f962df6ca2c6a8d0ce64f212c6cd63e6d2185ec9543521be9a",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.https-fetch",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "https-fetch",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:8c929628ac755f0ec8d7192a017b312778fd0d8a1b3b9c7b66af154543272078",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.https-push",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "https-push",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:4ae6e5e0c4e9d67f81c0c41aa94514257244e4858c013a218182bf318180cf82",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.minimum-api-operation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "minimum-api-operation",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:8788c38d00a4a7a7f02499c5a53107b15203670dda20ba52447f626dc1320afb",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.redirect-denial",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "redirect-denial",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:601281b8167d4fd0754199270d3a7e671e85e1fbeceecc8e70048eaf8f682142",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.alternate-host-port-denial",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "alternate-host-port-denial",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:30b6c2364f592125472c882e673199df9a1deee3bf82fd1c7eccb074792914ee",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.submodule-lfs-detection",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "submodule-lfs-detection",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:146b44cb1c04ddeef4111eaff46c36fe3cfaaa9e704e936b292e8fb5f03831cb",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.credential-helper-denial",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "credential-helper-denial",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:201627a056f666ef5b4653c256fbcf911c20b161992b1c4f9e7ffad53a1b062a",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.wrong-tenant-workspace-actor-task",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "wrong-tenant-workspace-actor-task",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:4da78f22897e63a7f9667a9340cf85abf0fb1d816a34b8a0af7ecd328a47d328",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.wrong-sandbox-repository-installation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "wrong-sandbox-repository-installation",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b44b1671d01b4246486c198b5bb04764b0f7626a2bfba798ca9d2a25a935317b",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.stale-binding-expired-sandbox",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "stale-binding-expired-sandbox",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:db4255d25d5028bc396aad1edc3669290034eb780b1ab5cde1bac70d99cb2839",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.suspended-installation-permission-change",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "suspended-installation-permission-change",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:177535e28dc6d39b0857e7f288e3a614bf3de359ffeacdd73d9c88cb19735ca4",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.branch-protection-rate-limit-outage",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "branch-protection-rate-limit-outage",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:f57243aabc2fa72d5c5e991203006d518717103bbaa0db6e08bd46a16e4423ed",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.leak-env-filesystem-process-args",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "leak-env-filesystem-process-args",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ec0b6c437a396cabe763923fa1ea15ea2509d3fca4583bea5593837e83af2f95",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.leak-git-config-remotes-helper-history",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "leak-git-config-remotes-helper-history",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0110d4dcdb6f85871942ad0d5d5e2770e7637fca6ad53fe9659a6a8f0182613d",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.leak-output-snapshot-log-trace-evidence",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "leak-output-snapshot-log-trace-evidence",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:44b9c3c12893505eef230a96227098102a1cce3d38036c091f56bb922be7c9a4",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "proxy.no-pat-ssh-token-fallback",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "no-pat-ssh-token-fallback",
+      "owner": "security",
+      "region": "not-supplied",
+      "schema_hash": "sha256:e42f0d2e4a1c04909e509bab026bf8a1bf7f203d798ff38340c79c482893445f",
+      "spike_id": "SPIKE-GITHUB-PROXY-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-signature-raw-bytes",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-signature-raw-bytes",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b994f8fde27b90346ed0e88a82c2a0725bbc3e019a5096303cfcfa7c54b12bbb",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-delivery-dedupe",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-delivery-dedupe",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:79984cd29511509ae67bb19fdb0681082b9261e90fe3f15b96ad2394f2bd3574",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-retry-duplicate-out-of-order",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-retry-duplicate-out-of-order",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:2de6c6f4251f02245b6c191ee7f267d4bc6115b2e97fa06f39d3146e41dc1bfa",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-missing-event-poll-reconcile",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-missing-event-poll-reconcile",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:ca88b5f7ef01bb920fb5ea023f06db60f36927ce0ae9e376bce830e13d3b6201",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-app-install-repository-binding",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-app-install-repository-binding",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b6d08891e8ad1e83b371a9a4f8b6e63c678d93e3711c55d9bf6e17bb65ec3b8d",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-tenant-workspace-binding",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-tenant-workspace-binding",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:49dd26dbfbca41ed1efbcc076d51a6a055864cec392a5b12df49279320f7230b",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-event-action-pr-base-head-binding",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-event-action-pr-base-head-binding",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0c0daf23a3af80362f801cb76860ee0a8cc4f6f7aa63e6d858042cd01db8f084",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.webhook-cross-binding-rejected",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "webhook-cross-binding-rejected",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:89dfefeefa24ddb5dd4b4bce0bc2eb8c6fa3bd2c1dc123450a7f5fcd445ce991",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.checks-suite-runs-statuses",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "checks-suite-runs-statuses",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:cffbc948e7cbb52cb57114bdb116e8a679200012e97b2f10851d1944665b97ff",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.actions-workflow-association",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "actions-workflow-association",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:6f719b94fb70b0a783e4c40cdf12a3bf8736f3db0ea73e07282096ea0af25f39",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.required-check-discovery",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "required-check-discovery",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:4e31fabb77c210dc7060c8598b897c252aa7de3d91797cde0082f45e40f54165",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.check-state-cross-product",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "check-state-cross-product",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:d0f783cef4c6da1ea64d787208b00b1f2dec43dae85c0e3b232681ade5c3ac26",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/manifest.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.stale-head-rejected",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "stale-head-rejected",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:d31092d1d4eb2d3a0b3dd2eb26d7f453cfcaa38854308691632d0ea623250889",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.fork-protection-merge-queue-facts",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "fork-protection-merge-queue-facts",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:7c33ee47d41676602f57b7c281f2f2d98978b5be5baf5b77278004798f5be43c",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.workflow-read-contract",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "workflow-read-contract",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:1b3faf5c1cf4ece25ea5c1f6719ec961aaaf12081493a13e5388bdb3385ef709",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.workflow-rerun-contract-no-mutation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "workflow-rerun-contract-no-mutation",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:0b6106bd0b50367a5858f8d233cc40bbf279d018a84f7743520bc171fabb7075",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.workflow-cancel-contract-no-mutation",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "workflow-cancel-contract-no-mutation",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:b9d81b8baa385f2bb365c91e8733ed9553ea286ecb6eb52ab9658cf89ba103ec",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.workflow-rate-limit-errors",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "workflow-rate-limit-errors",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:9e3d71511cc9dbb7684de593217c89cce098a63fa08dbb3e7bcfcc9aadaed135",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.merge-method-protection-contract",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "merge-method-protection-contract",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:643f734fd827acc238bbae5f5702fb7f584be09c6e21442add26dd5078529485",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.merge-request-identity-contract",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "merge-request-identity-contract",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:361bb847276d5100f058aa51a9a3d6b06c3b33d891ad88bcfe4923df39c22ae6",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": "fixtures/merge-timeout-reconciliation.json",
+      "evidence_tier": "deterministic-fake",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.merge-timeout-reconciliation-no-second-request",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "merge-timeout-reconciliation-no-second-request",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:f6b5b8ffcaf719d94e9c7e8b5501e569f9aa04c3158b1df50172c06412daed58",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.draft-pr-authoritative-evidence",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "draft-pr-authoritative-evidence",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:300fbf5e88b07fe23c18ea1e0d3119fcb9df5d41fca15de3e6d69066c94b71e9",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    },
+    {
+      "account_tier": "not-supplied",
+      "cleanup": "no live resource created; deterministic fake state discarded after test",
+      "conclusion": "offline contract/negative behavior retained; live behavior not accepted",
+      "contradiction": null,
+      "evidence": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app",
+        "https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app",
+        "https://docs.github.com/en/rest/git/refs",
+        "https://docs.github.com/en/rest/pulls/pulls",
+        "https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries",
+        "https://docs.github.com/en/pull-requests/reference/status-checks"
+      ],
+      "evidence_tier": "official-documented",
+      "fallback": "disable private GitHub mutation; retain local/source-native work and downloadable patch",
+      "id": "ci.merge-readiness-read-only",
+      "inherited_blocker": "sandbox packet has no reviewed accepted evidence or hashes",
+      "observed_at": "2026-07-23",
+      "operation": "merge-readiness-read-only",
+      "owner": "runtime-contracts",
+      "region": "not-supplied",
+      "schema_hash": "sha256:e4450c9a9e754d79d6b353589c280a313c26d5e08c0b53c5b29ee69a572cc6d3",
+      "spike_id": "SPIKE-GITHUB-CI-001",
+      "state": "blocked-live-evidence",
+      "versions": {
+        "github_rest_api": "2026-03-10",
+        "probe": "0.1.0"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "scope_hash": "sha256:7b9e10ae5fce73c262bc4ebb792e7cbb4106c8ef31b7f0034b7ca276ccdea018",
+  "upstream_state": "blocked-live-evidence"
+}

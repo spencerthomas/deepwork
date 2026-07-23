@@ -1,0 +1,71 @@
+{
+  "formatVersion": "1.0.0",
+  "manifestId": "fx_manifest_fixture_source",
+  "synthetic": true,
+  "runtimeKind": "fixture",
+  "capabilities": [
+    {
+      "name": "normalized-presentation",
+      "state": "available",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "fixture-contract-1",
+      "evidenceClass": "fixture",
+      "reason": "Synthetic presentation and reduction input only."
+    },
+    {
+      "name": "replay-presentation",
+      "state": "available",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "fixture-contract-1",
+      "evidenceClass": "fixture",
+      "reason": "Deterministic duplicate input is available only inside this corpus."
+    },
+    {
+      "name": "interrupt-submission",
+      "state": "gated",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-HITL-001 remains open; presentation does not enable submission."
+    },
+    {
+      "name": "checkpoint-fork",
+      "state": "gated",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-CHECKPOINT-001 remains open; observation does not enable fork."
+    },
+    {
+      "name": "cancellation",
+      "state": "gated",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-CANCEL-001 remains open."
+    },
+    {
+      "name": "specialized-subagents",
+      "state": "unavailable",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-SUBAGENT-001 remains open; safe unknown content is the fallback."
+    },
+    {
+      "name": "artifact-operations",
+      "state": "unavailable",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "fixture-adapter-1",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-ARTIFACT-001 remains open; safe unknown content is the fallback."
+    }
+  ]
+}

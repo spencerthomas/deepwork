@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0",
+  "frozen_at": "2026-07-23",
+  "scope_revision": 1,
+  "assigned_checkout_pair": {
+    "repository_class": "assigned-local-checkout-validation-only",
+    "base_sha": "b2243109d0cfb2e093cc37a57017e8e70b5ea64b",
+    "seed_sha": "f3d937f5e10819d09a46c94e046993fe40a28ab1",
+    "accepted_live_authority": false
+  },
+  "source_priority": [
+    "accepted-authorized-sandbox-api",
+    "exact-authorized-github-commit-or-pr-api",
+    "metadata-only-artifact-or-source-link"
+  ],
+  "source_pins": {
+    "SRC-LC": "7b9215d708e0b57e6fbae7b5d0762c4118b8e309",
+    "SRC-DA": "7794b61a6e76230e8c7a49bdce808b3728305914",
+    "SRC-LG": "31f90df3e6b0268fa77fd2d118a917d420b84a68"
+  },
+  "upstream_requirements": [
+    "DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH",
+    "DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH"
+  ],
+  "file_classes": [
+    "root-list",
+    "paged-directory",
+    "empty-directory",
+    "nested-scale",
+    "safe-text",
+    "bom-newline",
+    "image-metadata",
+    "pdf-metadata",
+    "binary",
+    "unknown",
+    "large",
+    "truncated",
+    "download-or-range-unknown"
+  ],
+  "path_and_content_negatives": [
+    "nul",
+    "absolute",
+    "traversal",
+    "unicode-case-ambiguity",
+    "symlink-hardlink-escape",
+    "directory-file-confusion",
+    "guessed-id",
+    "wrong-identity",
+    "expired-reference",
+    "mime-mismatch",
+    "polyglot",
+    "active-html-svg",
+    "malformed-media",
+    "decompression-amplification",
+    "bidi-control"
+  ],
+  "diff_statuses": [
+    "added",
+    "modified",
+    "deleted",
+    "renamed",
+    "copied-when-supported",
+    "type-change-when-supported",
+    "submodule-when-supported",
+    "binary",
+    "no-newline",
+    "large-bounded"
+  ],
+  "terminal_modes": ["interactive", "transcript", "none"],
+  "command_input_modes": ["pty", "discrete_reviewed", "none"],
+  "terminal_negatives": [
+    "wrong-origin",
+    "cross-actor-session",
+    "replay",
+    "expired-grant",
+    "concurrent-controller",
+    "ansi-csi-osc-link",
+    "oversized-control",
+    "disconnect-does-not-stop"
+  ],
+  "browser_modes": ["evidence", "service_url", "none"],
+  "browser_negatives": [
+    "ordinary-link",
+    "missing-provenance",
+    "expired",
+    "wrong-actor-task-sandbox",
+    "redirect",
+    "revoked-permission",
+    "no-auto-open"
+  ],
+  "bounds": {
+    "file_preview_bytes": 1048576,
+    "terminal_characters": 65536,
+    "diff_hunks": 2000,
+    "image_pixels": 16000000,
+    "pdf_pages": 200,
+    "decompressed_bytes": 8388608,
+    "parse_milliseconds": 2000
+  },
+  "required_row_ids": [
+    "FILES-LIST-001",
+    "FILES-CONTENT-001",
+    "FILES-PATH-001",
+    "FILES-MEDIA-001",
+    "FILES-RACE-001",
+    "FILES-EXPIRY-001",
+    "DIFF-EXACT-001",
+    "DIFF-STATUS-001",
+    "DIFF-HEAD-RACE-001",
+    "TERMINAL-TRANSCRIPT-001",
+    "TERMINAL-INPUT-001",
+    "TERMINAL-PTY-001",
+    "TERMINAL-SECURITY-001",
+    "TERMINAL-TRUNCATION-001",
+    "TERMINAL-DISCONNECT-001",
+    "BROWSER-EVIDENCE-001",
+    "BROWSER-SERVICE-URL-001",
+    "BROWSER-NONE-001"
+  ],
+  "scope_hash": "629080c0b88a9d65b5f67735971639951de7db6f6ca39d2905483d77f9b24317"
+}

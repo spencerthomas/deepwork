@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "repository_node",
+    "pr_node",
+    "head_sha",
+    "checks",
+    "freshness"
+  ],
+  "title": "ci",
+  "type": "object"
+}

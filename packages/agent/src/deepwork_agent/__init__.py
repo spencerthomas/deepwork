@@ -1,5 +1,14 @@
 """Public exports for the independent Deep Work agent package."""
 
+from deepwork_agent.artifacts import (
+    ArtifactClaim,
+    ArtifactKind,
+    ClaimBasis,
+    EvidenceReference,
+    JourneyArtifact,
+    JourneyArtifactDraft,
+    validate_artifact,
+)
 from deepwork_agent.config import AgentConfig
 from deepwork_agent.graph import (
     DEEP_WORK_SYSTEM_PROMPT,
@@ -11,6 +20,18 @@ from deepwork_agent.graph import (
     validate_approval_response,
     validate_plan_edit,
 )
+from deepwork_agent.journeys import (
+    JourneyCapabilities,
+    JourneyKind,
+    JourneyOutput,
+    JourneyProfile,
+    JourneyState,
+    JourneySubagent,
+    create_journey_graph,
+    journey_capabilities,
+    research_profile,
+    writing_profile,
+)
 from deepwork_agent.state import (
     AgentInput,
     AgentOutput,
@@ -20,11 +41,23 @@ from deepwork_agent.state import (
     ApprovalResponse,
     initial_state,
 )
+from deepwork_agent.verification import (
+    HARD_VERIFICATION_ITERATION_CAP,
+    VERIFIER_REF,
+    CriterionResult,
+    RubricCriterion,
+    RubricSpec,
+    VerificationRecord,
+    VerificationVerdict,
+    render_rubric,
+)
 
 __all__ = [
     "DEEP_WORK_SYSTEM_PROMPT",
+    "HARD_VERIFICATION_ITERATION_CAP",
     "PROTECTED_ACTION",
     "RUNTIME_MODE",
+    "VERIFIER_REF",
     "AgentConfig",
     "AgentInput",
     "AgentOutput",
@@ -32,10 +65,33 @@ __all__ = [
     "ApprovalDecision",
     "ApprovalRequest",
     "ApprovalResponse",
+    "ArtifactClaim",
+    "ArtifactKind",
+    "ClaimBasis",
+    "CriterionResult",
+    "EvidenceReference",
+    "JourneyArtifact",
+    "JourneyArtifactDraft",
+    "JourneyCapabilities",
+    "JourneyKind",
+    "JourneyOutput",
+    "JourneyProfile",
+    "JourneyState",
+    "JourneySubagent",
+    "RubricCriterion",
+    "RubricSpec",
     "RuntimeCapabilities",
+    "VerificationRecord",
+    "VerificationVerdict",
     "create_graph",
+    "create_journey_graph",
     "initial_state",
+    "journey_capabilities",
+    "render_rubric",
+    "research_profile",
     "runtime_capabilities",
     "validate_approval_response",
+    "validate_artifact",
     "validate_plan_edit",
+    "writing_profile",
 ]

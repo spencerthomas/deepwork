@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeFileContent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_identity", "path_ref", "version", "checksum", "mode", "total_bytes", "returned_bytes"],
+  "properties": {
+    "source_identity": {"type": "string", "minLength": 1},
+    "path_ref": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "checksum": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mode": {"enum": ["escaped_text", "metadata_only", "authorized_download"]},
+    "encoding": {"type": ["string", "null"]},
+    "total_bytes": {"type": "integer", "minimum": 0},
+    "returned_bytes": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "text": {"type": "string"}
+  }
+}

@@ -1,0 +1,20 @@
+2026-07-23 AEST credential-free command ledger
+
+PASS uv lock --project tools/contract-spikes/coding-github
+PASS uv sync --project tools/contract-spikes/coding-github --frozen
+PASS uv run --project tools/contract-spikes/coding-github --frozen pytest -m 'not live_contract'
+PASS uv run --project tools/contract-spikes/coding-github --frozen python -m coding_github_spikes.inventory --output docs/references/research/coding-github-contracts/versions.json
+PASS uv run --project tools/contract-spikes/coding-github --frozen python -m coding_github_spikes.validate_matrix docs/references/research/coding-github-contracts/matrix.json --scope docs/references/research/coding-github-contracts/matrix-scope.json --upstream-lock docs/references/research/coding-github-contracts/upstream-lock.json --require-complete-cross-product --require-workflow-and-merge-timeout-fixtures --max-draft-prs 1 --reject-blocked-dependency-promotion --reject-unresolved-precedence-conflicts
+PASS uv run --project tools/contract-spikes/coding-github --frozen python -m coding_github_spikes.scrub docs/references/research/coding-github-contracts
+PASS uv run --project tools/contract-spikes/coding-github --frozen python -m coding_github_spikes.validate_scope --base b2243109d0cfb2e093cc37a57017e8e70b5ea64b --include-untracked
+PASS uv lock --project tools/contract-spikes/coding-github --check --offline
+PASS UV_OFFLINE=true uv run --project tools/contract-spikes/coding-github --frozen pytest -m 'not live_contract'
+PASS python3 tools/docs/generate.py --check
+PASS python3 tools/docs/check.py
+PENDING git diff --check b2243109d0cfb2e093cc37a57017e8e70b5ea64b...HEAD
+PENDING git diff --name-only b2243109d0cfb2e093cc37a57017e8e70b5ea64b
+PENDING git status --short
+
+The live-contract command was not run. Its GitHub App, disposable repository,
+accepted sandbox/proxy evidence, and external mutation grant prerequisites were
+absent. Live draft pull request mutation count: 0.

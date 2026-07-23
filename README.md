@@ -64,11 +64,27 @@ visual and interaction evidence only. Migration is one-way into the future
 
 ## Validate the repository
 
+The root `Makefile` is the stable command contract; each target delegates to the
+reviewed per-workspace command:
+
+```bash
+make check         # pnpm check + apps/api check + packages/agent check
+make check-docs    # tools/docs generate --check + check.py
+make test-unit     # TypeScript and Python unit suites
+make test-contract # API contract suite
+```
+
+The underlying commands still run directly if preferred:
+
 ```bash
 pnpm check
 python3 tools/docs/generate.py --check
 python3 tools/docs/check.py
 ```
+
+Continuous integration runs `make bootstrap`, `make check-docs`,
+`make check-architecture`, and `make check` on every pull request to `main`
+(`.github/workflows/checks.yml`), so the same contract gates merges.
 
 There is intentionally no executable `WORKFLOW.md`. Manual one-agent-per-worktree
 dispatch is current until `SPIKE-SYMPHONY-001` passes.

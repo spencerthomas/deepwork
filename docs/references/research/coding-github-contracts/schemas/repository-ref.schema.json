@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "required": [
+    "repository_node",
+    "base_ref",
+    "base_sha",
+    "head_ref",
+    "head_sha"
+  ],
+  "title": "repository-ref",
+  "type": "object"
+}

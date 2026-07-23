@@ -1,0 +1,77 @@
+Coding review surfaces packet command ledger
+Date: 2026-07-23
+
+01. uv lock --project tools/contract-spikes/coding-review-surfaces
+    exit: 0
+
+02. uv sync --project tools/contract-spikes/coding-review-surfaces --frozen
+    exit: 0
+
+03. uv run --project tools/contract-spikes/coding-review-surfaces --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected
+
+04. uv run --project tools/contract-spikes/coding-review-surfaces --frozen python -m coding_review_surface_spikes.inventory --output docs/references/research/coding-review-surfaces-contracts/versions.json
+    exit: 0
+
+05. uv run --project tools/contract-spikes/coding-review-surfaces --frozen python -m coding_review_surface_spikes.validate_matrix docs/references/research/coding-review-surfaces-contracts/matrix.json --scope docs/references/research/coding-review-surfaces-contracts/matrix-scope.json --upstream-lock docs/references/research/coding-review-surfaces-contracts/upstream-lock.json --require-complete-cross-product --require-exact-diff --reject-blocked-dependency-promotion --reject-simulated-capabilities --reject-unresolved-precedence-conflicts
+    exit: 0
+    result: 18 complete rows; exact diff and blocked-dependency rules passed
+
+06. uv run --project tools/contract-spikes/coding-review-surfaces --frozen python -m coding_review_surface_spikes.scrub docs/references/research/coding-review-surfaces-contracts
+    exit: 0
+    result: zero findings
+
+07. uv run --project tools/contract-spikes/coding-review-surfaces --frozen python -m coding_review_surface_spikes.validate_scope --base b2243109d0cfb2e093cc37a57017e8e70b5ea64b --include-untracked
+    exit: 0
+    result: only packet-authorized paths
+
+08. uv lock --project tools/contract-spikes/coding-review-surfaces --check --offline
+    exit: 0
+
+09. UV_OFFLINE=true uv run --project tools/contract-spikes/coding-review-surfaces --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected
+
+10. python3 tools/docs/generate.py --check
+    exit: 0
+    result: 6 generated documents verified
+
+11. python3 tools/docs/check.py
+    exit: 0
+    result: documentation validation passed
+
+12. git diff --check b2243109d0cfb2e093cc37a57017e8e70b5ea64b...HEAD
+    exit: 0
+
+13. git diff --name-only b2243109d0cfb2e093cc37a57017e8e70b5ea64b
+    exit: 0
+    result: final allowed-path list is recorded after commit
+
+14. git status --short
+    exit: 0
+    result: final clean status is recorded after commit
+
+Live review-evidence profile:
+    not run
+    reason: upstream reviewed outputs and a current read-only grant are absent
+
+Live terminal profile:
+    not run
+    reason: accepted public input/session evidence and a separate current terminal grant are absent
+
+Post-merge correction (2026-07-23T12:51:27Z):
+    fixtures/manifest.json recorded stale sha256 hashes for exact-diff.json,
+    exact-review.patch, terminal-negatives.json, and terminal-transcript.json
+    that did not match the committed fixture bytes, so
+    test_fixture_manifest_hashes_match failed despite the "34 passed" claim
+    above. Hashes were repinned to the actual committed bytes; no fixture
+    content was altered. Re-ran from tools/contract-spikes/coding-review-surfaces:
+
+15. uv run --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected
+
+16. UV_OFFLINE=true uv run --frozen pytest -m 'not live_contract'
+    exit: 0
+    result: 34 passed, 2 deselected

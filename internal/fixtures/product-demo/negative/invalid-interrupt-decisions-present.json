@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_interrupt_decisions_present",
+  "declaredRuleCode": "FIXTURE_INTERRUPT_ALIGNMENT",
+  "basePath": "cases/ordered-interrupt.json",
+  "mutation": {"operation": "add", "path": "/records/0/payload/decisions", "value": ["approve"]}
+}

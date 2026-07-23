@@ -21,8 +21,10 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_PATH = PACKAGE_ROOT / "evidence" / "DW-M1-AGENT-001" / "artifacts.json"
 EXPECTED_EXPORTS = {
     "DEEP_WORK_SYSTEM_PROMPT",
+    "HARD_VERIFICATION_ITERATION_CAP",
     "PROTECTED_ACTION",
     "RUNTIME_MODE",
+    "VERIFIER_REF",
     "AgentConfig",
     "AgentInput",
     "AgentOutput",
@@ -30,12 +32,35 @@ EXPECTED_EXPORTS = {
     "ApprovalDecision",
     "ApprovalRequest",
     "ApprovalResponse",
+    "ArtifactClaim",
+    "ArtifactKind",
+    "ClaimBasis",
+    "CriterionResult",
+    "EvidenceReference",
+    "JourneyArtifact",
+    "JourneyArtifactDraft",
+    "JourneyCapabilities",
+    "JourneyKind",
+    "JourneyOutput",
+    "JourneyProfile",
+    "JourneyState",
+    "JourneySubagent",
+    "RubricCriterion",
+    "RubricSpec",
     "RuntimeCapabilities",
+    "VerificationRecord",
+    "VerificationVerdict",
     "create_graph",
+    "create_journey_graph",
     "initial_state",
+    "journey_capabilities",
+    "render_rubric",
+    "research_profile",
     "runtime_capabilities",
     "validate_approval_response",
+    "validate_artifact",
     "validate_plan_edit",
+    "writing_profile",
 }
 EXPECTED_REQUIREMENTS = {
     "deepagents==0.6.12",
@@ -162,6 +187,14 @@ def _verify_clean_consumer(wheel: Path) -> None:
             "assert capabilities.managed_external_providers == 'unavailable'; "
             "assert capabilities.model_injection_required is True; "
             "assert capabilities.hosted_deployment is False; "
+            "journeys = package.journey_capabilities(); "
+            "assert journeys.journeys == ('research', 'writing'); "
+            "assert journeys.coding_journey == 'unavailable'; "
+            "assert journeys.async_subagents == 'unavailable'; "
+            "assert journeys.hosted_artifact_storage is False; "
+            "assert journeys.artifact_transfer == 'unavailable'; "
+            "assert journeys.verification_ground_truth is False; "
+            "assert journeys.provider_credentials_managed is False; "
             "print(json.dumps({'exports': sorted(package.__all__), "
             "'runtime': capabilities.runtime_mode, 'network': 'not-used'}))"
         )

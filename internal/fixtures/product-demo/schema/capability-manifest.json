@@ -1,0 +1,42 @@
+{
+  "schemaDialect": "json-schema-2020-12",
+  "$id": "urn:deep-work:fixture:product-demo:capability-manifest:1",
+  "title": "Private product-demo capability evidence",
+  "description": "Fixture evidence cannot establish a live runtime capability.",
+  "type": "object",
+  "required": ["formatVersion", "manifestId", "synthetic", "runtimeKind", "capabilities"],
+  "properties": {
+    "formatVersion": {"const": "1.0.0"},
+    "manifestId": {"type": "string", "pattern": "^fx_manifest_[a-z0-9_]+$"},
+    "synthetic": {"const": true},
+    "runtimeKind": {"enum": ["fixture", "classic", "mda", "fleet", "local"]},
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "state",
+          "observedAt",
+          "adapterVersion",
+          "contractVersion",
+          "evidenceClass",
+          "reason"
+        ],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "state": {"enum": ["available", "unavailable", "gated", "permission-denied", "unknown"]},
+          "observedAt": {"const": "2026-07-23T00:00:00.000Z"},
+          "adapterVersion": {"type": "string"},
+          "contractVersion": {"type": "string"},
+          "evidenceClass": {"const": "fixture"},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

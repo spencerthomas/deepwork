@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
 import pytest
 
 from deepwork_api.adapters.fixture.tasks import InMemoryTaskRepository
-from deepwork_api.application.local_runner import LocalAgentServerRunner
+from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalRun
 from deepwork_api.application.tasks import TaskService
-from deepwork_api.domain import DecisionValue, ProposedPlan, TaskEventName, TaskStatus
+from deepwork_api.domain import (
+    DecisionValue,
+    ProposedPlan,
+    TaskEventName,
+    TaskSnapshot,
+    TaskStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -64,12 +71,12 @@ class _Source:
             self.resume_comment = comment
         return _Run(run_id="run_2")
 
-    async def stream(self, run: _Run):
+    async def stream(self, run: LocalRun) -> AsyncIterator[object]:
         for event in self.events:
             yield event
 
 
-async def _paused_task(repository: InMemoryTaskRepository):
+async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
     task = await repository.create_task(title="Task", objective="Objective")
     await repository.set_plan(
         task.task_id,

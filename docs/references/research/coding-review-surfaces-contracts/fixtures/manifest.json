@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "files": [
+    {"path": "browser-modes.json", "sha256": "06c29f0207d94c68580a0a57a5082626ab368b04f73062fb8c71e4eb6b39e4f8"},
+    {"path": "content-safety.json", "sha256": "e956bb6d24aeb173ccfef80a6ad8625494b8d778e3275c8bfd58bd08152668ee"},
+    {"path": "exact-diff.json", "sha256": "da866b8209a9590ad31b8f3411aabc32fffe3287bf7c13abe121e56809faff33"},
+    {"path": "exact-review.patch", "sha256": "130305b3d4920a53b73b6ca5ac4461f9b7769218b5483d85dac5c0070d49bc2b"},
+    {"path": "file-tree.json", "sha256": "31a76b4e58e02a2cfac3ab4e3c80ea28fd71637f52dd53faad0d3d52ec7f0bc4"},
+    {"path": "mutation-races.json", "sha256": "c1f6640312e5d5283ff79f351d6f12e7bd6441c6425853755c5e8040b9201069"},
+    {"path": "path-negatives.json", "sha256": "e3f25d76922358b725542ce419e12988dfd55c0a0efdfa68d4aaf4aadc0dd4eb"},
+    {"path": "terminal-negatives.json", "sha256": "df27a6ef843434f6bd05ac50fe51e8bc65ade1df54cb2f64c413abd78bd16b55"},
+    {"path": "terminal-transcript.json", "sha256": "6ed0e21250bfe82971e2a416f82465f4fdd986b16d297bbe62a2eddff9f70673"}
+  ]
+}

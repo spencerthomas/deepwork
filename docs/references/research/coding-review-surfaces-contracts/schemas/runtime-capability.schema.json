@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeRuntimeCapabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["files", "diff", "terminal", "command_input", "browser", "observed_at", "evidence_tier"],
+  "properties": {
+    "files": {"enum": ["sandbox", "github", "source", "none"]},
+    "diff": {"enum": ["git", "github", "none"]},
+    "terminal": {"enum": ["interactive", "transcript", "none"]},
+    "command_input": {"enum": ["pty", "discrete_reviewed", "none"]},
+    "browser": {"enum": ["evidence", "service_url", "none"]},
+    "observed_at": {"type": "string"},
+    "evidence_tier": {"enum": ["accepted-live", "installed-public", "official-documented", "pinned-reference", "deterministic-fake", "unknown"]}
+  }
+}

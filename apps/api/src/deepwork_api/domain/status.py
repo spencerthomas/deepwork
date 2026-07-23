@@ -19,6 +19,7 @@ class ProcessState(StrEnum):
 class CapabilityState(StrEnum):
     """Safe state for a product capability."""
 
+    AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
 
 

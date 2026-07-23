@@ -1,16 +1,23 @@
 Recorded: 2026-07-23 AEST
 make -C packages/agent doctor: PASS
 make -C packages/agent bootstrap: PASS (frozen package-local lock)
-make -C packages/agent format-check: PASS (15 files formatted)
+make -C packages/agent lock-check: PASS
+make -C packages/agent format-check: PASS
 make -C packages/agent lint: PASS (Ruff, all checks passed)
 make -C packages/agent typecheck: PASS (ty, all checks passed)
-make -C packages/agent test: PASS (11 tests, outbound sockets disabled)
+make -C packages/agent test: PASS (28 tests, outbound sockets disabled)
 make -C packages/agent build: PASS (sdist and wheel)
-make -C packages/agent package-check: PASS (two reproducible builds, immutable
-  manifest comparison, clean isolated wheel consumer, no index)
-make -C packages/agent lock-check: PASS (13 packages resolved from package-local lock/cache)
+make -C packages/agent package-check: PASS
 git diff --check: PASS
+
+The unit suite constructs the public graph with an official-compatible
+deterministic fake chat model and no credentials. It proves ordered plan
+production, authoritative LangGraph interrupt rotation, approval, rejection,
+bounded respond/replan, checkpoint plan editing with as_node="plan", caller-tool
+identity binding alongside Deep Agents built-ins, bounded plan parsing,
+final-answer trust, truthful managed-provider capability reporting, and
+restoration of completed state from the same in-memory local session.
 
 The package-local forbidden-import tests scan every production Python import and
 prove an intentional FastAPI import is reported with its exact file and root.
-The final frozen make check completed without changing any tracked file.
+The frozen check completed without changing any tracked file.

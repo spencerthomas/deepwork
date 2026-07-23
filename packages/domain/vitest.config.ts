@@ -5,9 +5,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "@deepwork/domain": fileURLToPath(
-        new URL("./src/index.ts", import.meta.url),
-      ),
+      "@deepwork/domain": fileURLToPath(new URL("./src/index.ts", import.meta.url)),
     },
   },
 });

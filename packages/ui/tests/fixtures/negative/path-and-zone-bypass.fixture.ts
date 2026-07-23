@@ -1,0 +1,11 @@
+import "@deepwork/domain/src/index.js";
+import "@deepwork/server";
+import "@deepwork/routes";
+import "@deepwork/fixtures";
+import "@deepwork/generated";
+import "@deepwork/database";
+import "server-only";
+import "@tauri-apps/api";
+import "pg";
+import "../../../../sdk/src/index.js";
+import "../../../../../internal/fixtures/index.js";

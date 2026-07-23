@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH
 title: External dispatch - LangChain contract-spike research
-status: ready-for-external-dispatch
+status: completed-research-blocked-live-evidence
 base_commit: 85187827e018d4aeee4a4e4bd685de49cb2f5a6a
 branch: external/research/langchain-contract-spikes
 owner: external-langchain-contract-researcher
@@ -176,3 +176,99 @@ source ledger/product plans, adds normalized application code, integrates the
 branch, or changes a capability from unavailable. No push, merge, deploy,
 publication, production mutation, or private-beta enablement is authorized.
 
+## Progress
+
+- [x] 2026-07-23: Verified the prepared branch, exact seed, implementation-base
+  ancestry, clean status, and base diff containing only this ExecPlan.
+- [x] 2026-07-23: Verified all four local evidence repositories were clean at
+  their exact pinned revisions.
+- [x] 2026-07-23: Independently reviewed source/config/deploy,
+  compose/threads/HITL, and stream/cancel/checkpoint contract groups.
+- [x] 2026-07-23: Completed an independent retained-artifact audit. The audit
+  conditionally identified evidence-class, assistant-search fixture, and
+  environment-bound runner defects; the integrated corrections also preserve
+  ordered HITL and protocol-v3 classification. Roles, verdict, corrections, and
+  authority boundaries are retained in
+  `docs/references/research/langchain-contract-spikes/review.md`.
+- [x] 2026-07-23: Built the dependency-free probe scaffold, matrix validator,
+  evidence inventory, synthetic fixtures, hash manifest, scrubber, and
+  fail-closed live profile gate under the allowed paths.
+- [x] 2026-07-23: Recorded one complete row for every named spike and retained
+  package/source/server/account/region/auth/date state without promoting
+  package-source evidence to an installed contract.
+- [x] 2026-07-23: Ran offline synthetic tests, matrix validation, evidence
+  scrubbing, lock checks, documentation validation, and diff checks.
+- [x] 2026-07-23: Ran the documented live command without a complete sandbox
+  profile and confirmed it failed closed without printing credentials.
+- [ ] Formal runtime-contract, security, and product reviewers accept or reject
+  each row. The completed contract-group and retained-artifact reviews were
+  independent evidence reviews, not formal row acceptance; the author has not
+  self-accepted any spike.
+- [ ] A human provides an explicitly authorized non-production classic sandbox
+  and approved public package-index access for installed/live acceptance.
+- [ ] Produce a genuinely isolated lock including the exact public distributions,
+  test runner, and transitive dependencies. Current validation delegates to the
+  workspace's exact `pytest 9.0.2` and is environment-bound.
+
+## Surprises and discoveries
+
+- Public package-index egress was not authorized in this environment. The
+  candidate source versions are pinned, but the retained inventory correctly
+  records no installed LangChain/LangGraph/Deep Agents distributions.
+- Current typed event streaming is protocol v3. Earlier audit prose calling the
+  `/threads/{thread_id}/stream/events` surface protocol v2 is stale; legacy
+  `Last-Event-ID` streams remain separate.
+- The pinned Python HITL contract has no action IDs in `action_requests`,
+  `review_configs`, or `decisions`. Fidelity is positional, including repeated
+  tool names. An initial synthetic ID-join model was rejected and replaced.
+- The current Python event-stream candidate aliases `subagents` to `subgraphs`,
+  while official Deep Agents prose describes a distinct product-level subagent
+  projection.
+- Thread search is limit/offset based and returns no cursor or stable-snapshot
+  promise.
+- Run creation exposes no caller run ID or mutation idempotency key.
+  `if_not_exists` concerns a missing thread, not run deduplication.
+- `/ok` may be shallow when metadata checks are disabled, so it cannot by itself
+  establish source readiness or enabled capabilities.
+
+## Decision log
+
+- **2026-07-23 — Keep every gate blocked.** Without installed public
+  distributions and sanitized live classic-sandbox evidence, no named spike is
+  accepted and no product capability changes state.
+- **2026-07-23 — Preserve evidence classes.** Pinned public package source may
+  explain candidate signatures but is recorded as unsupported/unknown at the
+  installed-contract level.
+- **2026-07-23 — Separate streaming protocols.** Protocol-v3 body cursor `since`
+  and durable `event_id` dedupe are not combined with legacy
+  `Last-Event-ID` thread/run joins.
+- **2026-07-23 — Preserve positional HITL.** Synthetic probes validate exact
+  upstream snake_case keys and ordered arrays; they do not add provider IDs.
+- **2026-07-23 — Keep deployment operator-owned.** The pinned control-plane
+  evidence is insufficient for a safe app-owned mutation adapter, retry policy,
+  or success state.
+- **2026-07-23 — Use an offline dependency-free probe runner.** Because package
+  egress was blocked, the probe lock contains only the probe package and requires
+  the exact workspace `pytest 9.0.2`; it does not masquerade as installed
+  LangChain evidence.
+- **2026-07-23 — Separate evidence review from formal adjudication.** Independent
+  contract-group and retained-artifact review corrected the packet and supports
+  research handoff. It does not satisfy the named runtime-contract, security, or
+  product acceptance authority and cannot change a row from
+  `blocked-live-evidence`.
+
+## Outcomes and retrospective
+
+The packet produced the required matrix, report, fixture set, version inventory,
+scrub report, command ledger, and an executable environment-bound offline probe
+scaffold within the allowed paths. The research resolves several contract-shape
+errors and supplies deterministic fallbacks, but it deliberately does not satisfy
+the installed-distribution, isolated-lock, or live-dependent acceptance gates.
+
+The most important integration result is negative and actionable: the
+coordinator must keep source registration, generic config mutation, deployment,
+dispatch, typed event-stream UX, steering queues, HITL submission, cancellation,
+and checkpoint restore/fork unavailable. Future work must first install exact
+public distributions from an approved index and run sanitized tests against an
+explicit non-production classic sandbox with recorded account tier, region,
+authentication context, and server revision.

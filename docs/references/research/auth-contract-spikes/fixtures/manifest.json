@@ -1,0 +1,623 @@
+{
+  "fixtures": [
+    {
+      "path": "agent-server-capabilities--caller-supplied-forwarding-headers.json",
+      "sha256": "7280ba32ac70c74f54e75446139eee65ec5ad75898bb0e935425af28d05197d9"
+    },
+    {
+      "path": "agent-server-capabilities--conflicting-workspace-context.json",
+      "sha256": "1cee5aae99f9bf0a599ed9b6516704b1f3b9ec71c7e8747dba5640513db8abfc"
+    },
+    {
+      "path": "agent-server-capabilities--inaccessible-workspace.json",
+      "sha256": "f515d890669d8737f3d323200d465a9857afe5f668fe4b89663315e7586f26ce"
+    },
+    {
+      "path": "agent-server-capabilities--missing-authorization.json",
+      "sha256": "ccc5306c6f43e7668480438c6829569d969e73c7cbb18f54cee29da511fe1f3d"
+    },
+    {
+      "path": "agent-server-capabilities--missing-required-workspace-context.json",
+      "sha256": "b8190ba638b783307a39de101cb541dfa830945dda1c0746e3cd958f80a544a3"
+    },
+    {
+      "path": "agent-server-capabilities--permission-denied.json",
+      "sha256": "66c7e9d243323c3fba6e8662902c518fae6857961b14eb730b0c6dfed76d38f8"
+    },
+    {
+      "path": "agent-server-capabilities--revoked-key.json",
+      "sha256": "aacb998b9aad162eb9993b6fbb8a9046da7eda26983c8c337341b375c4b15e6f"
+    },
+    {
+      "path": "agent-server-capabilities--unsupported-key-plane-combination.json",
+      "sha256": "f35dc379e9fa8b5b781e00d717f1097cd0e4b9e774b81329b14061766276f31f"
+    },
+    {
+      "path": "agent-server-capabilities--valid-documented-workspace-context.json",
+      "sha256": "d5b5508acfc8bb6509bf44da36cfe8f8e883c6d447dd22055569d4fa11fe7e5f"
+    },
+    {
+      "path": "agent-server-capabilities--valid-no-workspace-context.json",
+      "sha256": "7a5fe71799b25578d720c467234579382890cf17ca7026f15b1601aade4591bc"
+    },
+    {
+      "path": "agent-server-capabilities--wrong-workspace-context.json",
+      "sha256": "442b77085be09e32408655552d6846f68e64c1bca90512d48fcda32d14be50bd"
+    },
+    {
+      "path": "agent-server-health--caller-supplied-forwarding-headers.json",
+      "sha256": "7f03f1c00c49aea2e44e60db6c48c58dd0ce4806acb86c89c051e6c4a5dca52e"
+    },
+    {
+      "path": "agent-server-health--conflicting-workspace-context.json",
+      "sha256": "1b7c8eca6a224876b88ba32b4649a036569e013acdef57056cdb1dcbcb63932b"
+    },
+    {
+      "path": "agent-server-health--inaccessible-workspace.json",
+      "sha256": "8c1d88043600d7afbb2cb87bd488a98e25ae53dad3f439fc5e102cd6e4245cbc"
+    },
+    {
+      "path": "agent-server-health--missing-authorization.json",
+      "sha256": "90a93e949d2940e155cc19383e0c9e73c73eb392543cea5512220cc7c8f219f7"
+    },
+    {
+      "path": "agent-server-health--missing-required-workspace-context.json",
+      "sha256": "845085b30226e3e4ac282a41876c348b9c2e3161fb3653188f797a806eda42ff"
+    },
+    {
+      "path": "agent-server-health--permission-denied.json",
+      "sha256": "828ca617561e69727256d98e6af8701cd7030eae417d04756a8badb20d32bf42"
+    },
+    {
+      "path": "agent-server-health--revoked-key.json",
+      "sha256": "e4d099ee552918ba70cd9a291e4e5f20f57bd45f53c67faa3a9f81eeddd087cf"
+    },
+    {
+      "path": "agent-server-health--unsupported-key-plane-combination.json",
+      "sha256": "29fe9547f6a1f57b2c9699db425e23736eda718b4472e9e716d66ff36c179698"
+    },
+    {
+      "path": "agent-server-health--valid-documented-workspace-context.json",
+      "sha256": "9c939469817079d5bc1e2d6f214ff535e44a48927ab88a658e33c1a584a938d9"
+    },
+    {
+      "path": "agent-server-health--valid-no-workspace-context.json",
+      "sha256": "3baccbab52fea9659519b04170bda0e86c425671b29f5e54fefe1674e5a4d1dd"
+    },
+    {
+      "path": "agent-server-health--wrong-workspace-context.json",
+      "sha256": "1a484848a3661ca7f13f440c475e0c17385ebb9ebc4da605a0005efc11e2ebc6"
+    },
+    {
+      "path": "current-organization--caller-supplied-forwarding-headers.json",
+      "sha256": "925455311e5cd25aa7de2cbaeeb3131a53b6506232efc4f000c1053250fc9f51"
+    },
+    {
+      "path": "current-organization--conflicting-workspace-context.json",
+      "sha256": "c06559dcc1d6dcd9a42e4f0ae87a565bbe80a152a2249ffbd12d39c5c258f7b5"
+    },
+    {
+      "path": "current-organization--inaccessible-workspace.json",
+      "sha256": "1633ef718dfd0aad401f871f99e9b3fe50d9390645f978ca3f112828e9df6d6d"
+    },
+    {
+      "path": "current-organization--missing-authorization.json",
+      "sha256": "f27f316e83c58fded1965c7af7568adbe59c118a9190dd259a6ee0616ced45b1"
+    },
+    {
+      "path": "current-organization--missing-required-workspace-context.json",
+      "sha256": "5b4ded077899ec8f70c2747b1cce073daeaa92b6d0a86e13ccd6757b1bf8e426"
+    },
+    {
+      "path": "current-organization--permission-denied.json",
+      "sha256": "c137229f2f59f53982a4cf262ac277825071e43b00f9c02db7d6528822bea009"
+    },
+    {
+      "path": "current-organization--revoked-key.json",
+      "sha256": "7a5dafa422b47f24e0de34136f6bbbca32a5a64ead4eb67fcca2562d7e2d2fb5"
+    },
+    {
+      "path": "current-organization--unsupported-key-plane-combination.json",
+      "sha256": "e85810ac7eee0f8bb4944061114ce6790f84993a5bfecd27e30a6937c51598d2"
+    },
+    {
+      "path": "current-organization--valid-documented-workspace-context.json",
+      "sha256": "43c120351fb14ac5640610ceff27b53bd77cc3097659f485ec0c0cb303a51745"
+    },
+    {
+      "path": "current-organization--valid-no-workspace-context.json",
+      "sha256": "96f0ac4cf5b02b3a5ae4464bc2d7c9ab3678d8fc3aadea1a9c5aadbd5ff9f526"
+    },
+    {
+      "path": "current-organization--wrong-workspace-context.json",
+      "sha256": "ef52c2adba15b1f1237a75cc0c73ba0bac287a0cd96687a5cb3b386310dad84c"
+    },
+    {
+      "path": "list-classic-deployments--caller-supplied-forwarding-headers.json",
+      "sha256": "e75159f795422526ea0a3ff378292ba54a70366f8bc6a7c52ce6333c58216658"
+    },
+    {
+      "path": "list-classic-deployments--conflicting-workspace-context.json",
+      "sha256": "f633a6e87ca0d824d59f80f3957b726984c88b8f96f3437366f068077495a62c"
+    },
+    {
+      "path": "list-classic-deployments--inaccessible-workspace.json",
+      "sha256": "04ac8b1e92ef70b07135f176b2487da78dd01027e421c169d406057484a2ea80"
+    },
+    {
+      "path": "list-classic-deployments--missing-authorization.json",
+      "sha256": "b1429c7a8e558e4c18296890be8b7af7ba523a4f0cda0a8caaa18b3610dd3e68"
+    },
+    {
+      "path": "list-classic-deployments--missing-required-workspace-context.json",
+      "sha256": "4be9903ec3269aba840df4e0d9aae0b985684bf95c47998400d6229aa3e70fed"
+    },
+    {
+      "path": "list-classic-deployments--permission-denied.json",
+      "sha256": "3a9f7d879d5d38f316e1df0d3da628def720dd70c53f050a676eea17f9a2f65a"
+    },
+    {
+      "path": "list-classic-deployments--revoked-key.json",
+      "sha256": "5d001eaf6ecbf43934b0f5470005923d02340e93f2137e2efd3419a6d78e38df"
+    },
+    {
+      "path": "list-classic-deployments--unsupported-key-plane-combination.json",
+      "sha256": "271c3d0059b29cb66125f9e668044205ffd1850a192ccd3e1dd8a50654d11b4a"
+    },
+    {
+      "path": "list-classic-deployments--valid-documented-workspace-context.json",
+      "sha256": "6889a350f383a69ae47222c3e5211d206804acc85b8ed868009432796f3b1880"
+    },
+    {
+      "path": "list-classic-deployments--valid-no-workspace-context.json",
+      "sha256": "28d93ce3eec4554b099f1f4a989833171684270eea83f75f74333c2958a5f312"
+    },
+    {
+      "path": "list-classic-deployments--wrong-workspace-context.json",
+      "sha256": "550503d1d7dbf3906038ba223acee0042b531a2086ac82395ba98ba82620ec5f"
+    },
+    {
+      "path": "list-workspaces--caller-supplied-forwarding-headers.json",
+      "sha256": "57b5a066d33dd644a2be60d6ced919ca2b671cc9cf2c51e82299a16ed44e9788"
+    },
+    {
+      "path": "list-workspaces--conflicting-workspace-context.json",
+      "sha256": "a8f1e6affd652218e90043d0724b26f52312b713a4fb1597e18f2890cc451b41"
+    },
+    {
+      "path": "list-workspaces--inaccessible-workspace.json",
+      "sha256": "05a2b76142261983ca81a8e0466b831cb3fa241ae37a997d4a5a9907ee02f38f"
+    },
+    {
+      "path": "list-workspaces--missing-authorization.json",
+      "sha256": "9cf255baa422444b9d7242fa12c2039075c572ee5ae4ee2879b1cf0a278d8ce7"
+    },
+    {
+      "path": "list-workspaces--missing-required-workspace-context.json",
+      "sha256": "6486201a210f8227846ac4b4e07123c8b35ecf2a9674ec3fa06575857f7ce163"
+    },
+    {
+      "path": "list-workspaces--permission-denied.json",
+      "sha256": "06ff6be70de651a53c0ba3162f33cf070055eb1e9cd7de7841a3b1c70d6a2806"
+    },
+    {
+      "path": "list-workspaces--revoked-key.json",
+      "sha256": "6b60e1c99430dcb31fab99b12b468a193cb6f4fb51a9cadeb5b0d888779c98f2"
+    },
+    {
+      "path": "list-workspaces--unsupported-key-plane-combination.json",
+      "sha256": "077747ea4709357f1aebb53f50b5d7e4e88a28cea78246bf5908922d41fe56e5"
+    },
+    {
+      "path": "list-workspaces--valid-documented-workspace-context.json",
+      "sha256": "289e4ee625ea376cfeee59601ae813a8eba19ea681e82890d3f0e428132fee2c"
+    },
+    {
+      "path": "list-workspaces--valid-no-workspace-context.json",
+      "sha256": "b1200498b003db5319d116a6ad172c420a1962c7295468ad4c7a0d6abb5419aa"
+    },
+    {
+      "path": "list-workspaces--wrong-workspace-context.json",
+      "sha256": "35014582fbf4e9c60192c2ae9fbc65132c57aff5711e17c51fc3a7f44f1e6ce0"
+    },
+    {
+      "path": "read-assistant-subgraphs--caller-supplied-forwarding-headers.json",
+      "sha256": "8cfcbba429c3e49447aa7769699523c6525f5e8476554140d3d1451777ce59cb"
+    },
+    {
+      "path": "read-assistant-subgraphs--conflicting-workspace-context.json",
+      "sha256": "253ca99b234ec43092c6ddd900fc3847f2098938736017838bb3d3d57baab8c5"
+    },
+    {
+      "path": "read-assistant-subgraphs--inaccessible-workspace.json",
+      "sha256": "f93ad9ca3930573940b3a8c66ce5a54a3a16c51f9e5b29ef6aa7a016b8833970"
+    },
+    {
+      "path": "read-assistant-subgraphs--missing-authorization.json",
+      "sha256": "3a79b146f9f05f461a51444b021035c84aadd724fa4b0479383dbc36be0d896b"
+    },
+    {
+      "path": "read-assistant-subgraphs--missing-required-workspace-context.json",
+      "sha256": "24dc98e5aa9e27e4dc1ff99b05b60d835435a3d46861b8f86d965b0db3f65e51"
+    },
+    {
+      "path": "read-assistant-subgraphs--permission-denied.json",
+      "sha256": "b5c8cd7d1976fbda35a1762468c78278aaeb23fb0b390117540bb20f4b4cef58"
+    },
+    {
+      "path": "read-assistant-subgraphs--revoked-key.json",
+      "sha256": "45260b187c2d52328bbc3b4284d85925d699d26d840819f880f36559e7d50147"
+    },
+    {
+      "path": "read-assistant-subgraphs--unsupported-key-plane-combination.json",
+      "sha256": "b681c57352b556a7319bf6a712db49080489f9b11fbf688806cbf0ae167c87cb"
+    },
+    {
+      "path": "read-assistant-subgraphs--valid-documented-workspace-context.json",
+      "sha256": "d30b473a887ed61db0634b7ce93f25d559526b945a44dd80719116dca5d98875"
+    },
+    {
+      "path": "read-assistant-subgraphs--valid-no-workspace-context.json",
+      "sha256": "943c1193eecf7074b455a096a077bd477d9e1fbc7126d81eea3c24c5bd014844"
+    },
+    {
+      "path": "read-assistant-subgraphs--wrong-workspace-context.json",
+      "sha256": "1b012e0769c61b5ab4c2a2614509b20ed9e904f351531b1dad8502ca68a6f6ba"
+    },
+    {
+      "path": "read-classic-deployment--caller-supplied-forwarding-headers.json",
+      "sha256": "507756fada5904f95dedf62b37fcf8b44f41e4889fcd4611161c9d34b7c992b7"
+    },
+    {
+      "path": "read-classic-deployment--conflicting-workspace-context.json",
+      "sha256": "ae1c48fe61ddeb5c75d4245f561b9fdda46c60d6029ab28111dddf2d1d01b730"
+    },
+    {
+      "path": "read-classic-deployment--inaccessible-workspace.json",
+      "sha256": "8024d9e45f3429a7fab8a744c8e78db39641a8913b9bfbf99fed93838f971758"
+    },
+    {
+      "path": "read-classic-deployment--missing-authorization.json",
+      "sha256": "89961a82cea2b7c67b457078452162dcd97ff816e70f26ad7a20c1ce5b945456"
+    },
+    {
+      "path": "read-classic-deployment--missing-required-workspace-context.json",
+      "sha256": "90a9d3f9749181eb3a7f8ab97ad3e3aed64c2e8377fc37799a0539395ffb9138"
+    },
+    {
+      "path": "read-classic-deployment--permission-denied.json",
+      "sha256": "738dc30f13c37ea45bf6df2cffe9c8dccd8a61244fa4d23b7ec5084d3b4e5752"
+    },
+    {
+      "path": "read-classic-deployment--revoked-key.json",
+      "sha256": "60f47044890ac6523066b15e5756f61d72dcb240cf8d0e2f04532ec9b0ab5093"
+    },
+    {
+      "path": "read-classic-deployment--unsupported-key-plane-combination.json",
+      "sha256": "5056680fb8a53b1baa51d8d6d3215b7109ee5d280baf22f39aa80505a5398d41"
+    },
+    {
+      "path": "read-classic-deployment--valid-documented-workspace-context.json",
+      "sha256": "37d329a312990fde0f179c6fe5da520d429ed56d84970e6c312360f3085fe5e0"
+    },
+    {
+      "path": "read-classic-deployment--valid-no-workspace-context.json",
+      "sha256": "e11b4acd4903196b537741823251ddff4d3f49bf70e50286eaea262fa0ce2a88"
+    },
+    {
+      "path": "read-classic-deployment--wrong-workspace-context.json",
+      "sha256": "98cc3220f2b1d973eda58b45390f83e1b397074da419c582ab2da5b10bb91556"
+    },
+    {
+      "path": "read-thread--caller-supplied-forwarding-headers.json",
+      "sha256": "1fc970781cebd77a3d80e627228c31240fd9e453c254ee4a6d819ef007dfdcc1"
+    },
+    {
+      "path": "read-thread--conflicting-workspace-context.json",
+      "sha256": "0ea610d70fb575e1a67a0319229d65417cac2cf54f96c3a2bdee7755cfac85f6"
+    },
+    {
+      "path": "read-thread--inaccessible-workspace.json",
+      "sha256": "386a8c6e8b1a8f927508507076fa1d3418052b0fd28a8a091497d35ce6549513"
+    },
+    {
+      "path": "read-thread--missing-authorization.json",
+      "sha256": "e37f17976a0d081d292fc6d5e6300d554eb66f9146ce4c054ec8f0ff2116ac86"
+    },
+    {
+      "path": "read-thread--missing-required-workspace-context.json",
+      "sha256": "928a8b9aef2f31ade59efcfe9b003b9729eec092c8706143dbed428fddd66cf8"
+    },
+    {
+      "path": "read-thread--permission-denied.json",
+      "sha256": "ce2b503d8169d41d0b18fcabf15fd7ca935e6778f0ff2a6b4fa1140f76cde1dd"
+    },
+    {
+      "path": "read-thread--revoked-key.json",
+      "sha256": "e6010169450beb4e17699da4649f4083cfbafb4f4fa9a81f5922c3982cf2f55b"
+    },
+    {
+      "path": "read-thread--unsupported-key-plane-combination.json",
+      "sha256": "a09ff64fc93df4f6c6ce48c2f2bd2ee307be1256fb0d64addb2b36465912c900"
+    },
+    {
+      "path": "read-thread--valid-documented-workspace-context.json",
+      "sha256": "8a97573c90716cef0b26c05dc3301191e7e8703a244c7180a4bfae8f4954c14b"
+    },
+    {
+      "path": "read-thread--valid-no-workspace-context.json",
+      "sha256": "9ac438cfef96ab6deacde940c2d7bb3022f906c12dbaee5706f14741681e6d12"
+    },
+    {
+      "path": "read-thread--wrong-workspace-context.json",
+      "sha256": "0d166d8f0c7e3dd40adc807b9772b2097d695dfc69dec4b6678b26179e75b544"
+    },
+    {
+      "path": "read-thread-run--caller-supplied-forwarding-headers.json",
+      "sha256": "dda69db937f313bc10e12ea1277734dc3b78fc946c0d6b62f22831ba740186c1"
+    },
+    {
+      "path": "read-thread-run--conflicting-workspace-context.json",
+      "sha256": "5adfa891e21aa9564ee772bcad5267430e6b14bde0b27b827adb5a7004652eee"
+    },
+    {
+      "path": "read-thread-run--inaccessible-workspace.json",
+      "sha256": "891474100f7675cbf8b650b79be3e9c365552e46067b4cdb751c095286618fa8"
+    },
+    {
+      "path": "read-thread-run--missing-authorization.json",
+      "sha256": "9c542541ea7e99c9e6cfef8f2eb0a4b08109d61eae21997504df6f89f37b696b"
+    },
+    {
+      "path": "read-thread-run--missing-required-workspace-context.json",
+      "sha256": "beb03650fffcf7da79c0a3e0e1f46e9a88b624afa74b888df7f33418fd1e8ccb"
+    },
+    {
+      "path": "read-thread-run--permission-denied.json",
+      "sha256": "407789f35e92957695ac97dd4ffb96e7568e03c4483630f882f6c9664a1201ab"
+    },
+    {
+      "path": "read-thread-run--revoked-key.json",
+      "sha256": "9899a4c5d4d1550fa8687482e0e8c770cc24850607b1e5c50694809ebaddfa69"
+    },
+    {
+      "path": "read-thread-run--unsupported-key-plane-combination.json",
+      "sha256": "b6445fad285ff3304c931a0abf61e1c9958b7fef943f4c5e8e046e6f779ced52"
+    },
+    {
+      "path": "read-thread-run--valid-documented-workspace-context.json",
+      "sha256": "90a2e940f66339c33528424b909a3c987f710bea060cb10176e27f18fb9bf623"
+    },
+    {
+      "path": "read-thread-run--valid-no-workspace-context.json",
+      "sha256": "c7de36337cc7d1333468a1f98cd03e6dbe57d268e04c567e068ac6be8b23f68b"
+    },
+    {
+      "path": "read-thread-run--wrong-workspace-context.json",
+      "sha256": "d633145aa9ce4918e4da77a74f8fbe71d52cc42a7300a2e6252b3d8b40c6bfd7"
+    },
+    {
+      "path": "read-thread-state--caller-supplied-forwarding-headers.json",
+      "sha256": "621a90981f2adf0d065bc7d13ac188fe1b984c5282abd2867df2a89d70f67bf3"
+    },
+    {
+      "path": "read-thread-state--conflicting-workspace-context.json",
+      "sha256": "aba56d49bd9d12775b64168d623217efdf1ec91ff112281e424c32467d989270"
+    },
+    {
+      "path": "read-thread-state--inaccessible-workspace.json",
+      "sha256": "5b26702d3334cc8ca8e55e7709514d0d82350105edcc6ce1a205c9061a28fec3"
+    },
+    {
+      "path": "read-thread-state--missing-authorization.json",
+      "sha256": "1403456d0e3f2fff3d37f16bf7d21abb758675eaccc13259badc51528e083adc"
+    },
+    {
+      "path": "read-thread-state--missing-required-workspace-context.json",
+      "sha256": "0e11294119d40de89cfe013809778ff289a833a2b07fff671278c2d176d29071"
+    },
+    {
+      "path": "read-thread-state--permission-denied.json",
+      "sha256": "e584ba95aa5e0ba4f1aaa92f79dabbe9c9a00fae61e682e4dfc2417e545435f1"
+    },
+    {
+      "path": "read-thread-state--revoked-key.json",
+      "sha256": "5a6b92681b87a91b097eb1ab053a70de1d430785af735c15d017bc882b3ba32c"
+    },
+    {
+      "path": "read-thread-state--unsupported-key-plane-combination.json",
+      "sha256": "4fdb36b4d1633c0e4f4d7a526a75f7bc049ba7dd5b242a76f227c3d34db5116f"
+    },
+    {
+      "path": "read-thread-state--valid-documented-workspace-context.json",
+      "sha256": "8605a1685e29bc8ccd3f3a03fe2ddd97fde005514102f3861ec2621ad665443b"
+    },
+    {
+      "path": "read-thread-state--valid-no-workspace-context.json",
+      "sha256": "d65f9cff40f3a66eb1c1cb0adba430d52620361e9183d92dbea07a6d59179fd1"
+    },
+    {
+      "path": "read-thread-state--wrong-workspace-context.json",
+      "sha256": "7ccfd37d5e55487104d137fc4d5f1e89ed7b2dbe081283ae305f91c7088664bf"
+    },
+    {
+      "path": "search-assistants--caller-supplied-forwarding-headers.json",
+      "sha256": "7c08643631fca19406a7eb6eb6f4701a9ccdcd32f938ce528e98ee1fd7ac5381"
+    },
+    {
+      "path": "search-assistants--conflicting-workspace-context.json",
+      "sha256": "a0e165b8e42e97e86fb99af476db1fabb4da485029d2aec55a89c6748b792a12"
+    },
+    {
+      "path": "search-assistants--inaccessible-workspace.json",
+      "sha256": "93ab4cdd1375ef9f8d8bed2beddae5e3b5c538169134a930ca048fd96ad7ec45"
+    },
+    {
+      "path": "search-assistants--missing-authorization.json",
+      "sha256": "d148942ade6bc1d8485aed2841517f826f3e0b882ac5178d9b1881c2c0eeaab5"
+    },
+    {
+      "path": "search-assistants--missing-required-workspace-context.json",
+      "sha256": "2eed183907b9a71e7e67b8791c238fa190ff6936e66b1cf1649166ffd0177793"
+    },
+    {
+      "path": "search-assistants--permission-denied.json",
+      "sha256": "f9e0d01660f171d312d5245c80dcc95f98b3ba162253845237ea7e88828ca662"
+    },
+    {
+      "path": "search-assistants--revoked-key.json",
+      "sha256": "c760326bc48914851df9e403f3aee6009abeb97b08761c8489217b70d98a92f4"
+    },
+    {
+      "path": "search-assistants--unsupported-key-plane-combination.json",
+      "sha256": "2b08d5a89bd8e406fa6523b7f385b031a9406b192cb83daab9b2a18ab37e7c69"
+    },
+    {
+      "path": "search-assistants--valid-documented-workspace-context.json",
+      "sha256": "2caad748471c2e4940a0d4d54c5acf2b2f35a6a522b4d94d249b7d92ced7b8c7"
+    },
+    {
+      "path": "search-assistants--valid-no-workspace-context.json",
+      "sha256": "036e19ba081b4de5e6ec23bf7f4c0dd9f34bd43ce57c0b5dd679b8cc854f9ddc"
+    },
+    {
+      "path": "search-assistants--wrong-workspace-context.json",
+      "sha256": "c59f875c08fe729cedec10d4b234b825c9594a4a320dbf505fa98900b7f5312b"
+    },
+    {
+      "path": "search-threads--caller-supplied-forwarding-headers.json",
+      "sha256": "d19fc766f1059236899e8eb68dcb3a76bf39c840bc556904a0728f42a79cdd40"
+    },
+    {
+      "path": "search-threads--conflicting-workspace-context.json",
+      "sha256": "8b5de981b361195d5e808e05f5cc229f9ac09e31e30cc49946880b82e57790aa"
+    },
+    {
+      "path": "search-threads--inaccessible-workspace.json",
+      "sha256": "00e040f5a61c7e9ae41a2f47ec10d56ad50b5a4f63d6063e2994f73ffa901cd8"
+    },
+    {
+      "path": "search-threads--missing-authorization.json",
+      "sha256": "816edf4a995a950c244e8722fc5fb2fb7092f0e1f4f472f550743f5537d03358"
+    },
+    {
+      "path": "search-threads--missing-required-workspace-context.json",
+      "sha256": "5064cfcac559b5587f22ebc1675bb1032e1a27bd48fc1f7be26f9cbea066a2f3"
+    },
+    {
+      "path": "search-threads--permission-denied.json",
+      "sha256": "e62717c0fda7466107d1b1d94b1af0fb8f403800f085e5897be9ef2fdf85e962"
+    },
+    {
+      "path": "search-threads--revoked-key.json",
+      "sha256": "0bf1ac97ec1d38a36c8f48ec8bfdb314a2ab432c5e5e66178a578a50bafe7d10"
+    },
+    {
+      "path": "search-threads--unsupported-key-plane-combination.json",
+      "sha256": "13a618179b73c47459cb90ef612215b1a961dac2fe4d68c880e8902261400ab7"
+    },
+    {
+      "path": "search-threads--valid-documented-workspace-context.json",
+      "sha256": "0ea4a06c64ee896247ede34f0e60c35b6fc4523fb3c859f5ba9974db89a8ae3d"
+    },
+    {
+      "path": "search-threads--valid-no-workspace-context.json",
+      "sha256": "4655e71fbd7f65f968e3a4d131c185613e65d507152a3d98de11e082c3e2f769"
+    },
+    {
+      "path": "search-threads--wrong-workspace-context.json",
+      "sha256": "615a42847899ba5e54832932f7267f5b2cb3ce97544706b7db4f62bd71a6411a"
+    },
+    {
+      "path": "stream-stateless-run--caller-supplied-forwarding-headers.json",
+      "sha256": "acd932d3ab9d3c623fd52ef1e7879d6745f5b02f2988e26f69cafa9e6ccf448e"
+    },
+    {
+      "path": "stream-stateless-run--conflicting-workspace-context.json",
+      "sha256": "8a4703ebef8e4e54cf8d27b4fa290ac2c3340e9785db99ee6f509e6e331f20ac"
+    },
+    {
+      "path": "stream-stateless-run--inaccessible-workspace.json",
+      "sha256": "d97609fec824b314223c900bfefebaca3e03db931de4afbfc23c738b7a4a997e"
+    },
+    {
+      "path": "stream-stateless-run--missing-authorization.json",
+      "sha256": "7a98eb79578c5cb50f3cc0ce47b1a997cdd07190dfe39554b2ec3160702853db"
+    },
+    {
+      "path": "stream-stateless-run--missing-required-workspace-context.json",
+      "sha256": "b70a4e848a40712a24271571a62671031af30a628f07a8a96722efa4cf0155a7"
+    },
+    {
+      "path": "stream-stateless-run--permission-denied.json",
+      "sha256": "efbe9f486af51ed007455f4db920504f98bc99fbec8cc0823fed304c250e6585"
+    },
+    {
+      "path": "stream-stateless-run--revoked-key.json",
+      "sha256": "89eee53b05f102d980e68ab1f4a0fc58210a0e0f14c5e93017e6138bfd824c0d"
+    },
+    {
+      "path": "stream-stateless-run--unsupported-key-plane-combination.json",
+      "sha256": "a23c5a84a0cec175bd4fa5053528174f17866d4dacb6fa2c77391d3f1b9a6503"
+    },
+    {
+      "path": "stream-stateless-run--valid-documented-workspace-context.json",
+      "sha256": "49ed559405073ad35af3cfd1074d8281aee22f39a896c43529ffac4ff34124c2"
+    },
+    {
+      "path": "stream-stateless-run--valid-no-workspace-context.json",
+      "sha256": "ed460c6569aa19c7e5b92817455349d8cc4d63ca5ccabb40315a52fe1c0720c8"
+    },
+    {
+      "path": "stream-stateless-run--wrong-workspace-context.json",
+      "sha256": "c96486df9899dcf2d39a45f9a275c63c676ccc443bc205e9175afe4e0a389b07"
+    },
+    {
+      "path": "stream-thread-run--caller-supplied-forwarding-headers.json",
+      "sha256": "2de4d8a9f9360bf6648849b4ad5a642722fb27487fae806cd4306b2027f56e16"
+    },
+    {
+      "path": "stream-thread-run--conflicting-workspace-context.json",
+      "sha256": "37a3484a3eb5bb0a273a705eb446f2da48fe522d40fe78f91c878dc4e96e7294"
+    },
+    {
+      "path": "stream-thread-run--inaccessible-workspace.json",
+      "sha256": "7eefa4380b977d61b3b0adcb11bcd55065fb32a099305d9969e885747a0a1309"
+    },
+    {
+      "path": "stream-thread-run--missing-authorization.json",
+      "sha256": "e46bda8581282920bb97e40972766133253b7351aeb75205e9548f8853f0edcd"
+    },
+    {
+      "path": "stream-thread-run--missing-required-workspace-context.json",
+      "sha256": "13736e682e3ac8b363380de042f0a7435328ae25224e6c90c734e92892c331d5"
+    },
+    {
+      "path": "stream-thread-run--permission-denied.json",
+      "sha256": "98a4fb8e91bb8ff97263cae513afcf329c28afff3d71a543ef183498ce3ac725"
+    },
+    {
+      "path": "stream-thread-run--revoked-key.json",
+      "sha256": "9dd3a03fea13bb2e3fbf869f55977de12ae699bcd9941710a08d365b75a960b9"
+    },
+    {
+      "path": "stream-thread-run--unsupported-key-plane-combination.json",
+      "sha256": "b097e8ecc3b17e8fb888ee93671fdedcf81bd24f5e06bcb11a6f183297c864b7"
+    },
+    {
+      "path": "stream-thread-run--valid-documented-workspace-context.json",
+      "sha256": "fff6e6c70730265e9cd0b3838c78cfc0e522c93e621b48c66eac317f01671074"
+    },
+    {
+      "path": "stream-thread-run--valid-no-workspace-context.json",
+      "sha256": "a399c80742c64dfea53e08f970f48a87ca94e89fb66cd127313aae1801a0f610"
+    },
+    {
+      "path": "stream-thread-run--wrong-workspace-context.json",
+      "sha256": "f6a1a0664353b1d50b3410a54249ec7e6ecbf778b3e79459cc857d7e2a02b48a"
+    }
+  ],
+  "generated_at": "2026-07-23",
+  "schema_version": 1,
+  "scrub_attestation": "Synthetic placeholders only; no live credential, tenant, customer, or reusable endpoint values."
+}

@@ -1,0 +1,31 @@
+{
+  "context_case": "missing-required-workspace-context",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "list-classic-deployments",
+  "request": {
+    "body_schema": "pagination query",
+    "headers": {
+      "X-Api-Key": "<redacted>"
+    },
+    "host_class": "regional-langsmith-control-plane-api",
+    "method": "GET",
+    "negative_input": {
+      "workspace_context": "missing"
+    },
+    "route_template": "/v2/deployments"
+  },
+  "result": {
+    "code": "missing-required-workspace-context",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "local-policy-rejected"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

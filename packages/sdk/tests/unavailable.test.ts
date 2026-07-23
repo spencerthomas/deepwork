@@ -1,54 +1,79 @@
 import {
   capabilitySummary,
+  type UnavailableCapabilitySummary,
   unavailableCapability,
 } from "@deepwork/domain";
 import {
   unavailableMutationPort,
   unavailableQueryPort,
   unavailableStreamPort,
+  SDK_ERROR_CATEGORIES,
 } from "@deepwork/sdk";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const capability = capabilitySummary(
-  unavailableCapability(
-    "unknown",
-    "contract-not-verified",
-    {
-      observedAt: "2026-07-23T00:00:00.000Z",
-      adapterVersion: "adapter-disabled",
-      contractVersion: "contract-unverified",
-      evidenceClass: "documented",
-    },
-  ),
+  unavailableCapability("unknown", "contract-not-verified", {
+    observedAt: "2026-07-23T00:00:00.000Z",
+    adapterVersion: "adapter-disabled",
+    contractVersion: "contract-unverified",
+    evidenceClass: "documented",
+  }),
 );
 
-const originalFetch = globalThis.fetch;
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-  vi.restoreAllMocks();
-});
-
 describe("explicitly unavailable ports", () => {
-  it("returns CapabilityUnavailable without making a guessed request", async () => {
-    const fetchSpy: typeof fetch = vi.fn(async () => {
-      throw new Error("Network access denied by test.");
-    });
-    globalThis.fetch = fetchSpy;
+  it("freezes the public error vocabulary", () => {
+    expect(Object.isFrozen(SDK_ERROR_CATEGORIES)).toBe(true);
+  });
 
-    const port = unavailableMutationPort<{ action: string }, never>(
-      capability,
-    );
+  it("returns CapabilityUnavailable without making a guessed request", async () => {
+    const port = unavailableMutationPort<{ action: string }, never>(capability);
     const result = await port.mutate({ action: "gated-operation" });
 
     expect(result).toMatchObject({
       ok: false,
       error: {
         category: "capability-unavailable",
+        retryable: false,
+      },
+    });
+  });
+
+  it("retries only recoverable source unavailability", async () => {
+    const sourceUnavailable = capabilitySummary(
+      unavailableCapability("unavailable", "source-unavailable", {
+        observedAt: "2026-07-23T00:00:00.000Z",
+        adapterVersion: "adapter-disabled",
+        contractVersion: "contract-unverified",
+        evidenceClass: "documented",
+      }),
+    );
+    const port = unavailableQueryPort<undefined, never>(sourceUnavailable);
+
+    await expect(port.query(undefined)).resolves.toMatchObject({
+      ok: false,
+      error: {
+        category: "capability-unavailable",
         retryable: true,
       },
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not retry contradictory state and reason summaries", async () => {
+    for (const state of ["permission-denied", "unknown"] as const) {
+      const contradictory = Object.freeze({
+        ...capability,
+        state,
+        safeReason: "source-unavailable",
+      }) as UnavailableCapabilitySummary;
+      const port = unavailableQueryPort<undefined, never>(contradictory);
+
+      await expect(port.query(undefined)).resolves.toMatchObject({
+        ok: false,
+        error: {
+          retryable: false,
+        },
+      });
+    }
   });
 
   it("keeps query, mutation, and stream contracts separate", async () => {

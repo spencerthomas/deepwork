@@ -1,0 +1,31 @@
+[project]
+name = "auth-contract-spikes"
+version = "0.1.0"
+description = "Offline-first LangSmith authentication and workspace-header contract probes"
+requires-python = ">=3.12"
+dependencies = [
+  "langgraph-sdk==0.4.2",
+  "langsmith==0.10.9",
+]
+
+[project.entry-points.pytest11]
+auth-contract-spikes = "auth_contract_spikes.pytest_plugin"
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/auth_contract_spikes"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+markers = [
+  "live_contract: opt-in read-only probes against a sanctioned non-production classic account",
+]
+testpaths = ["tests"]

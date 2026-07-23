@@ -1,0 +1,32 @@
+{
+  "context_case": "inaccessible-workspace",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "read-thread-run",
+  "request": {
+    "body_schema": "thread_id and run_id path parameters",
+    "headers": {
+      "X-Api-Key": "<redacted>"
+    },
+    "host_class": "classic-agent-server",
+    "method": "GET",
+    "negative_input": {
+      "provider_outcome": "inaccessible-workspace-unconfirmed",
+      "workspace_context": "<wrong-workspace-id>"
+    },
+    "route_template": "/threads/{thread_id}/runs/{run_id}"
+  },
+  "result": {
+    "case": "inaccessible-workspace",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "unconfirmed-provider-behavior"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

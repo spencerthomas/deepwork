@@ -8,6 +8,7 @@ import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
+from deepwork_api.application.local_runner import LocalAgentServerRunner
 from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     DecisionRecord,
@@ -329,16 +330,16 @@ class TaskService:
     """Coordinate task commands, queries, decisions, and event replay."""
 
     repository: TaskRepository
-    runner: DeterministicFixtureRunner
+    runner: DeterministicFixtureRunner | LocalAgentServerRunner
 
     async def create_task(self, prompt: str) -> TaskSnapshot:
         """Create a queued task and start its deterministic runner."""
 
         objective = sanitize_objective(prompt)
-        task = await self.repository.create_task(
-            title=_build_task_title(objective),
-            objective=objective,
-        )
+        title = _build_task_title(objective)
+        if isinstance(self.runner, LocalAgentServerRunner):
+            return await self.runner.create(title=title, objective=objective)
+        task = await self.repository.create_task(title=title, objective=objective)
         self.runner.start(task)
         return task
 
@@ -386,6 +387,14 @@ class TaskService:
         """Edit the current plan before resuming its exact interrupt."""
 
         sanitized_steps = tuple(sanitize_objective(step) for step in steps)
+        if isinstance(self.runner, LocalAgentServerRunner):
+            task = await self.repository.get_task(task_id)
+            return await self.runner.update_plan(
+                task,
+                interrupt_id=interrupt_id,
+                expected_revision=expected_revision,
+                steps=sanitized_steps,
+            )
         return await self.repository.update_plan(
             task_id,
             interrupt_id=interrupt_id,

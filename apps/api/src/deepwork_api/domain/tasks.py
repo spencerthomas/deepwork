@@ -179,3 +179,7 @@ class PlanUnavailableError(TaskDomainError):
 
 class PlanRevisionConflictError(TaskDomainError):
     """The supplied plan revision is stale or otherwise conflicting."""
+
+
+class TaskSourceUnavailableError(TaskDomainError):
+    """The configured task source cannot safely start the requested run."""

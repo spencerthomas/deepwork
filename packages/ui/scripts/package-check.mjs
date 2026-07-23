@@ -151,6 +151,8 @@ try {
       domainArchive,
       uiArchive,
       "react@19.2.8",
+      "@types/react@19.2.17",
+      "typescript@7.0.2",
     ],
     consumer,
   );
@@ -171,6 +173,38 @@ for (const entry of ["@deepwork/ui/tokens.css", "@deepwork/ui/status-panel.css"]
 `,
   );
   run(process.execPath, ["verify.mjs"], consumer);
+  await writeFile(
+    join(consumer, "verify.tsx"),
+    `import { StatusPanel, type StatusPanelProps } from "@deepwork/ui";
+const props: StatusPanelProps = {
+  state: "success",
+  title: "Packed consumer",
+};
+const panel = <StatusPanel {...props} />;
+void panel;
+`,
+  );
+  await writeFile(
+    join(consumer, "tsconfig.json"),
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          jsx: "react-jsx",
+          lib: ["ES2022", "DOM"],
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          noEmit: true,
+          skipLibCheck: false,
+          strict: true,
+          target: "ES2022",
+        },
+        include: ["verify.tsx"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  runPnpm(["exec", "tsc", "--project", "tsconfig.json"], consumer);
   process.stdout.write(
     `clean consumer verified ${expectedName} from ${basename(uiArchive)}\n`,
   );

@@ -12,9 +12,17 @@ Import only from `@deepwork/sdk`; domain values come from `@deepwork/domain`.
 `check-architecture` scans shipped source and verifies intentional failing
 fixtures for every enforced rule: UI/self, framework, provider, raw network
 package/API, Node API, environment access, and local ESM extension.
+The allowlist additionally rejects deep imports, package path escapes, and
+server/Tauri/route/fixture/generated/database zones with repair diagnostics.
 `package-check` packs SDK and domain output, inspects SDK public files and exports,
 rejects workspace-protocol leakage, installs both archives offline into an empty
-temporary consumer, and imports `@deepwork/sdk`.
+temporary consumer, imports `@deepwork/sdk`, and compiles a strict TypeScript
+consumer against both packed declaration surfaces. Test typechecking resolves
+named public entries directly to source without requiring `dist`.
+
+The Vitest setup denies browser and Node network primitives for every SDK unit
+test. Unknown/unverified capability failures are non-retryable; only
+`source-unavailable` evidence is marked recoverable.
 
 These package scripts are reserved for the downstream lock and executable
 verification cells and have not been run by the authoring cell.

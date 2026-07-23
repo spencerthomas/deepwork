@@ -8,6 +8,14 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "paths": {
+      "@deepwork/domain": [
+        "../domain/src/index.ts"
+      ],
+      "@deepwork/ui": [
+        "./src/index.ts"
+      ]
+    },
     "types": [
       "react",
       "vitest/globals"
@@ -21,10 +29,5 @@
   ],
   "exclude": [
     "tests/fixtures/negative/**"
-  ],
-  "references": [
-    {
-      "path": "../domain"
-    }
   ]
 }

@@ -1,10 +1,10 @@
 ---
 exec_plan_id: DW-EXEC-M1-TS-PACKAGES-SCAFFOLD
 title: Wave 1 TypeScript domain, SDK, and UI package scaffold
-status: active
+status: reviewed
 superseded_by: null
 owner: typescript-packages
-reviewed_by: [ts-package-boundary-reviewer, ts-package-final-reviewer]
+reviewed_by: [ts-package-boundary-reviewer]
 reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-001
 supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
@@ -12,7 +12,7 @@ issue: local:DW-M1-TS-SCAFFOLD
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: b1189ce7a1236fbc6b7751a0552159687e940521
-last_verified_commit: 03b019ab6a5d71e2911a6019013a089cca098101
+last_verified_commit: b1189ce7a1236fbc6b7751a0552159687e940521
 risk: medium
 governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
@@ -304,25 +304,17 @@ Acceptance:
   only a subset of codes retained by each boundary scanner. Round-two rework adds
   one combined intentional fixture per package so every emitted rule code appears
   in `expectedCodes`; the existing test loop consumes every matrix entry.
-- [x] 2026-07-23 AEST — Fresh independent final review accepted commit
-  `6a57ab8cc548d3bf58b0dae448aed5acf3e18797`: emitted and declared rule-code
-  matrices match at domain 9/9, SDK 9/9, and UI 10/10; every declared fixture
-  exists and is consumed by the shared negative-fixture test loop. The reviewer
-  confirmed the prior clean-consumer and token/intrinsic-layout corrections were
-  unchanged and invoked no prohibited package tooling.
-- [x] 2026-07-23 AEST — The coordinator integrated the accepted four-commit
-  lineage locally through `03b019ab6a5d71e2911a6019013a089cca098101`
-  without touching the shared lock or protected `docs/plans/**`.
-- [x] 2026-07-23 AEST — A later external read-only review of exact author commit
-  `6a57ab8cc548d3bf58b0dae448aed5acf3e18797` returned `REWORK REQUIRED`.
-  It found nondeterministic clean typecheck resolution, incomplete global network
-  denial, bypassable package-local fallback checks, missing packed TypeScript
-  consumer compilation, mutable runtime vocabularies/evidence values, inverted
-  retry posture, a fixed heading level, permissive timestamp parsing, and a
-  missing two-source run-key collision assertion.
-- [ ] Lock handoff is rescinded until bounded source rework and fresh independent
-  review pass. Only after the lock cell is terminal may executable validation
-  proceed in `local:DW-M1-TS-VERIFY-001`.
+- [x] 2026-07-23 AEST — External implementation verdict reopened the cell with
+  nine bounded findings: clean-checkout named type resolution, global SDK network
+  denial, package-local allowlist/path containment, packed declaration consumers,
+  immutable evidence/vocabularies, retry policy, heading composition, strict
+  RFC3339 instants, and thread+run source collision coverage.
+- [x] 2026-07-23 AEST — External-verdict rework authored all nine repairs without
+  editing the global architecture harness or executing package tooling. The
+  permitted static suite is recorded clean; fresh independent review remains
+  separate from executable proof.
+- [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
+  executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
 ## Surprises & Discoveries
 
@@ -357,6 +349,14 @@ Acceptance:
   and green scans alone did not prove forbidden examples fail. Consequence: each
   package now owns separate unexecuted clean-archive/offline-consumer and
   rule-coded green-plus-negative-fixture checks.
+- 2026-07-23 AEST — Package self-imports in tests resolve through distribution
+  export maps, which makes a clean no-`dist` typecheck depend on task ordering.
+  Consequence: package test configs now map named public entries to source and
+  remove test-only project-reference output dependence; packed consumers remain
+  a separate declaration-surface proof.
+- 2026-07-23 AEST — `Date.parse` accepts noncanonical and normalized-invalid date
+  text. Consequence: capability construction now applies an explicit RFC3339
+  grammar/calendar/offset validator and stores normalized millisecond UTC text.
 
 ## Decision Log
 
@@ -510,6 +510,7 @@ packages/domain/tests/capability.test.ts
 packages/domain/tests/fixtures/negative/browser-network.fixture.ts
 packages/domain/tests/fixtures/negative/framework-side-effect.fixture.ts
 packages/domain/tests/fixtures/negative/internal-node-environment-extension.fixture.ts
+packages/domain/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
 packages/domain/tests/fixtures/negative/provider-network-side-effect.fixture.ts
 packages/domain/tests/identity.test.ts
 packages/domain/tests/view-state.test.ts
@@ -527,11 +528,14 @@ packages/sdk/src/ports.ts
 packages/sdk/src/result.ts
 packages/sdk/src/unavailable.ts
 packages/sdk/tests/boundaries.test.mjs
+packages/sdk/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
 packages/sdk/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/sdk/tests/fixtures/negative/raw-network.fixture.ts
 packages/sdk/tests/fixtures/negative/self-framework-node-environment-extension.fixture.ts
 packages/sdk/tests/fixtures/negative/ui-side-effect.fixture.ts
+packages/sdk/tests/network-deny.test.mjs
 packages/sdk/tests/public-api.test.ts
+packages/sdk/tests/setup/network-deny.mjs
 packages/sdk/tests/unavailable.test.ts
 packages/sdk/tsconfig.json
 packages/sdk/tsconfig.test.json
@@ -546,6 +550,7 @@ packages/ui/src/status-panel.tsx
 packages/ui/status-panel.css
 packages/ui/tailwind.preset.mjs
 packages/ui/tests/boundaries.test.mjs
+packages/ui/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
 packages/ui/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/ui/tests/fixtures/negative/raw-network.fixture.ts
 packages/ui/tests/fixtures/negative/sdk-side-effect.fixture.ts
@@ -559,41 +564,46 @@ packages/ui/vitest.config.ts
 
 Static import findings:
 
-- Domain shipped source imports only explicit local `.js` modules. Node imports
-  occur only in package-local checks, the negative-test harness, and Vitest alias
-  config. Four intentional excluded fixtures cover every retained rule code:
-  internal, framework, provider, network import/API, browser API, Node,
-  environment, and ESM extension.
+- Domain shipped source imports only explicit contained local `.js` modules. Node
+  imports occur only in package-local checks, the negative-test harness, and
+  Vitest alias config. Five intentional excluded fixtures cover the empty
+  dependency allowlist, internal/deep imports, framework/provider/network,
+  browser/Node/environment APIs, ESM extension, path escape, and forbidden zones.
 - SDK shipped source imports `@deepwork/domain` and explicit local `.js` modules;
   it has no UI, React, Next.js, Node, provider, or network import. Its Node imports
   are confined to package-local checks, the negative-test harness, and Vitest
-  config. Four intentional excluded fixtures cover every retained rule code: UI,
-  self, framework, provider, network import/API, Node, environment, and ESM
-  extension.
+  config plus the global unit-network guard. Five intentional excluded fixtures
+  cover the domain-only allowlist, UI/self/deep imports, framework/provider/raw
+  network, Node/environment APIs, ESM extension, path escape, and forbidden zones.
 - UI shipped source imports `@deepwork/domain`, React, and an explicit local `.js`
   module. It has no SDK, Next.js, provider, route, generated, environment, network,
   or runtime CSS-loader import. Node imports are confined to package-local checks,
-  the negative-test harness, and Vitest config. Intentional excluded fixtures
-  cover every retained rule code: SDK, self, Next.js, provider, network
-  import/API, Node, environment, ESM extension, and raw HTML.
+  the negative-test harness, and Vitest config. Five intentional excluded fixtures
+  cover the domain/React allowlist, SDK/self/deep imports, Next.js/provider/raw
+  network, Node/environment APIs, ESM extension, path escape, forbidden zones,
+  and unsafe `dangerouslySetInnerHTML`/`innerHTML`.
 - Tests import named package entry points rather than implementation paths.
 
 Source-level UI review:
 
-- `StatusPanel` uses a labelled native `section`, native heading and button,
-  polite loading status, assertive error role, explicit visible state text, and a
-  non-color mark. Unknown/unavailable variants cannot accept an action.
+- `StatusPanel` uses a labelled native `section`, non-heading labelled title, and
+  native button, plus polite loading status, assertive error role, explicit
+  visible state text, and a non-color mark. Unknown/unavailable variants cannot
+  accept an action; the hierarchy test leaves heading level ownership to its
+  consumer.
 - Styles use canonical token variables for product geometry, `:focus-visible`,
   forced-colors support, no animation, overflow wrapping, and intrinsic flex-wrap
   reflow without a raw viewport breakpoint.
 - Display inputs are strings rendered as React text; no raw-HTML API exists. The
   authored test covers markup-shaped input and long localized content.
 
-Network denial is authored, not executed: `packages/sdk/tests/unavailable.test.ts`
-replaces `globalThis.fetch` with a throwing spy and asserts that an unknown
-capability returns `capability-unavailable` without calling it. Package structural
-scripts also reject network primitives from shipped source. Neither the test nor
-those Node scripts ran in this cell.
+Network denial is authored, not executed: SDK Vitest setup replaces fetch, XHR,
+WebSocket, EventSource, Node HTTP/HTTPS request/get and agent connection creation,
+net connect/createConnection including direct sockets, TLS connect, and datagram
+creation/bind/connect/send before every test module. Built-in ESM exports are
+synchronized after patching. A dedicated test covers all 18 guards, while package
+structural scripts reject network primitives from shipped source. None of those
+checks ran in this cell.
 
 Changed-file scope is exactly the three package inventories above plus this
 living plan. Rework deliberately updates the canonical UI token and Tailwind
@@ -604,11 +614,11 @@ changed.
 Distinct `package-check` scripts are authored, not executed. Each packs built
 output, inspects non-empty public files and export targets, rejects private-source,
 lock, and `workspace:` leakage, installs only packed local archives into an empty
-temporary consumer with pnpm offline mode, and imports the public JavaScript
-entry. SDK/UI include the packed domain archive; UI additionally verifies the
-token, status CSS, and Tailwind preset entries and uses the pinned React already
-expected in the offline store. Temporary paths come from `mkdtemp` and only that
-exact directory is removed in `finally`.
+temporary consumer with pnpm offline mode, imports the public JavaScript entry,
+and compiles a strict `skipLibCheck: false` TypeScript consumer against packed
+declarations. SDK/UI include the packed domain archive; UI also verifies token,
+status CSS, Tailwind preset, React, and TSX declaration dependencies. Temporary
+paths come from `mkdtemp` and only that exact directory is removed in `finally`.
 
 Author rework static evidence on 2026-07-23 AEST:
 
@@ -616,7 +626,7 @@ Author rework static evidence on 2026-07-23 AEST:
 six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
 rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
   inventory above, including 3 clean-package scripts, 3 negative-test harnesses,
-  and 12 intentional negative fixtures
+  1 SDK global-network guard/test pair, and 15 intentional negative fixtures
 rg manifest exports/type/scripts/dependencies -> exit 0; all packages retain ESM,
   named exports, and distinct script declarations
 rg package/framework imports -> exit 0; shipped edges remain sdk -> domain and
@@ -631,44 +641,99 @@ No `check-architecture`, `package-check`, Vitest, formatter, linter, compiler,
 build, pack, pnpm, install, lock, consumer, accessibility, or network command was
 executed during rework.
 
-Round-two negative-fixture matrix authored for later execution:
+External-verdict negative-fixture matrix authored for later execution:
 
 ```text
 domain/framework-side-effect
-  -> DW-DOMAIN-FRAMEWORK-IMPORT
+  -> DW-DOMAIN-FRAMEWORK-IMPORT, DW-DOMAIN-IMPORT-NOT-ALLOWED
 domain/browser-network
   -> DW-DOMAIN-BROWSER-API, DW-DOMAIN-NETWORK-API
 domain/provider-network-side-effect
-  -> DW-DOMAIN-PROVIDER-IMPORT, DW-DOMAIN-NETWORK-IMPORT
+  -> DW-DOMAIN-PROVIDER-IMPORT, DW-DOMAIN-NETWORK-IMPORT,
+     DW-DOMAIN-IMPORT-NOT-ALLOWED
 domain/internal-node-environment-extension
   -> DW-DOMAIN-INTERNAL-IMPORT, DW-DOMAIN-NODE-IMPORT,
-     DW-DOMAIN-ESM-EXTENSION, DW-DOMAIN-ENVIRONMENT
+     DW-DOMAIN-ESM-EXTENSION, DW-DOMAIN-ENVIRONMENT,
+     DW-DOMAIN-IMPORT-NOT-ALLOWED
+domain/path-and-zone-bypass
+  -> DW-DOMAIN-DEEP-IMPORT, DW-DOMAIN-PATH-ESCAPE,
+     DW-DOMAIN-FORBIDDEN-ZONE, DW-DOMAIN-IMPORT-NOT-ALLOWED
 
 sdk/ui-side-effect
-  -> DW-SDK-UI-IMPORT
+  -> DW-SDK-UI-IMPORT, DW-SDK-IMPORT-NOT-ALLOWED
 sdk/provider-side-effect
-  -> DW-SDK-PROVIDER-IMPORT
+  -> DW-SDK-PROVIDER-IMPORT, DW-SDK-IMPORT-NOT-ALLOWED
 sdk/raw-network
-  -> DW-SDK-NETWORK-IMPORT, DW-SDK-NETWORK-API
+  -> DW-SDK-NETWORK-IMPORT, DW-SDK-NETWORK-API,
+     DW-SDK-IMPORT-NOT-ALLOWED
 sdk/self-framework-node-environment-extension
   -> DW-SDK-SELF-IMPORT, DW-SDK-FRAMEWORK-IMPORT, DW-SDK-NODE-IMPORT,
-     DW-SDK-ESM-EXTENSION, DW-SDK-ENVIRONMENT
+     DW-SDK-ESM-EXTENSION, DW-SDK-ENVIRONMENT,
+     DW-SDK-IMPORT-NOT-ALLOWED
+sdk/path-and-zone-bypass
+  -> DW-SDK-DEEP-IMPORT, DW-SDK-PATH-ESCAPE, DW-SDK-FORBIDDEN-ZONE,
+     DW-SDK-IMPORT-NOT-ALLOWED
 
 ui/sdk-side-effect
-  -> DW-UI-SDK-IMPORT
+  -> DW-UI-SDK-IMPORT, DW-UI-IMPORT-NOT-ALLOWED
 ui/provider-side-effect
-  -> DW-UI-PROVIDER-IMPORT
+  -> DW-UI-PROVIDER-IMPORT, DW-UI-IMPORT-NOT-ALLOWED
 ui/raw-network
-  -> DW-UI-NETWORK-IMPORT, DW-UI-NETWORK-API
+  -> DW-UI-NETWORK-IMPORT, DW-UI-NETWORK-API,
+     DW-UI-IMPORT-NOT-ALLOWED
 ui/self-next-node-environment-extension-html
   -> DW-UI-SELF-IMPORT, DW-UI-NEXT-IMPORT, DW-UI-NODE-IMPORT,
-     DW-UI-ESM-EXTENSION, DW-UI-ENVIRONMENT, DW-UI-RAW-HTML
+     DW-UI-ESM-EXTENSION, DW-UI-ENVIRONMENT, DW-UI-RAW-HTML,
+     DW-UI-IMPORT-NOT-ALLOWED
+ui/path-and-zone-bypass
+  -> DW-UI-DEEP-IMPORT, DW-UI-PATH-ESCAPE, DW-UI-FORBIDDEN-ZONE,
+     DW-UI-IMPORT-NOT-ALLOWED
 ```
 
-Every code constructed by the three scanners is listed exactly once or more in
-this matrix. Each package's existing `boundaries.test.mjs` loops its exported
-`negativeFixtures` array and asserts that all declared `expectedCodes` occur. The
-fixtures and tests were not executed in this authoring cell.
+Every code constructed by the three scanners appears in this matrix. Each
+scanner now also enforces a package-local bare-import allowlist, rejects deep
+package imports, proves relative imports remain under that package's `src`, and
+rejects server/Tauri/route/fixture/generated/database zones. Each package's
+existing `boundaries.test.mjs` loops its exported `negativeFixtures` array and
+asserts that all declared `expectedCodes` occur. Every diagnostic must also name
+the legal destination, `ARCHITECTURE.md` enforcement anchors, and the package
+repair command. The fixtures and tests were not executed in this authoring cell.
+
+External-verdict repair summary:
+
+1. Package test configs map named public entries directly to package source and
+   remove test-only project-reference output ordering.
+2. SDK Vitest setup denies browser and Node network escape paths globally.
+3. Package boundary scanners enforce explicit dependency allowlists, source
+   containment, forbidden zones, bypass fixtures, and actionable diagnostics.
+4. Packed-consumer scripts compile strict TypeScript/TSX against local archives.
+5. Capability vocabularies are runtime frozen and available evidence is a
+   recursively frozen, mutation-isolated snapshot.
+6. SDK retryability is true only for explicit `source-unavailable` evidence.
+7. `StatusPanel` owns a labelled region title rather than a heading level.
+8. Capability observation times accept strict RFC3339 only and normalize to
+   millisecond UTC.
+9. Identity tests prove identical thread/run IDs from different sources remain
+   distinct after serialization.
+
+External-verdict rework static evidence on 2026-07-23 AEST:
+
+```text
+six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
+rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
+  64-file inventory above
+rg manifest exports/type/scripts/dependencies -> exit 0; domain, SDK, and UI
+  retain ESM, named exports, distinct scripts, and intended dependencies
+rg package/framework imports -> exit 0; shipped source edges remain
+  sdk -> domain and ui -> domain + React; Node/package findings are confined to
+  package checks, test infrastructure, documentation, or intentional fixtures
+git diff --check -> exit 0; no output
+git status --short -> exit 0; only packages/domain/**, packages/sdk/**,
+  packages/ui/**, and this active plan changed
+```
+
+The static pass did not execute any package script, boundary scanner, test,
+compiler, build, pack, install, consumer, or network operation.
 
 Round-two static evidence on 2026-07-23 AEST:
 
@@ -738,12 +803,7 @@ The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. An internal final review accepted the complete negative-fixture
-matrix, the previously repaired clean-consumer harnesses, and canonical
-token/intrinsic-layout boundary, and the coordinator integrated that source at
-`03b019ab6a5d71e2911a6019013a089cca098101`. A later external read-only review
-found nine additional correctness and proof gaps, so this cell is active again
-and the prior lock handoff is void. `SPIKE-HARNESS-ARCH-001` remains open; bounded
-package-local fallback rework must not edit or claim the global harness.
-Sequential lock and executable proof remain paused until fresh independent
-acceptance.
+deviations. The initial independent findings were addressed, but fresh independent
+implementation review is still required. `SPIKE-HARNESS-ARCH-001` remains open,
+and sequential proof remains with
+`local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

@@ -111,4 +111,21 @@ describe("StatusPanel", () => {
     expect(screen.getByText("No results")).toBeTruthy();
     expect(screen.queryByText("Available")).toBeNull();
   });
+
+  it("composes without injecting a heading level", () => {
+    render(
+      <section aria-labelledby="parent-title">
+        <h2 id="parent-title">Parent section</h2>
+        <StatusPanel state="success" title="Nested status" />
+      </section>,
+    );
+
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "Parent section",
+    );
+    expect(
+      screen.getByRole("region", { name: "Nested status" }),
+    ).toBeTruthy();
+  });
 });

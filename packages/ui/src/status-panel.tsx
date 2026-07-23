@@ -45,21 +45,21 @@ export type StatusPanelProps =
   | ErrorStatusPanelProps
   | UnavailableStatusPanelProps;
 
-const STATE_LABELS: Readonly<Record<ViewStateKind, string>> = {
+const STATE_LABELS: Readonly<Record<ViewStateKind, string>> = Object.freeze({
   loading: "Loading",
   empty: "No results",
   success: "Available",
   error: "Error",
   unavailable: "Unavailable",
-};
+});
 
-const REASON_LABELS = {
+const REASON_LABELS = Object.freeze({
   "contract-not-verified": "Support has not been verified.",
   "not-supported": "This source does not support the capability.",
   "permission-required": "Additional permission is required.",
   "source-unavailable": "The source is currently unavailable.",
   "adapter-disabled": "The adapter is currently disabled.",
-} as const;
+} as const);
 
 function capabilityDescription(
   capability: UnavailableCapabilitySummary,
@@ -121,9 +121,9 @@ export function StatusPanel(props: StatusPanelProps) {
           </span>
           {STATE_LABELS[props.state]}
         </p>
-        <h2 className="dw-status-panel__title" id={titleId}>
+        <p className="dw-status-panel__title" id={titleId}>
           {props.title}
-        </h2>
+        </p>
         {detail === undefined ? null : (
           <p className="dw-status-panel__detail" id={detailId}>
             {detail}

@@ -4,7 +4,7 @@ import type {
   UnavailableCapabilitySummary,
 } from "@deepwork/domain";
 
-export const SDK_ERROR_CATEGORIES = [
+export const SDK_ERROR_CATEGORIES = Object.freeze([
   "capability-unavailable",
   "permission-denied",
   "offline",
@@ -12,7 +12,7 @@ export const SDK_ERROR_CATEGORIES = [
   "contract",
   "upstream",
   "unknown",
-] as const;
+] as const);
 
 export type SdkErrorCategory = (typeof SDK_ERROR_CATEGORIES)[number];
 
@@ -39,7 +39,7 @@ export function capabilityUnavailableError(
       capability.state,
       capability.safeReason,
     ),
-    retryable: capability.state === "unknown",
+    retryable: capability.safeReason === "source-unavailable",
     capability,
   });
 }

@@ -129,6 +129,7 @@ try {
       "--save-exact",
       domainArchive,
       sdkArchive,
+      "typescript@7.0.2",
     ],
     consumer,
   );
@@ -141,6 +142,37 @@ if (typeof sdk.unavailableMutationPort !== "function") {
 `,
   );
   run(process.execPath, ["verify.mjs"], consumer);
+  await writeFile(
+    join(consumer, "verify.ts"),
+    `import type { SourceId } from "@deepwork/domain";
+import type { MutationPort, SdkResult } from "@deepwork/sdk";
+type Request = { readonly sourceId: SourceId };
+declare const port: MutationPort<Request, string>;
+declare const result: SdkResult<string>;
+void port;
+void result;
+`,
+  );
+  await writeFile(
+    join(consumer, "tsconfig.json"),
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          lib: ["ES2022", "DOM"],
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          noEmit: true,
+          skipLibCheck: false,
+          strict: true,
+          target: "ES2022",
+        },
+        include: ["verify.ts"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  runPnpm(["exec", "tsc", "--project", "tsconfig.json"], consumer);
   process.stdout.write(
     `clean consumer verified ${expectedName} from ${basename(sdkArchive)}\n`,
   );

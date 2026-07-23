@@ -5,6 +5,11 @@
     "lib": [
       "ES2022"
     ],
+    "paths": {
+      "@deepwork/domain": [
+        "./src/index.ts"
+      ]
+    },
     "types": [
       "vitest/globals"
     ]

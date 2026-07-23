@@ -1,11 +1,18 @@
+import { builtinModules } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const packageRoot = resolve(
-  fileURLToPath(new URL("../", import.meta.url)),
-);
+const packageRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const sourceRoot = join(packageRoot, "src");
+const nodeBuiltins = new Set(
+  builtinModules.flatMap((name) => [name, `node:${name}`]),
+);
+const help =
+  "Legal destination: packages/domain/src/** pure helpers only. " +
+  "Architecture: ARCHITECTURE.md#package-graph and " +
+  "ARCHITECTURE.md#mechanical-enforcement. " +
+  "Repair: pnpm --filter @deepwork/domain check-architecture";
 
 const FRAMEWORK_PACKAGES =
   /^(?:react|react-dom|next|vue|svelte)(?:\/|$)/;
@@ -13,11 +20,18 @@ const NETWORK_PACKAGES =
   /^(?:axios|ky|undici|eventsource|ws)(?:\/|$)/;
 const PROVIDER_PACKAGES =
   /^(?:@langchain\/(?:core|langgraph-api|langgraph-sdk)|langchain|openai|@anthropic-ai\/sdk)(?:\/|$)/;
+const FORBIDDEN_ZONE =
+  /(?:^|\/)(?:server|routes?|fixtures?|generated|database|db)(?:\/|$)/;
+const FORBIDDEN_PACKAGES =
+  /^(?:server-only|@tauri-apps\/|pg$|postgres$|better-sqlite3$|@prisma\/client$|drizzle-orm$)/;
 
 export const negativeFixtures = [
   {
     path: "tests/fixtures/negative/framework-side-effect.fixture.ts",
-    expectedCodes: ["DW-DOMAIN-FRAMEWORK-IMPORT"],
+    expectedCodes: [
+      "DW-DOMAIN-FRAMEWORK-IMPORT",
+      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
+    ],
   },
   {
     path: "tests/fixtures/negative/browser-network.fixture.ts",
@@ -31,6 +45,7 @@ export const negativeFixtures = [
     expectedCodes: [
       "DW-DOMAIN-PROVIDER-IMPORT",
       "DW-DOMAIN-NETWORK-IMPORT",
+      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
     ],
   },
   {
@@ -40,6 +55,16 @@ export const negativeFixtures = [
       "DW-DOMAIN-NODE-IMPORT",
       "DW-DOMAIN-ESM-EXTENSION",
       "DW-DOMAIN-ENVIRONMENT",
+      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
+    ],
+  },
+  {
+    path: "tests/fixtures/negative/path-and-zone-bypass.fixture.ts",
+    expectedCodes: [
+      "DW-DOMAIN-PATH-ESCAPE",
+      "DW-DOMAIN-DEEP-IMPORT",
+      "DW-DOMAIN-FORBIDDEN-ZONE",
+      "DW-DOMAIN-IMPORT-NOT-ALLOWED",
     ],
   },
 ];
@@ -55,15 +80,38 @@ function importSpecifiers(source) {
   return [...specifiers];
 }
 
-export function inspectSource(source) {
+function isWithin(root, target) {
+  return target === root || target.startsWith(`${root}${sep}`);
+}
+
+export function inspectSource(
+  source,
+  sourceFile = join(sourceRoot, "__inspection__.ts"),
+) {
   const violations = [];
-  const add = (code, message) => violations.push({ code, message });
+  const add = (code, message) =>
+    violations.push({ code, message: `${message}. ${help}` });
 
   for (const specifier of importSpecifiers(source)) {
+    const relative = specifier.startsWith(".");
+    const bare = !relative && !specifier.startsWith("/");
+
+    if (bare) {
+      add(
+        "DW-DOMAIN-IMPORT-NOT-ALLOWED",
+        `domain dependency allowlist is empty; found ${specifier}`,
+      );
+    }
     if (specifier.startsWith("@deepwork/")) {
       add(
         "DW-DOMAIN-INTERNAL-IMPORT",
         `domain cannot import internal package ${specifier}`,
+      );
+    }
+    if (/^@deepwork\/[^/]+\//.test(specifier)) {
+      add(
+        "DW-DOMAIN-DEEP-IMPORT",
+        `domain cannot deep-import package path ${specifier}`,
       );
     }
     if (FRAMEWORK_PACKAGES.test(specifier)) {
@@ -84,37 +132,47 @@ export function inspectSource(source) {
         `domain cannot import provider package ${specifier}`,
       );
     }
-    if (specifier.startsWith("node:")) {
+    if (nodeBuiltins.has(specifier)) {
       add(
         "DW-DOMAIN-NODE-IMPORT",
         `domain cannot import Node API ${specifier}`,
       );
     }
-    if (specifier.startsWith(".") && !specifier.endsWith(".js")) {
+    if (relative && !specifier.endsWith(".js")) {
       add(
         "DW-DOMAIN-ESM-EXTENSION",
         `local runtime import requires a .js extension: ${specifier}`,
       );
     }
+    if (
+      (relative &&
+        !isWithin(sourceRoot, resolve(dirname(sourceFile), specifier))) ||
+      specifier.startsWith("/")
+    ) {
+      add(
+        "DW-DOMAIN-PATH-ESCAPE",
+        `import escapes the package source boundary: ${specifier}`,
+      );
+    }
+    if (
+      FORBIDDEN_ZONE.test(specifier) ||
+      FORBIDDEN_PACKAGES.test(specifier)
+    ) {
+      add(
+        "DW-DOMAIN-FORBIDDEN-ZONE",
+        `domain cannot import server, Tauri, route, fixture, generated, or database path ${specifier}`,
+      );
+    }
   }
 
   if (/\b(?:window|document|navigator|localStorage|sessionStorage)\b/.test(source)) {
-    add(
-      "DW-DOMAIN-BROWSER-API",
-      "domain cannot use browser globals",
-    );
+    add("DW-DOMAIN-BROWSER-API", "domain cannot use browser globals");
   }
   if (/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b/.test(source)) {
-    add(
-      "DW-DOMAIN-NETWORK-API",
-      "domain cannot use raw network APIs",
-    );
+    add("DW-DOMAIN-NETWORK-API", "domain cannot use raw network APIs");
   }
-  if (/\bprocess\.env\b/.test(source)) {
-    add(
-      "DW-DOMAIN-ENVIRONMENT",
-      "domain cannot read environment state",
-    );
+  if (/\bprocess\.env\b|\bimport\.meta\.env\b/.test(source)) {
+    add("DW-DOMAIN-ENVIRONMENT", "domain cannot read environment state");
   }
 
   return violations;
@@ -143,13 +201,16 @@ function assertNoViolations(file, violations) {
 
 export async function checkBoundaries() {
   for (const file of await sourceFiles(sourceRoot)) {
-    assertNoViolations(file, inspectSource(await readFile(file, "utf8")));
+    assertNoViolations(
+      file,
+      inspectSource(await readFile(file, "utf8"), file),
+    );
   }
 
   for (const fixture of negativeFixtures) {
     const file = join(packageRoot, fixture.path);
     const codes = new Set(
-      inspectSource(await readFile(file, "utf8")).map(({ code }) => code),
+      inspectSource(await readFile(file, "utf8"), file).map(({ code }) => code),
     );
     for (const expectedCode of fixture.expectedCodes) {
       if (!codes.has(expectedCode)) {

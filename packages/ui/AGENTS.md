@@ -17,6 +17,10 @@ not fetch, authenticate, select sources, mutate durable state, or decide product
 authorization. Business reducers stay in domain; components may own transient
 presentation state.
 
+Reusable status primitives do not choose a heading level. Use labelled
+non-heading text or an explicit consumer-owned heading slot so composition does
+not corrupt document hierarchy.
+
 `tokens.css` and the shared preset are the token source. Do not duplicate
 product color, spacing, type, radius, elevation, or motion constants in app code.
 
@@ -50,4 +54,6 @@ checks as unexecuted.
 
 Keep `check-architecture` and `package-check` distinct. The former proves green
 source plus intentional negative fixtures; the latter proves packed UI/domain
-archives, CSS/token/preset exports, and an offline empty-consumer import.
+archives, CSS/token/preset exports, and an offline empty-consumer runtime and
+TypeScript import. Boundary diagnostics must name the legal destination,
+`ARCHITECTURE.md#package-graph`, and the local repair command.

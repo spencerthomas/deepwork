@@ -11,9 +11,13 @@ export {
   type CapabilityEvidence,
   type CapabilityEvidenceClass,
   type CapabilityEvidenceMetadata,
+  type CapabilityEvidenceSnapshot,
+  type CapabilityEvidenceValue,
   type CapabilitySafeReason,
   type CapabilityState,
   type CapabilitySummary,
+  rfc3339Instant,
+  type Rfc3339Instant,
   type UnavailableCapabilityEvidence,
   type UnavailableCapabilitySummary,
 } from "./capability.js";

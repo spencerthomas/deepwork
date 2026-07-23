@@ -6,8 +6,9 @@ import {
   unavailableMutationPort,
   unavailableQueryPort,
   unavailableStreamPort,
+  SDK_ERROR_CATEGORIES,
 } from "@deepwork/sdk";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const capability = capabilitySummary(
   unavailableCapability(
@@ -22,20 +23,12 @@ const capability = capabilitySummary(
   ),
 );
 
-const originalFetch = globalThis.fetch;
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-  vi.restoreAllMocks();
-});
-
 describe("explicitly unavailable ports", () => {
-  it("returns CapabilityUnavailable without making a guessed request", async () => {
-    const fetchSpy: typeof fetch = vi.fn(async () => {
-      throw new Error("Network access denied by test.");
-    });
-    globalThis.fetch = fetchSpy;
+  it("freezes the public error vocabulary", () => {
+    expect(Object.isFrozen(SDK_ERROR_CATEGORIES)).toBe(true);
+  });
 
+  it("returns CapabilityUnavailable without making a guessed request", async () => {
     const port = unavailableMutationPort<{ action: string }, never>(
       capability,
     );
@@ -45,10 +38,33 @@ describe("explicitly unavailable ports", () => {
       ok: false,
       error: {
         category: "capability-unavailable",
+        retryable: false,
+      },
+    });
+  });
+
+  it("retries only recoverable source unavailability", async () => {
+    const sourceUnavailable = capabilitySummary(
+      unavailableCapability(
+        "unavailable",
+        "source-unavailable",
+        {
+          observedAt: "2026-07-23T00:00:00.000Z",
+          adapterVersion: "adapter-disabled",
+          contractVersion: "contract-unverified",
+          evidenceClass: "documented",
+        },
+      ),
+    );
+    const port = unavailableQueryPort<undefined, never>(sourceUnavailable);
+
+    await expect(port.query(undefined)).resolves.toMatchObject({
+      ok: false,
+      error: {
+        category: "capability-unavailable",
         retryable: true,
       },
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("keeps query, mutation, and stream contracts separate", async () => {

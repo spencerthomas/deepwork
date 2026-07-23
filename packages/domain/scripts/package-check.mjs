@@ -120,7 +120,14 @@ try {
     )}\n`,
   );
   runPnpm(
-    ["add", "--offline", "--ignore-scripts", "--save-exact", archive],
+    [
+      "add",
+      "--offline",
+      "--ignore-scripts",
+      "--save-exact",
+      archive,
+      "typescript@7.0.2",
+    ],
     consumer,
   );
   await writeFile(
@@ -132,6 +139,35 @@ if (typeof domain.sourceId !== "function") {
 `,
   );
   run(process.execPath, ["verify.mjs"], consumer);
+  await writeFile(
+    join(consumer, "verify.ts"),
+    `import { sourceId, type SourceRunKey } from "@deepwork/domain";
+const id = sourceId("consumer-source");
+const key: SourceRunKey | undefined = undefined;
+void id;
+void key;
+`,
+  );
+  await writeFile(
+    join(consumer, "tsconfig.json"),
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          lib: ["ES2022"],
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          noEmit: true,
+          skipLibCheck: false,
+          strict: true,
+          target: "ES2022",
+        },
+        include: ["verify.ts"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  runPnpm(["exec", "tsc", "--project", "tsconfig.json"], consumer);
   process.stdout.write(
     `clean consumer verified ${expectedName} from ${basename(archive)}\n`,
   );

@@ -6,6 +6,14 @@
       "ES2022",
       "DOM"
     ],
+    "paths": {
+      "@deepwork/domain": [
+        "../domain/src/index.ts"
+      ],
+      "@deepwork/sdk": [
+        "./src/index.ts"
+      ]
+    },
     "types": [
       "vitest/globals"
     ]
@@ -16,10 +24,5 @@
   ],
   "exclude": [
     "tests/fixtures/negative/**"
-  ],
-  "references": [
-    {
-      "path": "../domain"
-    }
   ]
 }

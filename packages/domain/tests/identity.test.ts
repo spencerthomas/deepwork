@@ -18,6 +18,23 @@ describe("source-qualified identity", () => {
     expect(sourceThreadKeyString(first)).not.toBe(sourceThreadKeyString(second));
   });
 
+  it("keeps identical thread and run identifiers distinct across sources", () => {
+    const upstreamThread = threadId("same-upstream-thread");
+    const upstreamRun = runId("same-upstream-run");
+    const first = sourceRunKey(
+      sourceId("source-a"),
+      upstreamThread,
+      upstreamRun,
+    );
+    const second = sourceRunKey(
+      sourceId("source-b"),
+      upstreamThread,
+      upstreamRun,
+    );
+
+    expect(sourceRunKeyString(first)).not.toBe(sourceRunKeyString(second));
+  });
+
   it("serializes only qualified identity fields deterministically", () => {
     const key = sourceRunKey(
       sourceId("source-a"),

@@ -18,8 +18,19 @@ describe("domain negative boundary fixtures", () => {
         join(packageRoot, fixture.path),
         "utf8",
       );
-      const codes = inspectSource(source).map(({ code }) => code);
+      const violations = inspectSource(
+        source,
+        join(packageRoot, fixture.path),
+      );
+      const codes = violations.map(({ code }) => code);
       expect(codes).toEqual(expect.arrayContaining(fixture.expectedCodes));
+      for (const { message } of violations) {
+        expect(message).toContain("Legal destination:");
+        expect(message).toContain("ARCHITECTURE.md#package-graph");
+        expect(message).toContain(
+          "pnpm --filter @deepwork/domain check-architecture",
+        );
+      }
     });
   }
 });

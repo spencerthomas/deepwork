@@ -204,6 +204,11 @@ def _parse_event_cursor(value: str | None) -> int:
         return 0
     if not value.isascii() or not value.isdecimal():
         raise InvalidEventCursorError
+    # Reject clearly out-of-range cursors before int(): Python caps int(str)
+    # at 4300 digits and would otherwise raise ValueError (an unhandled 500)
+    # for an over-long client-supplied Last-Event-ID.
+    if len(value) > len(str(_MAX_EVENT_CURSOR)):
+        raise InvalidEventCursorError
     cursor = int(value)
     if cursor > _MAX_EVENT_CURSOR:
         raise InvalidEventCursorError

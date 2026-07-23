@@ -20,9 +20,9 @@ MAX_DOCUMENT_DEPTH = 64
 TOOL_SUMMARY_MAX_CHARS = 160
 TOOL_SAFE_SUMMARY = "Synthetic result with no external content."
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
-EXPECTED_SEMANTIC_PROBE_COUNT = 66
+EXPECTED_SEMANTIC_PROBE_COUNT = 139
 SEMANTIC_MATRIX_SHA256 = (
-    "2768a3e369ec5c1cc5a85fc0b53e461b6d80e863584e33ff0e393c9bc2e0499c"
+    "8b24a5aed5a11558f4c7188daeeb5640e9cf23a1fb99b7e7e980aef350da85c4"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
@@ -194,6 +194,128 @@ VALIDATOR_IMPORT_ALLOWLIST = [
     "sys",
     "unicodedata",
 ]
+PURITY_WRITE_CALLS = {
+    "chmod",
+    "hardlink_to",
+    "link_to",
+    "lchmod",
+    "mkdir",
+    "open",
+    "remove",
+    "rename",
+    "rmdir",
+    "symlink_to",
+    "touch",
+    "unlink",
+    "write",
+    "write_bytes",
+    "write_text",
+    "writelines",
+}
+PURITY_PROCESS_CALLS = {
+    "__import__",
+    "call",
+    "check_call",
+    "check_output",
+    "compile",
+    "eval",
+    "exec",
+    "execl",
+    "execle",
+    "execlp",
+    "execlpe",
+    "execv",
+    "execve",
+    "execvp",
+    "execvpe",
+    "fork",
+    "popen",
+    "Popen",
+    "posix_spawn",
+    "posix_spawnp",
+    "run",
+    "spawnl",
+    "spawnle",
+    "spawnlp",
+    "spawnlpe",
+    "spawnv",
+    "spawnve",
+    "spawnvp",
+    "spawnvpe",
+    "system",
+}
+PURITY_PROCESS_IMPORTS = {
+    "asyncio",
+    "multiprocessing",
+    "os",
+    "pty",
+    "subprocess",
+}
+PURITY_DYNAMIC_CALLS = {
+    "delattr",
+    "getattr",
+    "globals",
+    "locals",
+    "setattr",
+    "vars",
+}
+PURITY_DYNAMIC_ATTRIBUTES = {
+    "__class__",
+    "__dict__",
+    "__getattr__",
+    "__getattribute__",
+    "__globals__",
+    "__mro__",
+    "__subclasses__",
+}
+PURITY_NETWORK_CALLS = {
+    "connect",
+    "connect_ex",
+    "create_connection",
+    "create_server",
+    "open_connection",
+    "request",
+    "send",
+    "sendall",
+    "socket",
+    "start_server",
+    "urlopen",
+}
+PURITY_NETWORK_IMPORTS = {
+    "aiohttp",
+    "ftplib",
+    "http",
+    "httpx",
+    "requests",
+    "smtplib",
+    "socket",
+    "telnetlib",
+    "urllib",
+}
+PURITY_ENVIRONMENT_CALLS = {
+    "expanduser",
+    "getenv",
+    "get_exec_path",
+    "home",
+}
+PURITY_WALL_CLOCK_CALLS = {
+    "ctime",
+    "gmtime",
+    "localtime",
+    "monotonic",
+    "monotonic_ns",
+    "now",
+    "perf_counter",
+    "perf_counter_ns",
+    "sleep",
+    "strftime",
+    "time",
+    "time_ns",
+    "today",
+    "utcnow",
+    "wait",
+    "wait_for",
+}
 FORBIDDEN_FIELD_FRAGMENTS = (
     "accesskey",
     "apikey",
@@ -218,6 +340,10 @@ EXTERNAL_SCHEME_RE = re.compile(
     r"(?<![a-z0-9_])[a-z][a-z0-9+.-]*://",
     re.IGNORECASE,
 )
+GENERIC_URI_SCHEME_RE = re.compile(
+    r"(?<![a-z0-9_])[a-z][a-z0-9+.-]*:",
+    re.IGNORECASE,
+)
 EXTERNAL_HOST_RE = re.compile(
     r"(?<![a-z0-9_@-])"
     r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
@@ -231,14 +357,22 @@ IP_ADDRESS_RE = re.compile(
 )
 LOCAL_OR_NUMERIC_HOST_RE = re.compile(
     r"(?<![a-z0-9_-])(?:"
-    r"localhost(?::[0-9]{1,5})?"
+    r"localhost\.?(?::[0-9]{1,5})?"
     r"|0x[0-9a-f]{7,8}(?::[0-9]{1,5})?"
+    r"|0[0-7]{10,11}(?::[0-9]{1,5})?"
     r"|[0-9]{8,10}(?::[0-9]{1,5})?"
     r")(?=[/:]|$)",
     re.IGNORECASE,
 )
+ABBREVIATED_OR_OCTAL_IP_RE = re.compile(
+    r"(?<![a-z0-9])(?:"
+    r"(?:[0-9]{1,3}\.){1,2}[0-9]{1,3}"
+    r"|(?:[0-9]{1,4}\.){3}[0-9]{1,4}"
+    r")(?=[:/])",
+    re.IGNORECASE,
+)
 UNSAFE_PATH_RE = re.compile(
-    r"(?:^|[\\/])\.\.(?:[\\/]|$)|^(?:/|[a-z]:[\\/]|\\\\)",
+    r"(?:^|[\\/])\.\.(?:[\\/]|$)|^(?:~[\\/]|/|[a-z]:[\\/]|\\\\)",
     re.IGNORECASE,
 )
 REAL_IDENTITY_RE = re.compile(
@@ -250,12 +384,56 @@ SECRET_VALUE_RE = re.compile(
     r"(?:basic\s+[a-z0-9+/]{2,}={0,2}(?![a-z0-9+/=])|"
     r"bearer\s+[a-z0-9._~+/-]+=*|"
     r"-----BEGIN [A-Z ]+PRIVATE KEY-----|"
-    r"(?:sk|gh[opsu]|xox[abprs])_[a-z0-9_-]{8,}|"
+    r"(?:sk(?:-proj)?[-_]|gh[opsu][-_]|xox[abprs][-_])[a-z0-9_-]{8,}|"
+    r"github_pat_[a-z0-9_]{8,}|"
     r"AKIA[A-Z0-9]{16}|"
     r"eyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})",
     re.IGNORECASE,
 )
 VALID_HITL_DECISIONS = ("approve", "edit", "reject", "respond")
+EXPECTED_SCOPE_IDENTITIES = {
+    "start": ("fx_source_alpha", "fx_thread_start", "fx_run_start"),
+    "content": ("fx_source_alpha", "fx_thread_content", "fx_run_content"),
+    "tool": ("fx_source_alpha", "fx_thread_tool", "fx_run_tool"),
+    "ordered-interrupt": (
+        "fx_source_alpha",
+        "fx_thread_interrupt",
+        "fx_run_interrupt",
+    ),
+    "checkpoint": (
+        "fx_source_alpha",
+        "fx_thread_checkpoint",
+        "fx_run_checkpoint",
+    ),
+    "reconnect": (
+        "fx_source_alpha",
+        "fx_thread_reconnect",
+        "fx_run_reconnect",
+    ),
+    "replay": ("fx_source_alpha", "fx_thread_replay", "fx_run_replay"),
+    "logical-delay": ("fx_source_alpha", "fx_thread_delay", "fx_run_delay"),
+    "completion": (
+        "fx_source_alpha",
+        "fx_thread_completion",
+        "fx_run_completion",
+    ),
+    "unknown": ("fx_source_alpha", "fx_thread_unknown", "fx_run_unknown"),
+    "malformed-input": (
+        "fx_source_alpha",
+        "fx_thread_malformed",
+        "fx_run_malformed",
+    ),
+    "partial-failure": (
+        "fx_source_alpha",
+        "fx_thread_partial",
+        "fx_run_partial",
+    ),
+    "source-collision": (
+        "fx_source_alpha",
+        "fx_thread_shared_external",
+        "fx_run_shared_external",
+    ),
+}
 
 
 class DuplicateKeyError(ValueError):
@@ -288,6 +466,51 @@ def read_json(relative_path):
 
 def canonical_json_bytes(value):
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _strict_json_equal(left, right):
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return (
+            set(left) == set(right)
+            and all(_strict_json_equal(left[key], right[key]) for key in left)
+        )
+    if isinstance(left, list):
+        return (
+            len(left) == len(right)
+            and all(
+                _strict_json_equal(left_item, right_item)
+                for left_item, right_item in zip(left, right)
+            )
+        )
+    return left == right
+
+
+def _normalize_security_text(value):
+    return unicodedata.normalize("NFKC", value).translate(
+        str.maketrans(
+            {
+                "\u200b": None,
+                "\u200c": None,
+                "\u200d": None,
+                "\u2060": None,
+                "\ufeff": None,
+                "\u2010": "-",
+                "\u2011": "-",
+                "\u2012": "-",
+                "\u2013": "-",
+                "\u2014": "-",
+                "\u2212": "-",
+                "\u2044": "/",
+                "\u2215": "/",
+                "\u29f5": "\\",
+                "\u3002": ".",
+                "\uff0e": ".",
+                "\uff61": ".",
+            }
+        )
+    )
 
 
 def tick_timestamp(tick):
@@ -346,11 +569,12 @@ def scrub_diagnostics(value):
                 ):
                     diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", f"{path}/{key}"))
         elif isinstance(item, str):
-            if SECRET_VALUE_RE.search(item):
+            normalized_item = _normalize_security_text(item)
+            if SECRET_VALUE_RE.search(normalized_item):
                 diagnostics.append(("FIXTURE_SCRUB_SECRET_VALUE", path))
-            if UNSAFE_PATH_RE.search(item):
+            if UNSAFE_PATH_RE.search(normalized_item):
                 diagnostics.append(("FIXTURE_SCRUB_UNSAFE_PATH", path))
-            if REAL_IDENTITY_RE.search(item):
+            if REAL_IDENTITY_RE.search(normalized_item):
                 diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", path))
     return diagnostics
 
@@ -358,6 +582,7 @@ def scrub_diagnostics(value):
 def _expected_hashed_assets():
     return {
         "corpus.json",
+        "validate.py",
         "negative/matrix.json",
         SEMANTIC_MATRIX_PATH,
         *SCHEMA_PATHS,
@@ -368,6 +593,11 @@ def _expected_hashed_assets():
 
 
 def _is_allowed_internal_reference(path, value):
+    if path == "/$id":
+        return value in {
+            "urn:deep-work:fixture:product-demo:envelope:1",
+            "urn:deep-work:fixture:product-demo:capability-manifest:1",
+        }
     if path == "/negativeMatrixPath":
         return value == "negative/matrix.json"
     if path == "/semanticMatrixPath":
@@ -395,11 +625,14 @@ def network_diagnostics(value):
             continue
         if _is_allowed_internal_reference(path, item):
             continue
+        normalized_item = _normalize_security_text(item)
         if (
-            EXTERNAL_SCHEME_RE.search(item)
-            or EXTERNAL_HOST_RE.search(item)
-            or IP_ADDRESS_RE.search(item)
-            or LOCAL_OR_NUMERIC_HOST_RE.search(item)
+            EXTERNAL_SCHEME_RE.search(normalized_item)
+            or GENERIC_URI_SCHEME_RE.search(normalized_item)
+            or EXTERNAL_HOST_RE.search(normalized_item)
+            or IP_ADDRESS_RE.search(normalized_item)
+            or LOCAL_OR_NUMERIC_HOST_RE.search(normalized_item)
+            or ABBREVIATED_OR_OCTAL_IP_RE.search(normalized_item)
         ):
             diagnostics.append(("FIXTURE_NETWORK_EXTERNAL_URL", path))
     return diagnostics
@@ -428,9 +661,11 @@ def structural_schema_diagnostics(value, schema, path="$"):
     expected_type = schema.get("type")
     if expected_type is not None and not _matches_schema_type(value, expected_type):
         return [f"{path}:type"]
-    if "const" in schema and value != schema["const"]:
+    if "const" in schema and not _strict_json_equal(value, schema["const"]):
         diagnostics.append(f"{path}:const")
-    if "enum" in schema and value not in schema["enum"]:
+    if "enum" in schema and not any(
+        _strict_json_equal(value, member) for member in schema["enum"]
+    ):
         diagnostics.append(f"{path}:enum")
     if isinstance(value, str) and "pattern" in schema:
         if re.fullmatch(schema["pattern"], value) is None:
@@ -590,6 +825,27 @@ def _validate_scope(scope):
     return []
 
 
+def _validate_fixed_case_identity(case):
+    category = case["category"]
+    expected_case_id = f"fx_case_{str.replace(category, '-', '_')}"
+    expected_identity = EXPECTED_SCOPE_IDENTITIES.get(category)
+    if expected_identity is None or case["caseId"] != expected_case_id:
+        return ["FIXTURE_ID_FIXED"]
+    source_id, thread_id, run_id = expected_identity
+    expected_scope = {
+        "tenantId": "fx_tenant_alpha",
+        "workspaceId": "fx_workspace_alpha",
+        "sourceId": source_id,
+        "threadId": thread_id,
+        "runId": run_id,
+        "qualifiedThreadKey": f"{source_id}:{thread_id}",
+        "qualifiedRunKey": f"{source_id}:{thread_id}:{run_id}",
+    }
+    if not _strict_json_equal(case["scope"], expected_scope):
+        return ["FIXTURE_ID_FIXED"]
+    return []
+
+
 def _canonical_record(
     case,
     *,
@@ -640,8 +896,8 @@ def _validate_start_case(case):
         "providerCreateCall": False,
     }
     if (
-        records != canonical_records
-        or expected != canonical_expected
+        not _strict_json_equal(records, canonical_records)
+        or not _strict_json_equal(expected, canonical_expected)
         or case["clock"]["observedTick"] != 1
     ):
         return ["FIXTURE_EXPECTATION_START"]
@@ -691,8 +947,8 @@ def _validate_content_case(case):
         "privateReasoningPresent": False,
     }
     if (
-        records != canonical_records
-        or expected != canonical_expected
+        not _strict_json_equal(records, canonical_records)
+        or not _strict_json_equal(expected, canonical_expected)
         or case["clock"]["observedTick"] != 3
     ):
         return ["FIXTURE_EXPECTATION_CONTENT"]
@@ -727,8 +983,8 @@ def _validate_checkpoint_case(case):
         "forkPerformed": False,
     }
     if (
-        records != canonical_records
-        or expected != canonical_expected
+        not _strict_json_equal(records, canonical_records)
+        or not _strict_json_equal(expected, canonical_expected)
         or case["clock"]["observedTick"] != 12
     ):
         return ["FIXTURE_EXPECTATION_CHECKPOINT"]
@@ -776,8 +1032,8 @@ def _validate_reconnect_case(case):
         "providerRecoveryMechanism": "unspecified",
     }
     if (
-        records != canonical_records
-        or expected != canonical_expected
+        not _strict_json_equal(records, canonical_records)
+        or not _strict_json_equal(expected, canonical_expected)
         or case["clock"]["observedTick"] != 20
     ):
         return ["FIXTURE_EXPECTATION_RECONNECT"]
@@ -819,10 +1075,23 @@ def _validate_logical_delay(case):
         ),
     ]
     if (
-        case["records"] != canonical_records
+        not _strict_json_equal(case["records"], canonical_records)
         or case["clock"]["observedTick"] != 45
     ):
         return ["FIXTURE_EXPECTATION_DELAY_VISIBILITY"]
+    exact_tick_contract = {
+        "enqueueTick": 41,
+        "delayTicks": 3,
+        "lastPreReleaseTick": 43,
+        "releaseTick": 44,
+        "completionTick": 45,
+    }
+    if any(
+        type(expected.get(field)) is not int
+        or expected[field] != exact_value
+        for field, exact_value in exact_tick_contract.items()
+    ):
+        return ["FIXTURE_CLOCK_DELAY_MISMATCH"]
     if expected["enqueueTick"] + expected["delayTicks"] != expected["releaseTick"]:
         return ["FIXTURE_CLOCK_DELAY_MISMATCH"]
     if expected["lastPreReleaseTick"] != expected["releaseTick"] - 1:
@@ -854,6 +1123,23 @@ def _validate_logical_delay(case):
         return ["FIXTURE_EXPECTATION_DELAY_VISIBILITY"]
     if expected["wallClockClaim"] is not False:
         return ["FIXTURE_CLOCK_WALL_TIME_CLAIM"]
+    canonical_expected = {
+        "enqueueTick": 41,
+        "delayTicks": 3,
+        "lastPreReleaseTick": 43,
+        "releaseTick": 44,
+        "completionTick": 45,
+        "enqueueAt": "2026-07-23T00:00:10.250Z",
+        "lastPreReleaseAt": "2026-07-23T00:00:10.750Z",
+        "releaseAt": "2026-07-23T00:00:11.000Z",
+        "completionAt": "2026-07-23T00:00:11.250Z",
+        "visibleRecordIdsByTick": exact_visibility,
+        "releaseOrder": exact_visibility["45"],
+        "contentVisibleExactlyOnceAtRelease": True,
+        "wallClockClaim": False,
+    }
+    if not _strict_json_equal(expected, canonical_expected):
+        return ["FIXTURE_EXPECTATION_DELAY_VISIBILITY"]
     return []
 
 
@@ -935,7 +1221,10 @@ def _validate_tool_case(case):
             },
         ),
     ]
-    if records != canonical_records or case["clock"]["observedTick"] != 5:
+    if (
+        not _strict_json_equal(records, canonical_records)
+        or case["clock"]["observedTick"] != 5
+    ):
         return ["FIXTURE_EXPECTATION_TOOL_TRUST_BOUNDARY"]
     return []
 
@@ -983,6 +1272,7 @@ def _semantic_diagnostics(case):
             or set(expected) != expected_fields
             or payload["interruptId"] != "fx_interrupt_alpha"
             or payload["version"] != "fx_interrupt_version_3"
+            or records[0]["recordId"] != "fx_record_interrupt"
             or records[0]["durableEventId"] != "fx_event_interrupt"
             or records[0]["tick"] != 8
             or case["clock"]["observedTick"] != 8
@@ -1127,8 +1417,8 @@ def _semantic_diagnostics(case):
             ],
         }
         if (
-            records != canonical_records
-            or expected != canonical_expected
+            not _strict_json_equal(records, canonical_records)
+            or not _strict_json_equal(expected, canonical_expected)
             or case["clock"]["observedTick"] != 24
             or expected["deduplicatedDurableEventIds"] != durable
             or expected["ignoredRecordIds"] != ignored
@@ -1158,8 +1448,8 @@ def _semantic_diagnostics(case):
             "disconnectInfersTerminal": False,
         }
         if (
-            records != canonical_records
-            or expected != canonical_expected
+            not _strict_json_equal(records, canonical_records)
+            or not _strict_json_equal(expected, canonical_expected)
             or case["clock"]["observedTick"] != 30
         ):
             return ["FIXTURE_EXPECTATION_TERMINAL_AUTHORITY"]
@@ -1233,14 +1523,14 @@ def _semantic_diagnostics(case):
             ),
         ]
         if (
-            records != canonical_records
+            not _strict_json_equal(records, canonical_records)
             or case["clock"]["observedTick"] != 39
             or len(set(source_ids)) != 2
             or [record["kind"] for record in records]
             != ["fixture-source-result", "fixture-source-result"]
             or set(thread_ids) != {expected["sharedThreadId"]}
             or set(run_ids) != {expected["sharedRunId"]}
-            or expected != canonical_expected
+            or not _strict_json_equal(expected, canonical_expected)
             or expected["distinctQualifiedThreadKeys"] != qualified_threads
             or expected["distinctQualifiedRunKeys"] != qualified_runs
             or any(
@@ -1282,8 +1572,8 @@ def _semantic_diagnostics(case):
             "envelopeValid": True,
         }
         if (
-            records != canonical_records
-            or expected != canonical_expected
+            not _strict_json_equal(records, canonical_records)
+            or not _strict_json_equal(expected, canonical_expected)
             or case["clock"]["observedTick"] != 34
         ):
             return ["FIXTURE_EXPECTATION_MALFORMED_CLASSIFICATION"]
@@ -1337,7 +1627,7 @@ def _semantic_diagnostics(case):
             ),
         ]
         if (
-            records != canonical_records
+            not _strict_json_equal(records, canonical_records)
             or case["clock"]["observedTick"] != 37
             or healthy["kind"] != "fixture-source-result"
             or (
@@ -1405,8 +1695,8 @@ def _semantic_diagnostics(case):
             "promotedDiscriminator": False,
         }
         if (
-            records != canonical_records
-            or expected != canonical_expected
+            not _strict_json_equal(records, canonical_records)
+            or not _strict_json_equal(expected, canonical_expected)
             or case["clock"]["observedTick"] != 32
         ):
             return ["FIXTURE_EXPECTATION_UNKNOWN"]
@@ -1434,6 +1724,9 @@ def _validate_case(case):
     scope_diagnostics = _validate_scope(case["scope"])
     if scope_diagnostics:
         return scope_diagnostics
+    fixed_identity_diagnostics = _validate_fixed_case_identity(case)
+    if fixed_identity_diagnostics:
+        return fixed_identity_diagnostics
     if case["capabilityManifestRef"] not in MANIFEST_PATHS:
         return ["FIXTURE_CAPABILITY_REFERENCE"]
     clock = case["clock"]
@@ -1532,9 +1825,35 @@ def validate_case(case):
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
 
 
+def _validate_case_inventory(cases):
+    case_ids = []
+    record_ids = []
+    for case in cases:
+        if not isinstance(case, dict):
+            return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+        case_ids.append(case.get("caseId"))
+        records = case.get("records")
+        if not isinstance(records, list):
+            return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+        record_ids.extend(
+            record.get("recordId")
+            for record in records
+            if isinstance(record, dict)
+        )
+    diagnostics = []
+    if len(case_ids) != len(set(case_ids)):
+        diagnostics.append("FIXTURE_ID_DUPLICATE_CASE")
+    if len(record_ids) != len(set(record_ids)):
+        diagnostics.append("FIXTURE_ID_DUPLICATE_RECORD")
+    return diagnostics
+
+
 def _apply_mutation(document, mutation):
     result = copy.deepcopy(document)
-    parts = [part.replace("~1", "/").replace("~0", "~") for part in mutation["path"].split("/")[1:]]
+    parts = [
+        str.replace(str.replace(part, "~1", "/"), "~0", "~")
+        for part in mutation["path"].split("/")[1:]
+    ]
     parent = result
     for part in parts[:-1]:
         parent = parent[int(part)] if isinstance(parent, list) else parent[part]
@@ -1573,6 +1892,13 @@ def diagnose_negative(negative):
             return [] if actual == probe["claimedSha256"] else ["FIXTURE_HASH_MISMATCH"]
         if probe.get("kind") == "network-diagnostic":
             return sorted({code for code, _ in network_diagnostics(probe["value"])})
+        if probe.get("kind") == "scrub-diagnostic":
+            return sorted({code for code, _ in scrub_diagnostics(probe["value"])})
+        if probe.get("kind") == "validator-purity-snippet":
+            purity = _validator_purity_from_source(
+                probe["source"].encode("utf-8")
+            )
+            return _validator_purity_diagnostics(purity)
         if probe.get("kind") == "deep-nesting":
             nested = "fx_leaf"
             for _ in range(probe["depth"]):
@@ -1606,6 +1932,14 @@ def diagnose_negative(negative):
                 record["recordId"] for record in normalized_records
             ]
             return validate_case(mutated)
+        if probe.get("kind") == "corpus-record-id-collision":
+            cases = [read_json(path) for path in EXPECTED_CASE_PATHS]
+            target_index = EXPECTED_CASE_PATHS.index(probe["basePath"])
+            cases[target_index] = _apply_mutations(
+                cases[target_index],
+                probe["mutations"],
+            )
+            return _validate_case_inventory(cases)
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     base_path = negative["basePath"]
     mutations = negative.get("mutations")
@@ -1630,15 +1964,159 @@ def corpus_digest():
     return hashlib.sha256(render_hash_manifest()).hexdigest()
 
 
-def validator_imports():
-    tree = ast.parse(read_bytes("validate.py").decode("utf-8"))
+def _ast_qualified_name(node):
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        prefix = _ast_qualified_name(node.value)
+        return f"{prefix}.{node.attr}" if prefix else node.attr
+    return ""
+
+
+def _validator_purity_from_source(source):
+    tree = ast.parse(source.decode("utf-8"))
     imports = set()
+    import_violations = []
+    write_calls = []
+    write_references = []
+    process_calls = []
+    dynamic_accesses = []
+    network_calls = []
+    environment_reads = []
+    wall_clock_reads = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             imports.update(alias.name.split(".")[0] for alias in node.names)
+            if (
+                len(node.names) != 1
+                or node.names[0].asname is not None
+                or "." in node.names[0].name
+                or node.names[0].name
+                not in set(VALIDATOR_IMPORT_ALLOWLIST) - {"pathlib"}
+            ):
+                import_violations.append(
+                    {"line": node.lineno, "form": ast.dump(node)}
+                )
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module.split(".")[0])
-    return sorted(imports)
+            if not (
+                node.level == 0
+                and node.module == "pathlib"
+                and len(node.names) == 1
+                and node.names[0].name == "Path"
+                and node.names[0].asname is None
+            ):
+                import_violations.append(
+                    {"line": node.lineno, "form": ast.dump(node)}
+                )
+        elif isinstance(node, ast.Attribute):
+            qualified = _ast_qualified_name(node)
+            final_name = qualified.rsplit(".", 1)[-1]
+            if final_name in PURITY_WRITE_CALLS or (
+                final_name == "replace" and qualified != "str.replace"
+            ):
+                write_references.append(
+                    {"line": node.lineno, "reference": qualified}
+                )
+            if (
+                final_name in PURITY_DYNAMIC_ATTRIBUTES
+                or qualified == "sys.modules"
+            ):
+                dynamic_accesses.append(
+                    {"line": node.lineno, "access": qualified}
+                )
+        elif isinstance(node, ast.Subscript):
+            qualified = _ast_qualified_name(node.value)
+            if qualified in {"environ", "os.environ"}:
+                environment_reads.append(
+                    {"line": node.lineno, "call": qualified + "[]"}
+                )
+            if qualified in {"__builtins__", "sys.modules"}:
+                dynamic_accesses.append(
+                    {"line": node.lineno, "access": qualified + "[]"}
+                )
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            if node.id == "__builtins__" or node.id in PURITY_DYNAMIC_CALLS:
+                dynamic_accesses.append(
+                    {"line": node.lineno, "access": node.id}
+                )
+            if node.id in PURITY_WRITE_CALLS:
+                write_references.append(
+                    {"line": node.lineno, "reference": node.id}
+                )
+        if not isinstance(node, ast.Call):
+            continue
+        qualified = _ast_qualified_name(node.func)
+        final_name = qualified.rsplit(".", 1)[-1]
+        root_name = qualified.split(".", 1)[0]
+        call = {"line": node.lineno, "call": qualified or final_name}
+        if final_name in PURITY_WRITE_CALLS:
+            write_calls.append(call)
+        if (
+            qualified in {"__import__", "compile", "eval", "exec"}
+            or (
+                root_name in PURITY_PROCESS_IMPORTS
+                and final_name in PURITY_PROCESS_CALLS
+            )
+        ):
+            process_calls.append(call)
+        if final_name in PURITY_DYNAMIC_CALLS:
+            dynamic_accesses.append(call)
+        if (
+            root_name in PURITY_NETWORK_IMPORTS
+            and final_name in PURITY_NETWORK_CALLS
+        ):
+            network_calls.append(call)
+        if (
+            root_name == "os"
+            and final_name in PURITY_ENVIRONMENT_CALLS
+        ) or qualified in {"environ.get", "os.environ.get"}:
+            environment_reads.append(call)
+        if final_name in PURITY_WALL_CLOCK_CALLS:
+            wall_clock_reads.append(call)
+    process_imports = sorted(imports & PURITY_PROCESS_IMPORTS)
+    network_imports = sorted(imports & PURITY_NETWORK_IMPORTS)
+    return {
+        "sourceSha256": hashlib.sha256(source).hexdigest(),
+        "imports": sorted(imports),
+        "importViolations": import_violations,
+        "writeCalls": write_calls,
+        "writeReferences": write_references,
+        "processCalls": process_calls,
+        "processImports": process_imports,
+        "dynamicAccesses": dynamic_accesses,
+        "networkCalls": network_calls,
+        "networkImports": network_imports,
+        "socketImportCount": int("socket" in imports),
+        "environmentReads": environment_reads,
+        "wallClockOrWaitCalls": wall_clock_reads,
+    }
+
+
+def validator_purity():
+    return _validator_purity_from_source(read_bytes("validate.py"))
+
+
+def validator_imports():
+    return validator_purity()["imports"]
+
+
+def _validator_purity_diagnostics(purity):
+    forbidden_count = sum(
+        (
+            len(purity["writeCalls"]),
+            len(purity["writeReferences"]),
+            len(purity["importViolations"]),
+            len(purity["processCalls"]),
+            len(purity["processImports"]),
+            len(purity["dynamicAccesses"]),
+            len(purity["networkCalls"]),
+            len(purity["networkImports"]),
+            len(purity["environmentReads"]),
+            len(purity["wallClockOrWaitCalls"]),
+        )
+    )
+    return ["FIXTURE_SCHEMA_VALIDATOR_PURITY"] if forbidden_count else []
 
 
 def _source_scan_assets(corpus):
@@ -1653,6 +2131,7 @@ def _source_scan_assets(corpus):
 
 def analyze_sources():
     corpus = read_json("corpus.json")
+    purity = validator_purity()
     cases = [read_json(path) for path in corpus["casePaths"]]
     matrix = read_json(corpus["negativeMatrixPath"])
     semantic_matrix = read_json(matrix["semanticMatrixPath"])
@@ -1688,13 +2167,19 @@ def analyze_sources():
         "negativeOrder": negative_order,
         "scrubMatches": scrub_matches,
         "externalUrls": external_urls,
-        "imports": validator_imports(),
+        "imports": purity["imports"],
+        "validatorPurity": purity,
         "corpusDigest": corpus_digest(),
     }
 
 
 def render_validation_report(analysis=None):
     analysis = analysis or analyze_sources()
+    purity = analysis["validatorPurity"]
+    wait_call_count = sum(
+        call["call"].rsplit(".", 1)[-1] in {"sleep", "wait", "wait_for"}
+        for call in purity["wallClockOrWaitCalls"]
+    )
     report = {
         "reportVersion": "1.0.0",
         "evidenceClass": "fixture",
@@ -1718,6 +2203,22 @@ def render_validation_report(analysis=None):
         "externalUrlHostCount": len(analysis["externalUrls"]),
         "validatorImportAllowlist": VALIDATOR_IMPORT_ALLOWLIST,
         "validatorImportsObserved": analysis["imports"],
+        "validatorSourceSha256": purity["sourceSha256"],
+        "validatorPurity": {
+            "derivedBy": "stdlib-ast-source-inspection",
+            "importViolationCount": len(purity["importViolations"]),
+            "writeCallCount": len(purity["writeCalls"]),
+            "writeReferenceCount": len(purity["writeReferences"]),
+            "processCallCount": len(purity["processCalls"]),
+            "processImportCount": len(purity["processImports"]),
+            "dynamicAccessCount": len(purity["dynamicAccesses"]),
+            "networkCallCount": len(purity["networkCalls"]),
+            "networkImportCount": len(purity["networkImports"]),
+            "environmentReadCount": len(purity["environmentReads"]),
+            "wallClockOrWaitCallCount": len(
+                purity["wallClockOrWaitCalls"]
+            ),
+        },
         "logicalDelay": {
             "tickEpoch": EPOCH,
             "tickDurationMs": TICK_MS,
@@ -1728,8 +2229,10 @@ def render_validation_report(analysis=None):
             "equation": "41 + 3 = 44",
             "absentThroughTick": 43,
             "visibleExactlyOnceFromTick": 44,
-            "wallClockReads": 0,
-            "waits": 0,
+            "wallClockReads": (
+                len(purity["wallClockOrWaitCalls"]) - wait_call_count
+            ),
+            "waits": wait_call_count,
         },
     }
     return canonical_json_bytes(report)
@@ -1737,19 +2240,30 @@ def render_validation_report(analysis=None):
 
 def render_network_report(analysis=None):
     analysis = analysis or analyze_sources()
+    purity = analysis["validatorPurity"]
     report = {
         "reportVersion": "1.0.0",
         "evidenceClass": "fixture",
-        "authority": "validator-source-inspection-only",
+        "authority": "validator-ast-and-corpus-source-inspection-only",
         "claimLimit": "Does not prove isolation for API, browser, provider, or future consumers.",
         "corpusDigest": analysis["corpusDigest"],
         "scannedAssetCount": len(_source_scan_assets(analysis["corpus"])),
         "externalUrlHostCount": len(analysis["externalUrls"]),
-        "validatorSubprocessCalls": 0,
-        "validatorSocketImports": 0,
-        "validatorEnvironmentReads": 0,
-        "validatorWallClockReads": 0,
-        "validatorWrites": 0,
+        "validatorSourceSha256": purity["sourceSha256"],
+        "validatorPurityDerivedBy": "stdlib-ast-source-inspection",
+        "validatorImportViolations": len(purity["importViolations"]),
+        "validatorSubprocessCalls": len(purity["processCalls"]),
+        "validatorProcessImports": len(purity["processImports"]),
+        "validatorDynamicAccesses": len(purity["dynamicAccesses"]),
+        "validatorSocketImports": purity["socketImportCount"],
+        "validatorNetworkCalls": len(purity["networkCalls"]),
+        "validatorNetworkImports": len(purity["networkImports"]),
+        "validatorEnvironmentReads": len(purity["environmentReads"]),
+        "validatorWallClockOrWaitCalls": len(
+            purity["wallClockOrWaitCalls"]
+        ),
+        "validatorWrites": len(purity["writeCalls"]),
+        "validatorWriteReferences": len(purity["writeReferences"]),
     }
     return canonical_json_bytes(report)
 
@@ -1848,6 +2362,7 @@ def validate_all(require_evidence=True):
         diagnostics.extend(validate_manifest(read_json(manifest_path)))
     for case in analysis["cases"]:
         diagnostics.extend(validate_case(case))
+    diagnostics.extend(_validate_case_inventory(analysis["cases"]))
     for negative_id, result in sorted(analysis["negativeResults"].items()):
         if result["observedRuleCodes"] != [result["declaredRuleCode"]]:
             diagnostics.append(f"FIXTURE_EXPECTATION_NEGATIVE_SINGLE_CODE:{negative_id}")
@@ -1857,6 +2372,9 @@ def validate_all(require_evidence=True):
         diagnostics.append("FIXTURE_NETWORK_ACTIVE_CORPUS")
     if analysis["imports"] != VALIDATOR_IMPORT_ALLOWLIST:
         diagnostics.append("FIXTURE_SCHEMA_IMPORT_ALLOWLIST")
+    diagnostics.extend(
+        _validator_purity_diagnostics(analysis["validatorPurity"])
+    )
     diagnostics.extend(_validate_hashes())
     if require_evidence:
         diagnostics.extend(_validate_evidence(analysis))
@@ -1888,10 +2406,20 @@ def main():
     print("external_url_host_count=0")
     print("logical_delay=enqueue:41,delay:3,release:44,completion:45")
     print("logical_delay_visibility=absent_through:43,visible_once_from:44")
-    print("validator_subprocess_calls=0")
-    print("validator_environment_reads=0")
-    print("validator_wall_clock_reads=0")
-    print("validator_writes=0")
+    purity = analysis["validatorPurity"]
+    print(f"validator_import_violations={len(purity['importViolations'])}")
+    print(f"validator_subprocess_calls={len(purity['processCalls'])}")
+    print(f"validator_process_imports={len(purity['processImports'])}")
+    print(f"validator_dynamic_accesses={len(purity['dynamicAccesses'])}")
+    print(f"validator_network_calls={len(purity['networkCalls'])}")
+    print(f"validator_network_imports={len(purity['networkImports'])}")
+    print(f"validator_environment_reads={len(purity['environmentReads'])}")
+    print(
+        "validator_wall_clock_or_wait_calls="
+        + str(len(purity["wallClockOrWaitCalls"]))
+    )
+    print(f"validator_writes={len(purity['writeCalls'])}")
+    print(f"validator_write_references={len(purity['writeReferences'])}")
     return 0
 
 

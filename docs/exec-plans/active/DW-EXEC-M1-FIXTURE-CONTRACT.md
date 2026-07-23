@@ -357,18 +357,25 @@ operations remain non-callable even when the corpus contains a presentation case
 
 ### Pure corpus validator and stable diagnostics
 
-`validate.py` uses only the Python standard library, reads only this corpus, emits
-stable sorted output, and performs no Git inspection, socket, subprocess,
-environment read, or wall-clock access. It validates:
+`validate.py` uses only the Python standard library, reads only this corpus, and
+emits stable sorted output. Its exact bytes are included in the corpus hash
+closure. A fail-closed stdlib AST pass derives import, filesystem-write, process,
+dynamic-access, network, environment, and wall-clock/wait findings from those
+same bytes; any finding fails validation with
+`FIXTURE_SCHEMA_VALIDATOR_PURITY`. This is static proof about the exact hashed
+validator source, not a runtime sandbox claim. It validates:
 
 - corpus/schema/index integrity, exact version support, and application of both
   structural schema documents to every governed case/manifest;
-- unique/normalized IDs, fixed clock derivation, sequence/order, and case coverage;
+- unique/normalized IDs, exact plan-owned case/tenant/workspace identities,
+  corpus-wide record-ID uniqueness, fixed clock derivation, sequence/order, and
+  case coverage;
 - source qualification and collision behavior;
 - capability metadata and fixture/live evidence separation;
 - ordered interrupt positional array alignment, repeated-name preservation,
   canonical decision vocabulary, and rejection of unknown decision values;
-- immutable plan-owned semantic signatures for every required case category,
+- type-exact JSON comparisons and immutable plan-owned semantic signatures for
+  every required case category,
   including exact start/content/checkpoint/reconnect behavior, expected replay
   dedupe, terminal authority, unknown/malformed handling, distinct partial-failure
   scope, and actual logical-delay record binding;
@@ -379,7 +386,9 @@ environment read, or wall-clock access. It validates:
   material, private keys, token-like values, operational endpoints, external URLs,
   real-looking repositories/actors, Unicode-confusable field names, and unsafe
   path content;
-- zero external host/URL entries and an allow-listed standard-library import set;
+- zero external host/URL entries, normalized generic/local/abbreviated/octal/
+  Unicode-dot host detection, an exact standard-library import surface, and
+  rejection of reflective/dynamic source escapes;
 - positive cases pass, each negative case fails with exactly its declared stable
   rule code, and no expected diagnostic disappears.
 
@@ -398,10 +407,12 @@ must fail with exactly `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. These are
 logical-clock contract checks and must never sample or wait for wall time.
 
 The deterministic validation report records corpus version/digest, sorted case
-IDs, rule-code coverage, scrub match count, external URL/host count, and validator
-import allow-list. It contains no runtime timestamp. The no-external-network
-evidence states only what this read-only validator proves; it cannot be reused as
-evidence that future API, browser, or provider consumers made no network calls.
+IDs, rule-code coverage, scrub match count, external URL/host count, validator
+source SHA-256, exact import surface, and every AST-derived purity counter. It
+contains no runtime timestamp. The no-external-network evidence states only what
+the active-corpus scan and static inspection of this exact hash-bound validator
+source prove; it cannot be reused as evidence that the evidence writer, scope
+runner, future API, browser, provider, or other consumer made no network call.
 
 ### Linked-worktree-safe Git scope runner and proof scopes
 
@@ -476,7 +487,7 @@ Acceptance:
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
   `negative/matrix.json` indexes exactly 55 single-code negative files and one
-  immutable 66-probe semantic matrix, for 121 exact single-code checks covering
+  immutable 133-probe semantic matrix, for 188 exact single-code checks covering
   all stable rule-code families, the two mandatory logical-delay negatives,
   tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
   decision arrays, actual decision/resume/accepted-data presence, ordinary and
@@ -485,7 +496,11 @@ Acceptance:
   long-short-unpadded-Basic-secret/path/actor-and-identity-key scrub bypasses,
   generic bare external hosts, and external values in or below machine-reference
   positions, plus every required positive-case semantic, generic schemes,
-  local/numeric hosts, maximum nesting, and Unicode-confusable keys;
+  local/abbreviated/octal/numeric/Unicode-dot hosts, maximum nesting,
+  Unicode-confusable keys, all 39 fixed case/tenant/workspace identity mutations,
+  coordinated interrupt and corpus-wide record-ID collisions, type-exact
+  boolean/integer/float semantics, closed logical-delay expectations, and an
+  adversarial validator-purity source mutation;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
@@ -512,7 +527,11 @@ Acceptance:
   twice in memory, proves those byte sets identical, and proves they match disk;
 - each negative fixture fails only with its declared rule code;
 - hash, scrub, and no-external-network checks are part of the required command;
-- corpus validation invokes no subprocess and reads no Git or environment state;
+- `validate.py` is hash-closed, both evidence reports contain its exact source
+  SHA-256, the AST-derived purity counters are zero, and the retained reflection/
+  write probe fails with exactly `FIXTURE_SCHEMA_VALIDATOR_PURITY`;
+- corpus validation invokes no subprocess and its hashed source contains no Git,
+  network, filesystem-write, environment, or wall-clock/wait capability;
 - the explicit evidence writer is the only corpus helper that may update hashes
   and deterministic reports;
 - the Git scope runner resolves linked-worktree metadata through fixed Git
@@ -639,7 +658,8 @@ Acceptance:
   replay, logical-delay, partial-failure, and tool-boundedness assertions,
   repeated-action subject-order loss, generic scheme/local/numeric host bypasses,
   recursion escape, and Unicode-confusable identity keys.
-- [x] 2026-07-23 AEST — Consolidated successor rework adds immutable
+- [x] 2026-07-23 AEST — Consolidated successor candidate
+  `dfa4498baf4cc892fffc2ebdb009a73b62bff701` added immutable
   plan-owned semantics for all 13 categories, exact repeated-action subject order,
   replay-only durable-ID duplication, bounded non-JSON tool summaries, distinct
   failed-source scope, iterative traversal plus maximum nesting, generic
@@ -648,6 +668,20 @@ Acceptance:
   66-probe semantic matrix; all 121 checks produce exactly their declared single
   code. Deterministic evidence was rendered twice with an empty second update and
   then matched disk byte-for-byte.
+- [x] 2026-07-23 AEST — Fresh exact-candidate reviews rejected
+  `dfa4498baf4cc892fffc2ebdb009a73b62bff701`. They found an open logical-delay
+  expected object, mutable fixed case/tenant/workspace identifiers, coordinated
+  interrupt and corpus-wide record-ID drift, Python boolean/integer equality
+  aliases, token/path/abbreviated-octal-Unicode-host scrub gaps, and evidence that
+  hard-coded purity zeros while leaving `validate.py` outside hash closure.
+- [x] 2026-07-23 AEST — Bounded successor rework pins the entire logical-delay
+  object, all plan-owned identities and interrupt signatures, uses type-exact
+  JSON comparison, enforces corpus-wide record-ID uniqueness, normalizes the
+  reviewed token/path/host forms, and hash-closes `validate.py`. A stdlib AST
+  gate derives source purity counters and a reflection/replace mutation proves
+  the gate fails closed. The retained matrix now contains all 39 fixed-ID
+  mutations and 133 semantic probes; all 188 combined negatives must produce
+  exactly their declared single code before a new exact-SHA review.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -711,8 +745,10 @@ Acceptance:
 - 2026-07-23 AEST — Decision: separate corpus validation from Git scope
   enforcement. Rationale: a deterministic content validator must not acquire
   subprocess/repository authority, while linked worktrees require Git-aware scope
-  inspection. Consequence: `validate.py` is pure and `verify_scope.py` invokes
-  only fixed, NUL-delimited Git queries without a shell.
+  inspection. Consequence: `validate.py` is hash-bound and statically AST-checked
+  for the forbidden capability surface, while `verify_scope.py` invokes only
+  fixed, NUL-delimited Git queries without a shell. This source proof is not a
+  runtime sandbox proof for either helper.
 - 2026-07-23 AEST — Decision: use a schema-valid positive envelope for malformed
   input classification. Rationale: a positive corpus case cannot simultaneously
   be schema-invalid and expected to pass. Consequence: raw invalid envelopes exist
@@ -762,8 +798,10 @@ Acceptance:
    documents only through the negative rule-code matrix, including
    `invalid-logical-delay.json`. Do not derive payloads from provider docs,
    external research fixtures, prototype network captures, or live services.
-4. Implement `validate.py` as a pure read-only standard-library checker that
-   never writes or invokes a subprocess.
+4. Implement `validate.py` as a read-only standard-library checker, include its
+   exact bytes in `hashedAssets`, derive its forbidden-capability counters by AST
+   inspection, and fail closed if its source acquires a write, process, dynamic,
+   network, environment, or wall-clock/wait surface.
 5. Implement `update_evidence.py` as the explicit maintainer-only deterministic
    writer for the hash manifest and two evidence reports. It performs no Git,
    network, environment-secret, or wall-clock access. `--write` renders target
@@ -847,7 +885,9 @@ Required observations:
   and byte identity with all on-disk evidence targets, then writes nothing;
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
-  no writes or subprocess invocation;
+  the exact validator source SHA plus zero AST-derived import violations, writes,
+  process calls/imports, dynamic accesses, network calls/imports, environment
+  reads, and wall-clock/wait calls;
 - validator output proves the logical-delay release equation `41 + 3 = 44`,
   absence through tick `43`, one-time visibility at tick `44`, completion at tick
   `45`, exact `FIXTURE_CLOCK_DELAY_MISMATCH` and
@@ -1037,8 +1077,10 @@ Bounded implementation rework is complete and fresh independent implementation
 review is pending. Candidates `47c1cee121a9b3105f00f37404cd29114b6d04d5`,
 `8291218590e3f6a91a5383ae91d6e909e71b1fbe`,
 `8ee2347e595c685be8d799f106aaf806937efc3e`, and
-`75228c07dfa867f677fc176c1bb2423c7113aff8` remain rejected and must not be
-integrated.
+`75228c07dfa867f677fc176c1bb2423c7113aff8`, and
+`dfa4498baf4cc892fffc2ebdb009a73b62bff701` remain rejected and must not be
+integrated. This successor is not accepted until a new exact-SHA review
+converges.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
 `replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
@@ -1058,28 +1100,36 @@ three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
 `FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
-`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 66
-single-code probes: five start, six content, three tool, one HITL subject-order,
-five checkpoint, seven reconnect, five replay/durable-ID, three actual
-logical-delay-record, five completion, six unknown, seven malformed-input, two
-partial-failure, one maximum-depth, three Unicode-confusable-key, and seven
-generic-scheme/local/numeric-host checks. Every one of the 121 combined
-negatives produced exactly its declared code.
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 133
+single-code probes. It retains the prior 66 category-semantic, depth,
+confusable-key, and generic-network probes, then adds two coherent delay-drift
+cases, seven abbreviated/octal/local/scheme host forms, six JSON type-alias
+cases, corpus-wide record-ID collision, closed delay-object coverage, all 39
+case/tenant/workspace fixed-ID mutations, coordinated interrupt-signature
+mutation, three token forms, tilde-path content, two normalized direct-host
+forms, three case-integrated host forms, and the adversarial validator-purity
+source probe. Every one of the 188 combined negatives produced exactly its
+declared code. The semantic matrix SHA-256 is
+`8b24a5aed5a11558f4c7188daeeb5640e9cf23a1fb99b7e7e980aef350da85c4`.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`b4a29faf7c3f2edfcb7871f13ab0a74d60c487ac3f3af9f82d55dd6d52901423`.
-The generated validation and isolation reports record 13 cases, 121 intentional
+`9b0a7083bd7662afa901250942b593f01c68b5781e8bde79c01270b180b7af06`.
+The 76-entry hash closure includes validator source SHA-256
+`81c2cdbfb0f30901acda5a9416e00b9a7b1627d7d55b2b9153e8cdcf5c2bedf0`.
+The generated validation and isolation reports record 13 cases, 188 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
-URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
-reads, zero waits, and zero writes.
+URLs/hosts, and AST-derived zero counts for import violations, filesystem-write
+calls/references, process calls/imports, dynamic accesses, network calls/imports,
+environment reads, and wall-clock/wait calls. These are hash-bound static-source
+and active-corpus facts, not consumer runtime isolation.
 
 Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=b4a29f...01423; validation-report=e68b5c...f646a;
-no-external-network=1cc623...28789; first updated_files contained all 3 targets
+exit 0; hashes.sha256=9b0a70...7af06; validation-report=491115...98e0;
+no-external-network=00d936...d4cd; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1088,9 +1138,10 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=b4a29f...01423; 13 case IDs; 121 single-code negatives;
+exit 0; corpus_digest=9b0a70...7af06; 13 case IDs; 188 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
-validator subprocess/environment/wall-clock/write counts=0
+validator import-violation/process/dynamic/network/environment/wall-clock-wait/
+write-call/write-reference counts=0
 
 git diff --check
 exit 0

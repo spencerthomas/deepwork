@@ -39,6 +39,7 @@
   "negativeMatrixPath": "negative/matrix.json",
   "hashedAssets": [
     "corpus.json",
+    "validate.py",
     "schema/fixture-envelope.json",
     "schema/capability-manifest.json",
     "manifests/fixture-source.json",

@@ -487,7 +487,7 @@ Acceptance:
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
   `negative/matrix.json` indexes exactly 55 single-code negative files and one
-  immutable 133-probe semantic matrix, for 188 exact single-code checks covering
+  immutable 139-probe semantic matrix, for 194 exact single-code checks covering
   all stable rule-code families, the two mandatory logical-delay negatives,
   tool correlation/trust/boundedness/raw-body failures, reordered or split HITL
   decision arrays, actual decision/resume/accepted-data presence, ordinary and
@@ -680,7 +680,7 @@ Acceptance:
   reviewed token/path/host forms, and hash-closes `validate.py`. A stdlib AST
   gate derives source purity counters and a reflection/replace mutation proves
   the gate fails closed. The retained matrix now contains all 39 fixed-ID
-  mutations and 133 semantic probes; all 188 combined negatives must produce
+  mutations and 139 semantic probes; all 194 combined negatives must produce
   exactly their declared single code before a new exact-SHA review.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
@@ -1100,7 +1100,7 @@ three `FIXTURE_ID_QUALIFICATION` cases, `FIXTURE_CLOCK_DERIVATION`,
 `FIXTURE_SCRUB_REAL_IDENTITY` cases, six
 `FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
-`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 133
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. A SHA-pinned semantic matrix adds 139
 single-code probes. It retains the prior 66 category-semantic, depth,
 confusable-key, and generic-network probes, then adds two coherent delay-drift
 cases, seven abbreviated/octal/local/scheme host forms, six JSON type-alias
@@ -1108,16 +1108,16 @@ cases, corpus-wide record-ID collision, closed delay-object coverage, all 39
 case/tenant/workspace fixed-ID mutations, coordinated interrupt-signature
 mutation, three token forms, tilde-path content, two normalized direct-host
 forms, three case-integrated host forms, and the adversarial validator-purity
-source probe. Every one of the 188 combined negatives produced exactly its
+source probe. Every one of the 194 combined negatives produced exactly its
 declared code. The semantic matrix SHA-256 is
-`8b24a5aed5a11558f4c7188daeeb5640e9cf23a1fb99b7e7e980aef350da85c4`.
+`276b2a9c9ae7d5e9d9e5007432b2f22a67a75b1aa4cdacc03e4027d7fca09092`.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`9b0a7083bd7662afa901250942b593f01c68b5781e8bde79c01270b180b7af06`.
+`257c420864e2b44744f102901eb3ef3c44b7a453aced70079fd6eb8199ccaaba`.
 The 76-entry hash closure includes validator source SHA-256
-`81c2cdbfb0f30901acda5a9416e00b9a7b1627d7d55b2b9153e8cdcf5c2bedf0`.
-The generated validation and isolation reports record 13 cases, 188 intentional
+`ef8931da27f8b25dd73de0f9a022c3a62e4d25c0eb39a2e953a1061e4bb8a5d6`.
+The generated validation and isolation reports record 13 cases, 194 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, and AST-derived zero counts for import violations, filesystem-write
 calls/references, process calls/imports, dynamic accesses, network calls/imports,
@@ -1128,8 +1128,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=9b0a70...7af06; validation-report=491115...98e0;
-no-external-network=00d936...d4cd; first updated_files contained all 3 targets
+exit 0; hashes.sha256=257c42...caaba; validation-report=d541bc...9162f;
+no-external-network=c627ce...7f209; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -1138,7 +1138,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=9b0a70...7af06; 13 case IDs; 188 single-code negatives;
+exit 0; corpus_digest=257c42...caaba; 13 case IDs; 194 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator import-violation/process/dynamic/network/environment/wall-clock-wait/
 write-call/write-reference counts=0

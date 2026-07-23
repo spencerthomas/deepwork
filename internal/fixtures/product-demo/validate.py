@@ -22,7 +22,7 @@ TOOL_SAFE_SUMMARY = "Synthetic result with no external content."
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
 EXPECTED_SEMANTIC_PROBE_COUNT = 139
 SEMANTIC_MATRIX_SHA256 = (
-    "8b24a5aed5a11558f4c7188daeeb5640e9cf23a1fb99b7e7e980aef350da85c4"
+    "276b2a9c9ae7d5e9d9e5007432b2f22a67a75b1aa4cdacc03e4027d7fca09092"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",

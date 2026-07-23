@@ -9,6 +9,7 @@ import type { ClientMode } from "./task-types";
  * proves them elsewhere.
  */
 export interface TaskRuntimePresentation {
+  taskConnectionLabel: string;
   taskOriginLabel: string;
   dispatchTargetLabel: string;
   newTaskDescription: string;
@@ -35,6 +36,7 @@ export function taskRuntimePresentation(
 ): TaskRuntimePresentation {
   if (mode === "fixture") {
     return {
+      taskConnectionLabel: "Client adapter",
       taskOriginLabel: "In-browser fixture runner",
       dispatchTargetLabel: "Agent",
       newTaskDescription:
@@ -68,6 +70,7 @@ export function taskRuntimePresentation(
   }
 
   return {
+    taskConnectionLabel: "Client transport",
     taskOriginLabel: "Task via configured API",
     dispatchTargetLabel: "Dispatch target",
     newTaskDescription:

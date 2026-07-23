@@ -82,3 +82,43 @@ UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/con
 exit: 1
 output: live profile unavailable; missing base_url, account_tier, region, server_revision
 qualification: expected fail-closed result; no token, header, reusable endpoint, environment dump, or live fixture was printed or persisted
+
+Follow-up retained-review consistency audit (2026-07-23):
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv sync --project tools/contract-spikes/langchain --frozen
+exit: 0
+output: Checked 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.validate_matrix docs/references/research/langchain-contract-spikes/matrix.json
+exit: 0
+output: validated 11 pinned contract rows
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.scrub docs/references/research/langchain-contract-spikes
+exit: 0
+output: scrubbed 9 evidence files; findings=0
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv lock --project tools/contract-spikes/langchain --check --offline
+exit: 0
+output: Resolved 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+python3 tools/docs/generate.py --check
+exit: 0
+output: verified 6 generated documents
+
+python3 tools/docs/check.py
+exit: 0
+output: documentation validation passed
+
+git diff --check
+exit: 0
+
+scope/result audit relative to 73ecb1576f56f64ee07265dbabb936e155310834
+exit: 0
+output: all changed paths inside the three allowed path groups; 11 matrix rows; only blocked-live-evidence results; live_evidence unavailable

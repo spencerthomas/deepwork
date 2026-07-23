@@ -184,6 +184,12 @@ publication, production mutation, or private-beta enablement is authorized.
   their exact pinned revisions.
 - [x] 2026-07-23: Independently reviewed source/config/deploy,
   compose/threads/HITL, and stream/cancel/checkpoint contract groups.
+- [x] 2026-07-23: Completed an independent retained-artifact audit. The audit
+  conditionally identified evidence-class, assistant-search fixture, and
+  environment-bound runner defects; the integrated corrections also preserve
+  ordered HITL and protocol-v3 classification. Roles, verdict, corrections, and
+  authority boundaries are retained in
+  `docs/references/research/langchain-contract-spikes/review.md`.
 - [x] 2026-07-23: Built the dependency-free probe scaffold, matrix validator,
   evidence inventory, synthetic fixtures, hash manifest, scrubber, and
   fail-closed live profile gate under the allowed paths.
@@ -194,8 +200,10 @@ publication, production mutation, or private-beta enablement is authorized.
   scrubbing, lock checks, documentation validation, and diff checks.
 - [x] 2026-07-23: Ran the documented live command without a complete sandbox
   profile and confirmed it failed closed without printing credentials.
-- [ ] Independent runtime-contract, security, and product reviewers accept or
-  reject each row. The author has not self-accepted any spike.
+- [ ] Formal runtime-contract, security, and product reviewers accept or reject
+  each row. The completed contract-group and retained-artifact reviews were
+  independent evidence reviews, not formal row acceptance; the author has not
+  self-accepted any spike.
 - [ ] A human provides an explicitly authorized non-production classic sandbox
   and approved public package-index access for installed/live acceptance.
 - [ ] Produce a genuinely isolated lock including the exact public distributions,
@@ -243,6 +251,11 @@ publication, production mutation, or private-beta enablement is authorized.
   egress was blocked, the probe lock contains only the probe package and requires
   the exact workspace `pytest 9.0.2`; it does not masquerade as installed
   LangChain evidence.
+- **2026-07-23 — Separate evidence review from formal adjudication.** Independent
+  contract-group and retained-artifact review corrected the packet and supports
+  research handoff. It does not satisfy the named runtime-contract, security, or
+  product acceptance authority and cannot change a row from
+  `blocked-live-evidence`.
 
 ## Outcomes and retrospective
 

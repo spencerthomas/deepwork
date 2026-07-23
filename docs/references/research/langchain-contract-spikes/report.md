@@ -66,6 +66,21 @@ distribution evidence. The generated Agent Server OpenAPI identifies itself as
 Full request, response, error, idempotency, retry, cancel, reconnect, source, and
 downstream acceptance details are retained in `matrix.json`.
 
+## Independent evidence review
+
+On 2026-07-23, independent reviewers covered source/config/deploy,
+compose/threads/HITL, and stream/lifecycle contract groups. The
+compose/threads/HITL reviewer then audited the integrated retained artifacts and
+conditionally identified evidence-class, assistant-search fixture, and
+environment-bound runner defects. Those corrections, plus the ordered HITL and
+protocol-v3 corrections found during the contract-group reviews, were integrated
+before the research commit.
+
+The review verdict supports this packet only as bounded research with every row
+`blocked-live-evidence`. It did not accept a row or enable a capability. Exact
+roles, corrections, and the distinction from still-pending formal
+runtime-contract/security/product adjudication are retained in `review.md`.
+
 ## Material contradictions and unknowns
 
 ### Source and health

@@ -1,5 +1,5 @@
 {
-  "files_scanned": 8,
+  "files_scanned": 9,
   "finding_counts": {
     "credential_reference": 0,
     "secret": 0,

@@ -869,6 +869,17 @@
       "mutation": {"operation": "replace", "path": "/capabilities/2/state", "value": "available"}
     },
     {
+      "negativeId": "fx_probe_manifest_path_identity",
+      "declaredRuleCode": "FIXTURE_SCHEMA_ASSET_INDEX",
+      "probe": {
+        "kind": "manifest-path-swap",
+        "manifestPaths": [
+          "manifests/fixture-source.json",
+          "manifests/gated-runtimes.json"
+        ]
+      }
+    },
+    {
       "negativeId": "fx_probe_negative_id_collision",
       "declaredRuleCode": "FIXTURE_SCHEMA_NEGATIVE_INDEX",
       "probe": {

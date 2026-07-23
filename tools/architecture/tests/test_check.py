@@ -140,14 +140,28 @@ class ArchitectureCheckerTests(unittest.TestCase):
         self.assertEqual(coverage["status"], "dependency-gated")
         self.assertEqual(
             coverage["checked_zones"],
-            ["apps/api", "packages/agent"],
+            [
+                "apps/api",
+                "packages/agent",
+                "packages/domain",
+                "packages/sdk",
+                "packages/ui",
+            ],
         )
+        self.assertEqual(coverage["missing_zones"], ["apps/desktop", "apps/web"])
         self.assertEqual(coverage["ungated_missing_zones"], [])
-        self.assertTrue(
-            all(
-                item["dependency"] == "local:DW-M1-TS-SCAFFOLD"
-                for item in coverage["dependency_gates"]
-            )
+        self.assertEqual(
+            coverage["dependency_gates"],
+            [
+                {
+                    "zone": "apps/desktop",
+                    "dependency": "local:DW-M1-TS-SCAFFOLD",
+                },
+                {
+                    "zone": "apps/web",
+                    "dependency": "local:DW-M1-TS-SCAFFOLD",
+                },
+            ],
         )
 
     def test_empty_coverage_marker_is_not_counted_as_checked(self) -> None:
@@ -168,7 +182,8 @@ class ArchitectureCheckerTests(unittest.TestCase):
 
     def test_cli_reports_machine_readable_non_acceptance(self) -> None:
         stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             status = main(
                 [
                     "--root",
@@ -177,8 +192,8 @@ class ArchitectureCheckerTests(unittest.TestCase):
                     str(GRAPH_PATH),
                 ]
             )
+        self.assertEqual(status, 0, stderr.getvalue())
         payload = json.loads(stdout.getvalue())
-        self.assertEqual(status, 0)
         self.assertEqual(payload["status"], "passed")
         self.assertEqual(payload["acceptance"], "implemented-not-accepted")
         self.assertEqual(payload["coverage"]["status"], "dependency-gated")
@@ -306,6 +321,106 @@ class ArchitectureCheckerTests(unittest.TestCase):
                 "environment exemptions cannot enter domain/UI/SDK",
             ):
                 load_graph(graph_path)
+
+    def test_graph_requires_one_source_marker_per_zone(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="architecture-graph-") as directory:
+            graph = load_graph(GRAPH_PATH)
+            del graph["coverage"]["source_markers"]["packages/ui"]
+            graph_path = Path(directory) / "graph.json"
+            graph_path.write_text(json.dumps(graph), encoding="utf-8")
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker zones must exactly match declared zones",
+            ):
+                load_graph(graph_path)
+
+    def test_graph_rejects_source_marker_outside_its_zone(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="architecture-graph-") as directory:
+            graph = load_graph(GRAPH_PATH)
+            graph["coverage"]["source_markers"]["packages/ui"] = "packages/sdk/src"
+            graph_path = Path(directory) / "graph.json"
+            graph_path.write_text(json.dumps(graph), encoding="utf-8")
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker for packages/ui is outside its declared zone",
+            ):
+                load_graph(graph_path)
+
+    def test_graph_rejects_noncanonical_source_markers(self) -> None:
+        invalid_markers = (
+            "/packages/domain/src",
+            "packages/domain/../sdk/src",
+            "packages/domain/src/../../sdk/src",
+            r"packages/domain/..\sdk/src",
+        )
+        for marker in invalid_markers:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory(
+                prefix="architecture-graph-"
+            ) as directory:
+                graph = load_graph(GRAPH_PATH)
+                graph["coverage"]["source_markers"]["packages/domain"] = marker
+                graph_path = Path(directory) / "graph.json"
+                graph_path.write_text(json.dumps(graph), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "source marker for packages/domain must be a canonical POSIX path",
+                ):
+                    load_graph(graph_path)
+
+    def test_checker_rejects_existing_file_as_source_marker(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="architecture-marker-") as directory:
+            root = Path(directory)
+            marker = root / "packages/domain/src/index.ts"
+            marker.parent.mkdir(parents=True)
+            marker.write_text('import "node:fs";\n', encoding="utf-8")
+            graph = load_graph(GRAPH_PATH)
+            graph["coverage"]["source_markers"]["packages/domain"] = (
+                "packages/domain/src/index.ts"
+            )
+            graph_path = root / "graph.json"
+            graph_path.write_text(json.dumps(graph), encoding="utf-8")
+            checker = ArchitectureChecker(
+                root,
+                load_graph(graph_path),
+                graph_path,
+                check_generated_views=False,
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker for packages/domain is not a directory",
+            ):
+                checker.run()
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker for packages/domain is not a directory",
+            ):
+                checker.coverage_summary()
+
+    def test_checker_rejects_source_marker_symlinked_into_another_zone(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="architecture-marker-") as directory:
+            root = Path(directory)
+            source = root / "packages/sdk/src"
+            source.mkdir(parents=True)
+            (source / "index.ts").write_text("export const value = true;\n", encoding="utf-8")
+            domain = root / "packages/domain"
+            domain.mkdir(parents=True)
+            (domain / "src").symlink_to("../sdk/src", target_is_directory=True)
+            checker = ArchitectureChecker(
+                root,
+                load_graph(GRAPH_PATH),
+                GRAPH_PATH,
+                check_generated_views=False,
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker for packages/domain resolves outside its declared zone",
+            ):
+                checker.run()
+            with self.assertRaisesRegex(
+                ValueError,
+                "source marker for packages/domain resolves outside its declared zone",
+            ):
+                checker.coverage_summary()
 
 
 if __name__ == "__main__":

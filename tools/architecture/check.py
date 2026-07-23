@@ -12,7 +12,7 @@ import sys
 import tokenize
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable, Iterator, Sequence
 
 SOURCE_SUFFIXES = {".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
@@ -268,10 +268,10 @@ class ArchitectureChecker:
     def run(self) -> list[Diagnostic]:
         self._check_declared_graph_cycles()
         for zone, config in self.zones.items():
-            zone_root = self.root / zone
-            if not zone_root.is_dir():
+            source_root = self._source_root(str(zone))
+            if source_root is None:
                 continue
-            for path in self._source_files(zone_root):
+            for path in self._source_files(source_root):
                 self._check_file(path, str(zone), dict(config))
         self._check_cycles()
         if self.check_generated_views:
@@ -284,8 +284,9 @@ class ArchitectureChecker:
         gates = coverage.get("dependency_gates", {})
         present = sorted(
             zone
-            for zone, marker in markers.items()
-            if self._marker_has_source(self.root / str(marker))
+            for zone in markers
+            if (source_root := self._source_root(str(zone))) is not None
+            and self._marker_has_source(source_root)
         )
         missing = sorted(zone for zone in self.zones if zone not in present)
         gated = [
@@ -304,11 +305,24 @@ class ArchitectureChecker:
         }
 
     def _marker_has_source(self, marker: Path) -> bool:
-        if marker.is_file():
-            return marker.suffix in SOURCE_SUFFIXES
-        if not marker.is_dir():
-            return False
         return any(self._source_files(marker))
+
+    def _source_root(self, zone: str) -> Path | None:
+        marker = self.graph["coverage"]["source_markers"][zone]
+        source_root = self.root / str(marker)
+        if not source_root.exists() and not source_root.is_symlink():
+            return None
+        if not source_root.is_dir():
+            raise ValueError(f"source marker for {zone} is not a directory: {marker}")
+        resolved_zone = (self.root / zone).resolve()
+        resolved_source = source_root.resolve()
+        try:
+            resolved_source.relative_to(resolved_zone)
+        except ValueError:
+            raise ValueError(
+                f"source marker for {zone} resolves outside its declared zone: {marker}"
+            ) from None
+        return source_root
 
     def _source_files(self, zone_root: Path) -> Iterator[Path]:
         for path in sorted(zone_root.rglob("*")):
@@ -932,6 +946,40 @@ def load_graph(path: Path) -> dict[str, object]:
     for zone, config in graph["zones"].items():
         if not isinstance(config, dict) or "runtime" not in config or "allows" not in config:
             raise ValueError(f"invalid zone declaration: {zone}")
+    coverage = graph["coverage"]
+    if not isinstance(coverage, dict) or not isinstance(
+        coverage.get("source_markers"), dict
+    ):
+        raise ValueError("architecture coverage must declare source_markers")
+    source_markers = coverage["source_markers"]
+    marker_zones = set(source_markers)
+    declared_zones = set(graph["zones"])
+    if marker_zones != declared_zones:
+        raise ValueError(
+            "source marker zones must exactly match declared zones; "
+            f"missing={sorted(declared_zones - marker_zones)}, "
+            f"unknown={sorted(marker_zones - declared_zones)}"
+        )
+    for zone, marker in source_markers.items():
+        if not isinstance(marker, str) or not marker or "\\" in marker:
+            raise ValueError(
+                f"source marker for {zone} must be a canonical POSIX path: {marker!r}"
+            )
+        marker_path = PurePosixPath(marker)
+        if (
+            marker_path.is_absolute()
+            or ".." in marker_path.parts
+            or marker_path.as_posix() != marker
+        ):
+            raise ValueError(
+                f"source marker for {zone} must be a canonical POSIX path: {marker!r}"
+            )
+        try:
+            marker_path.relative_to(PurePosixPath(zone))
+        except ValueError:
+            raise ValueError(
+                f"source marker for {zone} is outside its declared zone: {marker}"
+            ) from None
     for edge in graph.get("forbidden", []):
         if (
             not isinstance(edge, list)

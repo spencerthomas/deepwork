@@ -85,7 +85,7 @@ def build_task_router(service: TaskService) -> APIRouter:
             task = await service.get_task(task_id)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
-        if task.status is not TaskStatus.COMPLETED or task.result is None:
+        if task.status is not TaskStatus.COMPLETED or not task.result:
             return _problem(
                 409,
                 "task_result_unavailable",

@@ -49,11 +49,11 @@ function statusDot(status: TaskStatus): string {
 
 export function TaskThreadMarker({ label, detail }: { label: string; detail?: string }) {
   return (
-    <div className="ml-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground">
+    <div className="ml-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground sm:flex-nowrap">
       <span className="size-1.5 shrink-0 rounded-full bg-border" aria-hidden />
-      <span className="min-w-0">{label}</span>
+      <span className="min-w-0 sm:shrink-0">{label}</span>
       {detail && (
-        <span className="basis-full break-words pl-3.5 opacity-70 sm:min-w-0 sm:basis-auto sm:truncate sm:pl-0">
+        <span className="basis-full break-words pl-3.5 opacity-70 sm:min-w-0 sm:flex-1 sm:truncate sm:pl-0">
           · {detail}
         </span>
       )}

@@ -36,7 +36,7 @@ function WorkspaceSelector() {
   return (
     <button
       type="button"
-      aria-label="Workspace: local — personal workspace"
+      aria-label={`Workspace: ${workspace.workspaceLabel} — ${workspace.workspaceSubtitle}`}
       className="flex items-center gap-2 rounded-[13.6px] border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:bg-accent"
     >
       <span

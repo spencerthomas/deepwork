@@ -9,6 +9,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 - [Canonical program coordination](active/DW-EXEC-PROGRAM-CANONICAL.md)
 - [Wave 1 repository scaffold](active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md)
 - [Wave 1 TypeScript package scaffold rework](active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md)
+- [Wave 1 deterministic product-demo fixture contract](active/DW-EXEC-M1-FIXTURE-CONTRACT.md)
 
 ## Other records
 

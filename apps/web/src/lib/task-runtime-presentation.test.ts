@@ -11,6 +11,7 @@ describe("taskRuntimePresentation", () => {
     const copy = taskRuntimePresentation("fixture");
     const text = renderedCopy(copy);
 
+    expect(copy.taskConnectionLabel).toBe("Client adapter");
     expect(copy.taskOriginLabel).toBe("In-browser fixture runner");
     expect(copy.dispatchTargetLabel).toBe("Agent");
     expect(text).toMatch(/deterministic/i);
@@ -23,6 +24,7 @@ describe("taskRuntimePresentation", () => {
     const copy = taskRuntimePresentation("api", "https://deepwork.example.test");
     const text = renderedCopy(copy);
 
+    expect(copy.taskConnectionLabel).toBe("Client transport");
     expect(copy.taskOriginLabel).toBe("Task via configured API");
     expect(copy.dispatchTargetLabel).toBe("Dispatch target");
     expect(copy.settingsConnectionTarget).toBe("https://deepwork.example.test");

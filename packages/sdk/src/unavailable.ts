@@ -1,14 +1,9 @@
 import type { UnavailableCapabilitySummary } from "@deepwork/domain";
 
 import type { MutationPort, QueryPort, StreamPort } from "./ports.js";
-import {
-  capabilityUnavailableError,
-  type SdkResult,
-} from "./result.js";
+import { capabilityUnavailableError, type SdkResult } from "./result.js";
 
-function unavailable<T>(
-  capability: UnavailableCapabilitySummary,
-): SdkResult<T> {
+function unavailable<T>(capability: UnavailableCapabilitySummary): SdkResult<T> {
   return {
     ok: false,
     error: capabilityUnavailableError(capability),

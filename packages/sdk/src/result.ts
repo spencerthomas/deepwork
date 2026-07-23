@@ -27,21 +27,12 @@ export type SdkResult<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: SdkError };
 
-export function capabilityUnavailableError(
-  capability: UnavailableCapabilitySummary,
-): SdkError {
+export function capabilityUnavailableError(capability: UnavailableCapabilitySummary): SdkError {
   return Object.freeze({
     category:
-      capability.state === "permission-denied"
-        ? "permission-denied"
-        : "capability-unavailable",
-    safeMessage: unavailableMessage(
-      capability.state,
-      capability.safeReason,
-    ),
-    retryable:
-      capability.state === "unavailable" &&
-      capability.safeReason === "source-unavailable",
+      capability.state === "permission-denied" ? "permission-denied" : "capability-unavailable",
+    safeMessage: unavailableMessage(capability.state, capability.safeReason),
+    retryable: capability.state === "unavailable" && capability.safeReason === "source-unavailable",
     capability,
   });
 }

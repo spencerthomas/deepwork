@@ -1,9 +1,4 @@
-import {
-  isTaskStatus,
-  isViewStateKind,
-  TASK_STATUSES,
-  VIEW_STATE_KINDS,
-} from "@deepwork/domain";
+import { isTaskStatus, isViewStateKind, TASK_STATUSES, VIEW_STATE_KINDS } from "@deepwork/domain";
 import { describe, expect, it } from "vitest";
 
 describe("public state guards", () => {

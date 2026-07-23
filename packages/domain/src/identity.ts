@@ -35,18 +35,11 @@ export function runId(value: string): RunId {
   return opaqueIdentifier<RunId>(value, "Run identifier");
 }
 
-export function sourceThreadKey(
-  source: SourceId,
-  thread: ThreadId,
-): SourceThreadKey {
+export function sourceThreadKey(source: SourceId, thread: ThreadId): SourceThreadKey {
   return Object.freeze({ sourceId: source, threadId: thread });
 }
 
-export function sourceRunKey(
-  source: SourceId,
-  thread: ThreadId,
-  run: RunId,
-): SourceRunKey {
+export function sourceRunKey(source: SourceId, thread: ThreadId, run: RunId): SourceRunKey {
   return Object.freeze({ sourceId: source, threadId: thread, runId: run });
 }
 

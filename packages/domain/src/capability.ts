@@ -14,8 +14,7 @@ export const CAPABILITY_EVIDENCE_CLASSES = Object.freeze([
   "fixture",
 ] as const);
 
-export type CapabilityEvidenceClass =
-  (typeof CAPABILITY_EVIDENCE_CLASSES)[number];
+export type CapabilityEvidenceClass = (typeof CAPABILITY_EVIDENCE_CLASSES)[number];
 
 export const CAPABILITY_SAFE_REASONS = Object.freeze([
   "contract-not-verified",
@@ -33,26 +32,33 @@ export type Rfc3339Instant = string & {
   readonly [rfc3339InstantBrand]: "Rfc3339Instant";
 };
 
+export interface CapabilityEvidenceObject {
+  readonly [key: string]: CapabilityEvidenceValue;
+}
+
 export type CapabilityEvidenceValue =
   | boolean
   | string
   | number
   | null
   | readonly CapabilityEvidenceValue[]
-  | Readonly<Record<string, CapabilityEvidenceValue>>;
+  | CapabilityEvidenceObject;
 
-export type CapabilityEvidenceSnapshot<T extends CapabilityEvidenceValue> =
-  T extends null | boolean | string | number
-    ? T
-    : T extends readonly (infer Item extends CapabilityEvidenceValue)[]
-      ? readonly CapabilityEvidenceSnapshot<Item>[]
-      : T extends Readonly<Record<string, CapabilityEvidenceValue>>
-        ? {
-            readonly [Key in keyof T]: T[Key] extends CapabilityEvidenceValue
-              ? CapabilityEvidenceSnapshot<T[Key]>
-              : never;
-          }
-        : never;
+export type CapabilityEvidenceSnapshot<T extends CapabilityEvidenceValue> = T extends
+  | null
+  | boolean
+  | string
+  | number
+  ? T
+  : T extends readonly (infer Item extends CapabilityEvidenceValue)[]
+    ? readonly CapabilityEvidenceSnapshot<Item>[]
+    : T extends Readonly<Record<string, CapabilityEvidenceValue>>
+      ? {
+          readonly [Key in keyof T]: T[Key] extends CapabilityEvidenceValue
+            ? CapabilityEvidenceSnapshot<T[Key]>
+            : never;
+        }
+      : never;
 
 export interface CapabilityEvidenceMetadata {
   readonly observedAt: string;
@@ -61,15 +67,15 @@ export interface CapabilityEvidenceMetadata {
   readonly evidenceClass: CapabilityEvidenceClass;
 }
 
-export interface AvailableCapabilityEvidence<T extends CapabilityEvidenceValue>
-  extends CapabilityEvidenceMetadata {
+export interface AvailableCapabilityEvidence<
+  T extends CapabilityEvidenceValue,
+> extends CapabilityEvidenceMetadata {
   readonly state: "available";
   readonly value: CapabilityEvidenceSnapshot<T>;
   readonly observedAt: Rfc3339Instant;
 }
 
-export interface UnavailableCapabilityEvidence
-  extends CapabilityEvidenceMetadata {
+export interface UnavailableCapabilityEvidence extends CapabilityEvidenceMetadata {
   readonly state: Exclude<CapabilityState, "available">;
   readonly safeReason: CapabilitySafeReason;
   readonly observedAt: Rfc3339Instant;
@@ -79,22 +85,18 @@ export type CapabilityEvidence<T extends CapabilityEvidenceValue> =
   | AvailableCapabilityEvidence<T>
   | UnavailableCapabilityEvidence;
 
-export interface AvailableCapabilitySummary
-  extends CapabilityEvidenceMetadata {
+export interface AvailableCapabilitySummary extends CapabilityEvidenceMetadata {
   readonly state: "available";
   readonly observedAt: Rfc3339Instant;
 }
 
-export interface UnavailableCapabilitySummary
-  extends CapabilityEvidenceMetadata {
+export interface UnavailableCapabilitySummary extends CapabilityEvidenceMetadata {
   readonly state: Exclude<CapabilityState, "available">;
   readonly safeReason: CapabilitySafeReason;
   readonly observedAt: Rfc3339Instant;
 }
 
-export type CapabilitySummary =
-  | AvailableCapabilitySummary
-  | UnavailableCapabilitySummary;
+export type CapabilitySummary = AvailableCapabilitySummary | UnavailableCapabilitySummary;
 
 function requireMetadata(value: string, label: string): string {
   if (value.length === 0 || value.trim() !== value) {
@@ -109,9 +111,7 @@ function requireEvidenceClass(value: unknown): CapabilityEvidenceClass {
     typeof value !== "string" ||
     !(CAPABILITY_EVIDENCE_CLASSES as readonly string[]).includes(value)
   ) {
-    throw new TypeError(
-      "Capability evidence class must be a declared evidence class.",
-    );
+    throw new TypeError("Capability evidence class must be a declared evidence class.");
   }
 
   return value as CapabilityEvidenceClass;
@@ -132,9 +132,7 @@ function daysInMonth(year: number, month: number): number {
 function requireRfc3339Instant(value: string): RegExpExecArray {
   const match = RFC3339_INSTANT.exec(value);
   if (match === null) {
-    throw new TypeError(
-      "Capability observation time must be an RFC3339 instant.",
-    );
+    throw new TypeError("Capability observation time must be an RFC3339 instant.");
   }
 
   const year = Number(match[1]);
@@ -158,9 +156,7 @@ function requireRfc3339Instant(value: string): RegExpExecArray {
     offsetHour > 23 ||
     offsetMinute > 59
   ) {
-    throw new TypeError(
-      "Capability observation time must be a valid RFC3339 instant.",
-    );
+    throw new TypeError("Capability observation time must be a valid RFC3339 instant.");
   }
 
   return match;
@@ -195,10 +191,7 @@ export function rfc3339Instant(value: string): Rfc3339Instant {
   utc.setUTCFullYear(year, month - 1, day);
   utc.setUTCHours(hour, minute, second, milliseconds);
   if (zone !== "Z") {
-    const offset =
-      (offsetHour * 60 + offsetMinute) *
-      60_000 *
-      (offsetSign === "+" ? 1 : -1);
+    const offset = (offsetHour * 60 + offsetMinute) * 60_000 * (offsetSign === "+" ? 1 : -1);
     utc.setTime(utc.getTime() - offset);
   }
 
@@ -212,11 +205,7 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
   seen = new Set<object>(),
 ): CapabilityEvidenceSnapshot<T> {
   const valueType = typeof value;
-  if (
-    value === null ||
-    valueType === "boolean" ||
-    valueType === "string"
-  ) {
+  if (value === null || valueType === "boolean" || valueType === "string") {
     return value as CapabilityEvidenceSnapshot<T>;
   }
   if (valueType === "number") {
@@ -226,62 +215,44 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
     return value as CapabilityEvidenceSnapshot<T>;
   }
   if (valueType !== "object") {
-    throw new TypeError(
-      "Capability evidence values must be JSON-compatible data.",
-    );
+    throw new TypeError("Capability evidence values must be JSON-compatible data.");
   }
-  if (seen.has(value)) {
+  const objectValue = value as CapabilityEvidenceObject | readonly CapabilityEvidenceValue[];
+  if (seen.has(objectValue)) {
     throw new TypeError("Capability evidence values must not contain cycles.");
   }
-  seen.add(value);
+  seen.add(objectValue);
 
-  if (Array.isArray(value)) {
-    const snapshot = Array.from(value, (entry) =>
-      snapshotCapabilityValue(entry, seen),
-    );
-    seen.delete(value);
+  if (Array.isArray(objectValue)) {
+    const snapshot = Array.from(objectValue, (entry) => snapshotCapabilityValue(entry, seen));
+    seen.delete(objectValue);
     return Object.freeze(snapshot) as CapabilityEvidenceSnapshot<T>;
   }
 
-  const prototype = Object.getPrototypeOf(value);
+  const recordValue = objectValue as CapabilityEvidenceObject;
+  const prototype = Object.getPrototypeOf(recordValue);
   if (prototype !== Object.prototype && prototype !== null) {
-    throw new TypeError(
-      "Capability evidence objects must be plain records.",
-    );
+    throw new TypeError("Capability evidence objects must be plain records.");
   }
-  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const descriptors = Object.getOwnPropertyDescriptors(recordValue);
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!descriptor.enumerable || !("value" in descriptor)) {
-      throw new TypeError(
-        `Capability evidence property ${key} must be enumerable data.`,
-      );
+      throw new TypeError(`Capability evidence property ${key} must be enumerable data.`);
     }
   }
-  if (Object.getOwnPropertySymbols(value).length > 0) {
-    throw new TypeError(
-      "Capability evidence objects must not contain symbol keys.",
-    );
+  if (Object.getOwnPropertySymbols(recordValue).length > 0) {
+    throw new TypeError("Capability evidence objects must not contain symbol keys.");
   }
   const snapshot = Object.fromEntries(
-    Object.entries(value).map(([key, entry]) => [
-      key,
-      snapshotCapabilityValue(entry, seen),
-    ]),
+    Object.entries(recordValue).map(([key, entry]) => [key, snapshotCapabilityValue(entry, seen)]),
   );
-  seen.delete(value);
+  seen.delete(recordValue);
   return Object.freeze(snapshot) as CapabilityEvidenceSnapshot<T>;
 }
 
 const SAFE_REASONS_BY_STATE = Object.freeze({
-  unavailable: Object.freeze([
-    "not-supported",
-    "source-unavailable",
-    "adapter-disabled",
-  ] as const),
-  gated: Object.freeze([
-    "permission-required",
-    "adapter-disabled",
-  ] as const),
+  unavailable: Object.freeze(["not-supported", "source-unavailable", "adapter-disabled"] as const),
+  gated: Object.freeze(["permission-required", "adapter-disabled"] as const),
   "permission-denied": Object.freeze(["permission-required"] as const),
   unknown: Object.freeze(["contract-not-verified"] as const),
 });
@@ -292,9 +263,7 @@ function requireCoherentUnavailableReason(
 ): void {
   const allowed = SAFE_REASONS_BY_STATE[state] as readonly CapabilitySafeReason[];
   if (!allowed.includes(safeReason)) {
-    throw new TypeError(
-      `Capability state ${state} cannot use safe reason ${safeReason}.`,
-    );
+    throw new TypeError(`Capability state ${state} cannot use safe reason ${safeReason}.`);
   }
 }
 
@@ -311,14 +280,8 @@ export function availableCapability<T extends CapabilityEvidenceValue>(
     state: "available",
     value: snapshotCapabilityValue(value),
     observedAt: rfc3339Instant(metadata.observedAt),
-    adapterVersion: requireMetadata(
-      metadata.adapterVersion,
-      "Adapter version",
-    ),
-    contractVersion: requireMetadata(
-      metadata.contractVersion,
-      "Contract version",
-    ),
+    adapterVersion: requireMetadata(metadata.adapterVersion, "Adapter version"),
+    contractVersion: requireMetadata(metadata.contractVersion, "Contract version"),
     evidenceClass: requireEvidenceClass(metadata.evidenceClass),
   });
 }
@@ -333,14 +296,8 @@ export function unavailableCapability(
     state,
     safeReason,
     observedAt: rfc3339Instant(metadata.observedAt),
-    adapterVersion: requireMetadata(
-      metadata.adapterVersion,
-      "Adapter version",
-    ),
-    contractVersion: requireMetadata(
-      metadata.contractVersion,
-      "Contract version",
-    ),
+    adapterVersion: requireMetadata(metadata.adapterVersion, "Adapter version"),
+    contractVersion: requireMetadata(metadata.contractVersion, "Contract version"),
     evidenceClass: requireEvidenceClass(metadata.evidenceClass),
   });
 }
@@ -351,6 +308,15 @@ export function isCapabilityAvailable<T extends CapabilityEvidenceValue>(
   return evidence.state === "available";
 }
 
+export function capabilitySummary<T extends CapabilityEvidenceValue>(
+  evidence: AvailableCapabilityEvidence<T>,
+): AvailableCapabilitySummary;
+export function capabilitySummary(
+  evidence: UnavailableCapabilityEvidence,
+): UnavailableCapabilitySummary;
+export function capabilitySummary<T extends CapabilityEvidenceValue>(
+  evidence: CapabilityEvidence<T>,
+): CapabilitySummary;
 export function capabilitySummary<T extends CapabilityEvidenceValue>(
   evidence: CapabilityEvidence<T>,
 ): CapabilitySummary {

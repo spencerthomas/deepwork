@@ -15,6 +15,8 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parent
 API_EXECUTABLE = ROOT / "apps" / "api" / ".venv" / "bin" / "deepwork-api"
 NEXT_EXECUTABLE = ROOT / "apps" / "web" / "node_modules" / "next" / "dist" / "bin" / "next"
+MINIMUM_NODE_VERSION = (24, 14, 0)
+MAXIMUM_NODE_MAJOR = 25
 
 
 def _find_executable(name: str, override_variable: str) -> Path | None:
@@ -32,6 +34,36 @@ def _find_executable(name: str, override_variable: str) -> Path | None:
     if discovered:
         return Path(discovered)
     return None
+
+
+def _parse_node_version(output: str) -> tuple[int, int, int] | None:
+    normalized = output.strip()
+    if normalized.startswith("v"):
+        normalized = normalized[1:]
+    parts = normalized.split(".")
+    if len(parts) != 3 or any(not part.isdigit() for part in parts):
+        return None
+    return (int(parts[0]), int(parts[1]), int(parts[2]))
+
+
+def _node_is_supported(node: Path) -> bool:
+    try:
+        completed = subprocess.run(  # noqa: S603 - resolved executable, fixed version argument
+            [str(node), "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    version = _parse_node_version(completed.stdout)
+    return (
+        completed.returncode == 0
+        and version is not None
+        and version >= MINIMUM_NODE_VERSION
+        and version[0] < MAXIMUM_NODE_MAJOR
+    )
 
 
 def _wait_for(url: str, process: subprocess.Popen[bytes], timeout: float) -> None:
@@ -68,7 +100,9 @@ def main() -> int:
     if not API_EXECUTABLE.is_file():
         missing.append("API environment (run `make -C apps/api bootstrap`)")
     if node is None:
-        missing.append("Node.js 24")
+        missing.append("Node.js >=24.14.0 <25")
+    elif not _node_is_supported(node):
+        missing.append("supported Node.js version (>=24.14.0 <25)")
     if not NEXT_EXECUTABLE.is_file():
         missing.append("web dependencies (run `pnpm install`)")
     if missing:

@@ -3,31 +3,13 @@
   "extends": "../../internal/tsconfig/contract.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
-      "@deepwork/domain": [
-        "../domain/src/index.ts"
-      ],
-      "@deepwork/ui": [
-        "./src/index.ts"
-      ]
+      "@deepwork/domain": ["../domain/src/index.ts"],
+      "@deepwork/ui": ["./src/index.ts"]
     },
-    "types": [
-      "react",
-      "vitest/globals"
-    ]
+    "types": ["react", "vitest/globals"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "tests/**/*.ts",
-    "tests/**/*.tsx"
-  ],
-  "exclude": [
-    "tests/fixtures/negative/**"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+  "exclude": ["tests/fixtures/negative/**"]
 }

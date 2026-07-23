@@ -12,12 +12,8 @@ describe("global SDK unit network denial", () => {
   it("guards browser network primitives for every test", () => {
     expect(() => globalThis.fetch("https://fixture.invalid")).toThrow(message);
     expect(() => new globalThis.XMLHttpRequest()).toThrow(message);
-    expect(() => new globalThis.WebSocket("wss://fixture.invalid")).toThrow(
-      message,
-    );
-    expect(() => new globalThis.EventSource("https://fixture.invalid")).toThrow(
-      message,
-    );
+    expect(() => new globalThis.WebSocket("wss://fixture.invalid")).toThrow(message);
+    expect(() => new globalThis.EventSource("https://fixture.invalid")).toThrow(message);
   });
 
   it("guards Node HTTP and socket escape paths", () => {

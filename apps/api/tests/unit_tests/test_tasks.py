@@ -19,6 +19,7 @@ from deepwork_api.contracts.tasks import (
 )
 from deepwork_api.domain import (
     MAX_PLAN_REVISION,
+    MAX_PLAN_STEPS,
     DecisionConflictError,
     DecisionValue,
     PlanRevisionConflictError,
@@ -27,6 +28,26 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskStatus,
 )
+
+
+def _plan_proposed_payload(step_count: int) -> dict[str, Any]:
+    return {
+        "title": "Bounded plan",
+        "steps": [f"Step {index}" for index in range(step_count)],
+        "revision": 1,
+        "evidenceRefs": [],
+        "evidenceClass": "fixture",
+    }
+
+
+def test_plan_proposed_event_steps_use_the_shared_max_plan_steps_bound() -> None:
+    # The proposed-plan event contract must bound steps by the shared
+    # MAX_PLAN_STEPS constant, not a hardcoded literal that could silently
+    # drift from the domain and the other wire models.
+    at_bound = PlanProposedEventData.model_validate(_plan_proposed_payload(MAX_PLAN_STEPS))
+    assert len(at_bound.steps) == MAX_PLAN_STEPS
+    with pytest.raises(ValidationError):
+        PlanProposedEventData.model_validate(_plan_proposed_payload(MAX_PLAN_STEPS + 1))
 
 
 def _completed_snapshot(result: str | None) -> TaskSnapshot:

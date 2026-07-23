@@ -54,10 +54,15 @@ schema, TypeScript package, or live-contract result.
 
 ## Context and orientation
 
-The exact reviewed base is
+The exact product/dependency base is
 `fff1bfd278d550d01de6e8d74f553f45c4003a8c`, the branch is
 `codex/contracts/wave1-fixture-corpus`, and the worktree is
 `/Users/tomspencer/dev/deepwork/worktrees/w1-fixture-contract`.
+This bounded plan-rework task starts from clean commit
+`d2cb53c2301a6dd6c5c5b402990314dbebfff825`. That commit is a plan-authoring
+base, not implementation authority. The exact independently accepted plan
+candidate must receive a separate coordinator-owned reviewed/dispatch transition
+before any fixture implementation starts.
 
 At this base:
 
@@ -105,13 +110,15 @@ neither consumer is implemented here.
   `unavailable`, `gated`, `permission-denied`, and `unknown`; fixture evidence may
   describe a simulated case but cannot promote a live runtime capability.
 - Positive cases for start, content, tool lifecycle, ordered interrupt,
-  checkpoint observation, reconnect, duplicate replay, completion, unknown event,
-  malformed input classification, and partial-source failure.
+  checkpoint observation, reconnect, duplicate replay, fixed-logical-tick delay,
+  completion, unknown event, malformed input classification, and partial-source
+  failure.
 - A source-collision case in which two synthetic sources deliberately reuse the
   same external thread and run strings while retaining distinct qualified keys.
 - Intentional negative cases that prove stable validator rule codes for schema,
   ID, clock, ordering, capability, interrupt alignment, hash, scrub, network, and
-  expectation failures.
+  expectation failures, including an exact logical-delay arithmetic mismatch
+  under the clock family.
 - A standard-library-only read-only validator, deterministic corpus hashes, a
   scrub policy, and deterministic validation/no-external-network evidence.
 - Corpus README, machine index, structural schema documents, scenario files,
@@ -142,12 +149,20 @@ neither consumer is implemented here.
 
 ### Permissions and risk boundary
 
-- Implementation-author allowed paths are exactly
+- Plan-author/rework authority is exactly
+  `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`.
+- After the exact draft plan candidate is independently accepted, the
+  coordinator alone may perform the pre-implementation reviewed/dispatch
+  transition described below. That transition may change only this plan and
+  `docs/exec-plans/index.md`; it is not fixture implementation authority.
+- Implementation-author allowed paths, starting only from the exact reviewed
+  dispatch commit handed off by the coordinator, are exactly
   `internal/fixtures/product-demo/**` and
-  `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`. The later
-  coordinator-only plan/index transition has its own narrower change range and
-  proof scope; it does not broaden implementation authority or front-matter
-  `governed_paths`.
+  `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`.
+- Any post-implementation plan/index status transition is coordinator-only and
+  has its own narrower accepted-implementation-to-transition range and proof
+  scope. Neither coordinator transition broadens implementation authority or
+  front-matter `governed_paths`.
 - No dependency installation, package index access, provider/service access,
   credential, live account, production data, or external network is permitted.
 - No destructive operation, migration, release, deployment, publication, push,
@@ -157,8 +172,9 @@ neither consumer is implemented here.
   conformance input. Fixture contracts can mislead downstream work if they
   accidentally encode an unverified provider or product wire.
 - Required review is independent: SDK/domain contract, API contract, security,
-  developer-experience, and product-fixture reviewers. The author cannot mark the
-  plan reviewed, set `dispatch_ready: true`, accept gates, or approve its
+  developer-experience, and product-fixture reviewers. The plan or implementation
+  author cannot record reviewer identity, mark the plan reviewed, set
+  `dispatch_ready: true`, accept gates, edit the index, or approve the
   implementation.
 
 ## Authoritative sources and prerequisites
@@ -183,8 +199,11 @@ neither consumer is implemented here.
   until fresh TS-source acceptance, lock integration, and executable verification
   are independently terminal.
 - `docs/exec-plans/index.md` registration is coordinator-owned. The complete
-  draft/review diagnostic set, including the unindexed-plan error, remains a known
-  handoff gate, not permission for this cell to edit the index or reviewer fields.
+  draft/review diagnostic set, including the unindexed-plan error, remains an
+  expected plan-candidate result. After independent plan acceptance, the
+  coordinator must clear all eight diagnostics and make the plan dispatch-ready
+  before implementation; the diagnostics are not permission for either author to
+  edit the index or reviewer fields.
 
 ### Open runtime-gate ledger and deterministic fallback
 
@@ -234,6 +253,7 @@ internal/fixtures/product-demo/
     checkpoint.json
     reconnect.json
     replay.json
+    logical-delay.json
     completion.json
     unknown.json
     malformed-input.json
@@ -241,6 +261,8 @@ internal/fixtures/product-demo/
     source-collision.json
   negative/
     matrix.json
+    invalid-logical-delay.json
+    invalid-logical-delay-visibility.json
     invalid-*.json
   evidence/
     validation-report.json
@@ -259,8 +281,10 @@ Every positive case has:
 - a format/version owned by the fixture corpus, not the public API;
 - a stable `caseId` and semantic case category;
 - `evidenceClass: "fixture"` and an unmistakable synthetic marker;
-- an integer logical tick plus fixed RFC 3339 UTC timestamps derived from one
-  documented epoch, never wall-clock reads;
+- an integer logical tick plus fixed RFC 3339 UTC timestamps derived from
+  `tickEpoch: "2026-07-23T00:00:00Z"` and `tickDurationMs: 250`, where timestamp
+  at tick `N` is exactly epoch plus `N * 250` milliseconds, never a wall-clock
+  read;
 - stable `fx_`-prefixed source, thread, run, event, interrupt, checkpoint, actor,
   tenant, and workspace values as applicable;
 - ordered records with unique fixture record IDs and monotonic fixture sequence;
@@ -287,6 +311,21 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   disconnect never means cancel or fail.
 - Replay deliberately repeats durable event IDs and states the expected
   de-duplicated order.
+- Logical delay uses only the corpus clock. The case enqueues one content record
+  at tick `41`, declares `delayTicks: 3`, releases it at tick `44`, and completes
+  at tick `45`. The derived enqueue, last-pre-release, release, and completion
+  timestamps are exactly `2026-07-23T00:00:10.250Z`,
+  `2026-07-23T00:00:10.750Z`, `2026-07-23T00:00:11.000Z`, and
+  `2026-07-23T00:00:11.250Z`. Its exact expectations assert that the content
+  record is absent through tick `43`, becomes visible exactly once at tick `44`,
+  and that visible record IDs at ticks `40`, `43`, `44`, and `45` are respectively
+  `[fx_record_delay_start]`, `[fx_record_delay_start]`,
+  `[fx_record_delay_start, fx_record_delay_content]`, and
+  `[fx_record_delay_start, fx_record_delay_content,
+  fx_record_delay_complete]`. The deterministic release order is
+  `fx_record_delay_start`, `fx_record_delay_content`,
+  `fx_record_delay_complete`; no sleep, timeout, monotonic-clock read, performance
+  target, or real elapsed-time claim is permitted.
 - Completion includes an explicit authoritative fixture terminal record; absence,
   timeout, or disconnect cannot infer completion.
 - Unknown preserves an unrecognized safe record as observable unknown content
@@ -339,6 +378,15 @@ Stable rule-code families are `FIXTURE_SCHEMA`, `FIXTURE_ID`, `FIXTURE_CLOCK`,
 `FIXTURE_SCRUB`, `FIXTURE_NETWORK`, and `FIXTURE_EXPECTATION`. Review may refine
 suffixes without changing the required failure classes.
 
+`negative/invalid-logical-delay.json` is mandatory in addition to the
+one-per-family matrix. It keeps the envelope otherwise valid but declares
+enqueue tick `41`, `delayTicks: 3`, and release tick `43`; it must fail with
+exactly `FIXTURE_CLOCK_DELAY_MISMATCH` because `41 + 3 != 43`.
+`negative/invalid-logical-delay-visibility.json` keeps the release arithmetic
+valid but includes the content record in expected visibility at tick `43`; it
+must fail with exactly `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. These are
+logical-clock contract checks and must never sample or wait for wall time.
+
 The deterministic validation report records corpus version/digest, sorted case
 IDs, rule-code coverage, scrub match count, external URL/host count, and validator
 import allow-list. It contains no runtime timestamp. The no-external-network
@@ -363,11 +411,11 @@ the two named proof scopes below, and exact full base and candidate commits, the
 5. rejects symbolic or nonexistent commit arguments and rejects absolute,
    parent-traversing, undecodable, or out-of-allow-list paths.
 
-The runner has exactly two proof scopes:
+The runner has exactly two post-dispatch proof scopes:
 
-1. `implementation` compares the reviewed base
-   `fff1bfd278d550d01de6e8d74f553f45c4003a8c` with the exact full implementation
-   candidate commit. Its allow-list is exactly
+1. `implementation` compares the exact reviewed dispatch commit handed off by
+   the coordinator with the exact full
+   implementation candidate commit. Its allow-list is exactly
    `internal/fixtures/product-demo/**` plus
    `docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md`.
 2. `coordinator-transition` compares the exact accepted implementation commit
@@ -383,8 +431,10 @@ coordinator scope is not implementation permission: no implementation agent may
 edit `docs/exec-plans/index.md`, select the coordinator transition as its
 implementation proof, or include index changes in the implementation candidate.
 The coordinator may use the second scope only after independent acceptance of the
-first scope's exact implementation commit. The runner performs no network access,
-arbitrary command execution, corpus mutation, or Git mutation.
+first scope's exact implementation commit. The pre-implementation plan transition
+cannot rely on this not-yet-implemented runner and instead uses the fixed Git and
+docs commands below. The runner performs no network access, arbitrary command
+execution, corpus mutation, or Git mutation.
 
 ## Milestones
 
@@ -412,9 +462,16 @@ ordered.
 Acceptance:
 
 - positive coverage includes start/content/tool/ordered interrupt/checkpoint/
-  reconnect/replay/completion/unknown/malformed-input classification/partial
-  failure/source collision;
+  reconnect/replay/logical delay/completion/unknown/malformed-input
+  classification/partial failure/source collision;
+- `corpus.json` indexes exactly those 13 positive case files once each, while
+  `negative/matrix.json` indexes exactly 12 single-code negative files: one for
+  each of the 10 stable rule-code families plus the two mandatory logical-delay
+  negatives;
 - replay and repeated-action cases have explicit expected order;
+- logical delay uses the exact tick-41 plus three ticks equals tick-44 release
+  model, proves absence through tick 43 and one-time visibility from tick 44, and
+  has the exact clock-mismatch and early-visibility negative diagnostics;
 - the positive malformed-input case has a schema-valid envelope and expected safe
   classification, while raw schema-invalid fixtures stay only under `negative/`;
   and
@@ -440,8 +497,9 @@ Acceptance:
   and deterministic reports;
 - the Git scope runner resolves linked-worktree metadata through fixed Git
   commands and never imports or mutates the corpus;
-- the exact base-to-implementation-candidate committed range and every staged,
-  unstaged, and untracked path are within the `implementation` allow-list; and
+- the exact reviewed-dispatch-to-implementation-candidate committed range and
+  every staged, unstaged, and untracked path are within the `implementation`
+  allow-list; and
 - `docs/plans/**` hashes remain unchanged from the base.
 
 ### Milestone 4 — Independent review handoff
@@ -455,9 +513,12 @@ Acceptance:
 - the implementation author does not approve, index, merge, or begin consumer
   work;
 - reviewers accept or return bounded rework against only the two governed paths;
-- an accepted review hands the reviewer/coordinator the exact accepted
-  implementation commit and the metadata/index transition needed before
-  dispatch;
+- an accepted plan review hands the coordinator the exact accepted draft-plan
+  commit and the metadata/index transition needed before initial dispatch;
+- the reviewed dispatch commit exists before implementation and is the exact base
+  handed to the implementation author;
+- an accepted implementation review later hands the coordinator the exact
+  accepted implementation commit for any completion/status transition;
 - the coordinator transition compares that accepted implementation commit with
   its exact transition commit and changes only this plan plus
   `docs/exec-plans/index.md`; and
@@ -476,10 +537,16 @@ Acceptance:
   now has an exact two-write/zero-second-update proof followed by a double-render
   byte comparison against disk. Fresh review remains pending.
 - [x] 2026-07-23 AEST — Final independent scope finding resolved: implementation
-  proof is base-to-exact-candidate with fixture/plan paths only, while the later
-  coordinator transition is accepted-implementation-to-exact-transition with
-  plan/index paths only. Implementation agents remain forbidden from editing the
-  index. Fresh review remains pending.
+  proof is reviewed-dispatch-to-exact-candidate with fixture/plan paths only,
+  while a later coordinator transition is
+  accepted-implementation-to-exact-transition with plan/index paths only.
+  Implementation agents remain forbidden from editing the index. Fresh review
+  remains pending.
+- [x] 2026-07-23 AEST — Bounded rework from
+  `d2cb53c2301a6dd6c5c5b402990314dbebfff825` removes the circular initial
+  dispatch transition and adds the DW-FND-004 fixed-logical-tick delay plus its
+  exact negative coverage. Fresh independent plan review remains pending; no
+  fixture implementation performed.
 - [ ] Independent plan review confirms ownership, disjoint paths, gates,
   dependencies, case semantics, and install-free validation.
 - [ ] Milestone 1 complete; exact fixture contract and inventory retained.
@@ -502,6 +569,11 @@ Acceptance:
 - 2026-07-23 AEST — The existing external fixture paths are
   `internal/fixtures/{architecture,worktree,docs}/**`. Consequence:
   `internal/fixtures/product-demo/**` is collision-free and must remain exact.
+- 2026-07-23 AEST — `DW-FND-004` explicitly requires latency and failure cases,
+  while its fixture evidence remains below live-contract evidence. Consequence:
+  this corpus includes a fixed logical-delay schedule with exact tick assertions
+  and negative arithmetic/visibility diagnostics, but claims no wall-clock,
+  performance, provider, transport, or application latency result.
 - 2026-07-23 AEST — At plan commit
   `5b55c65aec90422a85959d3ba53f04eaa216b286`,
   `python3 -B tools/docs/check.py` reported exactly these eight draft/review
@@ -550,24 +622,38 @@ Acceptance:
   claim-limited. Rationale: wall-clock stamps and broad "no network" claims would
   make hashes unstable and overstate proof. Consequence: reports describe only
   corpus and validator properties; consumer network proof is downstream.
+- 2026-07-23 AEST — Decision: model required fixture latency as logical delay
+  with a 250-millisecond timestamp derivation unit, enqueue tick 41, three delay
+  ticks, and release tick 44. Rationale: DW-FND-004 requires a latency case but
+  deterministic corpus validation cannot sample elapsed time. Consequence:
+  release arithmetic, pre-release absence, and one-time visibility are exact
+  assertions with exact negative rule codes; performance remains downstream.
 - 2026-07-23 AEST — Decision: use distinct implementation and coordinator
   transition scope proofs. Rationale: the fixture implementation allow-list must
   exclude the coordinator-owned index, while the reviewed metadata/index
-  transition necessarily changes it. Consequence: implementation is proven from
-  the reviewed base to its exact candidate commit using only fixture/plan paths;
-  after acceptance, the coordinator transition is proven from that exact commit
-  using only plan/index paths.
+  transitions necessarily may change it. Consequence: the coordinator first
+  promotes an independently accepted draft-plan commit to a reviewed,
+  dispatch-ready commit using only plan/index paths; implementation then proves
+  only the reviewed-dispatch-to-candidate fixture/plan range. Any later
+  post-implementation metadata transition starts from the independently accepted
+  implementation commit and remains plan/index only.
 
 ## Detailed implementation approach
 
-1. Reconfirm exact base ancestry, branch, worktree, terminal API/agent plans, no
-   TS machine dependency, and clean scope before editing.
+1. Before fixture implementation, require the exact independently accepted plan
+   candidate and the exact coordinator-owned reviewed dispatch commit described
+   below. Reconfirm that the dispatch commit descends from the accepted plan
+   candidate, that the original product/dependency base
+   `fff1bfd278d550d01de6e8d74f553f45c4003a8c` remains an ancestor, and that
+   branch, worktree, terminal API/agent dependencies, no TS machine dependency,
+   and clean scope still match.
 2. Create the documented directory layout and corpus index with fixed version,
    epoch, ID prefixes, case order, and capability manifests.
 3. Add small positive cases, including the schema-valid malformed-input
-   classification envelope, then add raw invalid documents only through the
-   negative rule-code matrix. Do not derive payloads from provider docs, external
-   research fixtures, prototype network captures, or live services.
+   classification envelope and the exact logical-delay case, then add raw invalid
+   documents only through the negative rule-code matrix, including
+   `invalid-logical-delay.json`. Do not derive payloads from provider docs,
+   external research fixtures, prototype network captures, or live services.
 4. Implement `validate.py` as a pure read-only standard-library checker that
    never writes or invokes a subprocess.
 5. Implement `update_evidence.py` as the explicit maintainer-only deterministic
@@ -588,14 +674,31 @@ Acceptance:
    confirm legacy preservation, update this plan, and commit only the
    implementation-governed fixture/plan paths.
 8. Resolve and retain the exact full implementation candidate commit, rerun the
-   read-only `implementation` scope proof from the reviewed base to that commit,
-   require a clean worktree, and hand that exact commit to fresh independent
-   review. Do not run package tooling or start API/web/product-demo processes.
+   read-only `implementation` scope proof from the exact reviewed dispatch commit
+   to that candidate, require a clean worktree, and hand that exact commit to
+   fresh independent review. Do not run package tooling or start
+   API/web/product-demo processes.
 
 ## Validation and proof
 
+The current plan-authoring rework runs only these static checks from repository
+root. `tools/docs/check.py` must exit `1` with exactly the retained eight
+draft/review diagnostics; every other command must exit `0`. The exact candidate
+range must contain only this plan:
+
+```text
+test "$(git branch --show-current)" = "codex/contracts/wave1-fixture-corpus"
+test "$(git rev-parse HEAD^)" = "d2cb53c2301a6dd6c5c5b402990314dbebfff825"
+git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c HEAD
+python3 -B tools/docs/generate.py --check
+python3 -B tools/docs/check.py
+git diff --check d2cb53c2301a6dd6c5c5b402990314dbebfff825 HEAD
+git diff --name-only d2cb53c2301a6dd6c5c5b402990314dbebfff825 HEAD
+test -z "$(git status --porcelain)"
+```
+
 All future implementation checks run from repository root without dependency
-installation:
+installation and only after the exact reviewed dispatch commit is handed off:
 
 ```text
 test "$(git branch --show-current)" = "codex/contracts/wave1-fixture-corpus"
@@ -616,12 +719,15 @@ candidate proof against the exact commit handed to review:
 
 ```text
 implementation_commit="$(git rev-parse HEAD)"
+reviewed_dispatch_commit="<exact 40-character coordinator dispatch commit>"
+test "${#reviewed_dispatch_commit}" -eq 40
+git cat-file -e "${reviewed_dispatch_commit}^{commit}"
 test "${#implementation_commit}" -eq 40
 git cat-file -e "${implementation_commit}^{commit}"
-git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
-PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --scope implementation --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --candidate "$implementation_commit" --include-untracked
-git diff --check fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
-git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c "$implementation_commit"
+git merge-base --is-ancestor "$reviewed_dispatch_commit" "$implementation_commit"
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/verify_scope.py --repo . --scope implementation --base "$reviewed_dispatch_commit" --candidate "$implementation_commit" --include-untracked
+git diff --check "$reviewed_dispatch_commit" "$implementation_commit"
+git diff --name-only "$reviewed_dispatch_commit" "$implementation_commit"
 test -z "$(git status --porcelain)"
 ```
 
@@ -634,6 +740,11 @@ Required observations:
 - each validator run reports the same corpus digest, sorted case inventory, zero
   scrub matches, zero external hosts/URLs, full negative rule-code coverage, and
   no writes or subprocess invocation;
+- validator output proves the logical-delay release equation `41 + 3 = 44`,
+  absence through tick `43`, one-time visibility at tick `44`, completion at tick
+  `45`, exact `FIXTURE_CLOCK_DELAY_MISMATCH` and
+  `FIXTURE_EXPECTATION_DELAY_VISIBILITY` negative coverage, and zero wall-clock
+  reads or waits;
 - the `implementation` scope runner records the exact reviewed base and exact
   full implementation candidate commit, reports linked worktree/common Git
   directories, and fails on any committed, staged, unstaged, or untracked path
@@ -651,7 +762,8 @@ Retain in this plan:
 
 - exact command, exit code, and concise output;
 - case/file inventory and corpus SHA-256 digest;
-- positive-case and negative-rule-code coverage;
+- positive-case and negative-rule-code coverage, including both logical-delay
+  diagnostics;
 - scrub/no-external-network report summary;
 - exact implementation commit, base-relative changed-file inventory, and
   `implementation` scope result;
@@ -663,17 +775,19 @@ Retain in this plan:
   occurred.
 
 The plan-authoring step may run only documentation/static checks because the
-fixture validator does not yet exist. It must commit this one plan file only and
-report all eight expected draft/review diagnostics without editing the index or
-claiming review.
+fixture validator does not yet exist. It must commit this one plan file only,
+prove the exact range from
+`d2cb53c2301a6dd6c5c5b402990314dbebfff825`, and report all eight expected
+draft/review diagnostics without editing the index or claiming review.
 
 ### Required reviewed metadata and index transition before dispatch
 
 This author/rework commit deliberately keeps `status: draft`,
 `dispatch_ready: false`, empty reviewer fields, null review dates, null
-`last_verified_commit`, and `gate_review_status: unreviewed`. After fresh
-independent plan acceptance of the exact implementation commit, a
-reviewer/coordinator—not the author—must make one reviewed transition that:
+`last_verified_commit`, and `gate_review_status: unreviewed`. The independent
+plan reviewer reviews the exact plan-only candidate commit, not an implementation
+commit. After acceptance, the coordinator—not the plan or implementation
+author—must make one pre-implementation reviewed/dispatch transition that:
 
 1. sets `status: reviewed`;
 2. records at least one independent non-owner in `reviewed_by` and the actual
@@ -681,17 +795,60 @@ reviewer/coordinator—not the author—must make one reviewed transition that:
 3. records `gate_review_status: reviewed-with-gates`, independent
    `gate_reviewed_by`, and the actual `gate_reviewed_at` date without closing the
    open runtime gates;
-4. records that exact accepted implementation commit as the existing full
+4. records the exact independently accepted draft-plan candidate as the existing
+   full
    `last_verified_commit`;
 5. adds this plan to `docs/exec-plans/index.md` in the coordinator-owned change;
-6. commits only this plan and `docs/exec-plans/index.md`, resolves the exact full
-   transition commit, and proves the `coordinator-transition` scope from the
-   accepted implementation commit to that transition commit before rerunning
-   generation, docs validation, range/working-tree whitespace, and clean-status
-   checks; and
-7. keeps `agent_review_required: true`.
+6. sets `dispatch_ready: true` in the same reviewed transition, only after
+   confirming `local:DW-M1-API-001` and `local:DW-M1-AGENT-001` remain terminal,
+   `blockers: []` remains truthful, and every open gate retains its documented
+   fallback;
+7. leaves `base_commit`, `governed_paths`, `dependencies`, contract/decision gate
+   arrays, risk, issue, and author permissions unchanged;
+8. records in the plan body the exact accepted plan commit, independent plan
+   verdict, reviewed metadata values, exact command results, and the exact
+   two-file transition inventory; and
+9. commits only this plan and `docs/exec-plans/index.md`, then hands the exact
+   reviewed dispatch commit to the implementation author as the sole starting
+   authority.
 
-After committing those seven facts, the coordinator runs this distinct proof:
+The coordinator proves that transition without relying on the not-yet-created
+fixture scope runner:
+
+```text
+accepted_plan_commit="<exact independently accepted 40-character plan commit>"
+test "${#accepted_plan_commit}" -eq 40
+git cat-file -e "${accepted_plan_commit}^{commit}"
+git merge-base --is-ancestor fff1bfd278d550d01de6e8d74f553f45c4003a8c "$accepted_plan_commit"
+reviewed_dispatch_commit="$(git rev-parse HEAD)"
+test "${#reviewed_dispatch_commit}" -eq 40
+git cat-file -e "${reviewed_dispatch_commit}^{commit}"
+test "$(git rev-parse "${reviewed_dispatch_commit}^")" = "$accepted_plan_commit"
+git diff --quiet "$accepted_plan_commit" "$reviewed_dispatch_commit" -- . ':(exclude)docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md' ':(exclude)docs/exec-plans/index.md'
+git diff --name-only "$accepted_plan_commit" "$reviewed_dispatch_commit"
+python3 -B tools/docs/generate.py --check
+python3 -B tools/docs/check.py
+git diff --check "$accepted_plan_commit" "$reviewed_dispatch_commit"
+test ! -e internal/fixtures/product-demo
+test -z "$(git status --porcelain)"
+```
+
+The `git diff --name-only` output must be exactly this plan and
+`docs/exec-plans/index.md`; docs validation must be green with none of the eight
+draft diagnostics; the fixture directory must still be absent; and the worktree
+must be clean. Those facts, the exact accepted plan verdict, and the exact
+reviewed dispatch commit are the dispatch evidence. Only then may implementation
+start. The implementation author may update fixture files and living narrative
+evidence, but may not change the reviewed reviewer/gate fields,
+`dispatch_ready`, the index, or the implementation base.
+
+After fresh independent acceptance of the exact implementation commit, any
+coordinator-owned metadata/index update remains a distinct non-dispatch range.
+If used before a later separately authorized completion/archive step, it must set
+`dispatch_ready: false`, update `last_verified_commit` to the exact accepted
+implementation commit, retain the independent plan/gate metadata, change only
+this active plan and (if necessary) its existing index entry, and use the
+`coordinator-transition` runner scope:
 
 ```text
 accepted_implementation_commit="<exact accepted 40-character implementation commit>"
@@ -709,12 +866,10 @@ git diff --name-only "$accepted_implementation_commit" "$transition_commit"
 test -z "$(git status --porcelain)"
 ```
 
-The transition is valid only when all seven facts coexist in that exact
-transition commit, the coordinator scope reports only this plan and
-`docs/exec-plans/index.md`, and docs validation passes. Only afterward may a
-coordinator deliberately set `dispatch_ready: true` in a separately authorized
-reviewed metadata change. This rework does not authorize either coordinator
-change and leaves `dispatch_ready: false`.
+That later metadata update is not required to authorize initial dispatch and
+does not itself declare the ExecPlan completed or authorize a move to
+`docs/exec-plans/completed/**`. This rework authorizes no coordinator mutation
+and leaves the current draft metadata truthful.
 
 ## Idempotence, rollback, and recovery
 
@@ -727,19 +882,22 @@ disk. A partial validator failure leaves all source files and diagnostics intact
 Implementation recovery changes only the invalid governed fixture or this plan;
 it never weakens a rule, deletes a negative case, changes external evidence,
 edits the index, or edits a consumer to make the corpus pass. A failed coordinator
-transition is recovered only by changing this plan and/or
-`docs/exec-plans/index.md`, then creating a new exact transition commit and
-rerunning the `coordinator-transition` proof from the unchanged accepted
+dispatch transition is recovered only by changing this plan and/or
+`docs/exec-plans/index.md` from the unchanged accepted plan commit and rerunning
+its fixed Git/docs proof before implementation. A failed post-implementation
+metadata transition is recovered by creating a new exact plan/index transition
+commit and rerunning `coordinator-transition` from the unchanged accepted
 implementation commit.
 
-Before the coordinator transition, rollback is one reviewed revert of only the
-implementation cell's commit. After transition, rollback keeps the ranges
-separate: revert the coordinator plan/index transition independently from the
-accepted fixture/plan implementation commit. There is no database, external run,
-registry, deployment, credential, or live state to clean up. If a later accepted
-production schema conflicts with this corpus, create a versioned corpus migration
-or superseding reviewed plan; do not rewrite prior evidence in place or claim
-historical live parity.
+Before implementation, rollback is a reviewed revert of only the coordinator
+dispatch transition, returning to the accepted draft-plan candidate. After
+implementation, rollback keeps the ranges separate: revert any later coordinator
+plan/index metadata transition independently from the accepted fixture/plan
+implementation commit. There is no database, external run, registry, deployment,
+credential, or live state to clean up. If a later accepted production schema
+conflicts with this corpus, create a versioned corpus migration or superseding
+reviewed plan; do not rewrite prior evidence in place or claim historical live
+parity.
 
 `SPIKE-STREAM-001` and every other gate in front matter retains its documented
 fallback. A failed or delayed gate does not block fixture validation; it blocks

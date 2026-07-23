@@ -11,6 +11,7 @@ from typing import Any, cast
 import httpx
 
 from deepwork_api import create_app
+from deepwork_api.domain import MAX_TASK_RESULT_LENGTH
 
 
 @asynccontextmanager
@@ -541,6 +542,17 @@ async def test_maximum_objective_completes_with_bounded_result_and_stream() -> N
         objective = "x" * 8_000
         created = await _create_task(client, objective)
         paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        maximum_steps = [character * 1_000 for character in "ABCDEFGH"]
+        edited = await client.patch(
+            f"/api/v1/tasks/{created['taskId']}/plan",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "expectedRevision": paused["proposedPlan"]["revision"],
+                "steps": maximum_steps,
+            },
+        )
+        assert edited.status_code == 200
+        assert edited.json()["plan"]["steps"] == maximum_steps
         approved = await client.post(
             f"/api/v1/tasks/{created['taskId']}/decisions",
             json={
@@ -552,13 +564,20 @@ async def test_maximum_objective_completes_with_bounded_result_and_stream() -> N
         completed = await _wait_for_status(client, created["taskId"], {"completed"})
         assert completed["objective"] == objective
         assert completed["result"].count(objective) == 1
-        assert len(completed["result"]) <= 10_000
+        assert len(completed["result"]) > 10_000
+        assert len(completed["result"]) <= MAX_TASK_RESULT_LENGTH
+        assert all(step in completed["result"] for step in maximum_steps)
         result = await client.get(f"/api/v1/tasks/{created['taskId']}/result")
         assert result.status_code == 200
         assert result.json()["result"] == completed["result"]
         stream = await client.get(f"/api/v1/tasks/{created['taskId']}/events")
         assert stream.status_code == 200
-        assert _sse_events(stream.text)[-1]["data"]["resultAvailable"] is True
+        events = _sse_events(stream.text)
+        assert events[-1]["data"]["resultAvailable"] is True
+        final_content = [
+            event["data"]["text"] for event in events if event["event"] == "content.delta"
+        ][-1]
+        assert final_content == completed["result"]
 
 
 async def test_validation_errors_never_echo_rejected_comment_content() -> None:

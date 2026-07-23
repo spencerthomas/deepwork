@@ -17,6 +17,7 @@ from deepwork_api.domain import (
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
+    MAX_TASK_RESULT_LENGTH,
     DecisionRecord,
     DecisionValue,
     EvidenceKind,
@@ -45,7 +46,6 @@ type TaskWireStatus = Literal[
     "rejected",
     "failed",
 ]
-_MAX_RESULT_LENGTH = MAX_TASK_OBJECTIVE_LENGTH + 2_000
 
 
 def _reject_unsafe_controls(value: str) -> str:
@@ -170,7 +170,7 @@ class TaskDetailResponse(TaskSummaryResponse):
     pending_interrupt: PendingInterruptResponse | None = Field(alias="pendingInterrupt")
     proposed_plan: ProposedPlanResponse | None = Field(alias="proposedPlan")
     evidence: tuple[EvidenceResponse, ...]
-    result: str | None = Field(default=None, max_length=_MAX_RESULT_LENGTH)
+    result: str | None = Field(default=None, max_length=MAX_TASK_RESULT_LENGTH)
 
     @classmethod
     def from_domain(cls, task: TaskSnapshot) -> TaskDetailResponse:
@@ -298,7 +298,7 @@ class TaskResultResponse(_TaskWireModel):
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
     status: Literal["completed"]
-    result: str = Field(min_length=1, max_length=_MAX_RESULT_LENGTH)
+    result: str = Field(min_length=1, max_length=MAX_TASK_RESULT_LENGTH)
 
     @classmethod
     def from_domain(cls, task: TaskSnapshot) -> TaskResultResponse:
@@ -325,7 +325,7 @@ class RunStartedEventData(_TaskWireModel):
 
 
 class ContentDeltaEventData(_TaskWireModel):
-    text: str = Field(min_length=1, max_length=_MAX_RESULT_LENGTH)
+    text: str = Field(min_length=1, max_length=MAX_TASK_RESULT_LENGTH)
     evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
 
 

@@ -30,7 +30,7 @@
     "fx_case_tool",
     "fx_case_unknown"
   ],
-  "corpusDigest": "6e76c413b4f53ff978477074aca2f6fcac661ae9114d20335517cd9d14cc2d63",
+  "corpusDigest": "1aa88f00bdb2287f75e73c80ec34673552e068ded0507ed8aebdbeb1346935c4",
   "corpusVersion": "1.0.0",
   "evidenceClass": "fixture",
   "externalUrlHostCount": 0,
@@ -48,7 +48,7 @@
     "waits": 0,
     "wallClockReads": 0
   },
-  "negativeCheckCount": 198,
+  "negativeCheckCount": 199,
   "negativeRuleCodes": [
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
@@ -245,6 +245,7 @@
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_CAPABILITY_STATE",
+    "FIXTURE_SCHEMA_ASSET_INDEX",
     "FIXTURE_SCHEMA_NEGATIVE_INDEX",
     "FIXTURE_SCHEMA_VALIDATOR_PURITY",
     "FIXTURE_EXPECTATION_REPLAY_DEDUPE"
@@ -257,8 +258,8 @@
   ],
   "reportVersion": "1.0.0",
   "scrubMatchCount": 0,
-  "semanticMatrixSha256": "709280a222fe59ada0829199b85454bf790d119fc3026643f9bd054b3eb8709b",
-  "semanticProbeCount": 143,
+  "semanticMatrixSha256": "aa4b2bb1cf213c124697ad52b8e4659f3bd078528a4c07cb79045478feb49eee",
+  "semanticProbeCount": 144,
   "structuralSchemaApplicationCount": 15,
   "structuralSchemaPaths": [
     "schema/fixture-envelope.json",
@@ -299,5 +300,5 @@
     "writeCallCount": 0,
     "writeReferenceCount": 0
   },
-  "validatorSourceSha256": "b403b7cbd0d36e8eceb7e9d2985db4189c471c005ec38aaebf1e501b38a52cd6"
+  "validatorSourceSha256": "ce5aa28550a8e06f40c60dbeac955b806c039e22fe76ffa11d69adc49b982b3b"
 }

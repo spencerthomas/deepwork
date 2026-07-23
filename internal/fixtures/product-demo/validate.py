@@ -25,9 +25,9 @@ EXPECTED_ID_POLICY = {
     "qualifiedRunTemplate": "{sourceId}:{threadId}:{runId}",
 }
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
-EXPECTED_SEMANTIC_PROBE_COUNT = 143
+EXPECTED_SEMANTIC_PROBE_COUNT = 144
 SEMANTIC_MATRIX_SHA256 = (
-    "709280a222fe59ada0829199b85454bf790d119fc3026643f9bd054b3eb8709b"
+    "aa4b2bb1cf213c124697ad52b8e4659f3bd078528a4c07cb79045478feb49eee"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
@@ -181,6 +181,16 @@ MANIFEST_PATHS = [
     "manifests/fixture-source.json",
     "manifests/gated-runtimes.json",
 ]
+EXPECTED_MANIFEST_IDENTITIES = {
+    "manifests/fixture-source.json": {
+        "manifestId": "fx_manifest_fixture_source",
+        "runtimeKind": "fixture",
+    },
+    "manifests/gated-runtimes.json": {
+        "manifestId": "fx_manifest_gated_runtimes",
+        "runtimeKind": "classic",
+    },
+}
 EXPECTED_CAPABILITY_NAMES = {
     "fx_manifest_fixture_source": [
         "normalized-presentation",
@@ -1960,6 +1970,17 @@ def _negative_id_inventory_diagnostics(file_negatives, semantic_probes):
     return []
 
 
+def _manifest_path_identity_diagnostics(manifest_path, manifest):
+    if not isinstance(manifest, dict):
+        return []
+    expected = EXPECTED_MANIFEST_IDENTITIES.get(manifest_path)
+    observed = {
+        "manifestId": manifest.get("manifestId"),
+        "runtimeKind": manifest.get("runtimeKind"),
+    }
+    return [] if observed == expected else ["FIXTURE_SCHEMA_ASSET_INDEX"]
+
+
 def diagnose_negative(negative):
     if "probe" in negative:
         probe = negative["probe"]
@@ -2030,6 +2051,26 @@ def diagnose_negative(negative):
                 file_negatives,
                 semantic_probes,
             )
+        if probe.get("kind") == "manifest-path-swap":
+            manifest_paths = probe["manifestPaths"]
+            manifests = {
+                manifest_path: read_json(manifest_path)
+                for manifest_path in manifest_paths
+            }
+            first_path, second_path = manifest_paths
+            manifests[first_path], manifests[second_path] = (
+                manifests[second_path],
+                manifests[first_path],
+            )
+            diagnostics = []
+            for manifest_path in manifest_paths:
+                diagnostics.extend(
+                    _manifest_path_identity_diagnostics(
+                        manifest_path,
+                        manifests[manifest_path],
+                    )
+                )
+            return sorted(set(diagnostics))
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     base_path = negative["basePath"]
     mutations = negative.get("mutations")
@@ -2461,7 +2502,11 @@ def validate_all(require_evidence=True):
         ):
             diagnostics.append("FIXTURE_SCHEMA_DOCUMENT")
     for manifest_path in MANIFEST_PATHS:
-        diagnostics.extend(validate_manifest(read_json(manifest_path)))
+        manifest = read_json(manifest_path)
+        diagnostics.extend(validate_manifest(manifest))
+        diagnostics.extend(
+            _manifest_path_identity_diagnostics(manifest_path, manifest)
+        )
     for case in analysis["cases"]:
         diagnostics.extend(validate_case(case))
     diagnostics.extend(_validate_case_inventory(analysis["cases"]))

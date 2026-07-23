@@ -69,6 +69,15 @@ describe("capability evidence", () => {
   it("rejects unsupported, cyclic, and non-finite evidence values", () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
+    const unsupported = [
+      undefined,
+      1n,
+      Symbol("unsupported"),
+      () => "unsupported",
+    ];
+    const symbolKeyed = {
+      [Symbol("unsupported")]: true,
+    };
 
     expect(() =>
       availableCapability(Number.NaN, metadata),
@@ -78,6 +87,29 @@ describe("capability evidence", () => {
     ).toThrow(TypeError);
     expect(() =>
       availableCapability(cyclic as never, metadata),
+    ).toThrow(TypeError);
+    for (const value of unsupported) {
+      expect(() =>
+        availableCapability(value as never, metadata),
+      ).toThrow(TypeError);
+    }
+    expect(() =>
+      availableCapability({ nested: undefined } as never, metadata),
+    ).toThrow(TypeError);
+    expect(() =>
+      availableCapability([true, , false] as never, metadata),
+    ).toThrow(TypeError);
+    expect(() =>
+      availableCapability(symbolKeyed as never, metadata),
+    ).toThrow(TypeError);
+  });
+
+  it("rejects incoherent unavailable state and reason pairs", () => {
+    expect(() =>
+      unavailableCapability("permission-denied", "source-unavailable", metadata),
+    ).toThrow(TypeError);
+    expect(() =>
+      unavailableCapability("unknown", "source-unavailable", metadata),
     ).toThrow(TypeError);
   });
 
@@ -111,6 +143,8 @@ describe("capability evidence", () => {
       "2026-02-30T00:00:00Z",
       "2026-07-23T00:00:00.1234Z",
       "2026-07-23T24:00:00Z",
+      "0001-01-01T00:00:00+23:59",
+      "9999-12-31T23:59:59-23:59",
     ]) {
       expect(() => rfc3339Instant(invalid)).toThrow(TypeError);
     }

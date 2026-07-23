@@ -11,7 +11,8 @@ transport is represented by an explicit `capability-unavailable` result.
 Import only from `@deepwork/sdk`; domain values come from `@deepwork/domain`.
 `check-architecture` scans shipped source and verifies intentional failing
 fixtures for every enforced rule: UI/self, framework, provider, raw network
-package/API, Node API, environment access, and local ESM extension.
+package/API, Node API, environment access, local ESM extension, and
+computed/template dynamic import.
 The allowlist additionally rejects deep imports, package path escapes, and
 server/Tauri/route/fixture/generated/database zones with repair diagnostics.
 `package-check` packs SDK and domain output, inspects SDK public files and exports,
@@ -22,7 +23,7 @@ named public entries directly to source without requiring `dist`.
 
 The Vitest setup denies browser and Node network primitives for every SDK unit
 test. Unknown/unverified capability failures are non-retryable; only
-`source-unavailable` evidence is marked recoverable.
+the coherent `unavailable` + `source-unavailable` pair is marked recoverable.
 
 These package scripts are reserved for the downstream lock and executable
 verification cells and have not been run by the authoring cell.

@@ -1,5 +1,6 @@
 import {
   capabilitySummary,
+  type UnavailableCapabilitySummary,
   unavailableCapability,
 } from "@deepwork/domain";
 import {
@@ -65,6 +66,24 @@ describe("explicitly unavailable ports", () => {
         retryable: true,
       },
     });
+  });
+
+  it("does not retry contradictory state and reason summaries", async () => {
+    for (const state of ["permission-denied", "unknown"] as const) {
+      const contradictory = Object.freeze({
+        ...capability,
+        state,
+        safeReason: "source-unavailable",
+      }) as UnavailableCapabilitySummary;
+      const port = unavailableQueryPort<undefined, never>(contradictory);
+
+      await expect(port.query(undefined)).resolves.toMatchObject({
+        ok: false,
+        error: {
+          retryable: false,
+        },
+      });
+    }
   });
 
   it("keeps query, mutation, and stream contracts separate", async () => {

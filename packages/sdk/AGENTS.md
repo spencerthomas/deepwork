@@ -9,10 +9,11 @@
 - Add transport or wire mapping only from an accepted generated contract. Never
   guess endpoints, headers, cursors, fields, or success responses.
 - Missing or gated behavior returns a typed unavailable result without making a
-  request. Unknown/unverified support is not retryable; source unavailability is
-  the recoverable unavailable case.
+  request. Unknown/unverified support is not retryable; only an `unavailable`
+  state with `source-unavailable` reason is recoverable.
 - Keep local ESM imports explicit with `.js` runtime extensions and test through
-  named public entry points.
+  named public entry points. Computed and template-literal dynamic imports are
+  prohibited because the package boundary cannot prove their destination.
 - Keep `check-architecture` and `package-check` distinct. The former proves green
   source plus intentional negative fixtures; the latter proves packed SDK/domain
   archives and an offline empty-consumer runtime and TypeScript import.

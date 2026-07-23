@@ -46,6 +46,9 @@ Import the component API only from `@deepwork/ui`, tokens from
 `@deepwork/ui/tokens.css`, component styles from their named CSS entry point, and
 domain values only from `@deepwork/domain`. Keep local ESM imports explicit with
 `.js` runtime extensions.
+Computed and template-literal dynamic imports are prohibited. CSS `@import` and
+`url()` references must be statically inspectable and remain inside this package;
+external/scheme and escaping paths fail closed.
 
 Package scripts are declarations for the downstream lock and executable
 verification cells. Until the shared lock exists, run only the install-free

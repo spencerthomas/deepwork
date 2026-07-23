@@ -313,6 +313,14 @@ Acceptance:
   editing the global architecture harness or executing package tooling. The
   permitted static suite is recorded clean; fresh independent review remains
   separate from executable proof.
+- [x] 2026-07-23 AEST — Second external verdict reopened four bounded surfaces:
+  dynamic/CSS boundary escapes, unsupported evidence values, contradictory retry
+  pairs, and RFC3339 offset range escape.
+- [x] 2026-07-23 AEST — Second bounded rework authored fail-closed dynamic and CSS
+  scanners, JSON-compatible evidence validation, coherent unavailable reasons,
+  defensive retry policy, and normalized-instant revalidation. The permitted
+  static suite is recorded clean; a fresh external verdict remains required
+  before handoff.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -357,6 +365,14 @@ Acceptance:
 - 2026-07-23 AEST — `Date.parse` accepts noncanonical and normalized-invalid date
   text. Consequence: capability construction now applies an explicit RFC3339
   grammar/calendar/offset validator and stores normalized millisecond UTC text.
+- 2026-07-23 AEST — A scanner that extracts only quoted import specifiers misses
+  computed/template dynamic imports, and TypeScript-only traversal misses shipped
+  CSS dependency edges. Consequence: all package scanners reject non-static
+  dynamic imports and UI separately inspects shipped CSS `@import`/`url()` paths.
+- 2026-07-23 AEST — A generic TypeScript constraint is not a runtime trust
+  boundary, and UTC offset normalization can leave the four-digit supported year
+  range. Consequence: evidence constructors reject non-JSON runtime values and
+  normalized instants pass the same strict validator before branding.
 
 ## Decision Log
 
@@ -508,6 +524,7 @@ packages/domain/src/view-state.ts
 packages/domain/tests/boundaries.test.mjs
 packages/domain/tests/capability.test.ts
 packages/domain/tests/fixtures/negative/browser-network.fixture.ts
+packages/domain/tests/fixtures/negative/computed-dynamic-import.fixture.ts
 packages/domain/tests/fixtures/negative/framework-side-effect.fixture.ts
 packages/domain/tests/fixtures/negative/internal-node-environment-extension.fixture.ts
 packages/domain/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
@@ -528,6 +545,7 @@ packages/sdk/src/ports.ts
 packages/sdk/src/result.ts
 packages/sdk/src/unavailable.ts
 packages/sdk/tests/boundaries.test.mjs
+packages/sdk/tests/fixtures/negative/computed-dynamic-import.fixture.ts
 packages/sdk/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
 packages/sdk/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/sdk/tests/fixtures/negative/raw-network.fixture.ts
@@ -550,6 +568,8 @@ packages/ui/src/status-panel.tsx
 packages/ui/status-panel.css
 packages/ui/tailwind.preset.mjs
 packages/ui/tests/boundaries.test.mjs
+packages/ui/tests/fixtures/negative/computed-dynamic-import.fixture.ts
+packages/ui/tests/fixtures/negative/css-path-network-escape.fixture.css
 packages/ui/tests/fixtures/negative/path-and-zone-bypass.fixture.ts
 packages/ui/tests/fixtures/negative/provider-side-effect.fixture.ts
 packages/ui/tests/fixtures/negative/raw-network.fixture.ts
@@ -566,22 +586,25 @@ Static import findings:
 
 - Domain shipped source imports only explicit contained local `.js` modules. Node
   imports occur only in package-local checks, the negative-test harness, and
-  Vitest alias config. Five intentional excluded fixtures cover the empty
+  Vitest alias config. Six intentional excluded fixtures cover the empty
   dependency allowlist, internal/deep imports, framework/provider/network,
-  browser/Node/environment APIs, ESM extension, path escape, and forbidden zones.
+  browser/Node/environment APIs, ESM extension, computed/template dynamic import,
+  path escape, and forbidden zones.
 - SDK shipped source imports `@deepwork/domain` and explicit local `.js` modules;
   it has no UI, React, Next.js, Node, provider, or network import. Its Node imports
   are confined to package-local checks, the negative-test harness, and Vitest
-  config plus the global unit-network guard. Five intentional excluded fixtures
+  config plus the global unit-network guard. Six intentional excluded fixtures
   cover the domain-only allowlist, UI/self/deep imports, framework/provider/raw
-  network, Node/environment APIs, ESM extension, path escape, and forbidden zones.
+  network, Node/environment APIs, ESM extension, computed/template dynamic import,
+  path escape, and forbidden zones.
 - UI shipped source imports `@deepwork/domain`, React, and an explicit local `.js`
   module. It has no SDK, Next.js, provider, route, generated, environment, network,
   or runtime CSS-loader import. Node imports are confined to package-local checks,
-  the negative-test harness, and Vitest config. Five intentional excluded fixtures
+  the negative-test harness, and Vitest config. Seven intentional excluded fixtures
   cover the domain/React allowlist, SDK/self/deep imports, Next.js/provider/raw
   network, Node/environment APIs, ESM extension, path escape, forbidden zones,
-  and unsafe `dangerouslySetInnerHTML`/`innerHTML`.
+  computed/template dynamic import, CSS import/URL escape, and unsafe
+  `dangerouslySetInnerHTML`/`innerHTML`.
 - Tests import named package entry points rather than implementation paths.
 
 Source-level UI review:
@@ -626,7 +649,7 @@ Author rework static evidence on 2026-07-23 AEST:
 six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
 rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
   inventory above, including 3 clean-package scripts, 3 negative-test harnesses,
-  1 SDK global-network guard/test pair, and 15 intentional negative fixtures
+  1 SDK global-network guard/test pair, and 19 intentional negative fixtures
 rg manifest exports/type/scripts/dependencies -> exit 0; all packages retain ESM,
   named exports, and distinct script declarations
 rg package/framework imports -> exit 0; shipped edges remain sdk -> domain and
@@ -658,6 +681,8 @@ domain/internal-node-environment-extension
 domain/path-and-zone-bypass
   -> DW-DOMAIN-DEEP-IMPORT, DW-DOMAIN-PATH-ESCAPE,
      DW-DOMAIN-FORBIDDEN-ZONE, DW-DOMAIN-IMPORT-NOT-ALLOWED
+domain/computed-dynamic-import
+  -> DW-DOMAIN-DYNAMIC-IMPORT
 
 sdk/ui-side-effect
   -> DW-SDK-UI-IMPORT, DW-SDK-IMPORT-NOT-ALLOWED
@@ -673,6 +698,8 @@ sdk/self-framework-node-environment-extension
 sdk/path-and-zone-bypass
   -> DW-SDK-DEEP-IMPORT, DW-SDK-PATH-ESCAPE, DW-SDK-FORBIDDEN-ZONE,
      DW-SDK-IMPORT-NOT-ALLOWED
+sdk/computed-dynamic-import
+  -> DW-SDK-DYNAMIC-IMPORT
 
 ui/sdk-side-effect
   -> DW-UI-SDK-IMPORT, DW-UI-IMPORT-NOT-ALLOWED
@@ -688,13 +715,21 @@ ui/self-next-node-environment-extension-html
 ui/path-and-zone-bypass
   -> DW-UI-DEEP-IMPORT, DW-UI-PATH-ESCAPE, DW-UI-FORBIDDEN-ZONE,
      DW-UI-IMPORT-NOT-ALLOWED
+ui/computed-dynamic-import
+  -> DW-UI-DYNAMIC-IMPORT
+ui/css-path-network-escape
+  -> DW-UI-CSS-DYNAMIC-REFERENCE, DW-UI-CSS-IMPORT-NOT-ALLOWED,
+     DW-UI-CSS-NETWORK-URL, DW-UI-CSS-PATH-ESCAPE
 ```
 
 Every code constructed by the three scanners appears in this matrix. Each
 scanner now also enforces a package-local bare-import allowlist, rejects deep
 package imports, proves relative imports remain under that package's `src`, and
 rejects server/Tauri/route/fixture/generated/database zones. Each package's
-existing `boundaries.test.mjs` loops its exported `negativeFixtures` array and
+scanner also rejects non-static dynamic imports; UI separately proves shipped
+CSS imports and URLs remain statically inspectable and inside the package. Each
+package's existing `boundaries.test.mjs` loops its exported `negativeFixtures`
+array and
 asserts that all declared `expectedCodes` occur. Every diagnostic must also name
 the legal destination, `ARCHITECTURE.md` enforcement anchors, and the package
 repair command. The fixtures and tests were not executed in this authoring cell.
@@ -708,20 +743,34 @@ External-verdict repair summary:
    containment, forbidden zones, bypass fixtures, and actionable diagnostics.
 4. Packed-consumer scripts compile strict TypeScript/TSX against local archives.
 5. Capability vocabularies are runtime frozen and available evidence is a
-   recursively frozen, mutation-isolated snapshot.
-6. SDK retryability is true only for explicit `source-unavailable` evidence.
+   recursively frozen, mutation-isolated JSON-compatible snapshot.
+6. SDK retryability is true only for the coherent
+   `unavailable` + `source-unavailable` pair.
 7. `StatusPanel` owns a labelled region title rather than a heading level.
-8. Capability observation times accept strict RFC3339 only and normalize to
-   millisecond UTC.
+8. Capability observation times accept strict RFC3339 only, normalize to
+   millisecond UTC, and revalidate the normalized branded value.
 9. Identity tests prove identical thread/run IDs from different sources remain
    distinct after serialization.
+
+Second external-verdict repair summary:
+
+1. Every package scanner rejects computed and template-literal dynamic imports;
+   UI additionally scans shipped CSS and rejects dynamic, package, external/
+   scheme, absolute, encoded-traversal, and escaping `@import`/`url()` references.
+2. Capability snapshots reject `undefined`, bigint, symbol, function, sparse
+   array holes, non-finite numbers, cycles, non-data properties, symbol keys, and
+   non-plain objects at runtime.
+3. Domain construction rejects incoherent unavailable state/reason pairs, while
+   the SDK independently refuses retry for contradictory summaries.
+4. RFC3339 normalization rejects offset underflow/overflow outside years
+   `0001` through `9999`; the emitted branded string passes the same validator.
 
 External-verdict rework static evidence on 2026-07-23 AEST:
 
 ```text
 six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
 rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
-  64-file inventory above
+  64-file inventory before the second external-verdict rework
 rg manifest exports/type/scripts/dependencies -> exit 0; domain, SDK, and UI
   retain ESM, named exports, distinct scripts, and intended dependencies
 rg package/framework imports -> exit 0; shipped source edges remain
@@ -734,6 +783,26 @@ git status --short -> exit 0; only packages/domain/**, packages/sdk/**,
 
 The static pass did not execute any package script, boundary scanner, test,
 compiler, build, pack, install, consumer, or network operation.
+
+Second external-verdict rework static evidence on 2026-07-23 AEST:
+
+```text
+six permitted package-manifest/main-tsconfig JSON parses -> exit 0; no output
+rg --files packages/domain packages/sdk packages/ui | sort -> exit 0; exact
+  68-file inventory above
+rg manifest exports/type/scripts/dependencies -> exit 0; domain, SDK, and UI
+  retain ESM, named exports, distinct scripts, and intended dependencies
+rg package/framework imports -> exit 0; shipped source edges remain
+  sdk -> domain and ui -> domain + React; other findings are package checks,
+  test infrastructure, documentation, or intentional negative fixtures
+git diff --check -> exit 0; no output
+git status --short -> exit 0; only packages/domain/**, packages/sdk/**,
+  packages/ui/**, and this active plan changed
+```
+
+No package script, boundary scanner, test, compiler, formatter, linter, build,
+pack, pnpm, install, consumer, documentation checker, or network operation was
+executed in the second rework.
 
 Round-two static evidence on 2026-07-23 AEST:
 

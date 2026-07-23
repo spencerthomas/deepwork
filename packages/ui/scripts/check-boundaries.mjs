@@ -9,7 +9,7 @@ const nodeBuiltins = new Set(
   builtinModules.flatMap((name) => [name, `node:${name}`]),
 );
 const help =
-  "Legal destination: @deepwork/domain or React public entries, or packages/ui/src/**. " +
+  "Legal destination: @deepwork/domain or React public entries, packages/ui/src/**, or contained package CSS assets. " +
   "Architecture: ARCHITECTURE.md#package-graph and " +
   "ARCHITECTURE.md#mechanical-enforcement. " +
   "Repair: pnpm --filter @deepwork/ui check-architecture";
@@ -67,6 +67,19 @@ export const negativeFixtures = [
       "DW-UI-IMPORT-NOT-ALLOWED",
     ],
   },
+  {
+    path: "tests/fixtures/negative/computed-dynamic-import.fixture.ts",
+    expectedCodes: ["DW-UI-DYNAMIC-IMPORT"],
+  },
+  {
+    path: "tests/fixtures/negative/css-path-network-escape.fixture.css",
+    expectedCodes: [
+      "DW-UI-CSS-DYNAMIC-REFERENCE",
+      "DW-UI-CSS-IMPORT-NOT-ALLOWED",
+      "DW-UI-CSS-NETWORK-URL",
+      "DW-UI-CSS-PATH-ESCAPE",
+    ],
+  },
 ];
 
 function importSpecifiers(source) {
@@ -84,6 +97,20 @@ function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
 }
 
+function unsafeDynamicImportCount(source) {
+  let count = 0;
+  const start =
+    /\bimport(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*(?:\r?\n|$))*\(\s*/g;
+  for (const match of source.matchAll(start)) {
+    const argument = source.slice((match.index ?? 0) + match[0].length);
+    const staticString =
+      !/\/[*/]/.test(match[0]) &&
+      /^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)/.test(argument);
+    if (!staticString) count += 1;
+  }
+  return count;
+}
+
 export function inspectSource(
   source,
   sourceFile = join(sourceRoot, "__inspection__.ts"),
@@ -91,6 +118,13 @@ export function inspectSource(
   const violations = [];
   const add = (code, message) =>
     violations.push({ code, message: `${message}. ${help}` });
+
+  for (let index = 0; index < unsafeDynamicImportCount(source); index += 1) {
+    add(
+      "DW-UI-DYNAMIC-IMPORT",
+      "UI cannot use a computed or template-literal dynamic import because its destination cannot be statically enforced",
+    );
+  }
 
   for (const specifier of importSpecifiers(source)) {
     const relative = specifier.startsWith(".");
@@ -184,13 +218,115 @@ export function inspectSource(
   return violations;
 }
 
-async function sourceFiles(directory) {
+function staticCssReference(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    const unquoted = trimmed.slice(1, -1);
+    return /[\\\r\n]/.test(unquoted) ? undefined : unquoted;
+  }
+  return /^[^\s"'()\\]+$/.test(trimmed) ? trimmed : undefined;
+}
+
+function importReference(clause) {
+  const trimmed = clause.trim();
+  if (/^url\s*\(/i.test(trimmed)) {
+    const match = /^url\s*\((.*)\)(?:\s+.*)?$/i.exec(trimmed);
+    return match === null ? undefined : staticCssReference(match[1]);
+  }
+  const match = /^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/.exec(trimmed);
+  return match === null ? undefined : staticCssReference(match[0]);
+}
+
+function inspectCssReference(reference, sourceFile, add, imported) {
+  if (
+    reference !== reference.trim() ||
+    /[\u0000-\u001f\u007f]/.test(reference)
+  ) {
+    add(
+      "DW-UI-CSS-DYNAMIC-REFERENCE",
+      "UI CSS reference cannot contain hidden whitespace or control characters",
+    );
+    return;
+  }
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(reference)) {
+    add(
+      "DW-UI-CSS-NETWORK-URL",
+      `UI CSS cannot load an external or scheme URL: ${reference}`,
+    );
+    return;
+  }
+  if (reference.startsWith("#")) return;
+  if (
+    /%(?:2e|2f|5c)/i.test(reference) ||
+    reference.startsWith("/") ||
+    !isWithin(
+      packageRoot,
+      resolve(dirname(sourceFile), reference.split(/[?#]/, 1)[0]),
+    )
+  ) {
+    add(
+      "DW-UI-CSS-PATH-ESCAPE",
+      `UI CSS reference escapes or encodes traversal outside the package boundary: ${reference}`,
+    );
+  }
+  if (
+    imported &&
+    (!reference.startsWith(".") || !reference.split(/[?#]/, 1)[0].endsWith(".css"))
+  ) {
+    add(
+      "DW-UI-CSS-IMPORT-NOT-ALLOWED",
+      `UI CSS @import must be a contained relative .css path: ${reference}`,
+    );
+  }
+}
+
+export function inspectCss(
+  source,
+  sourceFile = join(packageRoot, "__inspection__.css"),
+) {
+  const violations = [];
+  const add = (code, message) =>
+    violations.push({ code, message: `${message}. ${help}` });
+  const inspectableSource = source.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+  for (const match of inspectableSource.matchAll(/@import\s+([^;]+);/gi)) {
+    const reference = importReference(match[1]);
+    if (reference === undefined) {
+      add(
+        "DW-UI-CSS-DYNAMIC-REFERENCE",
+        "UI CSS @import must use a statically inspectable quoted or url() path",
+      );
+    } else {
+      inspectCssReference(reference, sourceFile, add, true);
+    }
+  }
+  for (const match of inspectableSource.matchAll(/\burl\s*\(\s*([^)]*)\)/gi)) {
+    const reference = staticCssReference(match[1]);
+    if (reference === undefined) {
+      add(
+        "DW-UI-CSS-DYNAMIC-REFERENCE",
+        "UI CSS url() must use a statically inspectable path",
+      );
+    } else {
+      inspectCssReference(reference, sourceFile, add, false);
+    }
+  }
+
+  return violations;
+}
+
+async function sourceFiles(directory, extensions = [".ts", ".tsx"]) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await sourceFiles(path)));
-    if (entry.isFile() && [".ts", ".tsx"].includes(extname(entry.name))) {
+    if (entry.isDirectory()) {
+      files.push(...(await sourceFiles(path, extensions)));
+    }
+    if (entry.isFile() && extensions.includes(extname(entry.name))) {
       files.push(path);
     }
   }
@@ -212,11 +348,24 @@ export async function checkBoundaries() {
       inspectSource(await readFile(file, "utf8"), file),
     );
   }
+  const rootCssFiles = (await readdir(packageRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && extname(entry.name) === ".css")
+    .map((entry) => join(packageRoot, entry.name));
+  for (const file of [
+    ...rootCssFiles,
+    ...(await sourceFiles(sourceRoot, [".css"])),
+  ]) {
+    assertNoViolations(
+      file,
+      inspectCss(await readFile(file, "utf8"), file),
+    );
+  }
 
   for (const fixture of negativeFixtures) {
     const file = join(packageRoot, fixture.path);
+    const inspect = extname(file) === ".css" ? inspectCss : inspectSource;
     const codes = new Set(
-      inspectSource(await readFile(file, "utf8"), file).map(({ code }) => code),
+      inspect(await readFile(file, "utf8"), file).map(({ code }) => code),
     );
     for (const expectedCode of fixture.expectedCodes) {
       if (!codes.has(expectedCode)) {

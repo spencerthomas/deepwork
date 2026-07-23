@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
+  inspectCss,
   inspectSource,
   negativeFixtures,
 } from "../scripts/check-boundaries.mjs";
@@ -18,7 +19,10 @@ describe("UI negative boundary fixtures", () => {
         join(packageRoot, fixture.path),
         "utf8",
       );
-      const violations = inspectSource(
+      const inspect = fixture.path.endsWith(".css")
+        ? inspectCss
+        : inspectSource;
+      const violations = inspect(
         source,
         join(packageRoot, fixture.path),
       );

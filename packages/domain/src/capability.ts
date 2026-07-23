@@ -116,7 +116,7 @@ function daysInMonth(year: number, month: number): number {
   return days[month - 1] ?? 0;
 }
 
-export function rfc3339Instant(value: string): Rfc3339Instant {
+function requireRfc3339Instant(value: string): RegExpExecArray {
   const match = RFC3339_INSTANT.exec(value);
   if (match === null) {
     throw new TypeError(
@@ -124,6 +124,37 @@ export function rfc3339Instant(value: string): Rfc3339Instant {
     );
   }
 
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const offsetHour = Number(match[10] ?? 0);
+  const offsetMinute = Number(match[11] ?? 0);
+
+  if (
+    year === 0 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    offsetHour > 23 ||
+    offsetMinute > 59
+  ) {
+    throw new TypeError(
+      "Capability observation time must be a valid RFC3339 instant.",
+    );
+  }
+
+  return match;
+}
+
+export function rfc3339Instant(value: string): Rfc3339Instant {
+  const match = requireRfc3339Instant(value);
   const [
     ,
     yearText,
@@ -146,24 +177,6 @@ export function rfc3339Instant(value: string): Rfc3339Instant {
   const second = Number(secondText);
   const offsetHour = Number(offsetHourText ?? 0);
   const offsetMinute = Number(offsetMinuteText ?? 0);
-
-  if (
-    year === 0 ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > daysInMonth(year, month) ||
-    hour > 23 ||
-    minute > 59 ||
-    second > 59 ||
-    offsetHour > 23 ||
-    offsetMinute > 59
-  ) {
-    throw new TypeError(
-      "Capability observation time must be a valid RFC3339 instant.",
-    );
-  }
-
   const milliseconds = Number(fractionText.padEnd(3, "0"));
   const utc = new Date(0);
   utc.setUTCFullYear(year, month - 1, day);
@@ -177,11 +190,7 @@ export function rfc3339Instant(value: string): Rfc3339Instant {
   }
 
   const normalized = utc.toISOString();
-  if (!/^\d{4}-/.test(normalized)) {
-    throw new TypeError(
-      "Capability observation time is outside the supported RFC3339 range.",
-    );
-  }
+  requireRfc3339Instant(normalized);
   return normalized as Rfc3339Instant;
 }
 
@@ -189,11 +198,24 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
   value: T,
   seen = new Set<object>(),
 ): CapabilityEvidenceSnapshot<T> {
-  if (typeof value === "number" && !Number.isFinite(value)) {
-    throw new TypeError("Capability evidence numbers must be finite.");
-  }
-  if (value === null || typeof value !== "object") {
+  const valueType = typeof value;
+  if (
+    value === null ||
+    valueType === "boolean" ||
+    valueType === "string"
+  ) {
     return value as CapabilityEvidenceSnapshot<T>;
+  }
+  if (valueType === "number") {
+    if (!Number.isFinite(value)) {
+      throw new TypeError("Capability evidence numbers must be finite.");
+    }
+    return value as CapabilityEvidenceSnapshot<T>;
+  }
+  if (valueType !== "object") {
+    throw new TypeError(
+      "Capability evidence values must be JSON-compatible data.",
+    );
   }
   if (seen.has(value)) {
     throw new TypeError("Capability evidence values must not contain cycles.");
@@ -201,7 +223,7 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
   seen.add(value);
 
   if (Array.isArray(value)) {
-    const snapshot = value.map((entry) =>
+    const snapshot = Array.from(value, (entry) =>
       snapshotCapabilityValue(entry, seen),
     );
     seen.delete(value);
@@ -214,6 +236,19 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
       "Capability evidence objects must be plain records.",
     );
   }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (!descriptor.enumerable || !("value" in descriptor)) {
+      throw new TypeError(
+        `Capability evidence property ${key} must be enumerable data.`,
+      );
+    }
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new TypeError(
+      "Capability evidence objects must not contain symbol keys.",
+    );
+  }
   const snapshot = Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [
       key,
@@ -224,6 +259,37 @@ function snapshotCapabilityValue<T extends CapabilityEvidenceValue>(
   return Object.freeze(snapshot) as CapabilityEvidenceSnapshot<T>;
 }
 
+const SAFE_REASONS_BY_STATE = Object.freeze({
+  unavailable: Object.freeze([
+    "not-supported",
+    "source-unavailable",
+    "adapter-disabled",
+  ] as const),
+  gated: Object.freeze([
+    "permission-required",
+    "adapter-disabled",
+  ] as const),
+  "permission-denied": Object.freeze(["permission-required"] as const),
+  unknown: Object.freeze(["contract-not-verified"] as const),
+});
+
+function requireCoherentUnavailableReason(
+  state: Exclude<CapabilityState, "available">,
+  safeReason: CapabilitySafeReason,
+): void {
+  const allowed = SAFE_REASONS_BY_STATE[state] as readonly CapabilitySafeReason[];
+  if (!allowed.includes(safeReason)) {
+    throw new TypeError(
+      `Capability state ${state} cannot use safe reason ${safeReason}.`,
+    );
+  }
+}
+
+/*
+ * The following constructors are the only place evidence becomes trusted domain
+ * state. Keep runtime validation even though TypeScript excludes unsupported
+ * values for normal callers.
+ */
 export function availableCapability<T extends CapabilityEvidenceValue>(
   value: T,
   metadata: CapabilityEvidenceMetadata,
@@ -249,6 +315,7 @@ export function unavailableCapability(
   safeReason: CapabilitySafeReason,
   metadata: CapabilityEvidenceMetadata,
 ): UnavailableCapabilityEvidence {
+  requireCoherentUnavailableReason(state, safeReason);
   return Object.freeze({
     state,
     safeReason,

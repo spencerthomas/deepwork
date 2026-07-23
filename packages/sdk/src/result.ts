@@ -39,7 +39,9 @@ export function capabilityUnavailableError(
       capability.state,
       capability.safeReason,
     ),
-    retryable: capability.safeReason === "source-unavailable",
+    retryable:
+      capability.state === "unavailable" &&
+      capability.safeReason === "source-unavailable",
     capability,
   });
 }

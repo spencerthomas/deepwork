@@ -6,7 +6,7 @@ The package currently exposes:
 
 - source-qualified thread and run keys;
 - deeply snapshotted evidence-bearing capability values, canonical RFC3339
-  observation instants, and safe summaries; and
+  observation instants, coherent state/reason pairs, and safe summaries; and
 - task/presentation state types and guards.
 
 Import only from `@deepwork/domain`. Provider payloads, HTTP DTOs, React, browser
@@ -15,7 +15,9 @@ and Node APIs, environment access, and side effects do not belong here.
 `check-architecture` scans shipped source and verifies intentional failing
 fixtures for every enforced rule: internal-package, framework, provider, network
 package/API, browser API, Node API, environment access, local ESM extension,
-deep import, path escape, and server/Tauri/route/fixture/generated/database zone.
+deep import, path escape, computed/template dynamic import, and
+server/Tauri/route/fixture/generated/database zone. Capability evidence accepts
+only finite JSON-compatible data and rejects unsupported runtime values.
 `package-check` packs built output, inspects its public files and exports, rejects
 workspace-protocol leakage, installs it offline into an empty temporary consumer,
 imports `@deepwork/domain`, and compiles a strict TypeScript consumer against the

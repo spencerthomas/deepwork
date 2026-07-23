@@ -27,9 +27,13 @@ commercial font files.
 
 `check-architecture` scans shipped source and verifies intentional failing
 fixtures for every enforced rule: SDK/self, Next.js, provider, raw network
-package/API, Node API, environment access, local ESM extension, and raw HTML.
+package/API, Node API, environment access, local ESM extension,
+computed/template dynamic import, and raw HTML.
 The allowlist additionally rejects deep imports, package path escapes, and
 server/Tauri/route/fixture/generated/database zones with repair diagnostics.
+Shipped CSS is scanned separately: `@import` must use a contained relative CSS
+path, and dynamic, package, external/scheme, absolute, encoded-traversal, or
+escaping `url()` references fail closed.
 `package-check` packs UI and domain output, inspects every JavaScript, CSS, token,
 and preset export, rejects workspace-protocol leakage, installs the archives and
 React offline into an empty temporary consumer, and imports or resolves every

@@ -67,6 +67,10 @@ export const negativeFixtures = [
       "DW-SDK-IMPORT-NOT-ALLOWED",
     ],
   },
+  {
+    path: "tests/fixtures/negative/computed-dynamic-import.fixture.ts",
+    expectedCodes: ["DW-SDK-DYNAMIC-IMPORT"],
+  },
 ];
 
 function importSpecifiers(source) {
@@ -84,6 +88,20 @@ function isWithin(root, target) {
   return target === root || target.startsWith(`${root}${sep}`);
 }
 
+function unsafeDynamicImportCount(source) {
+  let count = 0;
+  const start =
+    /\bimport(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*(?:\r?\n|$))*\(\s*/g;
+  for (const match of source.matchAll(start)) {
+    const argument = source.slice((match.index ?? 0) + match[0].length);
+    const staticString =
+      !/\/[*/]/.test(match[0]) &&
+      /^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)/.test(argument);
+    if (!staticString) count += 1;
+  }
+  return count;
+}
+
 export function inspectSource(
   source,
   sourceFile = join(sourceRoot, "__inspection__.ts"),
@@ -91,6 +109,13 @@ export function inspectSource(
   const violations = [];
   const add = (code, message) =>
     violations.push({ code, message: `${message}. ${help}` });
+
+  for (let index = 0; index < unsafeDynamicImportCount(source); index += 1) {
+    add(
+      "DW-SDK-DYNAMIC-IMPORT",
+      "SDK cannot use a computed or template-literal dynamic import because its destination cannot be statically enforced",
+    );
+  }
 
   for (const specifier of importSpecifiers(source)) {
     const relative = specifier.startsWith(".");

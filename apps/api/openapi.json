@@ -33,12 +33,12 @@
             "type": "boolean"
           },
           "interruptId": {
-            "pattern": "^interrupt_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Interruptid",
             "type": "string"
           },
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },
@@ -84,7 +84,7 @@
             "$ref": "#/components/schemas/DecisionValue"
           },
           "interruptId": {
-            "pattern": "^interrupt_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Interruptid",
             "type": "string"
           }
@@ -140,7 +140,8 @@
       "EvidenceClass": {
         "description": "Origin of an observed capability or status.",
         "enum": [
-          "fixture"
+          "fixture",
+          "local-source"
         ],
         "title": "EvidenceClass",
         "type": "string"
@@ -259,7 +260,7 @@
             "type": "array"
           },
           "interruptId": {
-            "pattern": "^interrupt_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Interruptid",
             "type": "string"
           },
@@ -288,7 +289,7 @@
             "type": "integer"
           },
           "interruptId": {
-            "pattern": "^interrupt_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Interruptid",
             "type": "string"
           },
@@ -315,7 +316,7 @@
         "description": "Accepted plan edit receipt.",
         "properties": {
           "interruptId": {
-            "pattern": "^interrupt_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Interruptid",
             "type": "string"
           },
@@ -323,7 +324,7 @@
             "$ref": "#/components/schemas/ProposedPlanResponse"
           },
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },
@@ -398,7 +399,7 @@
         "description": "Queued task receipt returned before background work starts.",
         "properties": {
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },
@@ -493,7 +494,7 @@
             "title": "Result"
           },
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },
@@ -555,7 +556,7 @@
             "type": "string"
           },
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },
@@ -595,7 +596,7 @@
             "type": "string"
           },
           "runId": {
-            "pattern": "^run_[0-9]{8}$",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
             "type": "string"
           },

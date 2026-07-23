@@ -8,7 +8,16 @@ from typing import Annotated
 from fastapi import APIRouter, Header, Path
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from deepwork_api.application import TaskService
+from deepwork_api.application import (
+    DecisionConflictError,
+    InterruptMismatchError,
+    InvalidEventCursorError,
+    StaleInterruptError,
+    TaskEvent,
+    TaskNotFoundError,
+    TaskService,
+    TaskStatus,
+)
 from deepwork_api.contracts import (
     DecisionAcceptedResponse,
     DecisionRequest,
@@ -20,15 +29,6 @@ from deepwork_api.contracts import (
     TaskResultResponse,
     TaskSummaryResponse,
     encode_event_data,
-)
-from deepwork_api.domain import (
-    DecisionConflictError,
-    InterruptMismatchError,
-    InvalidEventCursorError,
-    StaleInterruptError,
-    TaskEvent,
-    TaskNotFoundError,
-    TaskStatus,
 )
 
 TaskPath = Annotated[str, Path(pattern=r"^task_[0-9]{8}$")]

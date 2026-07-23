@@ -14,9 +14,7 @@ const eventLabels: Record<TaskEvent["name"], string> = {
 function EventBody({ event }: { event: TaskEvent }) {
   const text = getEventText(event);
   const steps = Array.isArray(event.data.steps)
-    ? event.data.steps.filter(
-        (step): step is string => typeof step === "string" && step !== "",
-      )
+    ? event.data.steps.filter((step): step is string => typeof step === "string" && step !== "")
     : [];
 
   if (event.name === "decision.recorded") {
@@ -26,15 +24,10 @@ function EventBody({ event }: { event: TaskEvent }) {
         : event.data.decision === "reject"
           ? "Rejected"
           : undefined;
-    const comment =
-      typeof event.data.comment === "string" ? event.data.comment : undefined;
+    const comment = typeof event.data.comment === "string" ? event.data.comment : undefined;
     return (
       <>
-        <p>
-          {decision
-            ? `${decision} by a reviewer.`
-            : "Malformed decision record ignored."}
-        </p>
+        <p>{decision ? `${decision} by a reviewer.` : "Malformed decision record ignored."}</p>
         {comment ? <blockquote>{comment}</blockquote> : null}
       </>
     );
@@ -70,10 +63,7 @@ export function RunTimeline({ events }: { events: readonly TaskEvent[] }) {
   return (
     <ol className="timeline" aria-label="Run events" aria-live="polite">
       {events.map((event, index) => (
-        <li
-          className={`timeline-event event-${event.name.replace(".", "-")}`}
-          key={event.id}
-        >
+        <li className={`timeline-event event-${event.name.replace(".", "-")}`} key={event.id}>
           <div className="timeline-marker" aria-hidden="true">
             {index + 1}
           </div>

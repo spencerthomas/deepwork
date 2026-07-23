@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Start the credential-free Deep Work Outcome 1 experience."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.request import urlopen
+
+ROOT = Path(__file__).resolve().parent
+API_EXECUTABLE = ROOT / "apps" / "api" / ".venv" / "bin" / "deepwork-api"
+NEXT_EXECUTABLE = ROOT / "apps" / "web" / "node_modules" / "next" / "dist" / "bin" / "next"
+
+
+def _find_executable(name: str, override_variable: str) -> Path | None:
+    override = os.environ.get(override_variable)
+    if override:
+        candidate = Path(override).expanduser()
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+        print(
+            f"{override_variable} does not name an executable file: {candidate}",
+            file=sys.stderr,
+        )
+        return None
+    discovered = shutil.which(name)
+    if discovered:
+        return Path(discovered)
+    return None
+
+
+def _wait_for(url: str, process: subprocess.Popen[bytes], timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError(f"service exited with status {process.returncode}: {url}")
+        try:
+            with urlopen(url, timeout=2) as response:  # noqa: S310 - fixed loopback URL
+                if response.status < 500:
+                    return
+        except OSError:
+            time.sleep(0.15)
+    raise RuntimeError(f"service did not become ready: {url}")
+
+
+def _stop(processes: list[subprocess.Popen[bytes]]) -> None:
+    for process in reversed(processes):
+        if process.poll() is None:
+            process.terminate()
+    deadline = time.monotonic() + 5
+    for process in reversed(processes):
+        if process.poll() is None:
+            try:
+                process.wait(timeout=max(0.1, deadline - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+
+def main() -> int:
+    """Start API, embedded deterministic runtime, and web until interrupted."""
+    node = _find_executable("node", "DEEPWORK_NODE")
+    missing: list[str] = []
+    if not API_EXECUTABLE.is_file():
+        missing.append("API environment (run `make -C apps/api bootstrap`)")
+    if node is None:
+        missing.append("Node.js 24")
+    if not NEXT_EXECUTABLE.is_file():
+        missing.append("web dependencies (run `pnpm install`)")
+    if missing:
+        print(f"Deep Work is not bootstrapped: {', '.join(missing)}", file=sys.stderr)
+        return 2
+
+    child_env = os.environ.copy()
+    child_env["PATH"] = os.pathsep.join(
+        [
+            str(node.parent),
+            child_env.get("PATH", ""),
+        ]
+    )
+    child_env["NEXT_PUBLIC_API_BASE_URL"] = "http://127.0.0.1:8000"
+    child_env.pop("NEXT_PUBLIC_DEMO_MODE", None)
+
+    processes: list[subprocess.Popen[bytes]] = []
+    stopping = False
+
+    def handle_signal(_signum: int, _frame: object) -> None:
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    try:
+        print("Starting Deep Work API + deterministic local runtime on 127.0.0.1:8000")
+        api = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
+            [str(API_EXECUTABLE), "--port", "8000"],
+            cwd=ROOT / "apps" / "api",
+            env=child_env,
+        )
+        processes.append(api)
+        _wait_for("http://127.0.0.1:8000/health", api, 15)
+
+        print("Starting Deep Work web on http://127.0.0.1:3000")
+        web = subprocess.Popen(  # noqa: S603 - fixed reviewed package command
+            [
+                str(node),
+                str(NEXT_EXECUTABLE),
+                "dev",
+                "--hostname",
+                "127.0.0.1",
+                "--port",
+                "3000",
+            ],
+            cwd=ROOT / "apps" / "web",
+            env=child_env,
+        )
+        processes.append(web)
+        _wait_for("http://127.0.0.1:3000", web, 30)
+        print("")
+        print("Deep Work is ready: http://127.0.0.1:3000")
+        print("Mode: deterministic local execution")
+        print("External providers: unavailable")
+        print("Press Ctrl-C to stop all services.")
+
+        while not stopping and all(process.poll() is None for process in processes):
+            time.sleep(0.2)
+        if not stopping:
+            failed = next(process for process in processes if process.poll() is not None)
+            raise RuntimeError(f"a Deep Work service exited with status {failed.returncode}")
+    except (KeyboardInterrupt, RuntimeError) as exc:
+        if not isinstance(exc, KeyboardInterrupt):
+            print(f"Deep Work stopped: {exc}", file=sys.stderr)
+            return 1
+    finally:
+        _stop(processes)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

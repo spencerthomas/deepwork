@@ -64,9 +64,7 @@ export function TaskList({
               <button
                 className="task-row"
                 type="button"
-                aria-current={
-                  selectedTaskId === task.taskId ? "page" : undefined
-                }
+                aria-current={selectedTaskId === task.taskId ? "page" : undefined}
                 onClick={() => onSelect(task.taskId)}
               >
                 <span className="task-row-copy">

@@ -9,6 +9,7 @@ import {
   normalizeTaskStatus,
   reduceEventsIntoDetail,
   terminalEventNeedsDetail,
+  validateDecisionComment,
   validatePrompt,
 } from "./task-normalizers";
 import type { TaskEvent } from "./task-types";
@@ -58,9 +59,19 @@ describe("task response normalization", () => {
 describe("validatePrompt", () => {
   it("accepts 8,000 characters and rejects 8,001 without truncating", () => {
     expect(validatePrompt("a".repeat(8_000))).toHaveLength(8_000);
-    expect(() => validatePrompt("a".repeat(8_001))).toThrow(
-      "cannot exceed 8,000",
-    );
+    expect(() => validatePrompt("a".repeat(8_001))).toThrow("cannot exceed 8,000");
+  });
+
+  it("counts Unicode code points like the API", () => {
+    expect(validatePrompt("😀".repeat(8_000))).toBe("😀".repeat(8_000));
+    expect(() => validatePrompt("😀".repeat(8_001))).toThrow("cannot exceed 8,000");
+  });
+});
+
+describe("validateDecisionComment", () => {
+  it("accepts 1,000 Unicode code points and rejects 1,001", () => {
+    expect(validateDecisionComment("😀".repeat(1_000))).toBe("😀".repeat(1_000));
+    expect(() => validateDecisionComment("😀".repeat(1_001))).toThrow("cannot exceed 1,000");
   });
 });
 
@@ -176,9 +187,7 @@ describe("getActiveInterrupt", () => {
       data: { decision: "approve" },
     };
 
-    expect(getActiveInterrupt([requested, uncorrelated])?.interruptId).toBe(
-      "interrupt-1",
-    );
+    expect(getActiveInterrupt([requested, uncorrelated])?.interruptId).toBe("interrupt-1");
   });
 
   it("does not leave approval controls active after a terminal event", () => {

@@ -7,11 +7,7 @@ const labels: Record<StreamConnectionState, string> = {
   closed: "Stream closed",
 };
 
-export function ConnectionState({
-  state,
-}: {
-  state: StreamConnectionState;
-}) {
+export function ConnectionState({ state }: { state: StreamConnectionState }) {
   return (
     <span className={`connection-state connection-${state}`} role="status">
       <span aria-hidden="true" />

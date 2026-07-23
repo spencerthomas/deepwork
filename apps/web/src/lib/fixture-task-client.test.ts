@@ -30,23 +30,23 @@ describe("fixture task client", () => {
 
     await vi.advanceTimersByTimeAsync(940);
     expect(events.at(-1)?.name).toBe("interrupt.requested");
-    expect((await client.getTask(created.taskId)).status).toBe(
-      "waiting-approval",
-    );
+    expect((await client.getTask(created.taskId)).status).toBe("waiting-approval");
 
     await client.decide(created.taskId, {
       interruptId: "fixture-interrupt-1",
       decision: "approve",
+      comment: "Approved after review",
     });
+    const decisionEvent = events.find((event) => event.name === "decision.recorded");
+    expect(decisionEvent?.data).toMatchObject({ commentProvided: true });
+    expect(decisionEvent?.data).not.toHaveProperty("comment");
     await vi.advanceTimersByTimeAsync(420);
 
     const completed = await client.getTask(created.taskId);
     expect(events.at(-1)?.name).toBe("run.completed");
     expect(completed.status).toBe("completed");
     expect(completed.result).toContain("Prepare a release checklist");
-    expect((await client.listTasks()).map((task) => task.taskId)).toContain(
-      created.taskId,
-    );
+    expect((await client.listTasks()).map((task) => task.taskId)).toContain(created.taskId);
     close();
     expect(connection).toBe("closed");
   });

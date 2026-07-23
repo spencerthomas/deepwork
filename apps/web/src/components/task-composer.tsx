@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 
+import { unicodeLength } from "../lib/task-normalizers";
 import { PROMPT_MAX_LENGTH } from "../lib/task-types";
 
 interface TaskComposerProps {
@@ -11,6 +12,7 @@ interface TaskComposerProps {
 
 export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
   const [prompt, setPrompt] = useState("");
+  const promptLength = unicodeLength(prompt);
   const promptId = useId();
   const hintId = `${promptId}-hint`;
 
@@ -48,11 +50,14 @@ export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
         <textarea
           id={promptId}
           value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
+          onChange={(event) => {
+            if (unicodeLength(event.target.value) <= PROMPT_MAX_LENGTH) {
+              setPrompt(event.target.value);
+            }
+          }}
           onKeyDown={submitWithShortcut}
           placeholder="Describe the outcome, constraints, and what a good result looks like…"
           rows={4}
-          maxLength={PROMPT_MAX_LENGTH}
           aria-describedby={hintId}
           disabled={busy}
         />
@@ -66,17 +71,12 @@ export function TaskComposer({ busy, onCreate }: TaskComposerProps) {
             </p>
             <span
               className="character-count"
-              aria-label={`${prompt.length} of ${PROMPT_MAX_LENGTH} characters`}
+              aria-label={`${promptLength} of ${PROMPT_MAX_LENGTH} characters`}
             >
-              {prompt.length.toLocaleString("en-US")} /{" "}
-              {PROMPT_MAX_LENGTH.toLocaleString("en-US")}
+              {promptLength.toLocaleString("en-US")} / {PROMPT_MAX_LENGTH.toLocaleString("en-US")}
             </span>
           </div>
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={busy || prompt.trim() === ""}
-          >
+          <button className="primary-button" type="submit" disabled={busy || prompt.trim() === ""}>
             {busy ? (
               <>
                 <span className="button-spinner" aria-hidden="true" />

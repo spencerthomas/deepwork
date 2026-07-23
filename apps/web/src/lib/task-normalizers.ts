@@ -6,7 +6,7 @@ import type {
   TaskStatus,
   TaskSummary,
 } from "./task-types";
-import { PROMPT_MAX_LENGTH } from "./task-types";
+import { DECISION_COMMENT_MAX_LENGTH, PROMPT_MAX_LENGTH } from "./task-types";
 
 export class ContractError extends Error {
   constructor(message: string) {
@@ -24,7 +24,7 @@ export function validatePrompt(prompt: string): string {
   if (normalized === "") {
     throw new ContractError("Task prompt cannot be empty.");
   }
-  if (normalized.length > PROMPT_MAX_LENGTH) {
+  if (unicodeLength(normalized) > PROMPT_MAX_LENGTH) {
     throw new ContractError(
       `Task prompt cannot exceed ${PROMPT_MAX_LENGTH.toLocaleString("en-US")} characters.`,
     );
@@ -32,11 +32,24 @@ export function validatePrompt(prompt: string): string {
   return normalized;
 }
 
-function requiredString(
-  record: Record<string, unknown>,
-  key: string,
-  context: string,
-): string {
+export function unicodeLength(value: string): number {
+  return [...value].length;
+}
+
+export function validateDecisionComment(comment: string | undefined): string | undefined {
+  const normalized = comment?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  if (unicodeLength(normalized) > DECISION_COMMENT_MAX_LENGTH) {
+    throw new ContractError(
+      `Decision note cannot exceed ${DECISION_COMMENT_MAX_LENGTH.toLocaleString("en-US")} characters.`,
+    );
+  }
+  return normalized;
+}
+
+function requiredString(record: Record<string, unknown>, key: string, context: string): string {
   const value = record[key];
   if (typeof value !== "string" || value.trim() === "") {
     throw new ContractError(`${context} is missing a valid ${key}.`);
@@ -44,10 +57,7 @@ function requiredString(
   return value;
 }
 
-function optionalString(
-  record: Record<string, unknown>,
-  key: string,
-): string | undefined {
+function optionalString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
@@ -88,10 +98,7 @@ export function normalizeTaskStatus(value: unknown): TaskStatus {
   }
 }
 
-export function normalizeTaskSummary(
-  value: unknown,
-  context = "Task",
-): TaskSummary {
+export function normalizeTaskSummary(value: unknown, context = "Task"): TaskSummary {
   if (!isRecord(value)) {
     throw new ContractError(`${context} must be an object.`);
   }
@@ -120,9 +127,7 @@ export function normalizeTaskDetail(value: unknown): TaskDetail {
   return {
     ...normalizeTaskSummary(value, "Task detail"),
     result:
-      getResultText(value.result) ??
-      getResultText(value.output) ??
-      getResultText(value.summary),
+      getResultText(value.result) ?? getResultText(value.output) ?? getResultText(value.summary),
   };
 }
 
@@ -143,9 +148,7 @@ export function normalizeCreateTaskResult(value: unknown): CreateTaskResult {
 
   const status = requiredString(value, "status", "Create-task response");
   if (status !== "queued") {
-    throw new ContractError(
-      `Create-task response status must be queued, received ${status}.`,
-    );
+    throw new ContractError(`Create-task response status must be queued, received ${status}.`);
   }
 
   return {
@@ -156,15 +159,7 @@ export function normalizeCreateTaskResult(value: unknown): CreateTaskResult {
 }
 
 export function getEventText(event: TaskEvent): string | undefined {
-  for (const key of [
-    "delta",
-    "text",
-    "content",
-    "summary",
-    "message",
-    "result",
-    "output",
-  ]) {
+  for (const key of ["delta", "text", "content", "summary", "message", "result", "output"]) {
     const text = getResultText(event.data[key]);
     if (text) {
       return text;
@@ -211,9 +206,7 @@ export function getResultText(value: unknown): string | undefined {
   return undefined;
 }
 
-export function getActiveInterrupt(
-  events: readonly TaskEvent[],
-): ActiveInterrupt | undefined {
+export function getActiveInterrupt(events: readonly TaskEvent[]): ActiveInterrupt | undefined {
   let active: ActiveInterrupt | undefined;
 
   for (const event of events) {
@@ -224,10 +217,7 @@ export function getActiveInterrupt(
       }
       active = {
         interruptId,
-        title:
-          typeof event.data.title === "string"
-            ? event.data.title
-            : "Approval required",
+        title: typeof event.data.title === "string" ? event.data.title : "Approval required",
         question:
           typeof event.data.question === "string"
             ? event.data.question
@@ -260,10 +250,7 @@ export function getActiveInterrupt(
   return active;
 }
 
-export function statusAfterEvent(
-  current: TaskStatus,
-  event: TaskEvent,
-): TaskStatus {
+export function statusAfterEvent(current: TaskStatus, event: TaskEvent): TaskStatus {
   switch (event.name) {
     case "task.created":
       return "queued";
@@ -274,8 +261,7 @@ export function statusAfterEvent(
     case "interrupt.requested":
       return "waiting-approval";
     case "decision.recorded":
-      return (event.data.decision === "approve" ||
-        event.data.decision === "reject") &&
+      return (event.data.decision === "approve" || event.data.decision === "reject") &&
         typeof event.data.interruptId === "string"
         ? "running"
         : current;
@@ -290,22 +276,13 @@ export function statusAfterEvent(
 
 export function isTerminalStatus(status: TaskStatus): boolean {
   return (
-    status === "completed" ||
-    status === "rejected" ||
-    status === "failed" ||
-    status === "cancelled"
+    status === "completed" || status === "rejected" || status === "failed" || status === "cancelled"
   );
 }
 
-export function reduceEventsIntoDetail(
-  task: TaskDetail,
-  events: readonly TaskEvent[],
-): TaskDetail {
+export function reduceEventsIntoDetail(task: TaskDetail, events: readonly TaskEvent[]): TaskDetail {
   return events.reduce<TaskDetail>((current, event) => {
-    const eventResult =
-      event.name === "run.completed"
-        ? getCompletionResultText(event)
-        : undefined;
+    const eventResult = event.name === "run.completed" ? getCompletionResultText(event) : undefined;
     return {
       ...current,
       status: statusAfterEvent(current.status, event),

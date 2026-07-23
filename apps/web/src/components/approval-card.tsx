@@ -2,7 +2,12 @@
 
 import { useId, useState } from "react";
 
-import type { ActiveInterrupt, DecisionInput } from "../lib/task-types";
+import { unicodeLength } from "../lib/task-normalizers";
+import {
+  DECISION_COMMENT_MAX_LENGTH,
+  type ActiveInterrupt,
+  type DecisionInput,
+} from "../lib/task-types";
 
 interface ApprovalCardProps {
   error?: string;
@@ -20,6 +25,7 @@ export function ApprovalCard({
   submitting,
 }: ApprovalCardProps) {
   const [comment, setComment] = useState("");
+  const commentLength = unicodeLength(comment);
   const commentId = useId();
   const disabled = submitting || submittedDecision !== undefined;
 
@@ -47,9 +53,18 @@ export function ApprovalCard({
           rows={2}
           value={comment}
           disabled={disabled}
-          onChange={(event) => setComment(event.target.value)}
+          onChange={(event) => {
+            if (unicodeLength(event.target.value) <= DECISION_COMMENT_MAX_LENGTH) {
+              setComment(event.target.value);
+            }
+          }}
           placeholder="Add context for the run…"
+          aria-describedby={`${commentId}-limit`}
         />
+        <span id={`${commentId}-limit`} className="character-count">
+          {commentLength.toLocaleString("en-US")} /{" "}
+          {DECISION_COMMENT_MAX_LENGTH.toLocaleString("en-US")}
+        </span>
 
         {error ? (
           <p className="decision-error" role="alert">
@@ -58,8 +73,8 @@ export function ApprovalCard({
         ) : null}
         {submittedDecision ? (
           <p className="decision-pending" role="status">
-            {submittedDecision === "approve" ? "Approval" : "Rejection"} accepted
-            by the API. Waiting for the streamed decision record…
+            {submittedDecision === "approve" ? "Approval" : "Rejection"} accepted by the API.
+            Waiting for the streamed decision record…
           </p>
         ) : null}
 

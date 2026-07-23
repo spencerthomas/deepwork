@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AppHeader } from "./app-header";
 import { TaskComposer } from "./task-composer";
@@ -42,14 +37,9 @@ function replaceTask(
 export function TaskWorkspace() {
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string>();
-  const [detailsByTask, setDetailsByTask] = useState<
-    Record<string, TaskDetailType>
-  >({});
-  const [eventsByTask, setEventsByTask] = useState<
-    Record<string, TaskEvent[]>
-  >({});
-  const [connectionState, setConnectionState] =
-    useState<ConnectionState>("closed");
+  const [detailsByTask, setDetailsByTask] = useState<Record<string, TaskDetailType>>({});
+  const [eventsByTask, setEventsByTask] = useState<Record<string, TaskEvent[]>>({});
+  const [connectionState, setConnectionState] = useState<ConnectionState>("closed");
   const [listError, setListError] = useState<string>();
   const [detailError, setDetailError] = useState<string>();
   const [streamError, setStreamError] = useState<string>();
@@ -58,17 +48,19 @@ export function TaskWorkspace() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [creating, setCreating] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
-  const [submittedDecision, setSubmittedDecision] =
-    useState<DecisionInput["decision"]>();
+  const [submittedDecision, setSubmittedDecision] = useState<DecisionInput["decision"]>();
   const [listAttempt, setListAttempt] = useState(0);
   const detailRef = useRef<HTMLElement | null>(null);
   const eventsByTaskRef = useRef<Record<string, TaskEvent[]>>({});
   const decisionRequestRef = useRef(0);
-  const pendingDecisionRef = useRef<{
-    interruptId: string;
-    requestId: number;
-    taskId: string;
-  } | undefined>(undefined);
+  const pendingDecisionRef = useRef<
+    | {
+        interruptId: string;
+        requestId: number;
+        taskId: string;
+      }
+    | undefined
+  >(undefined);
   const selectedTaskIdRef = useRef<string | undefined>(selectedTaskId);
   selectedTaskIdRef.current = selectedTaskId;
 
@@ -81,9 +73,7 @@ export function TaskWorkspace() {
       .listTasks(controller.signal)
       .then((items) => {
         setTasks((current) => {
-          const currentById = new Map(
-            current.map((task) => [task.taskId, task] as const),
-          );
+          const currentById = new Map(current.map((task) => [task.taskId, task] as const));
           const incomingIds = new Set(items.map((task) => task.taskId));
           return [
             ...items.map((task) => {
@@ -97,9 +87,7 @@ export function TaskWorkspace() {
           if (current) {
             return current;
           }
-          const storedTaskId = window.sessionStorage.getItem(
-            "deepwork.selectedTaskId",
-          );
+          const storedTaskId = window.sessionStorage.getItem("deepwork.selectedTaskId");
           return items.some((task) => task.taskId === storedTaskId)
             ? (storedTaskId ?? undefined)
             : items.at(0)?.taskId;
@@ -154,9 +142,7 @@ export function TaskWorkspace() {
               : taskWithEarlyEvents,
           };
         });
-        setTasks((current) =>
-          replaceTask(current, selectedTaskId, () => taskWithEarlyEvents),
-        );
+        setTasks((current) => replaceTask(current, selectedTaskId, () => taskWithEarlyEvents));
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
@@ -191,9 +177,7 @@ export function TaskWorkspace() {
             return current;
           }
           const eventResult =
-            event.name === "run.completed"
-              ? getCompletionResultText(event)
-              : undefined;
+            event.name === "run.completed" ? getCompletionResultText(event) : undefined;
           return {
             ...current,
             [selectedTaskId]: {
@@ -214,8 +198,7 @@ export function TaskWorkspace() {
           if (
             pending?.taskId === selectedTaskId &&
             event.data.interruptId === pending.interruptId &&
-            (event.data.decision === "approve" ||
-              event.data.decision === "reject")
+            (event.data.decision === "approve" || event.data.decision === "reject")
           ) {
             pendingDecisionRef.current = undefined;
             setSubmittedDecision(undefined);
@@ -253,9 +236,7 @@ export function TaskWorkspace() {
                 ...current,
                 [selectedTaskId]: finalTask,
               }));
-              setTasks((current) =>
-                replaceTask(current, selectedTaskId, () => finalTask),
-              );
+              setTasks((current) => replaceTask(current, selectedTaskId, () => finalTask));
               setDetailError(
                 isTerminalStatus(finalTask.status)
                   ? undefined
@@ -284,9 +265,7 @@ export function TaskWorkspace() {
 
   const selected = tasks.find((task) => task.taskId === selectedTaskId);
   const detail = selectedTaskId ? detailsByTask[selectedTaskId] : undefined;
-  const events = selectedTaskId
-    ? (eventsByTask[selectedTaskId] ?? [])
-    : [];
+  const events = selectedTaskId ? (eventsByTask[selectedTaskId] ?? []) : [];
   const activeInterrupt = useMemo(() => getActiveInterrupt(events), [events]);
 
   async function createTask(prompt: string): Promise<boolean> {

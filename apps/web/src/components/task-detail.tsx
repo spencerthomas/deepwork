@@ -55,8 +55,8 @@ export function TaskDetail({
         <p className="eyebrow">Ready when you are</p>
         <h2 id="empty-heading">Your run will unfold here</h2>
         <p>
-          Create a task above to watch its events arrive, review any approval
-          request, and see the terminal result.
+          Create a task above to watch its events arrive, review any approval request, and see the
+          terminal result.
         </p>
       </section>
     );
@@ -102,9 +102,7 @@ export function TaskDetail({
           role={connectionState === "reconnecting" ? "status" : "alert"}
         >
           <strong>
-            {connectionState === "reconnecting"
-              ? "Stream interrupted"
-              : "Stream warning"}
+            {connectionState === "reconnecting" ? "Stream interrupted" : "Stream warning"}
           </strong>
           <span>{streamError}</span>
         </div>
@@ -132,11 +130,7 @@ export function TaskDetail({
       ) : null}
 
       {terminal ? (
-        <div
-          className={`terminal-card terminal-${task.status}`}
-          role="status"
-          aria-live="polite"
-        >
+        <div className={`terminal-card terminal-${task.status}`} role="status" aria-live="polite">
           <span className="terminal-icon" aria-hidden="true">
             {task.status === "completed" ? "✓" : "×"}
           </span>

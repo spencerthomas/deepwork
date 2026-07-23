@@ -2,6 +2,7 @@ import {
   normalizeCreateTaskResult,
   normalizeTaskDetail,
   normalizeTaskList,
+  validateDecisionComment,
   validatePrompt,
 } from "./task-normalizers";
 import { subscribeToTaskEvents } from "./sse";
@@ -46,6 +47,20 @@ function errorMessage(status: number, body: unknown): string {
     if (typeof detail === "string" && detail.trim() !== "") {
       return detail;
     }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => {
+          if (!item || typeof item !== "object") {
+            return undefined;
+          }
+          const message = Reflect.get(item, "msg");
+          return typeof message === "string" && message.trim() !== "" ? message : undefined;
+        })
+        .filter((message): message is string => message !== undefined);
+      if (messages.length > 0) {
+        return messages.join(" ");
+      }
+    }
     const message = Reflect.get(body, "message");
     if (typeof message === "string" && message.trim() !== "") {
       return message;
@@ -54,11 +69,7 @@ function errorMessage(status: number, body: unknown): string {
   return `The API returned HTTP ${status}.`;
 }
 
-async function request(
-  url: string,
-  init: RequestInit,
-  expectedStatus: number,
-): Promise<unknown> {
+async function request(url: string, init: RequestInit, expectedStatus: number): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(url, init);
@@ -75,9 +86,7 @@ async function request(
   return body;
 }
 
-export function createHttpTaskClient(
-  configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
-): TaskClient {
+export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
   const apiBaseUrl = normalizeBaseUrl(configuredBaseUrl);
   const taskUrl = `${apiBaseUrl}/api/v1/tasks`;
 
@@ -90,10 +99,7 @@ export function createHttpTaskClient(
       return normalizeTaskList(body);
     },
 
-    async getTask(
-      taskId: string,
-      signal?: AbortSignal,
-    ): Promise<TaskDetail> {
+    async getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail> {
       const body = await request(
         `${taskUrl}/${encodeURIComponent(taskId)}`,
         { method: "GET", signal },
@@ -102,10 +108,7 @@ export function createHttpTaskClient(
       return normalizeTaskDetail(body);
     },
 
-    async createTask(
-      prompt: string,
-      signal?: AbortSignal,
-    ): Promise<CreateTaskResult> {
+    async createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
       const body = await request(
         taskUrl,
@@ -120,17 +123,17 @@ export function createHttpTaskClient(
       return normalizeCreateTaskResult(body);
     },
 
-    async decide(
-      taskId: string,
-      input: DecisionInput,
-      signal?: AbortSignal,
-    ): Promise<void> {
+    async decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<void> {
+      const comment = validateDecisionComment(input.comment);
       await request(
         `${taskUrl}/${encodeURIComponent(taskId)}/decisions`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify({
+            ...input,
+            ...(comment ? { comment } : {}),
+          }),
           signal,
         },
         202,
@@ -138,10 +141,7 @@ export function createHttpTaskClient(
     },
 
     subscribe(taskId: string, handlers: TaskEventHandlers): () => void {
-      return subscribeToTaskEvents(
-        `${taskUrl}/${encodeURIComponent(taskId)}/events`,
-        handlers,
-      );
+      return subscribeToTaskEvents(`${taskUrl}/${encodeURIComponent(taskId)}/events`, handlers);
     },
   };
 }

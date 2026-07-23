@@ -29,17 +29,16 @@ export function AppHeader({ apiBaseUrl, mode }: AppHeaderProps) {
         <div className="fixture-banner" role="status">
           <strong>Fixture mode</strong>
           <span>
-            Deterministic local execution. External providers are unavailable;
-            no API or live-provider work is claimed.
+            Deterministic local execution. External providers are unavailable; no API or
+            live-provider work is claimed.
           </span>
         </div>
       ) : (
         <div className="provider-disclosure" role="note">
           <strong>Local API transport</strong>
           <span>
-            External providers are unavailable in this delivery. Stream health
-            describes browser-to-local-API delivery only and never implies live
-            provider execution.
+            External providers are unavailable in this delivery. Stream health describes
+            browser-to-local-API delivery only and never implies live provider execution.
           </span>
         </div>
       )}

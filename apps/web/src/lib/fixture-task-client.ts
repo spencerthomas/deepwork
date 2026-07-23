@@ -8,7 +8,7 @@ import type {
   TaskStatus,
   TaskSummary,
 } from "./task-types";
-import { validatePrompt } from "./task-normalizers";
+import { validateDecisionComment, validatePrompt } from "./task-normalizers";
 
 interface FixtureTask extends TaskDetail {
   events: TaskEvent[];
@@ -101,9 +101,7 @@ export function createFixtureTaskClient(): TaskClient {
     apiBaseUrl: "local fixture adapter",
 
     async listTasks(): Promise<TaskSummary[]> {
-      return [...tasks.values()]
-        .reverse()
-        .map((task) => publicTask(task));
+      return [...tasks.values()].reverse().map((task) => publicTask(task));
     },
 
     async getTask(taskId: string): Promise<TaskDetail> {
@@ -138,6 +136,7 @@ export function createFixtureTaskClient(): TaskClient {
     },
 
     async decide(taskId: string, input: DecisionInput): Promise<void> {
+      const comment = validateDecisionComment(input.comment);
       const task = tasks.get(taskId);
       if (!task) {
         throw new Error("The fixture task could not be found.");
@@ -152,7 +151,7 @@ export function createFixtureTaskClient(): TaskClient {
       emit(task, "decision.recorded", {
         interruptId: input.interruptId,
         decision: input.decision,
-        ...(input.comment ? { comment: input.comment } : {}),
+        commentProvided: comment !== undefined,
       });
 
       globalThis.setTimeout(() => {

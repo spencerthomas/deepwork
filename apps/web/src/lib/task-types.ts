@@ -9,6 +9,7 @@ export const TASK_EVENT_NAMES = [
 ] as const;
 
 export const PROMPT_MAX_LENGTH = 8_000;
+export const DECISION_COMMENT_MAX_LENGTH = 1_000;
 
 export type TaskEventName = (typeof TASK_EVENT_NAMES)[number];
 
@@ -24,11 +25,7 @@ export type TaskStatus =
 
 export type ClientMode = "api" | "fixture";
 
-export type ConnectionState =
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "closed";
+export type ConnectionState = "connecting" | "connected" | "reconnecting" | "closed";
 
 export interface TaskSummary {
   taskId: string;
@@ -72,11 +69,7 @@ export interface TaskClient {
   readonly mode: ClientMode;
   readonly apiBaseUrl: string;
   createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult>;
-  decide(
-    taskId: string,
-    input: DecisionInput,
-    signal?: AbortSignal,
-  ): Promise<void>;
+  decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<void>;
   getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail>;
   listTasks(signal?: AbortSignal): Promise<TaskSummary[]>;
   subscribe(taskId: string, handlers: TaskEventHandlers): () => void;

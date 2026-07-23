@@ -12,11 +12,7 @@ export function isTaskEventName(value: string): value is TaskEventName {
   return eventNames.has(value);
 }
 
-export function decodeTaskEvent(
-  name: string,
-  id: string,
-  rawData: string,
-): TaskEvent {
+export function decodeTaskEvent(name: string, id: string, rawData: string): TaskEvent {
   if (!isTaskEventName(name)) {
     throw new Error(`Unsupported task event: ${name}`);
   }
@@ -36,8 +32,7 @@ export function decodeTaskEvent(
   }
   if (
     (name === "interrupt.requested" || name === "decision.recorded") &&
-    (typeof parsed.interruptId !== "string" ||
-      parsed.interruptId.trim() === "")
+    (typeof parsed.interruptId !== "string" || parsed.interruptId.trim() === "")
   ) {
     throw new Error(`The ${name} event is missing a valid interruptId.`);
   }
@@ -46,9 +41,7 @@ export function decodeTaskEvent(
     parsed.decision !== "approve" &&
     parsed.decision !== "reject"
   ) {
-    throw new Error(
-      "The decision.recorded event must contain approve or reject.",
-    );
+    throw new Error("The decision.recorded event must contain approve or reject.");
   }
 
   return {
@@ -58,10 +51,7 @@ export function decodeTaskEvent(
   };
 }
 
-export function subscribeToTaskEvents(
-  url: string,
-  handlers: TaskEventHandlers,
-): () => void {
+export function subscribeToTaskEvents(url: string, handlers: TaskEventHandlers): () => void {
   handlers.onConnectionChange("connecting");
   const source = new EventSource(url);
 
@@ -77,14 +67,10 @@ export function subscribeToTaskEvents(
     const listener = (event: Event) => {
       const messageEvent = event as MessageEvent<string>;
       try {
-        handlers.onEvent(
-          decodeTaskEvent(name, messageEvent.lastEventId, messageEvent.data),
-        );
+        handlers.onEvent(decodeTaskEvent(name, messageEvent.lastEventId, messageEvent.data));
       } catch (error) {
         handlers.onError(
-          error instanceof Error
-            ? error.message
-            : "A streamed event could not be read.",
+          error instanceof Error ? error.message : "A streamed event could not be read.",
         );
       }
     };

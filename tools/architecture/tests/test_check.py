@@ -142,23 +142,20 @@ class ArchitectureCheckerTests(unittest.TestCase):
             coverage["checked_zones"],
             [
                 "apps/api",
+                "apps/web",
                 "packages/agent",
                 "packages/domain",
                 "packages/sdk",
                 "packages/ui",
             ],
         )
-        self.assertEqual(coverage["missing_zones"], ["apps/desktop", "apps/web"])
+        self.assertEqual(coverage["missing_zones"], ["apps/desktop"])
         self.assertEqual(coverage["ungated_missing_zones"], [])
         self.assertEqual(
             coverage["dependency_gates"],
             [
                 {
                     "zone": "apps/desktop",
-                    "dependency": "local:DW-M1-TS-SCAFFOLD",
-                },
-                {
-                    "zone": "apps/web",
                     "dependency": "local:DW-M1-TS-SCAFFOLD",
                 },
             ],

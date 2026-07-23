@@ -46,7 +46,7 @@ def build_task_router(service: TaskService) -> APIRouter:
     router = APIRouter(prefix="/api/v1/tasks", tags=["tasks"])
 
     @router.post("", response_model=TaskAcceptedResponse, status_code=202)
-    async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse:
+    async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse | JSONResponse:
         try:
             task = await service.create_task(request.prompt)
         except TaskSourceUnavailableError:

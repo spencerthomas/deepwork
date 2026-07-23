@@ -778,6 +778,9 @@ class ArchitectureChecker:
         )
 
     def _is_private_import(self, specifier: str, zone: str) -> bool:
+        target = self._target_zone(specifier)
+        if specifier.startswith(".") or target == zone:
+            return False
         normalized = specifier.replace(".", "/") if not specifier.startswith("@") else specifier
         segments = [part for part in normalized.split("/") if part not in {"", ".", ".."}]
         if any(
@@ -785,7 +788,6 @@ class ArchitectureChecker:
             for part in segments[1:]
         ):
             return True
-        target = self._target_zone(specifier)
         if target is not None and target != zone:
             public_prefix = next(
                 prefix

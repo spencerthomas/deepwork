@@ -8,8 +8,8 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "check": "turbo run format-check lint typecheck test build",
-    "check-architecture": "turbo run check-architecture",
+    "check": "pnpm check-architecture && turbo run format-check lint typecheck test build",
+    "check-architecture": "python3 tools/architecture/check.py --root . --graph tools/architecture/graph.json --fixtures internal/fixtures/architecture --verify-negative && turbo run check-architecture",
     "contract": "turbo run contract",
     "dev": "./dev",
     "demo:web": "NEXT_PUBLIC_DEMO_MODE=fixture pnpm --filter @deepwork/web dev",

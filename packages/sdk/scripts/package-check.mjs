@@ -96,6 +96,14 @@ try {
     join(consumer, "package.json"),
     `${JSON.stringify({ name: "sdk-clean-consumer", private: true, type: "module" }, null, 2)}\n`,
   );
+  // The packed SDK manifest depends on the registry-style range
+  // "@deepwork/domain@0.0.0", which no registry can satisfy for this private
+  // package. Pin that range to the locally packed domain archive so the clean
+  // consumer install stays offline and proves the two archives together.
+  await writeFile(
+    join(consumer, "pnpm-workspace.yaml"),
+    `overrides:\n  "@deepwork/domain": ${JSON.stringify(`file:${domainArchive}`)}\n`,
+  );
   runPnpm(
     [
       "add",

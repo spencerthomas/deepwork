@@ -1,10 +1,10 @@
 ---
 exec_plan_id: DW-EXEC-M1-TS-PACKAGES-SCAFFOLD
 title: Wave 1 TypeScript domain, SDK, and UI package scaffold
-status: reviewed
+status: completed
 superseded_by: null
 owner: typescript-packages
-reviewed_by: [ts-package-boundary-reviewer]
+reviewed_by: [ts-package-boundary-reviewer, ts-package-final-reviewer]
 reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-001
 supporting_feature_ids: [DW-FND-002, DW-FND-004, DW-FND-005]
@@ -12,9 +12,9 @@ issue: local:DW-M1-TS-SCAFFOLD
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: b1189ce7a1236fbc6b7751a0552159687e940521
-last_verified_commit: b1189ce7a1236fbc6b7751a0552159687e940521
+last_verified_commit: 03b019ab6a5d71e2911a6019013a089cca098101
 risk: medium
-governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
+governed_paths: [packages/domain/**, packages/sdk/**, packages/ui/**, docs/exec-plans/completed/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md]
 contract_gates: [SPIKE-HARNESS-ARCH-001]
 decision_gates: [DEC-022, DEC-025, DEC-031, DEC-042]
 gate_review_status: reviewed-with-gates
@@ -23,7 +23,7 @@ gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, packages/ui/AGENTS.md, docs/PLANS.md, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md]
 scenario_ids: [AC-DW-FND-001-03, AC-DW-FND-002-06, AC-DW-FND-004-06, AC-DW-FND-005-01]
 dispatch_kind: cell
-dispatch_ready: true
+dispatch_ready: false
 agent_review_required: true
 dependencies: [local:DW-M1-ROOT-TS-001]
 blockers: []
@@ -304,7 +304,16 @@ Acceptance:
   only a subset of codes retained by each boundary scanner. Round-two rework adds
   one combined intentional fixture per package so every emitted rule code appears
   in `expectedCodes`; the existing test loop consumes every matrix entry.
-- [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
+- [x] 2026-07-23 AEST — Fresh independent final review accepted commit
+  `6a57ab8cc548d3bf58b0dae448aed5acf3e18797`: emitted and declared rule-code
+  matrices match at domain 9/9, SDK 9/9, and UI 10/10; every declared fixture
+  exists and is consumed by the shared negative-fixture test loop. The reviewer
+  confirmed the prior clean-consumer and token/intrinsic-layout corrections were
+  unchanged and invoked no prohibited package tooling.
+- [x] 2026-07-23 AEST — The coordinator integrated the accepted four-commit
+  lineage locally through `03b019ab6a5d71e2911a6019013a089cca098101`
+  without touching the shared lock or protected `docs/plans/**`.
+- [x] Source/static handoff accepted for `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
 ## Surprises & Discoveries
@@ -721,7 +730,9 @@ The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. The initial independent findings were addressed, but fresh independent
-implementation review is still required. `SPIKE-HARNESS-ARCH-001` remains open,
-and sequential proof remains with
-`local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.
+deviations. Fresh independent final review accepted the complete negative-fixture
+matrix, the previously repaired clean-consumer harnesses, and canonical
+token/intrinsic-layout boundary. The coordinator integrated the reviewed source
+at `03b019ab6a5d71e2911a6019013a089cca098101`.
+`SPIKE-HARNESS-ARCH-001` remains open, and sequential executable proof remains
+with `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

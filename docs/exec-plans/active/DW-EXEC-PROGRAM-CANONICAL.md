@@ -12,7 +12,7 @@ issue: local:DW-PROGRAM-001
 created: 2026-07-23
 last_updated: 2026-07-23
 base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 2a4d8eb937bfe5d43669377567d46b2651972242
+last_verified_commit: 740b40379c53978f6340aa31955db77344693691
 risk: high
 governed_paths: [docs/exec-plans/active/DW-EXEC-PROGRAM-CANONICAL.md, docs/exec-plans/index.md]
 contract_gates: [SPIKE-WORKTREE-001, SPIKE-SYMPHONY-001]
@@ -43,9 +43,13 @@ cell ExecPlans remain the authority for feature outcomes and implementation.
 Wave 0 is reviewed at `500eaa7faff57def970963160b3d8f1e90c94398`, and
 Wave 0.1 dispatch hardening completed at
 `3dbe6629d8053380ab6a8bff6d2fcb462f854256`. The active Wave 1 scaffold plan is
-a non-dispatchable umbrella. Root TypeScript declarations are terminal; the API
-and agent package implementations are committed in isolated worktrees and under
-independent review; the TypeScript package cell is at final plan review. Classic
+a non-dispatchable umbrella. Root TypeScript declarations and all three initial
+package lanes are terminal local integration cells through
+`03b019ab6a5d71e2911a6019013a089cca098101`. The coordinator now owns the
+sequential TypeScript lock and executable-verification cells. Two external
+accelerators independently own the worktree/architecture harness and LangChain
+contract research; their scopes are not duplicated internally and their results
+will not integrate before independently reviewed commit SHAs arrive. Classic
 responsive web remains the public baseline; every unproved external capability
 stays disabled with its documented fallback.
 
@@ -100,8 +104,12 @@ successor after its independent review and local commit.
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
 | DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
 | DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
-| DW-M1-TS-SCAFFOLD | 1 | implementation rework | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close package-proof/boundary/token findings |
-| DW-M1-INTEGRATION | 1 | pending | accepted lane commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes | lane reviews accepted |
+| DW-M1-TS-SCAFFOLD | 1 | completed (`03b019a`) | `b1189ce` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | terminal source/static evidence |
+| DW-M1-TS-LOCK-001 | 1 | next plan/review | accepted TS source | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
+| DW-M1-TS-VERIFY-001 | 1 | pending | terminal lock cell | package-local executable checks/fixes | TS lock terminal | independent executable review |
+| DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | active external | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | packet dependencies; product demo for final worktree acceptance | await independently reviewed commit SHA |
+| DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | active external | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | pinned public/source evidence; optional sandbox only for live acceptance | await independently reviewed commit SHA |
+| DW-M1-INTEGRATION | 1 | pending | accepted lane and external commits | shared/root, `apps/web/**`, generated outputs | Wave 1 lanes and applicable gates | compose one credential-free product demo |
 | Waves 2-6 | 2-6 | pending | accepted predecessor | bounded per reviewed plan | prior exit gates | v1 scenario qualification |
 | v1.x, v2, v3 | later | pending | accepted release predecessor | discovery-derived cells | reviewed discovery gates | executable plans |
 
@@ -112,10 +120,12 @@ later reviewed cell explicitly reassigns it.
 
 | Role | Cell | Branch | Worktree | State |
 |---|---|---|---|---|
-| coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | API/agent/root TS terminal; coordinating TS rework |
+| coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | sole integrator; initial package lanes terminal; preparing TS lock cell |
 | API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
 | agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
-| TS lane | TS package author | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | bounded implementation rework |
+| TS lane | TS package author and two fresh reviewers | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | completed and integrated through `03b019a` |
+| external platform accelerator | worktree/architecture harness | `external/platform/worktree-architecture-harness` | `/Users/tomspencer/dev/deepwork/worktrees/external-worktree-architecture-harness` | task `019f8d02-8117-7791-a5dd-5a71d848f2e5`; external-owned; active |
+| external research accelerator | LangChain contract spikes | `external/research/langchain-contract-spikes` | `/Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes` | task `019f8d02-a16a-72a2-b74a-932da4a9132b`; external-owned; active |
 
 ## Progress
 
@@ -130,8 +140,15 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — Fixture-only API and independent agent package implementations
   passed fresh cross-review after bounded rework and integrated locally through
   `2a4d8eb937bfe5d43669377567d46b2651972242`.
-- [ ] TypeScript packages close authoring review findings, then complete their
-  coordinator-owned lock and executable-verification sequence.
+- [x] 2026-07-23 — TypeScript package source/static authoring passed two fresh
+  review rounds after bounded rework and integrated locally through
+  `03b019ab6a5d71e2911a6019013a089cca098101`; executable claims remain deferred.
+- [x] 2026-07-23 — External accelerators became active from exact implementation
+  base `85187827e018d4aeee4a4e4bd685de49cb2f5a6a`, seed commits `7eb7900` and
+  `4c03e09`, in their supplied worktrees. The coordinator will not duplicate
+  their scopes and remains sole integrator.
+- [ ] Complete the coordinator-owned TypeScript lock and executable-verification
+  sequence.
 - [ ] Waves 2-6 complete; 179 feature and 12 v1 release scenarios pass.
 - [ ] v1.x, v2, and v3 discovery briefs become reviewed executable plans and are
   implemented or retained behind exact human/external blocker entries.
@@ -168,6 +185,14 @@ later reviewed cell explicitly reassigns it.
   constants outside `tokens.css`. Consequence: source stays unintegrated until
   clean-consumer proof is authored, negative cases exist, and UI values consume
   the canonical token source.
+- 2026-07-23 — Observation: the first TS repair still covered only a subset of
+  scanner rule codes. Consequence: a second bounded repair completed the matrix;
+  fresh review accepted exact emitted/declared counts of domain 9, SDK 9, and UI
+  10 before local integration.
+- 2026-07-23 — Observation: two user-owned external accelerator tasks now run in
+  dedicated worktrees from reviewed seed commits. Consequence: internal cells
+  exclude their allowed paths, and the coordinator waits for independently
+  reviewed commit SHAs before integration.
 
 ## Decision Log
 
@@ -182,6 +207,10 @@ later reviewed cell explicitly reassigns it.
   first shared lock, and executable verification into sequential evidence cells.
   Rationale: the lock must include reviewed importers and frozen/no-drift proof
   cannot truthfully precede them.
+- 2026-07-23 — Decision: keep the active external platform-harness and LangChain
+  research tasks externally owned and disjoint. Rationale: the user dispatched
+  them as accelerator tasks. Consequence: no internal agent duplicates those
+  scopes; the coordinator is the sole integrator after independent review.
 
 ## Detailed implementation approach
 
@@ -223,12 +252,13 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 ## Outcomes & Retrospective
 
-Wave 0.1, root TypeScript declarations, the fixture-only API package, and the
-independent agent package are terminal local integration cells. Both Python lanes
-needed and passed bounded fresh re-review before integration. TypeScript package
-source is implemented but remains outside the integration branch while its author
-closes three independent review findings; shared lock and executable claims remain
-downstream. No protected `docs/plans/**` file, external credential, production
-system, push, merge, deployment, or publication has been touched. The terminal
-outcome remains the verified complete canonical vision through v3, or an exact
-blocker ledger after every independent DAG branch is exhausted.
+Wave 0.1, root TypeScript declarations, the fixture-only API package, the
+independent agent package, and the reviewed TypeScript source/static cell are
+terminal local integration cells. Both Python lanes and the TypeScript lane needed
+and passed bounded fresh re-review before integration. Shared TypeScript lock and
+executable claims remain downstream. The two external accelerator tasks are active
+and disjoint; no result is accepted without an independently reviewed commit SHA.
+No protected `docs/plans/**` file, external credential, production system, push,
+merge, deployment, or publication has been touched. The terminal outcome remains
+the verified complete canonical vision through v3, or an exact blocker ledger
+after every independent DAG branch is exhausted.

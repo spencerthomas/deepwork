@@ -28,9 +28,9 @@ validator, not a runtime sandbox or isolation claim for a future consumer.
 `verify_scope.py` is deliberately separate: it may run fixed, shell-free Git
 queries for repository scope proof and never validates or mutates the corpus.
 
-The 13 positive cases, 55 file-indexed negatives, and 140 deterministic semantic
+The 13 positive cases, 55 file-indexed negatives, and 141 deterministic semantic
 probes are indexed by `corpus.json`, `negative/matrix.json`, and
-`negative/semantic-matrix.json`. All 195 negative checks require exactly one
+`negative/semantic-matrix.json`. All 196 negative checks require exactly one
 declared stable diagnostic. The negatives include tool correlation, bounded
 untrusted content and raw-body exclusion; exact positional HITL decision arrays
 and actual submission/resume absence; ordinary, partial-failure and collision
@@ -39,7 +39,8 @@ short-or-unpadded-Basic-auth/token/endpoint/actor-and-identity-key/path scrub;
 value-qualified machine references, generic bare-host and descendant bypasses;
 generic schemes/local/abbreviated/octal/numeric/Unicode-dot hosts, confusable
 keys, maximum nesting, fixed case/tenant/workspace identities, corpus-wide
-record-ID uniqueness, coordinated interrupt signatures, type-exact JSON scalar
+record-ID uniqueness, exact available-capability name inventories, coordinated
+interrupt signatures, type-exact JSON scalar
 semantics, every required positive-case semantic contract, the closed exact
 logical-delay object, and an adversarial validator-purity source probe.
 `hashes.sha256` closes exactly over `validate.py`, the machine index, applied

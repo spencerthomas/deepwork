@@ -45,11 +45,12 @@ Wave 0.1 dispatch hardening completed at
 `3dbe6629d8053380ab6a8bff6d2fcb462f854256`. The active Wave 1 scaffold plan is
 a non-dispatchable umbrella. Root TypeScript declarations and both Python package
 lanes are terminal. TypeScript package source is integrated through
-`03b019ab6a5d71e2911a6019013a089cca098101`, but successive external reviews
-reopened the cell for bounded source/proof rework before any shared lock is
-generated; the current owner is repairing lexical import extraction and
-capability-evidence class validation after `76ec47d`. The coordinator retains the
-sequential TypeScript lock and executable-verification cells.
+`c145091039e6228dc85705d80165abe7cacd2ebb`, but a superseding fresh review of
+exact source candidate `1bf66e1df2169297572b78acd58f6906a1987b21`
+returned `REWORK REQUIRED`. The existing owner is repairing indirect CommonJS
+loader, TypeScript reference-directive, CSS escaped-identifier, and plan-
+overstatement findings without installing or creating a lock. The coordinator
+retains the paused sequential TypeScript lock and executable-verification cells.
 
 The worktree/architecture harness is integrated through `cdcfc1c`; its real-tree
 checker passes while web/desktop coverage and the real two-stack product demo
@@ -113,8 +114,8 @@ successor after its independent review and local commit.
 | DW-M1-ROOT-TS-001 | 1 | completed (`8323084`) | `3dbe662` | root TS declarations/config | W0.1 | terminal |
 | DW-M1-API-SCAFFOLD | 1 | completed (`2a4d8eb`) | `3dbe662` | `apps/api/**` | W0.1 | terminal with open contract fallbacks |
 | DW-M1-AGENT-SCAFFOLD | 1 | completed (`cd3c00f`) | `3dbe662` | `packages/agent/**` | W0.1 | terminal with open contract fallbacks |
-| DW-M1-TS-SCAFFOLD | 1 | third bounded rework active after external `REWORK REQUIRED` | `03b019a` integrated / lane after `76ec47d` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close lexical-import and evidence-class P1s; fresh external review |
-| DW-M1-TS-LOCK-001 | 1 | blocked before execution | accepted TS rework | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
+| DW-M1-TS-SCAFFOLD | 1 | fourth bounded rework active after `1bf66e1` review | `c145091` integrated as unaccepted evidence / owner at `1bf66e1` | `packages/domain/**`, `packages/sdk/**`, `packages/ui/**` | root TS terminal | close indirect-loader, TS-directive, CSS-escape, and plan-overstatement findings; fresh review |
+| DW-M1-TS-LOCK-001 | 1 | blocked before execution | freshly accepted TS source | `pnpm-lock.yaml` and lock ExecPlan | TS source terminal | pinned Node/pnpm first-lock, frozen install, no-drift |
 | DW-M1-TS-VERIFY-001 | 1 | pending | terminal lock cell | package-local executable checks/fixes | TS lock terminal | independent executable review |
 | DW-EXT-W1-WORKTREE-ARCH-HARNESS | 1 | integrated (`a9be010`, adaptation `cdcfc1c`) | `8518782` / seed `7eb7900` | `tools/architecture/**`, `tools/worktree/**`, harness fixtures/research/packet | web/desktop coverage and real product-demo peer absent | keep `SPIKE-HARNESS-ARCH-001` and `SPIKE-WORKTREE-001` open |
 | DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH | 1 | integrated blocked evidence (`48dc5e6`) | `8518782` / seed `4c03e09` | `tools/contract-spikes/langchain/**`, LangChain research/packet | all 11 rows blocked on package/live evidence | enable nothing; await approved package index/classic sandbox |
@@ -142,7 +143,7 @@ later reviewed cell explicitly reassigns it.
 | coordinator | Wave 1 integration | `claude/deepwork-project-planning-3y91wd` | `/Users/tomspencer/dev/deepwork/deepwork-planning` | sole integrator; TS lock paused; coordinating source rework and external results |
 | API lane | authored API; reviewed agent/TS plan | `codex/api/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-api` | completed and integrated |
 | agent lane | authored agent; reviewed API/TS source | `codex/agent/wave1-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-agent` | completed and integrated; returned TS findings |
-| TS lane | bounded source rework after external review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | fixing two candidate-owned P1s after `76ec47d`; lock paused |
+| TS lane | bounded source rework after superseding review | `codex/domain/wave1-ts-scaffold` | `/Users/tomspencer/dev/deepwork/worktrees/w1-ts` | existing owner fixing four findings after rejected `1bf66e1`; no install/lock; lock paused |
 | external docs accelerator | documentation-harness acceptance | `external/platform/documentation-harness-acceptance` | `/Users/tomspencer/dev/deepwork/worktrees/external-documentation-harness-acceptance` | recovery task `019f8da0-35cf-7d43-b6bb-c4b0cc78aaee`; external-owned; active |
 | external attachment accelerator | safe first-task files | `external/research/first-task-safe-attachments` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-safe-attachments` | continuation task `019f8da0-3f42-7542-b985-718e0e4aa763`; external-owned; active |
 | external plan accelerator | plan before execution | `external/research/first-task-plan-approval` | `/Users/tomspencer/dev/deepwork/worktrees/external-first-task-plan-approval` | continuation task `019f8da0-487d-7233-a8b2-097f2063988f`; external-owned; active |
@@ -168,12 +169,13 @@ later reviewed cell explicitly reassigns it.
 - [x] 2026-07-23 — TypeScript package source/static authoring passed two internal
   review rounds after bounded rework and integrated locally through
   `03b019ab6a5d71e2911a6019013a089cca098101`; no executable claim was made.
-- [ ] 2026-07-23 — Successive external reviews reduced the TypeScript source
-  blockers to two candidate-owned P1 findings: comment-aware lexical import
-  extraction and runtime membership validation for `evidenceClass`. A third
+- [ ] 2026-07-23 — A superseding exact-candidate review of `1bf66e1` found three
+  remaining false-green scanner paths: parenthesized/indirect CommonJS loaders,
+  TypeScript reference directives, and CSS escaped identifiers. It also required
+  plan wording to distinguish authored checks from executed proof. A fourth
   bounded rework is active in the original package lane; the architecture
-  checker/tool-config classification is separately accepted at `cdcfc1c`. The
-  coordinator has run no install or lock command.
+  checker/tool-config classification remains separately accepted at `cdcfc1c`.
+  The coordinator has run no install or lock command.
 - [x] 2026-07-23 — External accelerators became active from exact implementation
   base `85187827e018d4aeee4a4e4bd685de49cb2f5a6a`, seed commits `7eb7900` and
   `4c03e09`, in their supplied worktrees. The coordinator will not duplicate
@@ -279,6 +281,12 @@ later reviewed cell explicitly reassigns it.
   run in dedicated worktrees from reviewed seed commits. Consequence: internal
   cells exclude every external allowed path, and the coordinator waits for an
   independently reviewed clean commit SHA before integration.
+- 2026-07-23 — Observation: an initially reported acceptance of `1bf66e1` was
+  superseded by a fresh exact-candidate `REWORK REQUIRED` verdict covering three
+  scanner bypass families and one plan overstatement. Consequence: revert the
+  premature completed-plan transition, retain the coordinator cherry-picks only
+  as unaccepted evidence, route bounded work to the existing `w1-ts` owner, and
+  keep the first shared lock paused.
 
 ## Decision Log
 
@@ -355,7 +363,7 @@ and fallbacks; conflicts/decisions; and exact human/external blockers.
 
 Wave 0.1, root TypeScript declarations, the fixture-only API package, and the
 independent agent package are terminal local integration cells. TypeScript package
-source is in its third bounded repair with two source findings open; lock and
+source is in its fourth bounded repair after rejected `1bf66e1`; lock and
 executable claims remain downstream and paused. The architecture/worktree,
 LangChain, and auth/header integrations are retained without closing their live or
 real-product gates. Seven external research workers and the fixture-corpus worker

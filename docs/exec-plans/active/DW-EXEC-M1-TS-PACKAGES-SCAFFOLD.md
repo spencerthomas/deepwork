@@ -337,6 +337,17 @@ Acceptance:
   scope, and whitespace checks are clean. Lock-resolved parser, scanner, fixture,
   unit, and package execution remains downstream and fresh independent review is
   required.
+- [x] 2026-07-23 AEST — A fresh exact-candidate review of
+  `1bf66e1df2169297572b78acd58f6906a1987b21` returned `REWORK REQUIRED`.
+  Parenthesized/indirect CommonJS loaders, TypeScript triple-slash reference
+  directives, and CSS escaped identifiers can still bypass the authored
+  scanners. The reviewer also found that this retrospective said architecture
+  checks “prove” behavior even though the scanners and fixtures have not run.
+  The coordinator restored this plan to active and kept the lock handoff paused.
+- [ ] The existing `w1-ts` owner completes only those four bounded corrections,
+  records install-free static evidence, and obtains a fresh independent verdict
+  on the exact new candidate. No install, shared lock, or package execution is
+  authorized in this rework.
 - [ ] Handoff accepted by `local:DW-M1-TS-LOCK-001`; after its terminal success,
   executable validation proceeds separately in `local:DW-M1-TS-VERIFY-001`.
 
@@ -940,8 +951,9 @@ distinct browser-safe SDK query/mutation/stream ports and explicit unavailable
 factories; and one semantic React status primitive consuming the domain public
 surface and canonical token sources. Package-local public-entry, collision,
 unknown-capability, network-denial, unsafe-content, and accessibility-oriented
-tests are present. Architecture checks retain green-source scans and prove
-intentional forbidden side-effect imports/raw APIs produce stable rule codes.
+tests are present. Architecture checks are authored to retain green-source scans
+and to require stable rule codes for intentional forbidden side-effect
+imports/raw APIs once executed downstream.
 Package checks are separate clean-archive/offline-consumer harnesses rather than
 aliases for architecture checking.
 
@@ -949,7 +961,10 @@ The author ran only the permitted install-free JSON, inventory, import, scope,
 and whitespace checks, all with exit zero. No package executable, dependency
 install, lock operation, test, build, pack, clean consumer, accessibility runner,
 or network request ran, so none is claimed as passing. There were no scope
-deviations. The initial independent findings were addressed, but fresh independent
-implementation review of the third bounded remediation is still required.
+deviations. Fresh independent review of exact candidate
+`1bf66e1df2169297572b78acd58f6906a1987b21` identified three scanner false-
+green paths and this retrospective overstatement. The source/static cell is not
+terminal; bounded owner rework and a fresh exact-candidate verdict are required
+before lock handoff.
 `SPIKE-HARNESS-ARCH-001` remains open, and sequential proof remains with
 `local:DW-M1-TS-LOCK-001` followed by `local:DW-M1-TS-VERIFY-001`.

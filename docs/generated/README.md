@@ -11,5 +11,10 @@ python3 tools/docs/generate.py --check
 ```
 
 Wave 0 generates feature coverage, issue/dependency map, route inventory, package
-graph, architecture graph, and the current database-schema placeholder. OpenAPI is
-not generated until an API exists; its absence is explicit rather than simulated.
+graph, architecture graph, and the current database-schema placeholder.
+
+The API's OpenAPI contract now exists and is generated deterministically from
+`create_app().openapi()` into `apps/api/openapi.json` (`make -C apps/api openapi`),
+drift-checked by `apps/api/tests/contract_tests/test_openapi.py`. It lives beside
+the API rather than under `docs/generated/`; a `docs/generated/` mirror is not yet
+wired into `tools/docs/generate.py`.

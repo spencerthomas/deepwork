@@ -682,6 +682,17 @@ Acceptance:
   the gate fails closed. The retained matrix now contains all 39 fixed-ID
   mutations and 139 semantic probes; all 194 combined negatives must produce
   exactly their declared single code before a new exact-SHA review.
+- [x] 2026-07-23 AEST — Fresh independent implementation review rejected exact
+  candidate `e827c5e57fa20a7e95a822b851b4641aad00ade4`. The required
+  reviewed-dispatch-to-candidate scope proof from
+  `dff977bfd43a9744cf88690b7aa08b6f65876eac` includes unrelated repository
+  changes after `origin/main` was merged into the implementation branch, so the
+  candidate cannot satisfy the fixture/plan allow-list. The reviewer also
+  reproduced three in-memory false greens: removing the corpus `idPolicy`,
+  renaming an available fixture capability to `provider-create`, and duplicating
+  a file-negative ID/probe all returned zero diagnostics. Corpus rendering,
+  evidence hashes, both validator passes, and docs checks otherwise reproduced
+  successfully; Milestone 4 remains open and no implementation SHA is accepted.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries

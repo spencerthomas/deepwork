@@ -1119,6 +1119,17 @@ def acceptance_status(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if sys.version_info < (3, 12):
+        running = ".".join(str(part) for part in sys.version_info[:3])
+        print(
+            "architecture check requires Python 3.12+ (it parses PEP 695 type "
+            f"aliases and generic syntax used by the checked sources); running "
+            f"{running}. Use the pinned toolchain (see .node-version and the "
+            "Python 3.12 requirement in README.md) or invoke this tool with a "
+            "3.12 interpreter.",
+            file=sys.stderr,
+        )
+        return 2
     args = _parser().parse_args(argv)
     try:
         graph = load_graph(args.graph)

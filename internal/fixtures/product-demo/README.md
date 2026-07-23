@@ -28,10 +28,11 @@ validator, not a runtime sandbox or isolation claim for a future consumer.
 `verify_scope.py` is deliberately separate: it may run fixed, shell-free Git
 queries for repository scope proof and never validates or mutates the corpus.
 
-The 13 positive cases, 55 file-indexed negatives, and 141 deterministic semantic
+The 13 positive cases, 55 file-indexed negatives, and 142 deterministic semantic
 probes are indexed by `corpus.json`, `negative/matrix.json`, and
-`negative/semantic-matrix.json`. All 196 negative checks require exactly one
-declared stable diagnostic. The negatives include tool correlation, bounded
+`negative/semantic-matrix.json`. All 197 negative IDs form one unique inventory,
+and every check requires exactly one declared stable diagnostic. The negatives
+include tool correlation, bounded
 untrusted content and raw-body exclusion; exact positional HITL decision arrays
 and actual submission/resume absence; ordinary, partial-failure and collision
 source qualification; structural and semantic-shape rejection; credential/

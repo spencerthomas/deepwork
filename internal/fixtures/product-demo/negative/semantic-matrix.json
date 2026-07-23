@@ -863,6 +863,17 @@
       "mutation": {"operation": "replace", "path": "/capabilities/0/name", "value": "provider-create"}
     },
     {
+      "negativeId": "fx_probe_negative_id_collision",
+      "declaredRuleCode": "FIXTURE_SCHEMA_NEGATIVE_INDEX",
+      "probe": {
+        "kind": "negative-id-collision",
+        "basePath": "negative/invalid-schema-expected-type.json",
+        "mutations": [
+          {"operation": "replace", "path": "/negativeId", "value": "fx_negative_schema"}
+        ]
+      }
+    },
+    {
       "negativeId": "fx_probe_validator_purity_write",
       "declaredRuleCode": "FIXTURE_SCHEMA_VALIDATOR_PURITY",
       "probe": {

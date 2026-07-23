@@ -25,9 +25,9 @@ EXPECTED_ID_POLICY = {
     "qualifiedRunTemplate": "{sourceId}:{threadId}:{runId}",
 }
 SEMANTIC_MATRIX_PATH = "negative/semantic-matrix.json"
-EXPECTED_SEMANTIC_PROBE_COUNT = 141
+EXPECTED_SEMANTIC_PROBE_COUNT = 142
 SEMANTIC_MATRIX_SHA256 = (
-    "c4fa961807d465bb57a253c88648442678088a28f79b35946889a00bb3ff3a6d"
+    "bbdeec9121c0baeda653ba9ad84aea66801daf32cde3a10300f6c80f24b3da8c"
 )
 EXPECTED_CASE_PATHS = [
     "cases/start.json",
@@ -1920,6 +1920,21 @@ def _apply_mutations(document, mutations):
     return result
 
 
+def _negative_id_inventory_diagnostics(file_negatives, semantic_probes):
+    negative_ids = [
+        negative.get("negativeId")
+        for negative in [*file_negatives, *semantic_probes]
+        if isinstance(negative, dict)
+    ]
+    if (
+        len(negative_ids) != len(file_negatives) + len(semantic_probes)
+        or any(not isinstance(negative_id, str) for negative_id in negative_ids)
+        or len(negative_ids) != len(set(negative_ids))
+    ):
+        return ["FIXTURE_SCHEMA_NEGATIVE_INDEX"]
+    return []
+
+
 def diagnose_negative(negative):
     if "probe" in negative:
         probe = negative["probe"]
@@ -1976,6 +1991,20 @@ def diagnose_negative(negative):
                 probe["mutations"],
             )
             return _validate_case_inventory(cases)
+        if probe.get("kind") == "negative-id-collision":
+            file_negatives = [
+                read_json(path) for path in EXPECTED_NEGATIVE_PATHS
+            ]
+            target_index = EXPECTED_NEGATIVE_PATHS.index(probe["basePath"])
+            file_negatives[target_index] = _apply_mutations(
+                file_negatives[target_index],
+                probe["mutations"],
+            )
+            semantic_probes = read_json(SEMANTIC_MATRIX_PATH)["probes"]
+            return _negative_id_inventory_diagnostics(
+                file_negatives,
+                semantic_probes,
+            )
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     base_path = negative["basePath"]
     mutations = negative.get("mutations")
@@ -2173,10 +2202,12 @@ def analyze_sources():
     cases = [read_json(path) for path in corpus["casePaths"]]
     matrix = read_json(corpus["negativeMatrixPath"])
     semantic_matrix = read_json(matrix["semanticMatrixPath"])
+    file_negatives = []
     negative_results = {}
     negative_order = []
     for path in matrix["negativePaths"]:
         negative = read_json(path)
+        file_negatives.append(negative)
         negative_order.append(negative["negativeId"])
         negative_results[negative["negativeId"]] = {
             "path": path,
@@ -2201,6 +2232,7 @@ def analyze_sources():
         "cases": cases,
         "matrix": matrix,
         "semanticMatrix": semantic_matrix,
+        "fileNegatives": file_negatives,
         "negativeResults": negative_results,
         "negativeOrder": negative_order,
         "scrubMatches": scrub_matches,
@@ -2329,6 +2361,12 @@ def _validate_index_and_closure(analysis):
         diagnostics.append("FIXTURE_SCHEMA_RULE_INDEX")
     semantic_matrix = analysis["semanticMatrix"]
     semantic_probes = semantic_matrix.get("probes")
+    diagnostics.extend(
+        _negative_id_inventory_diagnostics(
+            analysis["fileNegatives"],
+            semantic_probes if isinstance(semantic_probes, list) else [],
+        )
+    )
     if (
         semantic_matrix.get("matrixVersion") != FORMAT_VERSION
         or not isinstance(semantic_probes, list)

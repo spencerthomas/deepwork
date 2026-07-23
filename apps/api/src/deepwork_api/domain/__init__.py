@@ -11,6 +11,7 @@ from deepwork_api.domain.status import (
     WorkerStatus,
 )
 from deepwork_api.domain.tasks import (
+    MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
@@ -38,6 +39,7 @@ from deepwork_api.domain.tasks import (
 )
 
 __all__ = [
+    "MAX_PLAN_REVISION",
     "MAX_PLAN_STEPS",
     "MAX_PLAN_STEP_LENGTH",
     "MAX_TASK_OBJECTIVE_LENGTH",

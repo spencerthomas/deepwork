@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 
 from deepwork_api.domain import (
+    MAX_PLAN_REVISION,
     DecisionConflictError,
     DecisionRecord,
     DecisionValue,
@@ -214,7 +215,15 @@ class InMemoryTaskRepository:
             current = task.proposed_plan
             if current is None:
                 raise PlanUnavailableError
+            if (
+                not isinstance(expected_revision, int)
+                or isinstance(expected_revision, bool)
+                or not 1 <= expected_revision <= MAX_PLAN_REVISION
+            ):
+                raise PlanRevisionConflictError
             if current.revision != expected_revision:
+                raise PlanRevisionConflictError
+            if current.revision >= MAX_PLAN_REVISION:
                 raise PlanRevisionConflictError
             updated = ProposedPlan(
                 revision=current.revision + 1,

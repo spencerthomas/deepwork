@@ -10,6 +10,7 @@ EventData = tuple[tuple[str, EventDataValue], ...]
 MAX_TASK_OBJECTIVE_LENGTH = 8_000
 MAX_PLAN_STEPS = 8
 MAX_PLAN_STEP_LENGTH = 1_000
+MAX_PLAN_REVISION = 2_147_483_647
 MAX_TASK_RESULT_FORMATTING_OVERHEAD = 2_048
 MAX_TASK_RESULT_LENGTH = (
     MAX_TASK_OBJECTIVE_LENGTH
@@ -87,6 +88,17 @@ class ProposedPlan:
     title: str
     steps: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        """Keep every plan revision inside the shared signed 32-bit bound."""
+
+        if (
+            not isinstance(self.revision, int)
+            or isinstance(self.revision, bool)
+            or not 1 <= self.revision <= MAX_PLAN_REVISION
+        ):
+            message = "plan revision is outside the shared bound"
+            raise ValueError(message)
 
 
 @dataclass(frozen=True, slots=True)

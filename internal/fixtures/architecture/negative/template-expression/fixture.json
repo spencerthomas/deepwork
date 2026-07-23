@@ -1,0 +1,1 @@
+{"expected_rules": ["credential-leakage", "environment-read", "raw-network"]}

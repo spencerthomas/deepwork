@@ -16,7 +16,161 @@
     ["apps/api", "packages/agent"],
     ["packages/agent", "apps/api"]
   ],
+  "coverage": {
+    "source_markers": {
+      "packages/domain": "packages/domain/src",
+      "packages/sdk": "packages/sdk/src",
+      "packages/ui": "packages/ui/src",
+      "apps/web": "apps/web/src",
+      "apps/desktop": "apps/desktop/src",
+      "apps/api": "apps/api/src/deepwork_api",
+      "packages/agent": "packages/agent/src/deepwork_agent"
+    },
+    "dependency_gates": {
+      "packages/domain": "local:DW-M1-TS-SCAFFOLD",
+      "packages/sdk": "local:DW-M1-TS-SCAFFOLD",
+      "packages/ui": "local:DW-M1-TS-SCAFFOLD",
+      "apps/web": "local:DW-M1-TS-SCAFFOLD",
+      "apps/desktop": "local:DW-M1-TS-SCAFFOLD"
+    }
+  },
+  "python_layers": {
+    "domain": [],
+    "ports": ["domain"],
+    "application": ["domain", "ports"],
+    "adapters": ["domain", "ports", "adapters"],
+    "workers": ["application"],
+    "transport": ["application", "contracts"],
+    "contracts": ["domain"],
+    "bootstrap": [
+      "domain",
+      "ports",
+      "application",
+      "adapters",
+      "workers",
+      "transport",
+      "contracts"
+    ],
+    "package-root": ["bootstrap"]
+  },
   "provider_locations": ["apps/api/adapters/sources", "packages/agent"],
   "composition_roots": ["apps/api/bootstrap", "apps/web", "apps/desktop"],
+  "environment_read_locations": [
+    "apps/api/bootstrap",
+    "packages/agent/config.py",
+    "apps/web/config",
+    "apps/desktop/config"
+  ],
+  "import_prefixes": {
+    "@deepwork/domain": "packages/domain",
+    "@deepwork/sdk": "packages/sdk",
+    "@deepwork/ui": "packages/ui",
+    "deepwork_api": "apps/api",
+    "deepwork_agent": "packages/agent"
+  },
+  "provider_modules": [
+    "@anthropic-ai",
+    "@langchain",
+    "anthropic",
+    "deepagents",
+    "langchain",
+    "langgraph",
+    "langsmith",
+    "openai"
+  ],
+  "browser_forbidden_modules": [
+    "child_process",
+    "crypto",
+    "fastapi",
+    "fs",
+    "node:",
+    "os",
+    "path",
+    "sqlalchemy",
+    "subprocess"
+  ],
+  "domain_forbidden_modules": [
+    "@tauri-apps",
+    "axios",
+    "fastapi",
+    "next",
+    "react",
+    "sqlalchemy"
+  ],
+  "esm_extension_zones": ["packages/domain", "packages/sdk", "packages/ui"],
+  "generated_views": {
+    "docs/generated/package-graph.md": "package-graph",
+    "docs/generated/architecture-graph.md": "architecture-graph"
+  },
+  "rules": {
+    "illegal-zone-edge": {
+      "legal_direction": "apps/web -> packages/sdk or packages/ui -> packages/domain; packages/ui must never import packages/sdk",
+      "anchor": "ARCHITECTURE.md#package-graph"
+    },
+    "domain-purity": {
+      "legal_direction": "packages/domain -> deliberate pure TypeScript helpers only",
+      "anchor": "ARCHITECTURE.md#package-graph"
+    },
+    "browser-server-boundary": {
+      "legal_direction": "browser code -> browser-safe domain, SDK, and UI entry points only",
+      "anchor": "ARCHITECTURE.md#package-graph"
+    },
+    "provider-location": {
+      "legal_direction": "provider SDKs -> apps/api/adapters/sources or packages/agent only",
+      "anchor": "ARCHITECTURE.md#python-layers"
+    },
+    "raw-network": {
+      "legal_direction": "React/UI code -> injected browser-safe SDK services; SDK services own application requests",
+      "anchor": "ARCHITECTURE.md#package-graph"
+    },
+    "fastapi-layer": {
+      "legal_direction": "FastAPI imports -> apps/api/transport, apps/api/bootstrap, or package-root type-only public facade",
+      "anchor": "ARCHITECTURE.md#python-layers"
+    },
+    "sqlalchemy-layer": {
+      "legal_direction": "SQLAlchemy imports -> apps/api/adapters or apps/api/bootstrap only; records never enter transport/contracts",
+      "anchor": "ARCHITECTURE.md#python-layers"
+    },
+    "python-layer-edge": {
+      "legal_direction": "Python API dependencies -> inward according to domain, ports, application, adapters, workers, transport/contracts, then bootstrap",
+      "anchor": "ARCHITECTURE.md#python-layers"
+    },
+    "concrete-adapter-import": {
+      "legal_direction": "concrete adapter imports -> declared composition roots or adapter-local code only",
+      "anchor": "ARCHITECTURE.md#python-layers"
+    },
+    "credential-leakage": {
+      "legal_direction": "credentials/authRef -> server-side secret authority only; browser and wire models receive sanitized health",
+      "anchor": "ARCHITECTURE.md#state-and-credentials"
+    },
+    "environment-read": {
+      "legal_direction": "environment reads -> typed configuration or bootstrap only",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "private-import": {
+      "legal_direction": "cross-package and upstream imports -> declared public package entry points only",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "unknown-deepwork-import": {
+      "legal_direction": "@deepwork imports -> a declared public package entry point in tools/architecture/graph.json",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "import-cycle": {
+      "legal_direction": "module and package dependencies -> acyclic inward graph",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "esm-extension": {
+      "legal_direction": "relative ESM imports -> explicit runtime .js, .mjs, .cjs, or .json extension",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "generated-drift": {
+      "legal_direction": "generated architecture views -> exact projection of tools/architecture/graph.json",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    },
+    "parse-error": {
+      "legal_direction": "checked source -> syntactically parseable Python and statically readable TypeScript imports",
+      "anchor": "ARCHITECTURE.md#mechanical-enforcement"
+    }
+  },
   "exceptions": []
 }

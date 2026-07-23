@@ -167,6 +167,32 @@ describe("editable plan contracts", () => {
     });
   });
 
+  it("accepts the exact queued API detail before a plan has been proposed", () => {
+    expect(
+      normalizeTaskDetail({
+        taskId: "task_00000001",
+        runId: "run_00000001",
+        title: "Prepare a safe plan",
+        objective: "Prepare a safe plan",
+        status: "queued",
+        lastEventId: 1,
+        pendingInterrupt: null,
+        proposedPlan: null,
+        evidence: [],
+        result: null,
+      }),
+    ).toEqual({
+      taskId: "task_00000001",
+      runId: "run_00000001",
+      title: "Prepare a safe plan",
+      status: "queued",
+      evidence: [],
+      pendingInterrupt: undefined,
+      proposedPlan: undefined,
+      result: undefined,
+    });
+  });
+
   it("prefers the latest valid streamed plan and evidence while preserving detail data", () => {
     const events: TaskEvent[] = [
       {

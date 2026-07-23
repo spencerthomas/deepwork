@@ -181,7 +181,7 @@ export function normalizeTaskDetail(value: unknown): TaskDetail {
         ? undefined
         : normalizePendingInterrupt(value.pendingInterrupt),
     proposedPlan:
-      value.proposedPlan === undefined
+      value.proposedPlan === undefined || value.proposedPlan === null
         ? undefined
         : normalizeProposedPlan(value.proposedPlan, "Task detail proposedPlan"),
     result:

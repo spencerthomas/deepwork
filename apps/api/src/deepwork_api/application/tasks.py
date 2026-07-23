@@ -368,6 +368,15 @@ class TaskService:
             if decision is DecisionValue.RESPOND and comment is not None
             else None
         )
+        if isinstance(self.runner, LocalAgentServerRunner):
+            return await self.runner.record_decision(
+                task_id,
+                interrupt_id=interrupt_id,
+                decision=decision,
+                comment=comment,
+                comment_provided=bool(comment),
+                response_digest=response_digest,
+            )
         return await self.repository.record_decision(
             task_id,
             interrupt_id=interrupt_id,

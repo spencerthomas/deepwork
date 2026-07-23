@@ -35,6 +35,7 @@ from deepwork_api.domain.tasks import (
     TaskEventName,
     TaskNotFoundError,
     TaskSnapshot,
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 
@@ -69,6 +70,7 @@ __all__ = [
     "TaskEventName",
     "TaskNotFoundError",
     "TaskSnapshot",
+    "TaskSourceUnavailableError",
     "TaskStatus",
     "WorkerDurability",
     "WorkerStatus",

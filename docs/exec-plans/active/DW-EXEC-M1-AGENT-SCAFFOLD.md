@@ -292,10 +292,14 @@ Implementation results at 2026-07-23 12:33 AEST:
 - The clean consumer used Python isolated mode, no `PYTHONPATH`, `--no-index`, and
   `--no-deps`; it found `py.typed`, imported every public export, and observed only
   the explicit `SPIKE-CONFIG-001` unavailable state.
-- Two consecutive builds produced identical SHA-256 values: wheel
-  `74854fabfc0acca1b2a1f859a7de408a3ac07f25a7e962d35377ad4537825d8c`
+- Two fresh builds produced identical SHA-256 values and the read-only package
+  check matched them against reviewed evidence: wheel
+  `d48e7e836f33a653f4fe0b628081555b4c6fce3717328d998be558ac39146378`
   and source distribution
-  `699bd696eec25534786756b2ec0868e5e27a334f8a6193b8ec81ca69228ca233`.
+  `a5f58d1f14a606fc46064395654fd8b82abc4ff7937f8f7d810b182e83e17c3a`.
+- Evidence refresh is a separate explicit `make -C packages/agent
+  update-evidence` action. The final frozen `make -C packages/agent check`
+  verifies rather than rewrites the manifest and leaves tracked status clean.
 - Sanitized proof is retained under
   `packages/agent/evidence/DW-M1-AGENT-001/`.
 
@@ -343,6 +347,11 @@ product integration.
 - [x] 2026-07-23 12:33 AEST - Milestone 3 complete; wheel/sdist build, isolated
   no-index wheel install, `py.typed`, public exports, and reproducible hashes
   retained in the evidence directory.
+- [x] 2026-07-23 - Independent review found the retained hashes were generated
+  before the final source state and that verification rewrote its own expected
+  evidence. Rework now separates explicit evidence refresh from immutable checks,
+  compares two fresh builds, and proves the full frozen check leaves tracked
+  status clean.
 - [ ] Milestone 4 - independent implementation review accepted and handed off.
 
 ## Surprises and discoveries
@@ -371,6 +380,11 @@ product integration.
   transitive build tools in the package lock. Consequence: exact Hatchling is also
   a locked development tool, and `make build` invokes it from the frozen package
   environment rather than resolving an isolated build environment at run time.
+- 2026-07-23 - The first retained artifact hashes predated final build-tooling
+  changes, while `package-check` silently replaced the expected manifest.
+  Consequence: a green check did not prove that reviewed evidence matched the
+  final source. The verifier now treats evidence as immutable by default and
+  requires two matching fresh builds before comparison or explicit refresh.
 
 ## Decision log
 
@@ -404,14 +418,21 @@ product integration.
 - 2026-07-23 12:38 AEST - Decision: build through locked Hatchling instead of an
   ephemeral PEP 517 environment. Rationale: the package lock must cover the actual
   build backend and its transitive tools, not only lint/test/type dependencies.
+- 2026-07-23 - Decision: make artifact evidence update an explicit maintainer
+  action and keep `package-check` read-only. Rationale: verification cannot
+  establish evidence integrity if it rewrites the expected result. Consequence:
+  every check performs a second clean build, compares both artifact pairs, then
+  compares the fresh manifest with the reviewed tracked JSON.
 
 ## Outcomes and retrospective
 
-Implementation is complete and awaits a fresh independent review. The package is
-independently locked, typed, formatted, linted, type-checked, network-denied,
-buildable, clean-installable, and reproducible. It contributes enforceable package
-direction to `AC-DW-FND-001-03` and proves private runtime packages are not a
-default prerequisite for `AC-DW-FND-001-07`.
+Implementation rework is complete and awaits fresh independent review. The package
+is independently locked, typed, formatted, linted, type-checked, network-denied,
+buildable, clean-installable, and reproducible across two fresh builds. Artifact
+evidence is refreshed only through an explicit action; ordinary verification is
+immutable and leaves the tracked checkout clean. The package contributes
+enforceable package direction to `AC-DW-FND-001-03` and proves private runtime
+packages are not a default prerequisite for `AC-DW-FND-001-07`.
 
 No external runtime, provider call, credential, `langgraph.json`, application
 import, root/shared edit, migration, deployment, or publication was introduced.

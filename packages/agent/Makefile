@@ -6,7 +6,7 @@ UV_PROJECT_ENVIRONMENT ?= $(PACKAGE_ROOT)/.venv
 UV_ENV := UV_CACHE_DIR=$(UV_CACHE_DIR) UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)
 UV_RUN := $(UV_ENV) $(UV) run --project $(PACKAGE_ROOT) --frozen
 
-.PHONY: doctor bootstrap lock-check format-check lint typecheck test build package-check check
+.PHONY: doctor bootstrap lock-check format-check lint typecheck test build package-check update-evidence check
 
 doctor:
 	@command -v $(PYTHON) >/dev/null || { echo "missing Python 3.12: $(PYTHON)"; exit 1; }
@@ -36,6 +36,9 @@ build:
 	$(UV_RUN) hatchling build --target sdist --target wheel --directory $(PACKAGE_ROOT)/dist
 
 package-check: build
-	$(PYTHON) scripts/verify_wheel.py
+	$(UV_RUN) python scripts/verify_wheel.py
+
+update-evidence: build
+	$(UV_RUN) python scripts/verify_wheel.py --update-evidence
 
 check: lock-check format-check lint typecheck test package-check

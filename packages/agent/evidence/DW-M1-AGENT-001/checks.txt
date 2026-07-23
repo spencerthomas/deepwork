@@ -6,9 +6,11 @@ make -C packages/agent lint: PASS (Ruff, all checks passed)
 make -C packages/agent typecheck: PASS (ty, all checks passed)
 make -C packages/agent test: PASS (11 tests, outbound sockets disabled)
 make -C packages/agent build: PASS (sdist and wheel)
-make -C packages/agent package-check: PASS (clean isolated wheel consumer, no index)
+make -C packages/agent package-check: PASS (two reproducible builds, immutable
+  manifest comparison, clean isolated wheel consumer, no index)
 make -C packages/agent lock-check: PASS (13 packages resolved from package-local lock/cache)
 git diff --check: PASS
 
 The package-local forbidden-import tests scan every production Python import and
 prove an intentional FastAPI import is reported with its exact file and root.
+The final frozen make check completed without changing any tracked file.

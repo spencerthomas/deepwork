@@ -22,6 +22,12 @@ make -C packages/agent check
 make -C packages/agent package-check
 ```
 
+`package-check` is read-only: it builds twice, requires matching artifact hashes,
+and compares the fresh result with the reviewed `artifacts.json` manifest. After a
+reviewed source change, refresh that manifest deliberately with
+`make -C packages/agent update-evidence`, then rerun `check` to prove the checkout
+stays clean.
+
 The package owns its `pyproject.toml`, `uv.lock`, environment, commands, source,
 tests, and build artifacts. It never relies on a root Python environment or
 `PYTHONPATH`.

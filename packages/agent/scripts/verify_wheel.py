@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -10,8 +11,13 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+EVIDENCE_PATH = PACKAGE_ROOT / "evidence" / "DW-M1-AGENT-001" / "artifacts.json"
 EXPECTED_EXPORTS = {
     "CONFIG_CONTRACT_GATE",
     "AgentPackageConfig",
@@ -31,21 +37,40 @@ def _sha256(path: Path) -> str:
 
 def _run(command: list[str], *, environment: dict[str, str] | None = None) -> None:
     # Commands are fixed local Python/pip invocations assembled by this script.
-    subprocess.run(command, check=True, env=environment)  # noqa: S603
+    subprocess.run(command, check=True, cwd=PACKAGE_ROOT, env=environment)  # noqa: S603
 
 
-def main() -> int:
-    """Verify wheel contents and import behavior without an index or repository path."""
-    wheels = sorted((PACKAGE_ROOT / "dist").glob("deepwork_agent-*.whl"))
-    source_distributions = sorted((PACKAGE_ROOT / "dist").glob("deepwork_agent-*.tar.gz"))
+def _artifacts(directory: Path) -> tuple[Path, Path]:
+    """Return the sole wheel and source distribution in a build directory."""
+    wheels = sorted(directory.glob("deepwork_agent-*.whl"))
+    source_distributions = sorted(directory.glob("deepwork_agent-*.tar.gz"))
     if len(wheels) != 1:
         msg = f"expected exactly one wheel, found {len(wheels)}"
         raise RuntimeError(msg)
     if len(source_distributions) != 1:
         msg = f"expected exactly one source distribution, found {len(source_distributions)}"
         raise RuntimeError(msg)
-    wheel = wheels[0]
-    source_distribution = source_distributions[0]
+    return wheels[0], source_distributions[0]
+
+
+def _manifest(wheel: Path, source_distribution: Path) -> dict[str, Any]:
+    """Describe immutable artifact and public-contract evidence."""
+    return {
+        "wheel": wheel.name,
+        "wheel_sha256": _sha256(wheel),
+        "source_distribution": source_distribution.name,
+        "source_distribution_sha256": _sha256(source_distribution),
+        "reproducible_builds": 2,
+        "py_typed": True,
+        "public_exports": sorted(EXPECTED_EXPORTS),
+        "runtime_available": False,
+        "contract_gate": "SPIKE-CONFIG-001",
+        "install_index": "disabled",
+    }
+
+
+def _verify_wheel_contents(wheel: Path) -> None:
+    """Verify required package data is present in the wheel."""
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
     marker = "deepwork_agent/py.typed"
@@ -53,6 +78,9 @@ def main() -> int:
         msg = f"built wheel does not contain {marker}"
         raise RuntimeError(msg)
 
+
+def _verify_clean_consumer(wheel: Path) -> None:
+    """Install the wheel without an index and exercise its public API."""
     with tempfile.TemporaryDirectory(prefix="deepwork-agent-consumer-") as temporary:
         environment_root = Path(temporary) / "venv"
         _run([sys.executable, "-m", "venv", str(environment_root)])
@@ -79,21 +107,87 @@ def main() -> int:
         )
         _run([str(python), "-I", "-c", consumer], environment=environment)
 
-    evidence = {
-        "wheel": wheel.name,
-        "wheel_sha256": _sha256(wheel),
-        "source_distribution": source_distribution.name,
-        "source_distribution_sha256": _sha256(source_distribution),
-        "py_typed": True,
-        "public_exports": sorted(EXPECTED_EXPORTS),
-        "runtime_available": False,
-        "contract_gate": "SPIKE-CONFIG-001",
-        "install_index": "disabled",
-    }
-    evidence_path = PACKAGE_ROOT / "evidence" / "DW-M1-AGENT-001" / "artifacts.json"
-    evidence_path.parent.mkdir(parents=True, exist_ok=True)
-    evidence_path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+
+def _repeat_build() -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
+    """Build a second artifact pair in a temporary directory."""
+    temporary = tempfile.TemporaryDirectory(prefix="deepwork-agent-repeat-build-")
+    destination = Path(temporary.name)
+    _run(
+        [
+            sys.executable,
+            "-m",
+            "hatchling",
+            "build",
+            "--target",
+            "sdist",
+            "--target",
+            "wheel",
+            "--directory",
+            str(destination),
+        ]
+    )
+    wheel, source_distribution = _artifacts(destination)
+    return wheel, source_distribution, temporary
+
+
+def _assert_reproducible(
+    evidence: dict[str, Any],
+    repeat_wheel: Path,
+    repeat_source_distribution: Path,
+) -> None:
+    """Require a second fresh build to produce the recorded filenames and hashes."""
+    repeated = _manifest(repeat_wheel, repeat_source_distribution)
+    if repeated != evidence:
+        msg = (
+            "consecutive builds are not reproducible:\n"
+            f"first={json.dumps(evidence, sort_keys=True)}\n"
+            f"second={json.dumps(repeated, sort_keys=True)}"
+        )
+        raise RuntimeError(msg)
+
+
+def _verify_expected(evidence: dict[str, Any]) -> None:
+    """Compare fresh evidence with the reviewed immutable manifest."""
+    expected = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
+    if expected != evidence:
+        msg = (
+            f"artifact evidence does not match {EVIDENCE_PATH.relative_to(PACKAGE_ROOT)}; "
+            "review the source change and run `make update-evidence` explicitly"
+        )
+        raise RuntimeError(msg)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--update-evidence",
+        action="store_true",
+        help="replace the reviewed artifact manifest after successful two-build verification",
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Verify fresh artifacts or explicitly refresh their reviewed manifest."""
+    arguments = _parser().parse_args(argv)
+    wheel, source_distribution = _artifacts(PACKAGE_ROOT / "dist")
+    _verify_wheel_contents(wheel)
+    _verify_clean_consumer(wheel)
+    evidence = _manifest(wheel, source_distribution)
+    repeat_wheel, repeat_source_distribution, temporary = _repeat_build()
+    try:
+        _assert_reproducible(evidence, repeat_wheel, repeat_source_distribution)
+    finally:
+        temporary.cleanup()
+
+    if arguments.update_evidence:
+        EVIDENCE_PATH.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+        action = "updated"
+    else:
+        _verify_expected(evidence)
+        action = "verified"
     sys.stdout.write(json.dumps(evidence, indent=2) + "\n")
+    sys.stdout.write(f"{action} immutable evidence: {EVIDENCE_PATH.relative_to(PACKAGE_ROOT)}\n")
     return 0
 
 

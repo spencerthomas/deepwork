@@ -38,6 +38,12 @@ export function SettingsShell({ section }: { section: SettingsSectionId }) {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-4 z-50 -translate-y-20 rounded-lg bg-background px-3 py-2 text-sm font-medium text-foreground shadow-lg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
       {/* Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-secondary/30 lg:flex">
         <div className="flex flex-col gap-4 p-4">
@@ -58,7 +64,7 @@ export function SettingsShell({ section }: { section: SettingsSectionId }) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-6">
+        <nav aria-label="Settings sections" className="flex-1 overflow-y-auto px-3 pb-6">
           {filteredGroups.map((group) => (
             <div key={group.label} className="mb-4">
               <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -121,7 +127,11 @@ export function SettingsShell({ section }: { section: SettingsSectionId }) {
           </div>
         </div>
 
-        <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:px-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 outline-none sm:px-8"
+        >
           {sectionBodies[active.id]()}
         </main>
       </div>

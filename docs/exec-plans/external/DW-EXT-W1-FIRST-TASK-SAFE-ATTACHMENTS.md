@@ -304,6 +304,9 @@ destructive cleanup is authorized by this packet.
   store count/duplicate gaps, arbitrary representation acceptance, evidence-tier
   overclaim, scrub-category gaps, and an inclusive-expiry error. Each finding was
   corrected with a regression before requesting fresh review.
+- Product accepted the corrected candidate. Runtime re-review then reproduced a
+  forged-intent expiry bypass; transfer now requires the exact issued record for
+  its idempotency key and rejects unknown or mutated intents.
 
 ## Decision log
 

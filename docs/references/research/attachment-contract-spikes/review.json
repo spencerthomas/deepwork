@@ -91,13 +91,19 @@
       "severity": "low",
       "resolution": "A transfer is stale at, not only after, the expiry instant and the exact boundary is tested.",
       "status": "resolved-pending-fresh-review"
+    },
+    {
+      "id": "AUTHENTICITY-010",
+      "severity": "high",
+      "resolution": "Transfer requires the exact runtime-issued intent for its idempotency key and rejects unknown keys or any mutated ID, expiry, hash, or other field.",
+      "status": "resolved-pending-final-review"
     }
   ],
   "fresh_review": {
-    "candidate_commit": null,
-    "runtime_contract": "pending",
-    "security": "pending",
-    "product": "pending"
+    "candidate_commit": "f757cca6279c9486a80a1336e1781940441951ed",
+    "runtime_contract": "changes-required-AUTHENTICITY-010",
+    "security": "pending-final-review",
+    "product": "accepted"
   },
   "per_conclusion_disposition": {
     "accepted-fixture-only": "pending",

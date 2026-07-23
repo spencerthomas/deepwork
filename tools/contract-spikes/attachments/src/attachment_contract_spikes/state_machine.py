@@ -432,6 +432,12 @@ class FakeClassicRuntime:
             raise ContractError("redirect")
         if partial:
             raise ContractError("range-partial")
+        issued = self._intents.get(intent.idempotency_key)
+        if issued is None:
+            raise ContractError("unissued-intent")
+        _issued_fingerprint, issued_intent = issued
+        if intent != issued_intent:
+            raise ContractError("intent-mutation")
         if now >= intent.expires_at:
             raise ContractError("stale-grant")
         if (

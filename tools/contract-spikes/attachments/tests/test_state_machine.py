@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import socket
+from dataclasses import replace
 
 import pytest
 
@@ -432,6 +433,67 @@ def test_transfer_rejects_cross_object_and_cross_workspace_substitution() -> Non
             store_a,
             attachment_c,
             intent,
+            now=101,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"intent_id": "forged-intent"},
+        {"expires_at": 9999},
+        {"sha256": "0" * 64},
+    ],
+)
+def test_transfer_rejects_mutated_issued_intent(changes: dict[str, object]) -> None:
+    store, attachment, runtime = clean_attachment()
+    intent = runtime.create_intent(
+        attachment,
+        actor_id=attachment.actor_id,
+        workspace_id=attachment.workspace_id,
+        task_id=attachment.task_id,
+        destination=runtime.DESTINATION,
+        representation="standard-content-inline-base64",
+        idempotency_key="intent-key-1",
+        now=100,
+        ttl=1,
+    )
+    forged = replace(intent, **changes)
+    with pytest.raises(ContractError, match="intent-mutation"):
+        runtime.transfer(
+            store,
+            attachment,
+            forged,
+            now=500,
+            actor_id=intent.actor_id,
+            workspace_id=intent.workspace_id,
+            task_id=intent.task_id,
+            destination=intent.destination,
+        )
+
+
+def test_transfer_rejects_unissued_intent_key() -> None:
+    store, attachment, runtime = clean_attachment()
+    intent = runtime.create_intent(
+        attachment,
+        actor_id=attachment.actor_id,
+        workspace_id=attachment.workspace_id,
+        task_id=attachment.task_id,
+        destination=runtime.DESTINATION,
+        representation="standard-content-inline-base64",
+        idempotency_key="intent-key-1",
+        now=100,
+    )
+    forged = replace(intent, idempotency_key="unissued-key")
+    with pytest.raises(ContractError, match="unissued-intent"):
+        runtime.transfer(
+            store,
+            attachment,
+            forged,
             now=101,
             actor_id=intent.actor_id,
             workspace_id=intent.workspace_id,

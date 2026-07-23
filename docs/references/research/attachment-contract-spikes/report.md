@@ -127,5 +127,8 @@ source as pinned reference evidence; strengthens private-data scrubbing; and
 expires grants at the boundary instant.
 
 The first-round findings, resolutions, and fresh-review disposition are retained
-in `review.json`. Fresh acceptance from all three roles remains required before
-handoff.
+in `review.json`. Product accepted the corrected candidate. Runtime re-review
+then found that a mutated, unissued intent could bypass its original expiry; the
+runtime now requires the exact issued record for the idempotency key and rejects
+unknown or mutated intents. Fresh acceptance from all three roles remains
+required before handoff.

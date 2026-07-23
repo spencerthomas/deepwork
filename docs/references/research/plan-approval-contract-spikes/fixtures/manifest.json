@@ -1,0 +1,26 @@
+{
+  "evidence_class": "deterministic-offline-fake",
+  "fixtures": [
+    {
+      "path": "fixtures/research-offline.json",
+      "scenario_count": 32,
+      "sha256": "1e356a6c52f375c07bfd3dc840b98d369210c50561c80ce55720832a0836827a"
+    },
+    {
+      "path": "fixtures/writing-offline.json",
+      "scenario_count": 32,
+      "sha256": "cd0d4de9601477bc3eb9d2dc629f41dbb754df88874b4b36490351f66feedd5c"
+    },
+    {
+      "path": "fixtures/coding-offline.json",
+      "scenario_count": 32,
+      "sha256": "d558d08452be53aaa05ec3f533b123804e68f832ee1379dd56de1e72b5fc55bd"
+    },
+    {
+      "path": "fixtures/blank-offline.json",
+      "scenario_count": 32,
+      "sha256": "be11925895a9757fecee17b0501b51ac28e9906dc3c239ea44c7bb9e2a2fb067"
+    }
+  ],
+  "schema_version": "plan-approval-fixture-manifest.v1"
+}

@@ -1,0 +1,124 @@
+Working directory for every command:
+/Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes
+
+Initial dispatch gate:
+git rev-parse HEAD
+exit: 0
+output: 4c03e097c401df34f00bd42916f400a9254a5369
+
+git branch --show-current
+exit: 0
+output: external/research/langchain-contract-spikes
+
+git status --short
+exit: 0
+output: empty
+
+git merge-base --is-ancestor 85187827e018d4aeee4a4e4bd685de49cb2f5a6a HEAD
+exit: 0
+
+git diff --name-status 85187827e018d4aeee4a4e4bd685de49cb2f5a6a...HEAD
+exit: 0
+output: A docs/exec-plans/external/DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH.md
+
+Public-index attempt and deterministic fallback:
+uv lock --project tools/contract-spikes/langchain
+exit: 2
+result: sandboxed uv cache initialization was not permitted
+
+uv lock --project tools/contract-spikes/langchain
+status: unsandboxed execution denied before process start because public-index egress was not authorized
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv lock --project tools/contract-spikes/langchain --offline
+exit: 0
+output: Resolved 1 package
+
+Validation:
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv sync --project tools/contract-spikes/langchain --frozen
+exit: 0
+output: Checked 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.inventory --output docs/references/research/langchain-contract-spikes/versions.json
+exit: 0
+output: wrote sanitized package inventory
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.validate_matrix docs/references/research/langchain-contract-spikes/matrix.json
+exit: 0
+output: validated 11 pinned contract rows
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.scrub docs/references/research/langchain-contract-spikes
+exit: 0
+output: zero findings
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv lock --project tools/contract-spikes/langchain --check --offline
+exit: 0
+output: Resolved 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+python3 tools/docs/generate.py --check
+exit: 0
+output: verified 6 generated documents
+
+python3 tools/docs/check.py
+exit: 0
+output: documentation validation passed
+
+git diff --check
+exit: 0
+
+git diff --name-only 85187827e018d4aeee4a4e4bd685de49cb2f5a6a
+exit: 0
+qualification: after staging, every changed path was inside the three ExecPlan allowed path groups
+
+Expected fail-closed live-profile proof:
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m live_contract --live-profile classic-sandbox --evidence-dir docs/references/research/langchain-contract-spikes/live
+exit: 1
+output: live profile unavailable; missing base_url, account_tier, region, server_revision
+qualification: expected fail-closed result; no token, header, reusable endpoint, environment dump, or live fixture was printed or persisted
+
+Follow-up retained-review consistency audit (2026-07-23):
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv sync --project tools/contract-spikes/langchain --frozen
+exit: 0
+output: Checked 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.validate_matrix docs/references/research/langchain-contract-spikes/matrix.json
+exit: 0
+output: validated 11 pinned contract rows
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.scrub docs/references/research/langchain-contract-spikes
+exit: 0
+output: scrubbed 9 evidence files; findings=0
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache uv lock --project tools/contract-spikes/langchain --check --offline
+exit: 0
+output: Resolved 1 package
+
+UV_CACHE_DIR=/private/tmp/deepwork-langchain-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 9 passed, 1 deselected
+
+python3 tools/docs/generate.py --check
+exit: 0
+output: verified 6 generated documents
+
+python3 tools/docs/check.py
+exit: 0
+output: documentation validation passed
+
+git diff --check
+exit: 0
+
+scope/result audit relative to 73ecb1576f56f64ee07265dbabb936e155310834
+exit: 0
+output: all changed paths inside the three allowed path groups; 11 matrix rows; only blocked-live-evidence results; live_evidence unavailable

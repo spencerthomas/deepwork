@@ -1,0 +1,33 @@
+{
+  "context_case": "inaccessible-workspace",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "list-classic-deployments",
+  "request": {
+    "body_schema": "pagination query",
+    "headers": {
+      "X-Api-Key": "<redacted>",
+      "X-Tenant-Id": "<wrong-workspace-id>"
+    },
+    "host_class": "regional-langsmith-control-plane-api",
+    "method": "GET",
+    "negative_input": {
+      "provider_outcome": "inaccessible-workspace-unconfirmed",
+      "workspace_context": "<wrong-workspace-id>"
+    },
+    "route_template": "/v2/deployments"
+  },
+  "result": {
+    "case": "inaccessible-workspace",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "unconfirmed-provider-behavior"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

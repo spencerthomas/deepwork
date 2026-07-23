@@ -11,8 +11,8 @@ supporting_feature_ids: [DW-FND-002, DW-FND-003, DW-FND-004, DW-FND-005, DW-QUAL
 issue: local:DW-M1-PLATFORM-001
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: 500eaa7faff57def970963160b3d8f1e90c94398
-last_verified_commit: 500eaa7faff57def970963160b3d8f1e90c94398
+base_commit: 3bd6fac451cd23be511127019d318627256b5671
+last_verified_commit: 3bd6fac451cd23be511127019d318627256b5671
 risk: high
 governed_paths: [Makefile, package.json, pnpm-workspace.yaml, pnpm-lock.yaml, turbo.json, apps/api/**, apps/web/**, apps/desktop/**, packages/agent/**, packages/domain/**, packages/sdk/**, packages/ui/**, internal/fixtures/**, internal/adapter-tests/**, tools/**, docs/generated/**, docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md, docs/exec-plans/tech-debt-tracker.md, docs/QUALITY_SCORE.md]
 contract_gates: [SPIKE-HARNESS-DOCS-001, SPIKE-HARNESS-ARCH-001, SPIKE-WORKTREE-001]
@@ -226,8 +226,11 @@ Exit: all documented commands exist and generated drift is detectable.
 
 ## Surprises and discoveries
 
-None yet. Record dated evidence here, including missing local tools, incompatible
-pins, unexpectedly coupled imports, or commands that require network/global state.
+- 2026-07-23 — Observation: repository publication rewrote pre-publication
+  history, so the recorded `base_commit`/`last_verified_commit` hashes no longer
+  exist and `python3 tools/docs/check.py` failed closed. Consequence: both fields
+  now name `3bd6fac4`, the first published commit containing this plan; claims
+  tied to pre-publication hashes remain historical prose only.
 
 ## Decision log
 

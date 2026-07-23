@@ -1,22 +1,41 @@
 """Public exports for the independent Deep Work agent package."""
 
-from deepwork_agent.config import AgentPackageConfig
+from deepwork_agent.config import AgentConfig
 from deepwork_agent.graph import (
-    CONFIG_CONTRACT_GATE,
-    RuntimeAvailability,
-    RuntimeCapabilityUnavailable,
+    DEEP_WORK_SYSTEM_PROMPT,
+    PROTECTED_ACTION,
+    RUNTIME_MODE,
+    RuntimeCapabilities,
     create_graph,
-    runtime_availability,
+    runtime_capabilities,
+    validate_approval_response,
+    validate_plan_edit,
 )
-from deepwork_agent.state import UnavailableAgentState, initial_unavailable_state
+from deepwork_agent.state import (
+    AgentInput,
+    AgentOutput,
+    AgentState,
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalResponse,
+    initial_state,
+)
 
 __all__ = [
-    "CONFIG_CONTRACT_GATE",
-    "AgentPackageConfig",
-    "RuntimeAvailability",
-    "RuntimeCapabilityUnavailable",
-    "UnavailableAgentState",
+    "DEEP_WORK_SYSTEM_PROMPT",
+    "PROTECTED_ACTION",
+    "RUNTIME_MODE",
+    "AgentConfig",
+    "AgentInput",
+    "AgentOutput",
+    "AgentState",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalResponse",
+    "RuntimeCapabilities",
     "create_graph",
-    "initial_unavailable_state",
-    "runtime_availability",
+    "initial_state",
+    "runtime_capabilities",
+    "validate_approval_response",
+    "validate_plan_edit",
 ]

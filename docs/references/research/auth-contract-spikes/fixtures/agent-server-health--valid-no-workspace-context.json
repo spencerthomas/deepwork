@@ -1,0 +1,29 @@
+{
+  "context_case": "valid-no-workspace-context",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "agent-server-health",
+  "request": {
+    "body_schema": "no-body",
+    "headers": {
+      "X-Api-Key": "<redacted>"
+    },
+    "host_class": "classic-agent-server",
+    "method": "GET",
+    "negative_input": null,
+    "route_template": "/ok"
+  },
+  "result": {
+    "expected_shape": "sanitized health status",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "unconfirmed-live"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

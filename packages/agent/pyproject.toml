@@ -5,12 +5,17 @@ build-backend = "hatchling.build"
 [project]
 name = "deepwork-agent"
 version = "0.0.0"
-description = "Credential-free scaffold for the independent Deep Work agent package"
+description = "Injected-model local Deep Work agent graph"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "Deep Work contributors" }]
-dependencies = []
+dependencies = [
+  "deepagents==0.6.12",
+  "langchain-core==1.5.0",
+  "langgraph==1.2.9",
+  "typing-extensions==4.16.0",
+]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3",
@@ -34,7 +39,7 @@ include = ["src/deepwork_agent", "tests", "README.md", "Makefile"]
 packages = ["src/deepwork_agent"]
 
 [tool.pytest.ini_options]
-addopts = "-q --strict-config --strict-markers"
+addopts = "-q --strict-config --strict-markers --disable-socket"
 testpaths = ["tests/unit"]
 
 [tool.ruff]

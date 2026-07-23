@@ -1,0 +1,13 @@
+{
+  "files_scanned": 9,
+  "finding_counts": {
+    "credential_reference": 0,
+    "secret": 0,
+    "tenant_or_customer": 0,
+    "unapproved_host": 0
+  },
+  "findings": [],
+  "passed": true,
+  "root": ".",
+  "schema_version": "1.0"
+}

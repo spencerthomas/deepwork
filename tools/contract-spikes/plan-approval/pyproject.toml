@@ -1,0 +1,31 @@
+[project]
+name = "plan-approval-contract-spikes"
+version = "0.1.0"
+description = "Offline-only plan approval contract harness"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+pytest = "plan_approval_contract_spikes.pytest_entry:main"
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+  "live_contract: requires accepted upstream contracts and a sanctioned non-production sandbox",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

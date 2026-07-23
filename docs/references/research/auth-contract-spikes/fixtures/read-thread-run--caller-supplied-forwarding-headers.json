@@ -1,0 +1,64 @@
+{
+  "context_case": "caller-supplied-forwarding-headers",
+  "evidence_class": "offline-synthetic-fixture",
+  "modeled_key_classes": [
+    "personal",
+    "service-workspace-single",
+    "service-workspace-multiple",
+    "service-organization"
+  ],
+  "operation": "read-thread-run",
+  "request": {
+    "body_schema": "thread_id and run_id path parameters",
+    "headers": {
+      "X-Api-Key": "<redacted>"
+    },
+    "host_class": "classic-agent-server",
+    "method": "GET",
+    "negative_input": {
+      "attempted_header_names": [
+        "authorization",
+        "b3",
+        "baggage",
+        "connection",
+        "cookie",
+        "forwarded",
+        "host",
+        "keep-alive",
+        "proxy-authorization",
+        "proxy-connection",
+        "set-cookie",
+        "te",
+        "trailer",
+        "traceparent",
+        "tracestate",
+        "transfer-encoding",
+        "upgrade",
+        "via",
+        "x-amzn-trace-id",
+        "x-api-key",
+        "x-b3-flags",
+        "x-b3-sampled",
+        "x-b3-spanid",
+        "x-b3-traceid",
+        "x-forwarded-for",
+        "x-forwarded-host",
+        "x-forwarded-proto",
+        "x-original-host",
+        "x-original-url",
+        "x-organization-id",
+        "x-tenant-id"
+      ],
+      "attempted_header_values": "<stripped>"
+    },
+    "route_template": "/threads/{thread_id}/runs/{run_id}"
+  },
+  "result": {
+    "code": "caller-supplied-forwarding-headers",
+    "network_dispatched": false,
+    "provider_body_retained": false,
+    "status": "local-policy-rejected"
+  },
+  "schema_version": 1,
+  "scrub_attestation": "symbolic placeholders only"
+}

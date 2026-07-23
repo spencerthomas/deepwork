@@ -1,0 +1,46 @@
+SPIKE-AUTH-002 final offline validation ledger
+Date: 2026-07-23
+Working directory: repository root
+
+uv lock --project tools/contract-spikes/auth
+exit_status=0
+
+uv sync --project tools/contract-spikes/auth --frozen
+exit_status=0
+
+uv run --project tools/contract-spikes/auth --frozen python -m auth_contract_spikes.generate_matrix docs/references/research/auth-contract-spikes
+exit_status=0
+
+uv run --project tools/contract-spikes/auth --frozen pytest -m 'not live_contract'
+exit_status=0
+
+uv run --project tools/contract-spikes/auth --frozen python -m auth_contract_spikes.inventory --output docs/references/research/auth-contract-spikes/versions.json
+exit_status=0
+
+uv run --project tools/contract-spikes/auth --frozen python -m auth_contract_spikes.validate_matrix docs/references/research/auth-contract-spikes/matrix.json --require-complete-cross-product --reject-unresolved-precedence-conflicts
+exit_status=0
+
+uv run --project tools/contract-spikes/auth --frozen python -m auth_contract_spikes.scrub docs/references/research/auth-contract-spikes
+exit_status=0
+
+uv lock --project tools/contract-spikes/auth --check --offline
+exit_status=0
+
+UV_OFFLINE=true uv run --project tools/contract-spikes/auth --frozen pytest -m 'not live_contract'
+exit_status=0
+
+python3 tools/docs/generate.py --check
+exit_status=0
+
+python3 tools/docs/check.py
+exit_status=0
+
+git diff --check
+exit_status=0
+
+git diff --name-only b9d244438c90a3031983b9705407b3dd5d4c33f9
+exit_status=0
+
+Live-contract command not run: no explicitly supplied non-production classic
+profile was available. No production, customer, browser-stored, or ambient
+credential was used.

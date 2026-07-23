@@ -2,12 +2,12 @@
   "name": "@deepwork/sdk",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "sideEffects": false,
   "files": [
     "dist",
     "README.md"
   ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -28,6 +28,7 @@
     "@deepwork/domain": "workspace:*"
   },
   "devDependencies": {
+    "@typescript/typescript6": "6.0.2",
     "vitest": "4.1.10"
   }
 }

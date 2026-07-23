@@ -14,8 +14,13 @@ def test_fixture_status_is_explicitly_unavailable() -> None:
     assert {capability.name for capability in demo.capabilities} == {
         "authentication",
         "durable_jobs",
+        "external_providers",
+        "local_task_loop",
         "sources",
         "task_stream",
     }
-    assert all(capability.state is CapabilityState.UNAVAILABLE for capability in demo.capabilities)
+    states = {capability.name: capability.state for capability in demo.capabilities}
+    assert states["local_task_loop"] is CapabilityState.AVAILABLE
+    assert states["task_stream"] is CapabilityState.AVAILABLE
+    assert states["external_providers"] is CapabilityState.UNAVAILABLE
     assert service.worker().durability is WorkerDurability.UNAVAILABLE

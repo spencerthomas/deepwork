@@ -1,9 +1,10 @@
 "use client";
 
 import { Activity, ListChecks, ShieldCheck, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { StatusChip } from "@/components/shell/status-chip";
+import { nextPanelTab, PANEL_TABS, type PanelTab } from "@/components/tasks/run-panel-tabs";
 import type {
   ClientMode,
   ConnectionState,
@@ -15,17 +16,6 @@ import type {
 } from "@/lib/task-types";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { cn } from "@/lib/utils";
-
-type PanelTab = "status" | "stream" | "evidence" | "files" | "git" | "trace";
-
-const tabs: { key: PanelTab; label: string }[] = [
-  { key: "status", label: "Status" },
-  { key: "stream", label: "Stream" },
-  { key: "evidence", label: "Evidence" },
-  { key: "files", label: "Files" },
-  { key: "git", label: "Git" },
-  { key: "trace", label: "Trace" },
-];
 
 const eventLabels: Record<string, string> = {
   "task.created": "Task created",
@@ -86,29 +76,55 @@ export function RunPanel({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
+  const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
   const runtimeCopy = taskRuntimePresentation(mode);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-2 no-scrollbar">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "relative shrink-0 px-2.5 py-2.5 text-[13px] transition-colors",
-              tab === t.key
-                ? "text-crisp text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-            {tab === t.key && (
-              <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />
-            )}
-          </button>
-        ))}
+      <div className="flex items-center gap-1 border-b border-border px-2">
+        <div
+          role="tablist"
+          aria-label="Run details"
+          aria-orientation="horizontal"
+          className="flex items-center gap-1 overflow-x-auto no-scrollbar"
+          onKeyDown={(event) => {
+            const next = nextPanelTab(tab, event.key);
+            if (next === null) return;
+            event.preventDefault();
+            setTab(next);
+            tabRefs.current[next]?.focus();
+          }}
+        >
+          {PANEL_TABS.map((t) => {
+            const isActive = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                ref={(element) => {
+                  tabRefs.current[t.key] = element;
+                }}
+                type="button"
+                role="tab"
+                id={`run-tab-${t.key}`}
+                aria-selected={isActive}
+                aria-controls="run-tabpanel"
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  "relative shrink-0 px-2.5 py-2.5 text-[13px] transition-colors",
+                  isActive
+                    ? "text-crisp text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+                {isActive && (
+                  <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />
+                )}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -119,7 +135,13 @@ export function RunPanel({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        role="tabpanel"
+        id="run-tabpanel"
+        aria-labelledby={`run-tab-${tab}`}
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto focus:outline-none"
+      >
         {tab === "status" && (
           <div className="space-y-4 px-4 py-4">
             <div className="flex items-center gap-2">

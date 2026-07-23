@@ -43,11 +43,21 @@ import { cn } from "@/lib/utils";
 
 const groupOrder: readonly TaskStatus[] = INBOX_GROUP_ORDER;
 
-/** Ignore the shortcut keys while the caret is in a field so typing stays intact. */
-function isTypingTarget(target: EventTarget | null): boolean {
+const INTERACTIVE_TARGET_SELECTOR =
+  'a[href], button, input, textarea, select, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [contenteditable="true"]';
+
+/**
+ * Yield the shortcut keys whenever focus is on a control the user is operating —
+ * a search field, a sidebar filter, the grouping toggle, "Review now," or a row
+ * link. Otherwise a window-level Enter would hijack the control's own
+ * activation and typing would move the highlight. The highlight itself never
+ * takes DOM focus, so the ordinary j/k flow (focus resting on the body) is
+ * unaffected.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+  if (target.isContentEditable) return true;
+  return target.closest(INTERACTIVE_TARGET_SELECTOR) !== null;
 }
 
 interface ViewDef {
@@ -163,7 +173,7 @@ export function TaskInbox() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
+      if (isInteractiveTarget(event.target)) return;
       if (orderedIds.length === 0) return;
       if (event.key === "j" || event.key === "ArrowDown") {
         event.preventDefault();

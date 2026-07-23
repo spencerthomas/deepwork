@@ -14,14 +14,23 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { runtimeDisclosure, shellRuntimePresentation } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
 import { cn } from "@/lib/utils";
 
 import { CommandBar } from "./command-bar";
+import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { ThemeToggle } from "./theme-toggle";
+
+/** True while focus is in a field, so global single-key shortcuts stay dormant. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
 
 interface Destination {
   label: string;
@@ -108,10 +117,25 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // "?" opens the shortcuts help from anywhere the caret isn't in a field.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "?" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        setHelpOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
       <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
+      <KeyboardShortcuts open={helpOpen} onOpenChange={setHelpOpen} />
 
       <a
         href="#main-content"

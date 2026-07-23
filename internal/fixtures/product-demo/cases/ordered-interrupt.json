@@ -30,16 +30,16 @@
         "interruptId": "fx_interrupt_alpha",
         "version": "fx_interrupt_version_3",
         "actionRequests": [
-          {"requestId": "fx_request_review_a", "actionName": "review", "summary": "Review synthetic change A."},
-          {"requestId": "fx_request_review_b", "actionName": "review", "summary": "Review synthetic change B."}
+          {"name": "review", "args": {"subject": "fx_change_a"}, "description": "Review synthetic change A."},
+          {"name": "review", "args": {"subject": "fx_change_b"}, "description": "Review synthetic change B."}
         ],
         "reviewConfigs": [
-          {"requestId": "fx_request_review_a", "allowedDecisions": ["accept", "reject"]},
-          {"requestId": "fx_request_review_b", "allowedDecisions": ["accept", "reject"]}
+          {"actionName": "review", "allowedDecisions": ["approve", "edit", "reject", "respond"]},
+          {"actionName": "review", "allowedDecisions": ["approve", "edit", "reject", "respond"]}
         ]
       }
     }
   ],
-  "expected": {"orderedRecordIds": ["fx_record_interrupt"], "requestOrder": ["fx_request_review_a", "fx_request_review_b"], "repeatedActionNamesPreserved": ["review", "review"], "acceptedDecisionPresent": false, "resumePayloadPresent": false, "submissionCapabilityState": "gated"},
+  "expected": {"orderedRecordIds": ["fx_record_interrupt"], "actionRequestOrder": ["review", "review"], "reviewConfigOrder": ["review", "review"], "positionalAlignment": true, "repeatedActionNamesPreserved": ["review", "review"], "documentedDecisionVocabulary": ["approve", "edit", "reject", "respond"], "acceptedDecisionPresent": false, "resumePayloadPresent": false, "submissionCapabilityState": "gated"},
   "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
 }

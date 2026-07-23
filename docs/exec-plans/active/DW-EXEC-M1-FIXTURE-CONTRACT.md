@@ -304,8 +304,10 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   provider create call.
 - Content proves stable chunk/order data without exposing private reasoning.
 - Tool proves start/result correlation and bounded untrusted content.
-- Ordered interrupt contains repeated action names, aligned request/config arrays,
-  stable interrupt version, and no accepted decision or resume payload.
+- Ordered interrupt contains repeated action names, positionally aligned
+  request/config arrays with no invented request IDs, only the normalized
+  `approve`, `edit`, `reject`, and `respond` decision vocabulary, a stable
+  interrupt version, and no accepted decision or resume payload.
 - Checkpoint preserves source/thread/checkpoint identity while fork remains gated.
 - Reconnect preserves the last durable projection and a fixture recovery boundary;
   disconnect never means cancel or fail.
@@ -338,8 +340,9 @@ may serialize these files directly as `/api/v1` merely because the corpus exists
   with their declared validator rule code.
 - Partial failure keeps healthy synthetic source results and a source-qualified
   safe error for the failed source.
-- Source collision reuses external thread/run strings across two sources and
-  proves distinct source-qualified fixture keys.
+- Source collision reuses the exact same external thread/run strings across two
+  records with different sources and derives every expected and payload-qualified
+  key from `sourceId:threadId[:runId]`.
 
 ### Capability-manifest invariants
 
@@ -358,11 +361,13 @@ operations remain non-callable even when the corpus contains a presentation case
 stable sorted output, and performs no Git inspection, socket, subprocess,
 environment read, or wall-clock access. It validates:
 
-- corpus/schema/index integrity and exact version support;
+- corpus/schema/index integrity, exact version support, and application of both
+  structural schema documents to every governed case/manifest;
 - unique/normalized IDs, fixed clock derivation, sequence/order, and case coverage;
 - source qualification and collision behavior;
 - capability metadata and fixture/live evidence separation;
-- ordered interrupt array alignment and repeated-name preservation;
+- ordered interrupt positional array alignment, repeated-name preservation,
+  canonical decision vocabulary, and rejection of unknown decision values;
 - expected replay dedupe, terminal authority, unknown/malformed handling, and
   partial-failure assertions;
 - exact sorted SHA-256 hashes for all governed data/schema assets;
@@ -465,13 +470,17 @@ Acceptance:
   reconnect/replay/logical delay/completion/unknown/malformed-input
   classification/partial failure/source collision;
 - `corpus.json` indexes exactly those 13 positive case files once each, while
-  `negative/matrix.json` indexes exactly 12 single-code negative files: one for
-  each of the 10 stable rule-code families plus the two mandatory logical-delay
-  negatives;
+  `negative/matrix.json` indexes exactly 26 single-code negative files covering
+  all stable rule-code families, the two mandatory logical-delay negatives,
+  unknown HITL decisions, false source-collision evidence, nested structural
+  type failures, endpoint/Bearer/Basic-secret/path/identity scrub bypasses, and a
+  generic bare external host;
 - replay and repeated-action cases have explicit expected order;
 - logical delay uses the exact tick-41 plus three ticks equals tick-44 release
   model, proves absence through tick 43 and one-time visibility from tick 44, and
   has the exact clock-mismatch and early-visibility negative diagnostics;
+- both structural schema documents are applied to every positive case and
+  capability manifest before the handwritten semantic checks;
 - the positive malformed-input case has a schema-valid envelope and expected safe
   classification, while raw schema-invalid fixtures stay only under `negative/`;
   and
@@ -563,8 +572,9 @@ Acceptance:
   structural schemas, two capability manifests, and the exact 13-case ordered
   inventory. All runtime/provider capability entries retain fixture evidence and
   gated, unknown, unavailable, or permission-denied fallback where applicable.
-- [x] 2026-07-23 AEST — Milestone 2 complete. The 13 positive cases and 12
-  single-code negatives validate, including exact delay arithmetic
+- [x] 2026-07-23 AEST — Initial Milestone 2 implementation complete. The 13
+  positive cases and initial 12 single-code negatives validated, including exact
+  delay arithmetic
   `41 + 3 = 44`, absence through tick 43, one-time visibility from tick 44,
   completion at tick 45, `FIXTURE_CLOCK_DELAY_MISMATCH`, and
   `FIXTURE_EXPECTATION_DELAY_VISIBILITY`.
@@ -573,6 +583,21 @@ Acceptance:
   linked-worktree-safe Git scope runner are retained. Two write invocations
   produced identical target hashes with an empty second `updated_files`; the
   following two-pass check reported in-memory and disk byte identity.
+- [x] 2026-07-23 AEST — Independent implementation review rejected exact
+  candidate `47c1cee121a9b3105f00f37404cd29114b6d04d5`. It found invented HITL
+  request IDs and `accept`, incomplete source-collision assertions, scrub/network
+  false greens, and structural schemas that were not applied to governed data.
+- [x] 2026-07-23 AEST — Bounded rework removed request IDs, uses only
+  `approve/edit/reject/respond`, validates positional alignment and unknown
+  decisions, derives both source-collision keys, applies the structural schemas,
+  broadens scrub/network enforcement, and initially expanded the matrix to 23
+  exact single-code negatives.
+- [x] 2026-07-23 AEST — Coordinator pre-commit review found two remaining false
+  greens: malformed nested types could reach handwritten semantics before the
+  structural result, while Basic authorization content and generic `.ai`/`.co`
+  bare hosts escaped scrub/network detection. Rework now fails closed on unsafe
+  structural shapes before semantics and expands the matrix to 26 exact
+  single-code negatives. Deterministic evidence is regenerated before handoff.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -621,6 +646,11 @@ Acceptance:
   mutated/evaluated and must emit exactly its declared code. Negative payloads
   remain hashed and manifest-closed rather than being silently excluded from
   integrity proof.
+- 2026-07-23 AEST — Reviewed LangChain evidence and `DW-HITL-001` use positional
+  arrays with no upstream action ID and the normalized decisions
+  `approve/edit/reject/respond`. Consequence: the neutral corpus must not invent a
+  request-ID alignment contract or use UI-like `accept`; submission and resume
+  remain gated.
 
 ## Decision Log
 
@@ -953,26 +983,31 @@ register itself in the index, or start consumer implementation.
 
 ## Outcomes & Retrospective
 
-Implementation is complete and independent implementation review is pending.
+Bounded implementation rework is complete and fresh independent implementation
+review is pending. Candidate `47c1cee121a9b3105f00f37404cd29114b6d04d5`
+remains rejected and must not be integrated.
 The corpus contains exactly these ordered positive categories:
 `start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
 `replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
 `partial-failure`, and `source-collision`.
 
-The exact ordered negative rule inventory is
-`FIXTURE_SCHEMA_REQUIRED_FIELD`, `FIXTURE_ID_PREFIX`,
+The exact ordered negative rule inventory is three
+`FIXTURE_SCHEMA_REQUIRED_FIELD` cases, `FIXTURE_ID_PREFIX`,
 `FIXTURE_CLOCK_DERIVATION`, `FIXTURE_ORDER_SEQUENCE`,
 `FIXTURE_CAPABILITY_EVIDENCE`, `FIXTURE_INTERRUPT_ALIGNMENT`,
-`FIXTURE_HASH_MISMATCH`, `FIXTURE_SCRUB_FORBIDDEN_FIELD`,
-`FIXTURE_NETWORK_EXTERNAL_URL`, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
+`FIXTURE_INTERRUPT_DECISION_VALUE`, `FIXTURE_ID_SOURCE_COLLISION`,
+`FIXTURE_HASH_MISMATCH`, four `FIXTURE_SCRUB_FORBIDDEN_FIELD` cases, two
+`FIXTURE_SCRUB_SECRET_VALUE` cases, `FIXTURE_SCRUB_UNSAFE_PATH`, two
+`FIXTURE_SCRUB_REAL_IDENTITY` cases, three
+`FIXTURE_NETWORK_EXTERNAL_URL` cases, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
 `FIXTURE_CLOCK_DELAY_MISMATCH`, and
 `FIXTURE_EXPECTATION_DELAY_VISIBILITY`. Every negative produced exactly its one
 declared code.
 
 The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
 bytes, is
-`76839423f108521a2aa712bcdc6a6e94591263b08dfc11d0e4678f8ffb10f1dd`.
-The generated validation and isolation reports record 13 cases, 12 intentional
+`628e615f4122f09599925b5c06fcf13f580c0e6298ed68575c414b8e982409f7`.
+The generated validation and isolation reports record 13 cases, 26 intentional
 negative rules, zero active-corpus scrub matches, zero active-corpus external
 URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
 reads, zero waits, and zero writes.
@@ -981,8 +1016,8 @@ Validation from the repository root:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
-exit 0; hashes.sha256=768394...0f1dd; validation-report=6ddb6c...ced0a;
-no-external-network=0ffdc2...a7f89; first updated_files contained all 3 targets
+exit 0; hashes.sha256=628e615...2409f7; validation-report=1ba943...fa9c5;
+no-external-network=ec36e5...fc09b; first updated_files contained all 3 targets
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
 exit 0; identical target hashes; updated_files=[]
@@ -991,7 +1026,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence
 exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
 
 PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
-exit 0; corpus_digest=768394...0f1dd; 13 case IDs; 12 rule codes;
+exit 0; corpus_digest=628e615...2409f7; 13 case IDs; 26 single-code negatives;
 scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
 validator subprocess/environment/wall-clock/write counts=0
 

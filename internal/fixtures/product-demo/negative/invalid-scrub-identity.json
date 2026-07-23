@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_identity",
+  "declaredRuleCode": "FIXTURE_SCRUB_REAL_IDENTITY",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/displayValue", "value": "person@example.com"}
+}

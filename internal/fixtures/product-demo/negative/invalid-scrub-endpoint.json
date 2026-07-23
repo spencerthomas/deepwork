@@ -1,0 +1,7 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_scrub_endpoint",
+  "declaredRuleCode": "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "add", "path": "/expected/serviceEndpoint", "value": "synthetic-endpoint"}
+}

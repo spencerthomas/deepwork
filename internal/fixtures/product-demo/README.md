@@ -25,6 +25,10 @@ only `hashes.sha256` and the two files under `evidence/`.
 `verify_scope.py` is deliberately separate: it may run fixed, shell-free Git
 queries for repository scope proof and never validates or mutates the corpus.
 
-The 13 positive cases and 12 single-code negatives are indexed by `corpus.json`
-and `negative/matrix.json`. `hashes.sha256` closes exactly over the machine index,
-schemas, manifests, positive cases, negative matrix, and negative fixtures.
+The 13 positive cases and 26 single-code negatives are indexed by `corpus.json`
+and `negative/matrix.json`. The negatives include positional HITL decision
+vocabulary, source-collision derivation, nested structural type rejection,
+credential/Basic-auth/endpoint/identity/path scrub, generic bare-host, and
+logical-delay bypass cases. `hashes.sha256` closes exactly over the
+machine index, applied structural schemas, manifests, positive cases, negative
+matrix, and negative fixtures.

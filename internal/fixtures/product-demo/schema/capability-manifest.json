@@ -10,7 +10,33 @@
     "manifestId": {"type": "string", "pattern": "^fx_manifest_[a-z0-9_]+$"},
     "synthetic": {"const": true},
     "runtimeKind": {"enum": ["fixture", "classic", "mda", "fleet", "local"]},
-    "capabilities": {"type": "array"}
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "state",
+          "observedAt",
+          "adapterVersion",
+          "contractVersion",
+          "evidenceClass",
+          "reason"
+        ],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "state": {"enum": ["available", "unavailable", "gated", "permission-denied", "unknown"]},
+          "observedAt": {"const": "2026-07-23T00:00:00.000Z"},
+          "adapterVersion": {"type": "string"},
+          "contractVersion": {"type": "string"},
+          "evidenceClass": {"const": "fixture"},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "additionalProperties": false
 }

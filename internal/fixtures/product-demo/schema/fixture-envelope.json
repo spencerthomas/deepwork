@@ -20,12 +20,35 @@
   "properties": {
     "formatVersion": {"const": "1.0.0"},
     "caseId": {"type": "string", "pattern": "^fx_case_[a-z0-9_]+$"},
-    "category": {"type": "string"},
+    "category": {
+      "enum": [
+        "start",
+        "content",
+        "tool",
+        "ordered-interrupt",
+        "checkpoint",
+        "reconnect",
+        "replay",
+        "logical-delay",
+        "completion",
+        "unknown",
+        "malformed-input",
+        "partial-failure",
+        "source-collision"
+      ]
+    },
     "synthetic": {"const": true},
     "evidenceClass": {"const": "fixture"},
     "clock": {
       "type": "object",
-      "required": ["tickEpoch", "tickDurationMs", "observedTick", "observedAt"]
+      "required": ["tickEpoch", "tickDurationMs", "observedTick", "observedAt"],
+      "properties": {
+        "tickEpoch": {"const": "2026-07-23T00:00:00Z"},
+        "tickDurationMs": {"const": 250},
+        "observedTick": {"type": "integer"},
+        "observedAt": {"type": "string", "pattern": "^2026-07-23T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"}
+      },
+      "additionalProperties": false
     },
     "scope": {
       "type": "object",
@@ -37,12 +60,66 @@
         "runId",
         "qualifiedThreadKey",
         "qualifiedRunKey"
+      ],
+      "properties": {
+        "tenantId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+        "workspaceId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+        "sourceId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+        "threadId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+        "runId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+        "qualifiedThreadKey": {"type": "string", "pattern": "^fx_[a-z0-9_]+:fx_[a-z0-9_]+$"},
+        "qualifiedRunKey": {"type": "string", "pattern": "^fx_[a-z0-9_]+:fx_[a-z0-9_]+:fx_[a-z0-9_]+$"}
+      },
+      "additionalProperties": false
+    },
+    "capabilityManifestRef": {
+      "enum": [
+        "manifests/fixture-source.json",
+        "manifests/gated-runtimes.json"
       ]
     },
-    "capabilityManifestRef": {"type": "string"},
-    "records": {"type": "array"},
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "recordId",
+          "durableEventId",
+          "sequence",
+          "tick",
+          "observedAt",
+          "kind",
+          "sourceId",
+          "threadId",
+          "runId",
+          "payload"
+        ],
+        "properties": {
+          "recordId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+          "durableEventId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+          "sequence": {"type": "integer"},
+          "tick": {"type": "integer"},
+          "observedAt": {"type": "string", "pattern": "^2026-07-23T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},
+          "kind": {"type": "string", "pattern": "^fixture-[a-z0-9-]+$"},
+          "sourceId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+          "threadId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+          "runId": {"type": "string", "pattern": "^fx_[a-z0-9_]+$"},
+          "payload": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
     "expected": {"type": "object"},
-    "provenance": {"type": "object"}
+    "provenance": {
+      "type": "object",
+      "required": ["origin", "authority"],
+      "properties": {
+        "origin": {"const": "synthetic-hand-authored"},
+        "authority": {"const": "fixture-only"}
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false
 }

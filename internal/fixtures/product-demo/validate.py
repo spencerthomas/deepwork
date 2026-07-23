@@ -47,27 +47,55 @@ EXPECTED_CATEGORIES = [
 ]
 EXPECTED_NEGATIVE_PATHS = [
     "negative/invalid-schema.json",
+    "negative/invalid-schema-expected-type.json",
+    "negative/invalid-schema-payload-type.json",
     "negative/invalid-id.json",
     "negative/invalid-clock.json",
     "negative/invalid-order.json",
     "negative/invalid-capability.json",
     "negative/invalid-interrupt.json",
+    "negative/invalid-interrupt-decision.json",
+    "negative/invalid-source-collision.json",
     "negative/invalid-hash.json",
     "negative/invalid-scrub.json",
+    "negative/invalid-scrub-endpoint.json",
+    "negative/invalid-scrub-api-key.json",
+    "negative/invalid-scrub-secret.json",
+    "negative/invalid-scrub-basic.json",
+    "negative/invalid-scrub-path.json",
+    "negative/invalid-scrub-identity.json",
+    "negative/invalid-scrub-actor.json",
+    "negative/invalid-scrub-repository.json",
     "negative/invalid-network.json",
+    "negative/invalid-network-host.json",
+    "negative/invalid-network-ip.json",
     "negative/invalid-expectation.json",
     "negative/invalid-logical-delay.json",
     "negative/invalid-logical-delay-visibility.json",
 ]
 EXPECTED_RULE_CODES = [
     "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
+    "FIXTURE_SCHEMA_REQUIRED_FIELD",
     "FIXTURE_ID_PREFIX",
     "FIXTURE_CLOCK_DERIVATION",
     "FIXTURE_ORDER_SEQUENCE",
     "FIXTURE_CAPABILITY_EVIDENCE",
     "FIXTURE_INTERRUPT_ALIGNMENT",
+    "FIXTURE_INTERRUPT_DECISION_VALUE",
+    "FIXTURE_ID_SOURCE_COLLISION",
     "FIXTURE_HASH_MISMATCH",
     "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_SCRUB_SECRET_VALUE",
+    "FIXTURE_SCRUB_SECRET_VALUE",
+    "FIXTURE_SCRUB_UNSAFE_PATH",
+    "FIXTURE_SCRUB_REAL_IDENTITY",
+    "FIXTURE_SCRUB_REAL_IDENTITY",
+    "FIXTURE_SCRUB_FORBIDDEN_FIELD",
+    "FIXTURE_NETWORK_EXTERNAL_URL",
+    "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_NETWORK_EXTERNAL_URL",
     "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
     "FIXTURE_CLOCK_DELAY_MISMATCH",
@@ -99,18 +127,67 @@ VALIDATOR_IMPORT_ALLOWLIST = [
     "sys",
 ]
 FORBIDDEN_FIELD_FRAGMENTS = (
+    "accesskey",
+    "apikey",
     "authref",
     "authorization",
+    "callbackurl",
+    "cookie",
+    "credential",
+    "endpoint",
+    "hostname",
     "password",
     "privatekey",
+    "repository",
     "secret",
+    "serviceurl",
+    "signedurl",
     "token",
+    "webhookurl",
 )
-URL_RE = re.compile(r"https?://", re.IGNORECASE)
-SECRET_VALUE_RE = re.compile(
-    r"(?:bearer\s+[a-z0-9._-]+|-----BEGIN [A-Z ]+PRIVATE KEY-----|(?:sk|ghp)_[a-z0-9]{8,})",
+IDENTITY_FIELD_NAMES = {
+    "actor",
+    "actorid",
+    "email",
+    "owner",
+    "ownerid",
+    "userid",
+    "username",
+}
+EXTERNAL_SCHEME_RE = re.compile(
+    r"(?:https?|wss?|ftp|file|data|ssh|git)://",
     re.IGNORECASE,
 )
+EXTERNAL_HOST_RE = re.compile(
+    r"(?<![a-z0-9_@-])"
+    r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z]{2,63}(?::[0-9]{1,5})?(?![a-z0-9_-])",
+    re.IGNORECASE,
+)
+IP_ADDRESS_RE = re.compile(
+    r"(?<![a-z0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![a-z0-9])|"
+    r"(?<![a-z0-9])(?:[a-f0-9]{0,4}:){2,}[a-f0-9]{0,4}(?![a-z0-9])",
+    re.IGNORECASE,
+)
+UNSAFE_PATH_RE = re.compile(
+    r"(?:^|[\\/])\.\.(?:[\\/]|$)|^(?:/|[a-z]:[\\/]|\\\\)",
+    re.IGNORECASE,
+)
+REAL_IDENTITY_RE = re.compile(
+    r"(?:[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|"
+    r"(?:git@|github(?:usercontent)?\.com|gitlab\.com|bitbucket\.org))",
+    re.IGNORECASE,
+)
+SECRET_VALUE_RE = re.compile(
+    r"(?:basic\s+[a-z0-9+/]{8,}={0,2}(?![a-z0-9+/=])|"
+    r"bearer\s+[a-z0-9._~+/-]+=*|"
+    r"-----BEGIN [A-Z ]+PRIVATE KEY-----|"
+    r"(?:sk|gh[opsu]|xox[abprs])_[a-z0-9_-]{8,}|"
+    r"AKIA[A-Z0-9]{16}|"
+    r"eyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})",
+    re.IGNORECASE,
+)
+VALID_HITL_DECISIONS = ("approve", "edit", "reject", "respond")
 
 
 class DuplicateKeyError(ValueError):
@@ -170,21 +247,124 @@ def scrub_diagnostics(value):
     diagnostics = []
     for path, item in _walk(value):
         if isinstance(item, dict):
-            for key in item:
+            for key, child in item.items():
                 normalized = re.sub(r"[^a-z0-9]", "", key.lower())
                 if any(fragment in normalized for fragment in FORBIDDEN_FIELD_FRAGMENTS):
                     diagnostics.append(("FIXTURE_SCRUB_FORBIDDEN_FIELD", f"{path}/{key}"))
-        elif isinstance(item, str) and SECRET_VALUE_RE.search(item):
-            diagnostics.append(("FIXTURE_SCRUB_SECRET_VALUE", path))
+                if (
+                    normalized in IDENTITY_FIELD_NAMES
+                    and isinstance(child, str)
+                    and not child.startswith("fx_")
+                ):
+                    diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", f"{path}/{key}"))
+        elif isinstance(item, str):
+            if SECRET_VALUE_RE.search(item):
+                diagnostics.append(("FIXTURE_SCRUB_SECRET_VALUE", path))
+            if UNSAFE_PATH_RE.search(item):
+                diagnostics.append(("FIXTURE_SCRUB_UNSAFE_PATH", path))
+            if REAL_IDENTITY_RE.search(item):
+                diagnostics.append(("FIXTURE_SCRUB_REAL_IDENTITY", path))
     return diagnostics
 
 
 def network_diagnostics(value):
-    return [
-        ("FIXTURE_NETWORK_EXTERNAL_URL", path)
-        for path, item in _walk(value)
-        if isinstance(item, str) and URL_RE.search(item)
-    ]
+    diagnostics = []
+    for path, item in _walk(value):
+        if not isinstance(item, str):
+            continue
+        internal_reference = (
+            path == "/negativeMatrixPath"
+            or path == "/capabilityManifestRef"
+            or path.startswith("/casePaths/")
+            or path.startswith("/schemaPaths/")
+            or path.startswith("/manifestPaths/")
+            or path.startswith("/hashedAssets/")
+            or path.startswith("/negativePaths/")
+            or path.startswith("/properties/capabilityManifestRef/enum/")
+        )
+        if internal_reference:
+            continue
+        if (
+            EXTERNAL_SCHEME_RE.search(item)
+            or EXTERNAL_HOST_RE.search(item)
+            or IP_ADDRESS_RE.search(item)
+        ):
+            diagnostics.append(("FIXTURE_NETWORK_EXTERNAL_URL", path))
+    return diagnostics
+
+
+def _matches_schema_type(value, expected):
+    if expected == "object":
+        return isinstance(value, dict)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    if expected == "null":
+        return value is None
+    return False
+
+
+def structural_schema_diagnostics(value, schema, path="$"):
+    diagnostics = []
+    expected_type = schema.get("type")
+    if expected_type is not None and not _matches_schema_type(value, expected_type):
+        return [f"{path}:type"]
+    if "const" in schema and value != schema["const"]:
+        diagnostics.append(f"{path}:const")
+    if "enum" in schema and value not in schema["enum"]:
+        diagnostics.append(f"{path}:enum")
+    if isinstance(value, str) and "pattern" in schema:
+        if re.fullmatch(schema["pattern"], value) is None:
+            diagnostics.append(f"{path}:pattern")
+    if isinstance(value, dict):
+        required = schema.get("required", [])
+        diagnostics.extend(
+            f"{path}/{key}:required" for key in required if key not in value
+        )
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            diagnostics.extend(
+                f"{path}/{key}:additional" for key in value if key not in properties
+            )
+        for key, child_schema in properties.items():
+            if key in value:
+                diagnostics.extend(
+                    structural_schema_diagnostics(
+                        value[key],
+                        child_schema,
+                        f"{path}/{key}",
+                    )
+                )
+    if isinstance(value, list):
+        if len(value) < schema.get("minItems", 0):
+            diagnostics.append(f"{path}:minItems")
+        if schema.get("uniqueItems") and len({canonical_json_bytes(item) for item in value}) != len(value):
+            diagnostics.append(f"{path}:uniqueItems")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                diagnostics.extend(
+                    structural_schema_diagnostics(
+                        item,
+                        item_schema,
+                        f"{path}/{index}",
+                    )
+                )
+    return diagnostics
+
+
+def _has_unsafe_structural_shape(diagnostics):
+    return any(
+        diagnostic.endswith((":type", ":required", ":additional", ":minItems"))
+        for diagnostic in diagnostics
+    )
 
 
 def _required_case_fields():
@@ -204,6 +384,13 @@ def _required_case_fields():
 
 
 def validate_manifest(manifest):
+    structural_diagnostics = structural_schema_diagnostics(
+        manifest,
+        read_json("schema/capability-manifest.json"),
+    )
+    if _has_unsafe_structural_shape(structural_diagnostics):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+    structural_invalid = bool(structural_diagnostics)
     required = {
         "formatVersion",
         "manifestId",
@@ -248,6 +435,8 @@ def validate_manifest(manifest):
             diagnostics.append("FIXTURE_CAPABILITY_REASON")
     diagnostics.extend(code for code, _ in scrub_diagnostics(manifest))
     diagnostics.extend(code for code, _ in network_diagnostics(manifest))
+    if structural_invalid and not diagnostics:
+        diagnostics.append("FIXTURE_SCHEMA_REQUIRED_FIELD")
     return sorted(set(diagnostics))
 
 
@@ -316,13 +505,64 @@ def _semantic_diagnostics(case):
         payload = records[0]["payload"]
         requests = payload.get("actionRequests", [])
         configs = payload.get("reviewConfigs", [])
-        request_ids = [item.get("requestId") for item in requests]
-        config_ids = [item.get("requestId") for item in configs]
-        if len(requests) != len(configs) or request_ids != config_ids:
+        if any(
+            not isinstance(request, dict)
+            or set(request) not in (
+                {"name", "args"},
+                {"name", "args", "description"},
+            )
+            or not isinstance(request.get("args"), dict)
+            for request in requests
+        ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
-        if [item.get("actionName") for item in requests] != ["review", "review"]:
+        if any(
+            not isinstance(config, dict)
+            or set(config) not in (
+                {"actionName", "allowedDecisions"},
+                {"actionName", "allowedDecisions", "argsSchema"},
+            )
+            for config in configs
+        ):
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+        request_names = [item.get("name") for item in requests]
+        config_names = [item.get("actionName") for item in configs]
+        if (
+            not requests
+            or len(requests) != len(configs)
+            or request_names != config_names
+        ):
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+        if request_names != ["review", "review"]:
             return ["FIXTURE_INTERRUPT_REPEATED_NAME"]
-        if expected["requestOrder"] != request_ids:
+        if (
+            expected["actionRequestOrder"] != request_names
+            or expected["reviewConfigOrder"] != config_names
+            or expected["positionalAlignment"] is not True
+            or expected["repeatedActionNamesPreserved"] != request_names
+        ):
+            return ["FIXTURE_INTERRUPT_ALIGNMENT"]
+        observed_decisions = []
+        for config in configs:
+            decisions = config.get("allowedDecisions")
+            if (
+                not isinstance(decisions, list)
+                or not decisions
+                or len(decisions) != len(set(decisions))
+                or any(decision not in VALID_HITL_DECISIONS for decision in decisions)
+            ):
+                return ["FIXTURE_INTERRUPT_DECISION_VALUE"]
+            observed_decisions.extend(decisions)
+        if (
+            sorted(set(observed_decisions)) != sorted(VALID_HITL_DECISIONS)
+            or expected["documentedDecisionVocabulary"]
+            != list(VALID_HITL_DECISIONS)
+        ):
+            return ["FIXTURE_INTERRUPT_DECISION_VALUE"]
+        if (
+            expected["acceptedDecisionPresent"] is not False
+            or expected["resumePayloadPresent"] is not False
+            or expected["submissionCapabilityState"] != "gated"
+        ):
             return ["FIXTURE_INTERRUPT_ALIGNMENT"]
     elif category == "replay":
         seen = set()
@@ -357,11 +597,37 @@ def _semantic_diagnostics(case):
         if len(matching) != 1 or expected["terminalStatus"] != "completed":
             return ["FIXTURE_EXPECTATION_TERMINAL_AUTHORITY"]
     elif category == "source-collision":
-        if len(set(expected["distinctQualifiedThreadKeys"])) != 2:
+        if len(records) != 2:
             return ["FIXTURE_ID_SOURCE_COLLISION"]
-        if len(set(expected["distinctQualifiedRunKeys"])) != 2:
-            return ["FIXTURE_ID_SOURCE_COLLISION"]
-        if len({record["sourceId"] for record in records}) != 2:
+        source_ids = [record["sourceId"] for record in records]
+        thread_ids = [record["threadId"] for record in records]
+        run_ids = [record["runId"] for record in records]
+        qualified_threads = [
+            f"{record['sourceId']}:{record['threadId']}" for record in records
+        ]
+        qualified_runs = [
+            f"{record['sourceId']}:{record['threadId']}:{record['runId']}"
+            for record in records
+        ]
+        if (
+            len(set(source_ids)) != 2
+            or set(thread_ids) != {expected["sharedThreadId"]}
+            or set(run_ids) != {expected["sharedRunId"]}
+            or expected["distinctQualifiedThreadKeys"] != qualified_threads
+            or expected["distinctQualifiedRunKeys"] != qualified_runs
+            or any(
+                record["payload"].get("qualifiedThreadKey")
+                != qualified_threads[index]
+                or record["payload"].get("qualifiedRunKey")
+                != qualified_runs[index]
+                for index, record in enumerate(records)
+            )
+            or case["scope"]["sourceId"] != source_ids[0]
+            or case["scope"]["threadId"] != thread_ids[0]
+            or case["scope"]["runId"] != run_ids[0]
+            or case["scope"]["qualifiedThreadKey"] != qualified_threads[0]
+            or case["scope"]["qualifiedRunKey"] != qualified_runs[0]
+        ):
             return ["FIXTURE_ID_SOURCE_COLLISION"]
     elif category == "malformed-input":
         if expected["envelopeValid"] is not True or expected["safeErrorCode"] != "FIXTURE_INPUT_MALFORMED":
@@ -376,6 +642,13 @@ def _semantic_diagnostics(case):
 
 
 def validate_case(case):
+    structural_diagnostics = structural_schema_diagnostics(
+        case,
+        read_json("schema/fixture-envelope.json"),
+    )
+    if _has_unsafe_structural_shape(structural_diagnostics):
+        return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
+    structural_invalid = bool(structural_diagnostics)
     if not isinstance(case, dict) or set(case) != _required_case_fields():
         return ["FIXTURE_SCHEMA_REQUIRED_FIELD"]
     if case["formatVersion"] != FORMAT_VERSION or case["synthetic"] is not True or case["evidenceClass"] != "fixture":
@@ -436,6 +709,8 @@ def validate_case(case):
     diagnostics.extend(_semantic_diagnostics(case))
     diagnostics.extend(code for code, _ in scrub_diagnostics(case))
     diagnostics.extend(code for code, _ in network_diagnostics(case))
+    if structural_invalid and not diagnostics:
+        diagnostics.append("FIXTURE_SCHEMA_REQUIRED_FIELD")
     return sorted(set(diagnostics))
 
 
@@ -557,6 +832,9 @@ def render_validation_report(analysis=None):
             analysis["negativeResults"][read_json(path)["negativeId"]]["declaredRuleCode"]
             for path in analysis["matrix"]["negativePaths"]
         ],
+        "structuralSchemaPaths": SCHEMA_PATHS,
+        "structuralSchemaApplicationCount": len(analysis["cases"]) + len(MANIFEST_PATHS),
+        "normalizedHitlDecisionVocabulary": list(VALID_HITL_DECISIONS),
         "scrubMatchCount": len(analysis["scrubMatches"]),
         "externalUrlHostCount": len(analysis["externalUrls"]),
         "validatorImportAllowlist": VALIDATOR_IMPORT_ALLOWLIST,

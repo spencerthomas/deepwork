@@ -6,6 +6,7 @@ import {
   Calendar,
   CheckCheck,
   CornerDownLeft,
+  FileText,
   Inbox,
   Plus,
   Search,
@@ -15,39 +16,21 @@ import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
-interface Command {
-  label: string;
-  hint: string;
-  icon: ComponentType<{ className?: string }>;
-  href: string;
-}
+import { buildCommandResults, type CommandIconKey } from "./command-palette-model";
 
-function commandsForMode(mode: "api" | "fixture"): Command[] {
-  const runtimeCopy = taskRuntimePresentation(mode);
-  return [
-    {
-      label: "New task",
-      hint: runtimeCopy.commandNewTaskHint,
-      icon: Plus,
-      href: "/tasks/new",
-    },
-    { label: "Tasks", hint: "Task inbox", icon: Inbox, href: "/tasks" },
-    {
-      label: "Approvals",
-      hint: "What task runs need from you",
-      icon: CheckCheck,
-      href: "/approvals",
-    },
-    { label: "Agents", hint: "Manage your fleet", icon: Bot, href: "/agents" },
-    { label: "Schedules", hint: "Recurring runs", icon: Calendar, href: "/schedules" },
-    { label: "Activity", hint: "Recent runs", icon: Activity, href: "/activity" },
-    { label: "Settings", hint: "Workspace settings", icon: Settings, href: "/settings" },
-  ];
-}
+const iconFor: Record<CommandIconKey, ComponentType<{ className?: string }>> = {
+  "new-task": Plus,
+  tasks: Inbox,
+  approvals: CheckCheck,
+  agents: Bot,
+  schedules: Calendar,
+  activity: Activity,
+  settings: Settings,
+  task: FileText,
+};
 
 export function CommandBar({
   open,
@@ -57,10 +40,9 @@ export function CommandBar({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const { mode } = useTasksStore();
+  const { mode, tasks } = useTasksStore();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
-  const commands = useMemo(() => commandsForMode(mode), [mode]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -75,13 +57,8 @@ export function CommandBar({
   }, [open, onOpenChange]);
 
   const filtered = useMemo(
-    () =>
-      commands.filter(
-        (command) =>
-          command.label.toLowerCase().includes(query.toLowerCase()) ||
-          command.hint.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [query],
+    () => buildCommandResults(query, tasks, undefined, mode),
+    [mode, query, tasks],
   );
 
   useEffect(() => setIndex(0), [query]);
@@ -133,13 +110,13 @@ export function CommandBar({
         <ul className="max-h-80 overflow-auto p-2">
           {filtered.length === 0 && (
             <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-              No commands found
+              No commands or loaded tasks match “{query.trim()}”.
             </li>
           )}
           {filtered.map((command, i) => {
-            const Icon = command.icon;
+            const Icon = iconFor[command.icon];
             return (
-              <li key={command.href}>
+              <li key={command.id}>
                 <button
                   type="button"
                   onMouseEnter={() => setIndex(i)}
@@ -149,17 +126,22 @@ export function CommandBar({
                     i === index ? "bg-accent" : "hover:bg-accent/60",
                   )}
                 >
-                  <Icon className="size-4 text-muted-foreground" />
-                  <span className="font-medium">{command.label}</span>
-                  <span className="text-muted-foreground">{command.hint}</span>
+                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate font-medium">{command.label}</span>
+                  <span className="shrink-0 text-muted-foreground">{command.hint}</span>
                   {i === index && (
-                    <CornerDownLeft className="ml-auto size-3.5 text-muted-foreground" />
+                    <CornerDownLeft className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                   )}
                 </button>
               </li>
             );
           })}
         </ul>
+        {query.trim() !== "" && (
+          <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
+            Searching commands and the tasks loaded in this session.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -857,6 +857,12 @@
       "mutation": {"operation": "remove", "path": "/idPolicy"}
     },
     {
+      "negativeId": "fx_probe_fixture_available_capability_name",
+      "declaredRuleCode": "FIXTURE_SCHEMA_REQUIRED_FIELD",
+      "basePath": "manifests/fixture-source.json",
+      "mutation": {"operation": "replace", "path": "/capabilities/0/name", "value": "provider-create"}
+    },
+    {
       "negativeId": "fx_probe_validator_purity_write",
       "declaredRuleCode": "FIXTURE_SCHEMA_VALIDATOR_PURITY",
       "probe": {

@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH
 title: External dispatch - create exactly one safe draft pull request
-status: prepared-for-independent-review
+status: ready-for-external-dispatch
 base_commit: b2243109d0cfb2e093cc37a57017e8e70b5ea64b
 branch: external/research/coding-github-contracts
 owner: external-coding-github-contract-researcher
@@ -11,8 +11,8 @@ acceptance_ids: [SPIKE-GITHUB-001, SPIKE-GITHUB-PROXY-001, SPIKE-GITHUB-CI-001, 
 allowed_paths: [tools/contract-spikes/coding-github/**, docs/references/research/coding-github-contracts/**, docs/exec-plans/external/DW-EXT-W1-CODING-GITHUB-CONTRACT-RESEARCH.md]
 dependencies: [DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH, SPIKE-SANDBOX-001, SPIKE-SANDBOX-002, SPIKE-EGRESS-001, SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, official-github-documentation-access, public-package-index-access, optional:non-production-github-app-and-classic-sandbox]
 created: 2026-07-23
-reviewed_at: null
-review_result: pending
+reviewed_at: 2026-07-23
+review_result: accepted
 ---
 
 # External dispatch - create exactly one safe draft pull request

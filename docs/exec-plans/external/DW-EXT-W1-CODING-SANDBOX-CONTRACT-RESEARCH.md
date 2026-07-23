@@ -1,7 +1,7 @@
 ---
 packet_id: DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH
 title: External dispatch - prove an isolated recoverable coding sandbox
-status: prepared-for-independent-review
+status: ready-for-external-dispatch
 base_commit: b2243109d0cfb2e093cc37a57017e8e70b5ea64b
 branch: external/research/coding-sandbox-contracts
 owner: external-coding-sandbox-contract-researcher
@@ -11,8 +11,8 @@ acceptance_ids: [SPIKE-SANDBOX-001, SPIKE-SANDBOX-002, SPIKE-EGRESS-001, AC-DW-C
 allowed_paths: [tools/contract-spikes/coding-sandbox/**, docs/references/research/coding-sandbox-contracts/**, docs/exec-plans/external/DW-EXT-W1-CODING-SANDBOX-CONTRACT-RESEARCH.md]
 dependencies: [SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-sandbox]
 created: 2026-07-23
-reviewed_at: null
-review_result: pending
+reviewed_at: 2026-07-23
+review_result: accepted
 ---
 
 # External dispatch - prove an isolated recoverable coding sandbox

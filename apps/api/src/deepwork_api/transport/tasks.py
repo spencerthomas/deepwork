@@ -133,6 +133,18 @@ def build_task_router(service: TaskService) -> APIRouter:
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
+        except TaskSourceContractError:
+            return _problem(
+                502,
+                "local_source_contract_mismatch",
+                "The configured local task source broke its supported contract.",
+            )
+        except TaskSourceUnavailableError:
+            return _problem(
+                503,
+                "local_source_unavailable",
+                "The configured local task source is unavailable.",
+            )
         except InterruptMismatchError:
             return _problem(
                 409,

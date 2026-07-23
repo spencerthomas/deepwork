@@ -168,7 +168,7 @@ async def test_response_comment_is_forwarded_to_source_resume() -> None:
 
     follower = asyncio.create_task(runner._follow(task, _Run()))
     for _ in range(20):
-        if (await repository.get_task(task.task_id)).status is TaskStatus.WAITING_APPROVAL:
+        if (task.task_id, "interrupt_1") in runner._resume_acknowledgements:
             break
         await asyncio.sleep(0)
     await service.record_decision(

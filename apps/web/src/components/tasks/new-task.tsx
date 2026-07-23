@@ -3,7 +3,7 @@
 import { ArrowLeft, Bot, CornerDownLeft, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -28,7 +28,17 @@ export function NewTask() {
   const [validationError, setValidationError] = useState<string>();
   const runtimeCopy = taskRuntimePresentation(mode);
 
-  const length = unicodeLength(prompt);
+  const fieldId = useId();
+  const countId = `${fieldId}-count`;
+  const errorId = `${fieldId}-error`;
+  // validatePrompt measures the trimmed value, so the visible/accessible invalid
+  // state uses it too and matches what actually dispatches.
+  const promptLength = unicodeLength(prompt.trim());
+  const overLimit = promptLength > PROMPT_MAX_LENGTH;
+  const shownError = validationError ?? createError;
+  const promptDescribedBy = [countId, shownError !== undefined ? errorId : null]
+    .filter((id): id is string => id !== null)
+    .join(" ");
 
   async function dispatch() {
     try {
@@ -121,6 +131,8 @@ export function NewTask() {
             rows={5}
             maxLength={PROMPT_MAX_LENGTH * 2}
             placeholder="Describe the outcome you want. The agent plans its own steps and pauses for your review."
+            aria-invalid={validationError !== undefined || overLimit}
+            aria-describedby={promptDescribedBy}
             onChange={(event) => {
               setPrompt(event.target.value);
               setValidationError(undefined);
@@ -139,12 +151,13 @@ export function NewTask() {
               Plan approval always required
             </span>
             <span
+              id={countId}
               className={cn(
                 "ml-auto text-[11px] tabular-nums",
-                length > PROMPT_MAX_LENGTH ? "text-status-failed" : "text-muted-foreground",
+                overLimit ? "text-status-failed" : "text-muted-foreground",
               )}
             >
-              {length.toLocaleString()} / {PROMPT_MAX_LENGTH.toLocaleString()}
+              {promptLength.toLocaleString()} / {PROMPT_MAX_LENGTH.toLocaleString()}
             </span>
             <button
               type="button"
@@ -164,14 +177,15 @@ export function NewTask() {
           </div>
         </div>
 
-        {(validationError ?? createError) && (
+        {shownError !== undefined && (
           <div
+            id={errorId}
             className="mt-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
             role="alert"
           >
             <p className="text-sm">
               <span className="font-medium">Task was not created.</span>{" "}
-              <span className="text-muted-foreground">{validationError ?? createError}</span>
+              <span className="text-muted-foreground">{shownError}</span>
             </p>
           </div>
         )}

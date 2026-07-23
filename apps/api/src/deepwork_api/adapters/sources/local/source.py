@@ -17,6 +17,9 @@ from deepwork_api.domain import (
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
+    StaleInterruptError,
+    TaskSourceContractError,
+    TaskSourceUnavailableError,
 )
 
 DEFAULT_LOCAL_AGENT_SERVER_URL = "http://127.0.0.1:2024"
@@ -101,16 +104,28 @@ class LocalSourceConfigurationError(LocalSourceError):
     """The source configuration is outside the fixed local boundary."""
 
 
-class LocalSourceUnavailableError(LocalSourceError):
-    """The loopback Agent Server or official SDK is unavailable."""
+class LocalSourceUnavailableError(LocalSourceError, TaskSourceUnavailableError):
+    """The loopback Agent Server or official SDK is unavailable.
+
+    Also a domain ``TaskSourceUnavailableError`` so the application layer can
+    classify it without importing adapter modules.
+    """
 
 
-class LocalSourceContractError(LocalSourceError):
-    """The Agent Server response does not match the supported graph contract."""
+class LocalSourceContractError(LocalSourceError, TaskSourceContractError):
+    """The Agent Server response does not match the supported graph contract.
+
+    Also a domain ``TaskSourceContractError`` so the application layer can
+    classify it without importing adapter modules.
+    """
 
 
-class LocalSourceStaleInterruptError(LocalSourceError):
-    """The requested interrupt is no longer the source-authoritative interrupt."""
+class LocalSourceStaleInterruptError(LocalSourceError, StaleInterruptError):
+    """The requested interrupt is no longer the source-authoritative interrupt.
+
+    Also a domain ``StaleInterruptError`` so transport maps it to the same
+    conflict contract as every other stale interrupt.
+    """
 
 
 @dataclass(frozen=True, slots=True)

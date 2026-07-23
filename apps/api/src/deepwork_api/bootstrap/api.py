@@ -28,6 +28,19 @@ from deepwork_api.transport import build_router, build_task_router
 _WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 
 
+def _build_local_agent_server_source(
+    *,
+    endpoint: str,
+    assistant_id: str,
+) -> LocalAgentServerSource:
+    """Build the loopback source through the official SDK; test seam."""
+
+    return LocalAgentServerSource.from_official_sdk(
+        endpoint=endpoint,
+        assistant_id=assistant_id,
+    )
+
+
 def create_app(
     *,
     task_database_path: Path | None = None,
@@ -46,6 +59,7 @@ def create_app(
     else:
         sqlite_repository = SQLiteTaskRepository(task_database_path)
         task_repository = sqlite_repository
+    local_source: LocalAgentServerSource | None = None
     if local_agent_server_endpoint is None:
         if local_agent_server_assistant is not None:
             raise ValueError("local Agent Server assistant requires an explicit loopback endpoint")
@@ -55,13 +69,13 @@ def create_app(
             raise ValueError("local Agent Server mode does not support persistent task recovery")
         if local_agent_server_assistant is None:
             raise ValueError("local Agent Server mode requires an explicit assistant identifier")
-        source = LocalAgentServerSource.from_official_sdk(
+        local_source = _build_local_agent_server_source(
             endpoint=local_agent_server_endpoint,
             assistant_id=local_agent_server_assistant,
         )
         task_runner = LocalAgentServerRunner(
             repository=task_repository,
-            source=cast(LocalSource, source),
+            source=cast("LocalSource", local_source),
         )
     task_service = TaskService(repository=task_repository, runner=task_runner)
 
@@ -77,8 +91,8 @@ def create_app(
             finally:
                 if sqlite_repository is not None:
                     await sqlite_repository.close()
-                if local_agent_server_endpoint is not None:
-                    await source.close()
+                if local_source is not None:
+                    await local_source.close()
 
     app = FastAPI(
         title="Deep Work API fixture scaffold",
@@ -125,15 +139,30 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="Absolute path to a SQLite database for local fixture persistence.",
     )
+    parser.add_argument(
+        "--local-agent-server-endpoint",
+        help=(
+            "Explicit HTTP loopback IP origin of a langgraph dev Agent Server "
+            "(for example http://127.0.0.1:2024); requires the assistant flag."
+        ),
+    )
+    parser.add_argument(
+        "--local-agent-server-assistant",
+        help="Assistant identifier registered on the loopback Agent Server.",
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the fixture-only API on a fixed loopback host."""
+    """Run the credential-free local API on a fixed loopback host."""
 
     args = _parser().parse_args(argv)
     uvicorn.run(
-        create_app(task_database_path=args.task_database),
+        create_app(
+            task_database_path=args.task_database,
+            local_agent_server_endpoint=args.local_agent_server_endpoint,
+            local_agent_server_assistant=args.local_agent_server_assistant,
+        ),
         host="127.0.0.1",
         port=args.port,
         access_log=False,

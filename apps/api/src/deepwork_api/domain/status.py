@@ -8,6 +8,7 @@ class EvidenceClass(StrEnum):
     """Origin of an observed capability or status."""
 
     FIXTURE = "fixture"
+    LOCAL_SOURCE = "local-source"
 
 
 class ProcessState(StrEnum):

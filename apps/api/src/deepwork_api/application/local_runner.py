@@ -10,14 +10,25 @@ from typing import Protocol
 from deepwork_api.domain import (
     DecisionRecord,
     DecisionValue,
+    EvidenceClass,
+    InterruptMismatchError,
+    PlanRevisionConflictError,
+    PlanUnavailableError,
     PlanUpdateRecord,
     ProposedPlan,
+    StaleInterruptError,
     TaskEventName,
     TaskSnapshot,
+    TaskSourceContractError,
     TaskSourceUnavailableError,
     TaskStatus,
 )
 from deepwork_api.ports import TaskRepository
+
+_SOURCE_UNAVAILABLE_REASON = "The local agent source became unavailable."
+_SOURCE_CONTRACT_REASON = "The local agent source broke its supported contract."
+_RUNNER_FAILURE_REASON = "The local source task runner failed safely."
+_TERMINAL_REASON = "Local Agent Server run reached a terminal state."
 
 
 class LocalRun(Protocol):
@@ -85,6 +96,8 @@ class LocalAgentServerRunner:
     async def create(self, *, title: str, objective: str) -> TaskSnapshot:
         try:
             run = await self.source.start(objective)
+        except TaskSourceContractError:
+            raise
         except Exception:
             raise TaskSourceUnavailableError from None
         task = await self.repository.create_task(
@@ -101,7 +114,7 @@ class LocalAgentServerRunner:
             self._follow(task, run), name=f"deepwork-local-{task.task_id}"
         )
         self._tasks[task.task_id] = background
-        background.add_done_callback(lambda _: self._tasks.pop(task.task_id, None))
+        background.add_done_callback(lambda finished: self._discard(task.task_id, finished))
 
     async def close(self) -> None:
         active = tuple(self._tasks.values())
@@ -119,9 +132,20 @@ class LocalAgentServerRunner:
         expected_revision: int,
         steps: tuple[str, ...],
     ) -> PlanUpdateRecord:
+        # Validate the exact pending interrupt and revision before any source
+        # I/O, so a mismatched request never reaches the loopback server.
+        current = await self.repository.get_task(task.task_id)
+        if current.status.is_terminal or current.pending_interrupt_id is None:
+            raise StaleInterruptError
+        if current.pending_interrupt_id != interrupt_id:
+            raise InterruptMismatchError
+        if current.proposed_plan is None:
+            raise PlanUnavailableError
+        if current.proposed_plan.revision != expected_revision:
+            raise PlanRevisionConflictError
         thread_id = self._threads.get(task.task_id)
         if thread_id is None:
-            raise RuntimeError("local source thread is unavailable")
+            raise TaskSourceContractError
         try:
             updated = await self.source.update_plan(
                 thread_id,
@@ -129,10 +153,12 @@ class LocalAgentServerRunner:
                 expected_revision=expected_revision,
                 steps=steps,
             )
+        except (StaleInterruptError, TaskSourceContractError):
+            raise
         except Exception:
             raise TaskSourceUnavailableError from None
         if updated.interrupt_id == interrupt_id or updated.plan_revision != expected_revision + 1:
-            raise RuntimeError("local source did not provide a fresh plan interrupt")
+            raise TaskSourceContractError
         # The source has confirmed the edit at this point.  Reconcile the known
         # checkpoint before doing any further source I/O, so the old interrupt is
         # never advertised after the source has advanced it.
@@ -141,9 +167,10 @@ class LocalAgentServerRunner:
             interrupt_id=interrupt_id,
             expected_revision=expected_revision,
             steps=steps,
+            evidence_class=EvidenceClass.LOCAL_SOURCE,
         )
         if record.plan.revision != updated.plan_revision:
-            raise RuntimeError("local source plan revision does not match the task")
+            raise TaskSourceContractError
         await self.repository.append_event(
             task.task_id,
             name=TaskEventName.INTERRUPT_REQUESTED,
@@ -191,6 +218,12 @@ class LocalAgentServerRunner:
             raise
         return record
 
+    def _discard(self, task_id: str, background: asyncio.Task[None]) -> None:
+        """Drop only this exact follower so a restarted follower stays tracked."""
+
+        if self._tasks.get(task_id) is background:
+            del self._tasks[task_id]
+
     async def _follow(self, task: TaskSnapshot, run: LocalRun) -> None:
         try:
             await self.repository.append_event(
@@ -200,14 +233,17 @@ class LocalAgentServerRunner:
                 status=TaskStatus.RUNNING,
             )
             async for event in self.source.stream(run):
-                if getattr(event, "kind", None) == "error":
-                    raise RuntimeError("local source reported a run error")
+                kind = getattr(event, "kind", None)
+                if kind == "error":
+                    raise TaskSourceContractError
+                if kind != "progress":
+                    continue
                 await self.repository.append_event(
                     task.task_id,
                     name=TaskEventName.CONTENT_DELTA,
                     data=(
                         ("text", "Local Agent Server progress received."),
-                        ("evidenceClass", "fixture"),
+                        ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
                     ),
                 )
             state = await self.source.get_state(run.thread_id)
@@ -229,15 +265,25 @@ class LocalAgentServerRunner:
             await self._complete(task, state)
         except asyncio.CancelledError:
             raise
+        except (StaleInterruptError, TaskSourceContractError):
+            # The source advanced or broke its contract underneath an accepted
+            # decision; the task must end honestly instead of claiming success.
+            await self._fail(task, _SOURCE_CONTRACT_REASON)
+        except TaskSourceUnavailableError:
+            await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
         except Exception:
-            await self._fail(task)
+            await self._fail(task, _RUNNER_FAILURE_REASON)
 
     async def _pause(self, task: TaskSnapshot, state: LocalState) -> None:
-        assert state.interrupt is not None
         interrupt = state.interrupt
+        if interrupt is None:
+            raise TaskSourceContractError
         plan = ProposedPlan(interrupt.plan_revision, "Local Agent Server plan", interrupt.plan, ())
         await self.repository.set_plan(
-            task.task_id, plan=plan, event_name=TaskEventName.PLAN_PROPOSED
+            task.task_id,
+            plan=plan,
+            event_name=TaskEventName.PLAN_PROPOSED,
+            evidence_class=EvidenceClass.LOCAL_SOURCE,
         )
         await self.repository.append_event(
             task.task_id,
@@ -253,24 +299,39 @@ class LocalAgentServerRunner:
         )
 
     async def _complete(self, task: TaskSnapshot, state: LocalState) -> None:
-        if state.status not in {"completed", "rejected"}:
-            raise RuntimeError("local source did not report a terminal status")
-        status = TaskStatus.REJECTED if state.status == "rejected" else TaskStatus.COMPLETED
+        if state.status == "rejected":
+            await self.repository.append_event(
+                task.task_id,
+                name=TaskEventName.RUN_COMPLETED,
+                data=(
+                    ("runId", task.run_id),
+                    ("status", TaskStatus.REJECTED.value),
+                    ("safeReason", _TERMINAL_REASON),
+                    ("resultAvailable", False),
+                ),
+                status=TaskStatus.REJECTED,
+                clear_pending_interrupt=True,
+            )
+            return
+        if state.status != "completed" or state.final_answer is None:
+            # A run that pauses no interrupt must end honestly terminal, and a
+            # completed run without a result would be a false Done.
+            raise TaskSourceContractError
         await self.repository.append_event(
             task.task_id,
             name=TaskEventName.RUN_COMPLETED,
             data=(
                 ("runId", task.run_id),
-                ("status", status.value),
-                ("safeReason", "Local Agent Server run reached a terminal state."),
-                ("resultAvailable", state.final_answer is not None),
+                ("status", TaskStatus.COMPLETED.value),
+                ("safeReason", _TERMINAL_REASON),
+                ("resultAvailable", True),
             ),
-            status=status,
+            status=TaskStatus.COMPLETED,
             clear_pending_interrupt=True,
             result=state.final_answer,
         )
 
-    async def _fail(self, task: TaskSnapshot) -> None:
+    async def _fail(self, task: TaskSnapshot, reason: str) -> None:
         try:
             await self.repository.append_event(
                 task.task_id,
@@ -278,7 +339,7 @@ class LocalAgentServerRunner:
                 data=(
                     ("runId", task.run_id),
                     ("status", "failed"),
-                    ("safeReason", "The local Agent Server source failed safely."),
+                    ("safeReason", reason),
                     ("resultAvailable", False),
                 ),
                 status=TaskStatus.FAILED,

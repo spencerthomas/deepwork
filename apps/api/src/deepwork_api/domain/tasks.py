@@ -183,3 +183,7 @@ class PlanRevisionConflictError(TaskDomainError):
 
 class TaskSourceUnavailableError(TaskDomainError):
     """The configured task source cannot safely start the requested run."""
+
+
+class TaskSourceContractError(TaskDomainError):
+    """The configured task source broke its supported contract."""

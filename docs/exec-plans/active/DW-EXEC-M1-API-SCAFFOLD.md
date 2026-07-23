@@ -247,12 +247,24 @@ Acceptance:
 - [x] 2026-07-23 AEST — `ts-package-reviewer` accepted the plan; prerequisites,
   permissions, decisions, open-gate fallbacks, scenario qualification, and exact
   governed paths were verified for dispatch from the recorded base.
-- [ ] Milestone 1 — Independent project and package boundary complete.
-- [ ] Milestone 2 — Honest API and worker entry points complete.
-- [ ] Milestone 3 — Strict package verification complete.
-- [ ] Milestone 4 — Fresh independent review packet complete.
+- [x] 2026-07-23 AEST — Milestone 1 complete. `apps/api` is an independent Python
+  3.12 distribution with package-local guidance, commands, manifest, frozen lock,
+  source layout, type marker, and environment; public-index bootstrap resolved 32
+  packages and the frozen sync checked 31 installed packages.
+- [x] 2026-07-23 AEST — Milestone 2 complete. The public side-effect-free
+  `create_app()` factory, process-only `/health`, fixture-only
+  `/api/v1/demo/status`, and separate unavailable-durability worker smoke are
+  covered by 9 no-external-socket tests and 5 focused contract tests.
+- [x] 2026-07-23 AEST — Milestone 3 complete. Formatting, lint, strict typing,
+  unit/contract tests, source/wheel builds, artifact inspection, and offline clean-
+  target wheel install/import/entry-point checks pass from the frozen lock; the
+  final complete validation was rerun without changing implementation files.
+- [x] 2026-07-23 AEST — Milestone 4 implementation packet assembled. The changed-
+  path audit is confined to `apps/api/**` and this plan, and the exact results and
+  qualification are recorded below. Fresh independent acceptance remains pending.
 
-This plan is reviewed and dispatch-ready. No implementation milestone has started.
+Implementation is complete and stopped at the required independent-review handoff.
+This author has not approved the implementation or changed review metadata.
 
 ## Surprises & Discoveries
 
@@ -261,6 +273,26 @@ This plan is reviewed and dispatch-ready. No implementation milestone has starte
   `3dbe6629d8053380ab6a8bff6d2fcb462f854256`. Consequence: this plan can establish
   the package boundary without preserving runtime compatibility, but cannot claim
   any durable or external behavior.
+- 2026-07-23 AEST — Observation: the first sandboxed `uv lock` and frozen sync
+  could not resolve `https://pypi.org/simple/fastapi/` because DNS was denied.
+  Evidence: `failed to lookup address information`. Consequence: the single
+  reviewed public-package-index bootstrap was retried with explicit approval; all
+  later lock, runtime, tests, and clean-install checks ran from the package-local
+  frozen environment and cache without external access.
+- 2026-07-23 AEST — Observation: `pytest-socket --disable-socket` also blocks the
+  local Unix socket pair used by Python's asyncio event loop even when HTTP uses an
+  in-process ASGI transport. Consequence: tests add `--allow-unix-socket` while
+  retaining denial of IP/outbound sockets; no listening port or external request
+  is opened.
+- 2026-07-23 AEST — Observation: an offline clean virtual-environment reinstall
+  could not reconstruct one transitive binary wheel from uv's extracted cache.
+  Consequence: artifact proof installs only the built `deepwork-api` wheel with
+  `--no-deps` into a clean temporary target, asserts the import originates there,
+  and exercises it against the already frozen and verified runtime dependencies.
+- 2026-07-23 AEST — Observation: repository documentation generation is current,
+  but full documentation validation reports this active cell plan is not in the
+  shared active-plan index. Consequence: the implementation does not edit the
+  coordinator-owned index; that single integration check remains a handoff item.
 
 ## Decision Log
 
@@ -280,6 +312,24 @@ This plan is reviewed and dispatch-ready. No implementation milestone has starte
   only unavailable fallbacks mandatory. Consequence: implementation may start
   from the exact base but cannot add credentials, provider/service calls, or a
   task stream. Approved by: `ts-package-reviewer`.
+- 2026-07-23 AEST — Decision: pin the direct runtime/build/check dependencies at
+  FastAPI 0.139.2, Pydantic 2.13.4, Uvicorn 0.51.0, Hatchling 1.31.0, HTTPX
+  0.28.1, mypy 1.20.2, pytest 9.1.1, pytest-asyncio 1.4.0, pytest-socket 0.8.0,
+  and Ruff 0.15.22. Rationale: the package has an exact Python 3.12 lock and every
+  direct dependency has a bounded scaffold/build/test role. Consequence: updates
+  require an explicit manifest-and-lock review. Approval: pending fresh review.
+- 2026-07-23 AEST — Decision: represent all unavailable demo capabilities as
+  deterministic typed fixture state and expose no authentication, source, durable-
+  job, stream, provider, persistence, or proxy route. Rationale: honest fallbacks
+  enforce the open contract gates. Consequence: this is only an API package seam,
+  not product-demo or `DW-FND-003` acceptance. Approval: pending fresh review.
+- 2026-07-23 AEST — Decision: verify the built wheel by an offline `--no-deps`
+  install into a clean temporary target, with explicit import-origin, package-data,
+  and worker-entry-point assertions. Rationale: the reviewed dependency set is
+  already installed from the frozen lock, while artifact isolation must prove the
+  project wheel rather than duplicate index access. Consequence: the check proves
+  the wheel is independently laid out and importable, but does not claim a second
+  dependency resolution. Approval: pending fresh review.
 
 ## Detailed implementation approach
 
@@ -342,6 +392,52 @@ Browser, viewport, assistive-technology, database, migration, live-contract,
 external telemetry, and full product-demo proof are not applicable to this
 package-only cell and must not be reported as passing.
 
+### Implementation results — 2026-07-23 AEST
+
+- Environment and lock: uv 0.11.8 selected CPython 3.12.11; the approved public-
+  PyPI lock resolved 32 packages, the package-local frozen sync checked 31
+  installed packages, and a subsequent `uv lock --check --offline` completed from
+  cache. No credential or private index was used.
+- Static checks: `ruff format --check` reported 23 files unchanged, `ruff check`
+  passed, and strict mypy with the Pydantic plugin reported no issues in 23 source,
+  test, and package-check files.
+- Behavioral checks: the no-IP-socket suite passed 9 tests and the focused
+  no-IP-socket contract suite passed 5 tests. In-process contracts cover process-
+  only health, deterministic fixture evidence, unavailable live capabilities,
+  forbidden secret/proxy shapes, absence of `/v1/deepagents`, and worker output
+  containing `"durability":"unavailable"`.
+- Artifact checks: Hatchling built both sdist and wheel; inspection found declared
+  public modules, `py.typed`, and both console entry points, with no tests, evidence
+  logs, cache paths, or checkout paths. The wheel installed offline with `--no-deps`
+  into a clean temporary target, the import origin was that target, `create_app()`
+  loaded, and `deepwork-worker --check` retained the unavailable fallback.
+- Repeatability: the final chained `doctor`, frozen `bootstrap`, `check`,
+  `package-check`, offline lock check, and `git diff --check` completed successfully
+  without modifying an implementation file.
+- Documentation: `python3 tools/docs/generate.py --check` passed with
+  `verified 6 generated documents`. `python3 tools/docs/check.py` exited 1 with the
+  single integration-owned error `active ExecPlan is not indexed:
+  docs/exec-plans/active/DW-EXEC-M1-API-SCAFFOLD.md`; this cell did not alter the
+  shared index.
+- Governed paths: the final diff contains only `apps/api/**` and this ExecPlan.
+  Local `.venv`, `.uv-cache`, test/type/lint caches, distributions, and sanitized
+  `.artifacts` evidence are excluded by the package-local `.gitignore`.
+
+Scenario contribution is deliberately partial:
+
+- `AC-DW-FND-001-01`: contributes credential-free API fixture bootstrap and
+  network-denied package tests; it does not start or prove the fixture web app.
+- `AC-DW-FND-001-03`: enforces the API's inward Python package direction and
+  forbidden sibling/provider imports; root/TypeScript-wide enforcement is deferred.
+- `AC-DW-FND-001-07`: package bootstrap/tests succeed without MDA or Fleet, and
+  fixture capability state is unavailable; repository-wide default bootstrap is
+  outside this cell.
+- `AC-DW-FND-003-05`: no Deep Agents route, Fleet CRUD, MDA deployment, or provider
+  SDK exists; registration and runtime-label behavior await accepted contracts.
+- `AC-DW-FND-003-08`: the present public fixture schema/OpenAPI contains no
+  credential reference or proxy field; persisted authorized source views do not
+  yet exist and therefore the full scenario is not satisfied.
+
 ## Idempotence, rollback, and recovery
 
 - Bootstrap and validation are package-local and safe to rerun from the frozen
@@ -373,8 +469,24 @@ publish, deploy, or begin Wave 2 application-service behavior.
 
 ## Outcomes & Retrospective
 
-Pending. At completion, record the exact delivered package behavior, public import
-and entry-point names, dependency pins, validation evidence, deviations, remaining
-open gates, deferred durable/application-service work, reviewer outcome, and the
-accepted commit offered to the coordinator. Do not claim full `DW-FND-003` or any
-release scenario complete from this scaffold.
+The cell delivers an independently locked `deepwork-api` Python 3.12 distribution
+with the deliberate `deepwork_api.create_app` public import, `deepwork-api` process
+entry point, and `deepwork-worker --check` entry point. Its only HTTP behavior is
+process liveness plus deterministic fixture status, and every live capability is
+unavailable. No credential, provider SDK, external service, persistence model,
+durable job, stream, generic proxy, sibling package, or product-demo composition
+was added.
+
+Package-local formatting, lint, strict typing, no-IP-socket unit/contract tests,
+build, artifact inspection, and offline clean-target import checks pass from the
+frozen lock. The implementation needed two bounded validation adjustments: allow
+the asyncio event loop's local Unix socket pair while denying IP sockets, and
+separate wheel-isolation proof from already frozen dependency installation. The
+only repository-level failure is the coordinator-owned active-plan index entry.
+
+`SPIKE-AUTH-002`, `SPIKE-SOURCE-001`, and `SPIKE-STREAM-001` remain open with the
+reviewed unavailable fallbacks intact. Durable application state, auth, sources,
+outbox/jobs, object storage, streaming, generated clients, web composition, and
+full scenario evidence remain deferred. Fresh independent review and coordinator
+integration are pending; this implementation does not claim full `DW-FND-003`, a
+release scenario, deployment, or production readiness.

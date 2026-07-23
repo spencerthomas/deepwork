@@ -326,7 +326,10 @@ class TaskResultResponse(_TaskWireModel):
 
     @classmethod
     def from_domain(cls, task: TaskSnapshot) -> TaskResultResponse:
-        if task.status is not TaskStatus.COMPLETED or task.result is None:
+        # Guard emptiness, not just None: a completed task with an empty
+        # result must map to the sanitized "unavailable" boundary error, never
+        # a raw Pydantic min_length violation (an unhandled 500).
+        if task.status is not TaskStatus.COMPLETED or not task.result:
             message = "task result is unavailable"
             raise ValueError(message)
         return cls(

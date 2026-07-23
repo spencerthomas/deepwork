@@ -15,6 +15,7 @@ from deepwork_api.contracts.tasks import (
     PlanUpdateRequest,
     ProposedPlanResponse,
     TaskCreateRequest,
+    TaskResultResponse,
 )
 from deepwork_api.domain import (
     MAX_PLAN_REVISION,
@@ -23,8 +24,38 @@ from deepwork_api.domain import (
     PlanRevisionConflictError,
     ProposedPlan,
     TaskEventName,
+    TaskSnapshot,
     TaskStatus,
 )
+
+
+def _completed_snapshot(result: str | None) -> TaskSnapshot:
+    return TaskSnapshot(
+        task_id="task_00000001",
+        run_id="run_00000001",
+        title="Completed task",
+        objective="Completed task",
+        status=TaskStatus.COMPLETED,
+        last_event_id=1,
+        pending_interrupt_id=None,
+        proposed_plan=None,
+        evidence=(),
+        result=result,
+    )
+
+
+def test_task_result_response_rejects_empty_result_as_unavailable() -> None:
+    # An empty (not just None) completed result must raise the sanitized
+    # domain error, not a Pydantic min_length ValidationError (→ 500).
+    for empty in (None, ""):
+        with pytest.raises(ValueError, match="task result is unavailable"):
+            TaskResultResponse.from_domain(_completed_snapshot(empty))
+
+
+def test_task_result_response_maps_a_present_result() -> None:
+    response = TaskResultResponse.from_domain(_completed_snapshot("A useful brief."))
+    assert response.result == "A useful brief."
+    assert response.status == "completed"
 
 
 @pytest.mark.parametrize("bad", ["a\x7fb", "a\x80b", "a\x85b", "a\x9fb", "a\x00b", "a\x1fb"])

@@ -11,6 +11,7 @@ describe("AppHeader product navigation", () => {
     expect(delivered).toEqual([
       { href: "/", label: "Tasks" },
       { href: "/approvals", label: "Approvals" },
+      { href: "/agents", label: "Agents" },
       { href: "/activity", label: "Activity" },
     ]);
   });
@@ -27,8 +28,9 @@ describe("AppHeader product navigation", () => {
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain('aria-disabled="true"');
     expect(markup).toContain('href="/approvals"');
+    expect(markup).toContain('href="/agents"');
     expect(markup).toContain('href="/activity"');
-    expect(markup.match(/>Soon</g)).toHaveLength(4);
+    expect(markup.match(/>Soon</g)).toHaveLength(3);
     expect(markup).toContain('aria-label="Use dark theme"');
     expect(markup).toContain('aria-pressed="false"');
   });

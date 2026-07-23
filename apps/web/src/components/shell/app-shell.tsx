@@ -36,9 +36,13 @@ function WorkspaceSelector() {
   return (
     <button
       type="button"
+      aria-label="Workspace: local — personal workspace"
       className="flex items-center gap-2 rounded-[13.6px] border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:bg-accent"
     >
-      <span className="flex size-6 items-center justify-center rounded-md bg-secondary text-[11px] font-semibold text-secondary-foreground">
+      <span
+        aria-hidden
+        className="flex size-6 items-center justify-center rounded-md bg-secondary text-[11px] font-semibold text-secondary-foreground"
+      >
         DW
       </span>
       <span className="hidden leading-tight sm:block">
@@ -47,7 +51,7 @@ function WorkspaceSelector() {
           {workspace.workspaceSubtitle}
         </span>
       </span>
-      <ChevronDown className="size-3.5 text-muted-foreground" />
+      <ChevronDown aria-hidden className="size-3.5 text-muted-foreground" />
     </button>
   );
 }

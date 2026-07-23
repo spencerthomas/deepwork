@@ -9,7 +9,8 @@ reviewers: [runtime-contracts, security, product]
 risk: high
 acceptance_ids: [SPIKE-PLAN-001, SPIKE-HITL-002, AC-DW-TASK-002-02, AC-DW-QUAL-001-03]
 allowed_paths: [tools/contract-spikes/plan-approval/**, docs/references/research/plan-approval-contract-spikes/**, docs/exec-plans/external/DW-EXT-W1-FIRST-TASK-PLAN-APPROVAL.md]
-dependencies: [SPIKE-HITL-001, SPIKE-COMPOSE-001, SPIKE-CONFIG-001, SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-sandbox]
+dependencies: [SPIKE-HITL-001, SPIKE-COMPOSE-001, SPIKE-CONFIG-001, SRC-LC@7b9215d708e0b57e6fbae7b5d0762c4118b8e309, SRC-DA@7794b61a6e76230e8c7a49bdce808b3728305914, SRC-LCPY@592055e15e138f5369dce95dd049ce22430996e2, SRC-LG@31f90df3e6b0268fa77fd2d118a917d420b84a68, public-package-index-access, official-documentation-access, optional:non-production-classic-sandbox]
+blockers: [accepted-SPIKE-HITL-001, accepted-SPIKE-COMPOSE-001, accepted-SPIKE-CONFIG-001, sanctioned-non-production-classic-sandbox]
 created: 2026-07-23
 reviewed_at: null
 review_result: pending
@@ -41,7 +42,8 @@ The result distinguishes:
 
 1. plan proposal schema, stable identity, template/config revision, editable
    fields, immutable fields, and supersession;
-2. approval, edit, rejection, cancellation, stale decision, and invalid decision;
+2. approval, edit, rejection, response, local abandonment, stale plan revision, and
+   invalid plan authority;
 3. normalized ordered-HITL request/decision correlation and resume semantics;
 4. reconnect, process restart, and redeploy recovery without pre-approval work;
 5. bypass-prevention across model output, repeated messages, retries, stale
@@ -73,11 +75,21 @@ generated docs, program/index records, CI, and `docs/plans/**` are read-only.
 
 ## Dependencies: consume, do not duplicate
 
+This exact dispatch base does not contain accepted artifacts for the three
+upstream gates. The external LangChain research head
+`758c1d4a2230b7c4261fcfbd0f3008634509e096` is coordinator provenance only: all
+three relevant rows remain `blocked-live-evidence`, and that head is not integrated
+into this base. Therefore this dispatch is offline-harness-only. It may produce
+`implemented-offline-harness-blocked-upstream`; it must not accept
+`SPIKE-PLAN-001` or `SPIKE-HITL-002` until a later reviewed base contains accepted
+upstream artifacts and the required live evidence.
+
 This packet consumes these separately owned gates and must not redefine or
 re-probe them:
 
-- `SPIKE-HITL-001`: exact ordered HITL payload, aligned decision arrays, allowed
-  decisions, duplicate/stale handling, and provider resume operation;
+- `SPIKE-HITL-001`: exact ordered HITL payload, aligned decision arrays, the
+  `approve`, `edit`, `reject`, and `respond` values, value/count/order validation,
+  generic stale/duplicate handling, and provider resume syntax;
 - `SPIKE-COMPOSE-001`: accepted thread/run input, creation, unknown-field, and
   normalized-result contract; and
 - `SPIKE-CONFIG-001`: accepted starter-project/template/config schema,
@@ -85,13 +97,17 @@ re-probe them:
 
 The worker records the exact accepted artifact/commit and hashes any consumed
 fixture subset. If one is absent, unresolved, contradictory, or
-`blocked-live-evidence`, dependent plan/live rows inherit that state. A
-deterministic fake may exercise the local state machine, but it cannot accept an
-upstream gate or stand in for the pinned provider contract.
+`blocked-live-evidence`, dependent plan/live rows inherit that state. Generic
+decision value/count/order, stale/duplicate delivery, and resume syntax belong
+only to `SPIKE-HITL-001`; this packet tests plan identity, revision, current actor
+authority, permission/side-effect boundaries, and whether protected work stays
+blocked. A deterministic fake may exercise that local state machine, but it
+cannot accept an upstream gate or stand in for the pinned provider contract.
 
 Pinned evidence inputs are `SRC-LC` at
 `7b9215d708e0b57e6fbae7b5d0762c4118b8e309`, `SRC-DA` at
-`7794b61a6e76230e8c7a49bdce808b3728305914`, and `SRC-LG` at
+`7794b61a6e76230e8c7a49bdce808b3728305914`, `SRC-LCPY` at
+`592055e15e138f5369dce95dd049ce22430996e2`, and `SRC-LG` at
 `31f90df3e6b0268fa77fd2d118a917d420b84a68`, plus official documentation,
 installed public/generated packages, and, only for live acceptance, an explicitly
 supplied non-production classic sandbox with account tier, region, server/package
@@ -111,17 +127,19 @@ starter template covering:
   identity, revision `1`, ordered steps, permissions/side-effect boundary, and
   normalized HITL request correlation;
 - approve unchanged, edit then approve as a new revision, reject with/without a
-  safe reason, cancel, and explicit restart after rejection;
-- duplicate decision, mismatched decision count, unknown decision, wrong
-  request/plan/task/run, stale revision, superseded proposal, out-of-order batch,
-  expired authorization, and cross-workspace replay;
+  safe reason, `respond` where the consumed review config permits it, local
+  abandonment without provider resume, and explicit restart after rejection;
+- wrong request/plan/task/run, stale or superseded plan revision, expired actor
+  authorization, cross-workspace replay, and an edit/approval attempt that widens
+  the original permission or side-effect boundary;
 - reconnect before decision, after persisted decision but before resume, after
   resume, process restart, and deployment restart;
 - fake/model text that says approved, tool output that imitates a decision,
   direct resume without a recorded current-authority decision, repeated delivery,
   retry after timeout, and config/template drift; and
 - proof that no protected execution/tool side effect occurs before the accepted
-  current plan revision is resumed.
+  current plan revision is resumed, and that approval never grants more authority
+  than the original reviewed task boundary.
 
 The deterministic harness must use explicit state transitions and an append-only
 decision log. Hidden model reasoning is never evidence. Editable plan text is
@@ -151,9 +169,11 @@ Under `docs/references/research/plan-approval-contract-spikes/`, retain:
   finding resolutions, reviewed commit, and per-row state.
 
 The matrix validator rejects incomplete template/scenario coverage, duplicate
-identity, unpinned upstream input, accepted rows that inherit a blocked dependency,
-side effects before approval, non-idempotent resume, fake evidence promoted to
-provider proof, missing fallbacks, and unresolved evidence-precedence conflicts.
+identity, unpinned upstream input, accepted target spikes on this harness-only
+base, accepted rows that inherit a blocked dependency, use of `cancel` as a
+normalized HITL decision, permission/side-effect widening, side effects before
+approval, non-idempotent resume, fake evidence promoted to provider proof, missing
+fallbacks, and unresolved evidence-precedence conflicts.
 
 ## Acceptance IDs and downstream contribution
 
@@ -192,8 +212,9 @@ git diff --name-only fff1bfd278d550d01de6e8d74f553f45c4003a8c
 git status --short
 ```
 
-Only with accepted upstream artifacts and explicitly supplied non-production
-classic-sandbox access, run:
+The following command is prohibited on this dispatch base. It may run only after a
+reviewed rebase contains accepted upstream artifacts and an explicitly supplied
+non-production classic sandbox:
 
 ```bash
 uv run --project tools/contract-spikes/plan-approval --frozen pytest -m live_contract --live-profile non-production-classic-plan-approval --evidence-dir docs/references/research/plan-approval-contract-spikes/live

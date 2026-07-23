@@ -45,8 +45,9 @@ The result must separately establish:
 4. failure, retry, expiry, cleanup, and source-unavailable behavior; and
 5. the deterministic fallback for every unproved source/media combination.
 
-The credential-free, pasted-text first-task path remains usable while this work is
-open. This packet is supporting evidence only and must not block or claim
+The credential-free fixture/demo and bounded pasted-text path remain usable while
+this work is open. This packet is supporting evidence only: it neither blocks nor
+satisfies the clean-account, API-key, source-registration, and first-value journey
 `E2E-V1-01-FIRST-VALUE`.
 
 ## Allowed paths
@@ -96,6 +97,27 @@ capability from reference internals.
 
 ## Required contract matrix
 
+Before any observation or probe, commit an immutable `matrix-scope.json`. The
+scope file pins the package/service versions being examined and defines the full
+required cross-product. `validate_matrix` derives required row identities from
+that file; it must not trust worker-selected rows in `matrix.json`.
+
+The pre-observation dimensions are:
+
+- media class: bounded text file, image, PDF, and code;
+- byte owner/boundary: Deep Work quarantine/object boundary;
+- target source: the public Classic LangSmith baseline only;
+- lifecycle operation: preflight, quarantine create, metadata/hash/detected type,
+  scan, transfer intent, every discovered public transfer representation,
+  transfer receipt/rejection, remove, retention expiry, deletion, orphan cleanup,
+  retry, restart/recovery, and unavailable/error;
+- evidence tier and expected conclusion state, including unsupported and unknown.
+
+MDA and Fleet are explicitly excluded. A newly discovered public Classic transfer
+representation expands the immutable scope through a reviewed scope revision
+before observations are recorded; it cannot be omitted because it failed or was
+unsupported. Version pins and scope hash are retained in every matrix row.
+
 At minimum, retain matrix rows for:
 
 - preflight rejection by count, declared type, size, empty content, unsafe
@@ -123,6 +145,8 @@ cross-workspace or cross-task transfer.
 
 Under `docs/references/research/attachment-contract-spikes/`, retain:
 
+- `matrix-scope.json`: immutable pre-observation version pins and the required
+  media/boundary/source/lifecycle/representation/evidence cross-product;
 - `matrix.json`: one row per scenario/source/media/operation with exact
   package/service/runtime versions, account/region/auth/date when applicable,
   source observations, state transitions, request/response schemas, hashes,
@@ -140,10 +164,12 @@ Under `docs/references/research/attachment-contract-spikes/`, retain:
 - `review.json`: independent runtime-contract, security, and product verdicts,
   finding resolutions, reviewed commit, and per-row acceptance/blocking state.
 
-The matrix validator rejects missing cross-products, duplicate row identities,
-unknown statuses, absent evidence provenance, accepted-live rows without live
-metadata, deterministic-fake rows labeled as provider proof, missing fallbacks,
-or unresolved source-precedence conflicts.
+The matrix validator derives the complete row set from `matrix-scope.json` and
+rejects missing or extra unreviewed rows, omitted unsupported/unknown conclusions,
+missing discovered Classic transfer representations, MDA/Fleet rows, duplicate
+row identities, unknown statuses, absent evidence provenance, accepted-live rows
+without live metadata, deterministic-fake rows labeled as provider proof, missing
+fallbacks, or unresolved source-precedence conflicts.
 
 ## Acceptance IDs and downstream contribution
 
@@ -158,8 +184,10 @@ provider integration, browser, or release acceptance by itself.
 | `AC-DW-QUAL-001-03` | Supports only the named attachment-gate conclusion and fallback. Release-manifest disablement/omission remains coordinator evidence. |
 | `AC-DW-QUAL-001-04` | Supports only attachment traversal, media, quarantine, scanner, transfer, tenant/task-binding, replay, and deletion abuse cases. The full cross-layer security suite remains downstream. |
 
-No row contributes to `E2E-V1-01-FIRST-VALUE`. Pasted text with explicit size
-limits is the first-task fallback and remains independent of this packet.
+No row blocks or satisfies `E2E-V1-01-FIRST-VALUE`. The credential-free
+fixture/demo and bounded pasted-text path remain usable independently; the clean
+account, API-key, source-registration, and first-value journey needs its own
+end-to-end evidence.
 
 ## Exact validation commands
 
@@ -170,7 +198,7 @@ uv lock --project tools/contract-spikes/attachments
 uv sync --project tools/contract-spikes/attachments --frozen
 uv run --project tools/contract-spikes/attachments --frozen pytest -m 'not live_contract'
 uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.inventory --output docs/references/research/attachment-contract-spikes/versions.json
-uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.validate_matrix docs/references/research/attachment-contract-spikes/matrix.json --require-complete-cross-product --reject-unresolved-precedence-conflicts
+uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.validate_matrix docs/references/research/attachment-contract-spikes/matrix.json --scope docs/references/research/attachment-contract-spikes/matrix-scope.json --require-complete-cross-product --reject-unresolved-precedence-conflicts
 uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.scrub docs/references/research/attachment-contract-spikes
 uv run --project tools/contract-spikes/attachments --frozen python -m attachment_contract_spikes.validate_scope --base fff1bfd278d550d01de6e8d74f553f45c4003a8c --include-untracked
 uv lock --project tools/contract-spikes/attachments --check --offline
@@ -205,7 +233,8 @@ Until a source/media row is independently accepted:
 - reject unsafe, unknown, expired, mismatched, or scanner-unavailable objects;
 - never transfer quarantined bytes to a source, sandbox, model, previewer, or
   downstream extractor; and
-- keep the text-only first-task demonstration and unrelated Wave 1 work moving.
+- keep the credential-free fixture/demo, bounded pasted-text path, and unrelated
+  Wave 1 work moving.
 
 ## Idempotence, rollback, and handoff
 

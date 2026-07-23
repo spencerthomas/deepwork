@@ -1,0 +1,14 @@
+{
+  "authority": "validator-source-inspection-only",
+  "claimLimit": "Does not prove isolation for API, browser, provider, or future consumers.",
+  "corpusDigest": "fda318147fff70fe949a8428f868f9d39e487fc5564c0ffe5f30307b3d6ac171",
+  "evidenceClass": "fixture",
+  "externalUrlHostCount": 0,
+  "reportVersion": "1.0.0",
+  "scannedAssetCount": 19,
+  "validatorEnvironmentReads": 0,
+  "validatorSocketImports": 0,
+  "validatorSubprocessCalls": 0,
+  "validatorWallClockReads": 0,
+  "validatorWrites": 0
+}

@@ -1,0 +1,8 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_expectation",
+  "declaredRuleCode": "FIXTURE_EXPECTATION_REPLAY_DEDUPE",
+  "basePath": "cases/replay.json",
+  "mutation": {"operation": "replace", "path": "/expected/visibleRecordIds", "value": ["fx_record_replay_a", "fx_record_replay_a_duplicate", "fx_record_replay_b"]}
+}
+

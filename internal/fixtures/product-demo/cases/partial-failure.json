@@ -1,0 +1,25 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_partial_failure",
+  "category": "partial-failure",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 37, "observedAt": "2026-07-23T00:00:09.250Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_partial",
+    "runId": "fx_run_partial",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_partial",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_partial:fx_run_partial"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_partial_healthy", "durableEventId": "fx_event_partial_healthy", "sequence": 1, "tick": 36, "observedAt": "2026-07-23T00:00:09.000Z", "kind": "fixture-source-result", "sourceId": "fx_source_alpha", "threadId": "fx_thread_partial", "runId": "fx_run_partial", "payload": {"result": "Synthetic healthy source result.", "trust": "untrusted"}},
+    {"recordId": "fx_record_partial_error", "durableEventId": "fx_event_partial_error", "sequence": 2, "tick": 37, "observedAt": "2026-07-23T00:00:09.250Z", "kind": "fixture-source-error", "sourceId": "fx_source_beta", "threadId": "fx_thread_partial_beta", "runId": "fx_run_partial_beta", "payload": {"safeErrorCode": "SOURCE_UNAVAILABLE", "safeSummary": "Synthetic source is unavailable.", "sourceQualified": true}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_partial_healthy", "fx_record_partial_error"], "healthyRecordIds": ["fx_record_partial_healthy"], "partialErrorRecordIds": ["fx_record_partial_error"], "aggregateUsable": true, "failedSourceId": "fx_source_beta"},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}
+

@@ -1,0 +1,8 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_clock",
+  "declaredRuleCode": "FIXTURE_CLOCK_DERIVATION",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "replace", "path": "/clock/observedAt", "value": "2026-07-23T00:00:00.500Z"}
+}
+

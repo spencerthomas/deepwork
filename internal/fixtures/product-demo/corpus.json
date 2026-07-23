@@ -1,0 +1,73 @@
+{
+  "corpusVersion": "1.0.0",
+  "fixtureSchemaVersion": "1.0.0",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "authority": "private-fixture-only",
+  "clock": {
+    "tickEpoch": "2026-07-23T00:00:00Z",
+    "tickDurationMs": 250
+  },
+  "idPolicy": {
+    "prefix": "fx_",
+    "qualifiedThreadTemplate": "{sourceId}:{threadId}",
+    "qualifiedRunTemplate": "{sourceId}:{threadId}:{runId}"
+  },
+  "schemaPaths": [
+    "schema/fixture-envelope.json",
+    "schema/capability-manifest.json"
+  ],
+  "manifestPaths": [
+    "manifests/fixture-source.json",
+    "manifests/gated-runtimes.json"
+  ],
+  "casePaths": [
+    "cases/start.json",
+    "cases/content.json",
+    "cases/tool.json",
+    "cases/ordered-interrupt.json",
+    "cases/checkpoint.json",
+    "cases/reconnect.json",
+    "cases/replay.json",
+    "cases/logical-delay.json",
+    "cases/completion.json",
+    "cases/unknown.json",
+    "cases/malformed-input.json",
+    "cases/partial-failure.json",
+    "cases/source-collision.json"
+  ],
+  "negativeMatrixPath": "negative/matrix.json",
+  "hashedAssets": [
+    "corpus.json",
+    "schema/fixture-envelope.json",
+    "schema/capability-manifest.json",
+    "manifests/fixture-source.json",
+    "manifests/gated-runtimes.json",
+    "cases/start.json",
+    "cases/content.json",
+    "cases/tool.json",
+    "cases/ordered-interrupt.json",
+    "cases/checkpoint.json",
+    "cases/reconnect.json",
+    "cases/replay.json",
+    "cases/logical-delay.json",
+    "cases/completion.json",
+    "cases/unknown.json",
+    "cases/malformed-input.json",
+    "cases/partial-failure.json",
+    "cases/source-collision.json",
+    "negative/matrix.json",
+    "negative/invalid-schema.json",
+    "negative/invalid-id.json",
+    "negative/invalid-clock.json",
+    "negative/invalid-order.json",
+    "negative/invalid-capability.json",
+    "negative/invalid-interrupt.json",
+    "negative/invalid-hash.json",
+    "negative/invalid-scrub.json",
+    "negative/invalid-network.json",
+    "negative/invalid-expectation.json",
+    "negative/invalid-logical-delay.json",
+    "negative/invalid-logical-delay-visibility.json"
+  ]
+}

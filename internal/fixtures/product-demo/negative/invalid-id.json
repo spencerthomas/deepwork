@@ -1,0 +1,8 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_id",
+  "declaredRuleCode": "FIXTURE_ID_PREFIX",
+  "basePath": "cases/start.json",
+  "mutation": {"operation": "replace", "path": "/caseId", "value": "case_without_fixture_prefix"}
+}
+

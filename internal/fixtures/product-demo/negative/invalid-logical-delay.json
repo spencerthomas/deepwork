@@ -1,0 +1,8 @@
+{
+  "negativeVersion": "1.0.0",
+  "negativeId": "fx_negative_logical_delay",
+  "declaredRuleCode": "FIXTURE_CLOCK_DELAY_MISMATCH",
+  "basePath": "cases/logical-delay.json",
+  "mutation": {"operation": "replace", "path": "/expected/releaseTick", "value": 43}
+}
+

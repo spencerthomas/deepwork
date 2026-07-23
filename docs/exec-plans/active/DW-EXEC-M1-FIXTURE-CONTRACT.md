@@ -559,9 +559,20 @@ Acceptance:
   `verified 6 generated documents`, docs validation exits 0, range whitespace
   and scope checks exit 0, `internal/fixtures/product-demo` remains absent, and
   the committed handoff is clean.
-- [ ] Milestone 1 complete; exact fixture contract and inventory retained.
-- [ ] Milestone 2 complete; positive and negative corpus retained.
-- [ ] Milestone 3 complete; deterministic validator and evidence retained.
+- [x] 2026-07-23 AEST — Milestone 1 complete. The machine index closes over two
+  structural schemas, two capability manifests, and the exact 13-case ordered
+  inventory. All runtime/provider capability entries retain fixture evidence and
+  gated, unknown, unavailable, or permission-denied fallback where applicable.
+- [x] 2026-07-23 AEST — Milestone 2 complete. The 13 positive cases and 12
+  single-code negatives validate, including exact delay arithmetic
+  `41 + 3 = 44`, absence through tick 43, one-time visibility from tick 44,
+  completion at tick 45, `FIXTURE_CLOCK_DELAY_MISMATCH`, and
+  `FIXTURE_EXPECTATION_DELAY_VISIBILITY`.
+- [x] 2026-07-23 AEST — Milestone 3 complete. The standard-library-only
+  read-only validator, sole deterministic evidence writer, and separate
+  linked-worktree-safe Git scope runner are retained. Two write invocations
+  produced identical target hashes with an empty second `updated_files`; the
+  following two-pass check reported in-memory and disk byte identity.
 - [ ] Milestone 4 complete; fresh independent implementation review handed off.
 
 ## Surprises & Discoveries
@@ -603,6 +614,13 @@ Acceptance:
   Consequence: the author keeps truthful draft metadata and
   `dispatch_ready: false`; every diagnostic must be cleared by the independent
   review/coordinator transition below before dispatch.
+- 2026-07-23 AEST — Intentional scrub and network negatives necessarily contain
+  the forbidden field/URL that they test. Consequence: deterministic evidence
+  reports zero matches across the active corpus index, schemas, manifests,
+  positive cases, and negative matrix, while each negative is independently
+  mutated/evaluated and must emit exactly its declared code. Negative payloads
+  remain hashed and manifest-closed rather than being silently excluded from
+  integrity proof.
 
 ## Decision Log
 
@@ -935,7 +953,60 @@ register itself in the index, or start consumer implementation.
 
 ## Outcomes & Retrospective
 
-Pending implementation and independent review. At completion, compare the actual
-case/rule inventory and corpus digest with this purpose, list every deviation and
-deferred consumer, record the exact accepted commit, and leave all live runtime
-gates visibly open unless independently accepted elsewhere.
+Implementation is complete and independent implementation review is pending.
+The corpus contains exactly these ordered positive categories:
+`start`, `content`, `tool`, `ordered-interrupt`, `checkpoint`, `reconnect`,
+`replay`, `logical-delay`, `completion`, `unknown`, `malformed-input`,
+`partial-failure`, and `source-collision`.
+
+The exact ordered negative rule inventory is
+`FIXTURE_SCHEMA_REQUIRED_FIELD`, `FIXTURE_ID_PREFIX`,
+`FIXTURE_CLOCK_DERIVATION`, `FIXTURE_ORDER_SEQUENCE`,
+`FIXTURE_CAPABILITY_EVIDENCE`, `FIXTURE_INTERRUPT_ALIGNMENT`,
+`FIXTURE_HASH_MISMATCH`, `FIXTURE_SCRUB_FORBIDDEN_FIELD`,
+`FIXTURE_NETWORK_EXTERNAL_URL`, `FIXTURE_EXPECTATION_REPLAY_DEDUPE`,
+`FIXTURE_CLOCK_DELAY_MISMATCH`, and
+`FIXTURE_EXPECTATION_DELAY_VISIBILITY`. Every negative produced exactly its one
+declared code.
+
+The corpus digest, defined as SHA-256 of the exact sorted rendered hash-manifest
+bytes, is
+`fda318147fff70fe949a8428f868f9d39e487fc5564c0ffe5f30307b3d6ac171`.
+The generated validation and isolation reports record 13 cases, 12 intentional
+negative rules, zero active-corpus scrub matches, zero active-corpus external
+URLs/hosts, zero validator subprocess calls, zero environment or wall-clock
+reads, zero waits, and zero writes.
+
+Validation from the repository root:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
+exit 0; hashes.sha256=fda318...ac171; validation-report=fc06c5...04973;
+no-external-network=e48d53...c1dee; first updated_files contained all 3 targets
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --write
+exit 0; identical target hashes; updated_files=[]
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/update_evidence.py --check
+exit 0; render_passes=2; render_byte_identical=true; disk_byte_identical=true
+
+PYTHONDONTWRITEBYTECODE=1 python3 internal/fixtures/product-demo/validate.py --check
+exit 0; corpus_digest=fda318...ac171; 13 case IDs; 12 rule codes;
+scrub_match_count=0; external_url_host_count=0; delay=41/3/44/45;
+validator subprocess/environment/wall-clock/write counts=0
+
+git diff --check
+exit 0
+
+git diff --quiet dff977bfd43a9744cf88690b7aa08b6f65876eac -- docs/plans
+exit 0
+```
+
+No API, agent, TypeScript consumer, application integration, product-demo
+service, provider contract, live parity, external network, credential,
+`docs/exec-plans/index.md`, or `docs/plans/**` change occurred. Scenario
+contribution remains limited to the fixture-corpus and isolation input slice of
+`AC-DW-FND-004-05` plus bounded inputs for the other front-matter scenarios; no
+complete application scenario is claimed. Every named runtime/provider spike
+remains open, and API/domain/SDK consumers plus product-demo integration remain
+separate reviewed cells.

@@ -1,0 +1,25 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_reconnect",
+  "category": "reconnect",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 20, "observedAt": "2026-07-23T00:00:05.000Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_reconnect",
+    "runId": "fx_run_reconnect",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_reconnect",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_reconnect:fx_run_reconnect"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_reconnect_durable", "durableEventId": "fx_event_reconnect_durable", "sequence": 1, "tick": 18, "observedAt": "2026-07-23T00:00:04.500Z", "kind": "fixture-content", "sourceId": "fx_source_alpha", "threadId": "fx_thread_reconnect", "runId": "fx_run_reconnect", "payload": {"text": "Last durable synthetic projection.", "trust": "untrusted"}},
+    {"recordId": "fx_record_reconnect_boundary", "durableEventId": "fx_event_reconnect_boundary", "sequence": 2, "tick": 20, "observedAt": "2026-07-23T00:00:05.000Z", "kind": "fixture-recovery-boundary", "sourceId": "fx_source_alpha", "threadId": "fx_thread_reconnect", "runId": "fx_run_reconnect", "payload": {"freshness": "reconnecting", "applicationRecoveryMarker": "fx_recovery_boundary_alpha"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_reconnect_durable", "fx_record_reconnect_boundary"], "retainedRecordIds": ["fx_record_reconnect_durable"], "freshness": "reconnecting", "terminalInferred": false, "cancelInferred": false, "providerRecoveryMechanism": "unspecified"},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}
+

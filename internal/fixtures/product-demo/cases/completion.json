@@ -1,0 +1,24 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_completion",
+  "category": "completion",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 30, "observedAt": "2026-07-23T00:00:07.500Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_completion",
+    "runId": "fx_run_completion",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_completion",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_completion:fx_run_completion"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_completion", "durableEventId": "fx_event_completion", "sequence": 1, "tick": 30, "observedAt": "2026-07-23T00:00:07.500Z", "kind": "fixture-completion", "sourceId": "fx_source_alpha", "threadId": "fx_thread_completion", "runId": "fx_run_completion", "payload": {"status": "completed", "authoritative": "fixture"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_completion"], "terminalStatus": "completed", "terminalAuthorityRecordId": "fx_record_completion", "absenceInfersTerminal": false, "timeoutInfersTerminal": false, "disconnectInfersTerminal": false},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}
+

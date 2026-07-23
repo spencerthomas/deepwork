@@ -1,0 +1,25 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_tool",
+  "category": "tool",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 5, "observedAt": "2026-07-23T00:00:01.250Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_tool",
+    "runId": "fx_run_tool",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_tool",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_tool:fx_run_tool"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_tool_start", "durableEventId": "fx_event_tool_start", "sequence": 1, "tick": 4, "observedAt": "2026-07-23T00:00:01.000Z", "kind": "fixture-tool-start", "sourceId": "fx_source_alpha", "threadId": "fx_thread_tool", "runId": "fx_run_tool", "payload": {"toolCallId": "fx_tool_call_alpha", "displayName": "Synthetic lookup", "trust": "untrusted"}},
+    {"recordId": "fx_record_tool_result", "durableEventId": "fx_event_tool_result", "sequence": 2, "tick": 5, "observedAt": "2026-07-23T00:00:01.250Z", "kind": "fixture-tool-result", "sourceId": "fx_source_alpha", "threadId": "fx_thread_tool", "runId": "fx_run_tool", "payload": {"toolCallId": "fx_tool_call_alpha", "summary": "Synthetic result with no external content.", "trust": "untrusted", "bounded": true}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_tool_start", "fx_record_tool_result"], "correlatedToolCallId": "fx_tool_call_alpha", "rawToolBodyPresent": false},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}
+

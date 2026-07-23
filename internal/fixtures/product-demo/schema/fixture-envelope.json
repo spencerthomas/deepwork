@@ -1,0 +1,48 @@
+{
+  "schemaDialect": "json-schema-2020-12",
+  "$id": "urn:deep-work:fixture:product-demo:envelope:1",
+  "title": "Private product-demo fixture envelope",
+  "description": "Fixture-only structure. This is not an application or provider wire schema.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "caseId",
+    "category",
+    "synthetic",
+    "evidenceClass",
+    "clock",
+    "scope",
+    "capabilityManifestRef",
+    "records",
+    "expected",
+    "provenance"
+  ],
+  "properties": {
+    "formatVersion": {"const": "1.0.0"},
+    "caseId": {"type": "string", "pattern": "^fx_case_[a-z0-9_]+$"},
+    "category": {"type": "string"},
+    "synthetic": {"const": true},
+    "evidenceClass": {"const": "fixture"},
+    "clock": {
+      "type": "object",
+      "required": ["tickEpoch", "tickDurationMs", "observedTick", "observedAt"]
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "tenantId",
+        "workspaceId",
+        "sourceId",
+        "threadId",
+        "runId",
+        "qualifiedThreadKey",
+        "qualifiedRunKey"
+      ]
+    },
+    "capabilityManifestRef": {"type": "string"},
+    "records": {"type": "array"},
+    "expected": {"type": "object"},
+    "provenance": {"type": "object"}
+  },
+  "additionalProperties": false
+}

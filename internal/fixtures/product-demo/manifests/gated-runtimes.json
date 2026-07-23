@@ -1,0 +1,54 @@
+{
+  "formatVersion": "1.0.0",
+  "manifestId": "fx_manifest_gated_runtimes",
+  "synthetic": true,
+  "runtimeKind": "classic",
+  "capabilities": [
+    {
+      "name": "classic-stream-contract",
+      "state": "unknown",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "unverified",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-STREAM-001, SPIKE-STREAM-002, and SPIKE-STREAM-003 remain open."
+    },
+    {
+      "name": "mda-runtime",
+      "state": "gated",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "unverified",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-MDA-001 remains open."
+    },
+    {
+      "name": "fleet-runtime",
+      "state": "unknown",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "unverified",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-FLEET-001 remains open."
+    },
+    {
+      "name": "browser-direct-stream",
+      "state": "unavailable",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "unverified",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "SPIKE-DIRECT-STREAM-001 remains open; mediated application streaming is downstream."
+    },
+    {
+      "name": "permission-probe-example",
+      "state": "permission-denied",
+      "observedAt": "2026-07-23T00:00:00.000Z",
+      "adapterVersion": "unverified",
+      "contractVersion": "unverified",
+      "evidenceClass": "fixture",
+      "reason": "Synthetic denied state proves that denial is not empty success."
+    }
+  ]
+}
+

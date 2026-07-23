@@ -1,0 +1,24 @@
+{
+  "formatVersion": "1.0.0",
+  "caseId": "fx_case_unknown",
+  "category": "unknown",
+  "synthetic": true,
+  "evidenceClass": "fixture",
+  "clock": {"tickEpoch": "2026-07-23T00:00:00Z", "tickDurationMs": 250, "observedTick": 32, "observedAt": "2026-07-23T00:00:08.000Z"},
+  "scope": {
+    "tenantId": "fx_tenant_alpha",
+    "workspaceId": "fx_workspace_alpha",
+    "sourceId": "fx_source_alpha",
+    "threadId": "fx_thread_unknown",
+    "runId": "fx_run_unknown",
+    "qualifiedThreadKey": "fx_source_alpha:fx_thread_unknown",
+    "qualifiedRunKey": "fx_source_alpha:fx_thread_unknown:fx_run_unknown"
+  },
+  "capabilityManifestRef": "manifests/fixture-source.json",
+  "records": [
+    {"recordId": "fx_record_unknown", "durableEventId": "fx_event_unknown", "sequence": 1, "tick": 32, "observedAt": "2026-07-23T00:00:08.000Z", "kind": "fixture-unknown", "sourceId": "fx_source_alpha", "threadId": "fx_thread_unknown", "runId": "fx_run_unknown", "payload": {"originalKind": "fx_unrecognized_kind", "safeSummary": "Unsupported synthetic content preserved as unknown.", "trust": "untrusted"}}
+  ],
+  "expected": {"orderedRecordIds": ["fx_record_unknown"], "classification": "unknown", "observable": true, "promotedDiscriminator": false},
+  "provenance": {"origin": "synthetic-hand-authored", "authority": "fixture-only"}
+}
+

@@ -4,22 +4,22 @@ title: Outcome 3 shared task domain and client contract
 status: active
 superseded_by: null
 owner: task-domain-sdk
-reviewed_by: []
-reviewed_at: null
+reviewed_by: [coordinator-019f8e39-7c94-75f0-b003-d334d7770c35]
+reviewed_at: 2026-07-23
 primary_feature_id: DW-FND-004
 supporting_feature_ids: [DW-FND-005]
 issue: local:DW-OUTCOME3-TASK-CONTRACT
 created: 2026-07-23
 last_updated: 2026-07-23
-base_commit: 314140b1adfbb6490e9453eec810d1258ced41ab
-last_verified_commit: 314140b1adfbb6490e9453eec810d1258ced41ab
+base_commit: 813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9
+last_verified_commit: 813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9
 risk: medium
 governed_paths: [packages/domain/src/**, packages/domain/tests/**, packages/domain/README.md, packages/sdk/src/**, packages/sdk/tests/**, packages/sdk/README.md, docs/exec-plans/active/DW-EXEC-OUTCOME3-SHARED-TASK-CONTRACT.md]
 contract_gates: [SPIKE-STREAM-001, SPIKE-HITL-001]
 decision_gates: []
-gate_review_status: implementation-bounded-to-accepted-local-contract
-gate_reviewed_by: []
-gate_reviewed_at: null
+gate_review_status: reviewed-with-gates
+gate_reviewed_by: [coordinator-019f8e39-7c94-75f0-b003-d334d7770c35]
+gate_reviewed_at: 2026-07-23
 authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, packages/domain/AGENTS.md, packages/sdk/AGENTS.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, apps/api/src/deepwork_api/contracts/tasks.py, apps/api/src/deepwork_api/transport/tasks.py, apps/web/src/lib/task-types.ts, apps/web/src/lib/http-task-client.ts, apps/web/src/lib/task-normalizers.ts, apps/web/src/lib/sse.ts]
 scenario_ids: [AC-DW-FND-004-01, AC-DW-FND-004-02, AC-DW-FND-004-03, AC-DW-FND-004-06, AC-DW-FND-005-01]
 dispatch_kind: cell
@@ -61,8 +61,11 @@ downstream integration.
 
 ## Context and orientation
 
-The exact clean base is
-`314140b1adfbb6490e9453eec810d1258ced41ab`. At that base,
+The packet was authored against exact clean base
+`314140b1adfbb6490e9453eec810d1258ced41ab` and its reviewed commits were
+transplanted unchanged onto the current integration base
+`813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9`, which contains no
+`packages/domain` or `packages/sdk` drift from the authored base. At that base,
 `packages/domain` contains source-qualified thread/run keys, capability evidence,
 and status vocabularies. `packages/sdk` contains generic query/mutation/stream
 ports and typed unavailable results. Outcome 2 added the accepted local task API
@@ -279,9 +282,9 @@ pnpm --filter @deepwork/sdk check-architecture
 pnpm --filter @deepwork/sdk package-check
 python3 tools/docs/generate.py --check
 python3 tools/docs/check.py
-git diff --check 314140b1adfbb6490e9453eec810d1258ced41ab
-git diff --name-only 314140b1adfbb6490e9453eec810d1258ced41ab
-git diff --name-only 314140b1adfbb6490e9453eec810d1258ced41ab -- docs/plans
+git diff --check 813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9
+git diff --name-only 813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9
+git diff --name-only 813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9 -- docs/plans
 git status --short
 ```
 
@@ -328,6 +331,17 @@ or temporary output and must not change manifests or the lock.
       aggregate constructors strip caller-only fields.
 - [x] 2026-07-23 AEST — Milestone 4 bounded successor validation complete;
       immutable commit and Coordinator handoff follow this recorded source state.
+- [x] 2026-07-23 — Integration: reviewed commits `30f9aee` and `b573018`
+      cherry-picked cleanly onto integration base
+      `813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9` on branch
+      `feature/shared-task-contract`; no source conflicts occurred.
+- [x] 2026-07-23 — Integration: the recorded SDK `package-check` blocker was
+      repaired by pinning the packed `@deepwork/domain@0.0.0` range to the
+      locally packed domain archive in the clean-consumer install; the check now
+      completes offline.
+- [x] 2026-07-23 — Integration: this plan was indexed in
+      `docs/exec-plans/index.md` and reviewer/gate metadata recorded, closing the
+      documented Coordinator-owned documentation gap.
 
 ## Surprises and discoveries
 
@@ -447,6 +461,20 @@ Successor validation after immutable review:
   breaking the authorized package-local relative dependency links. The artifact
   is preserved untouched; no cleanup, restoration, install, or further `pnpm`
   command was attempted without Coordinator authorization.
+
+Integration validation on base `813ca1621f2c1eb9e37c606e5b21e17ca5b6c0f9`
+with the pinned Node 24.18.0 and pnpm 11.9.0 toolchain:
+
+- domain and SDK `format-check`, `lint`, `typecheck`, `test`, `build`,
+  `check-architecture`, and `package-check` all passed (domain: 6 files,
+  70 tests; SDK: 6 files, 58 tests, network primitives denied);
+- the previously blocked SDK `package-check` passes after the clean-consumer
+  install pins `@deepwork/domain@0.0.0` to the locally packed archive; the
+  install remains offline with scripts ignored;
+- `python3 tools/docs/generate.py --check` verified 6 generated documents; and
+- `python3 tools/docs/check.py` reports no error for this plan; the six
+  remaining errors are pre-existing on the integration base and name commits
+  referenced by other active plans outside this packet's governed paths.
 
 ## Outcomes and retrospective
 

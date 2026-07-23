@@ -1,6 +1,6 @@
 import type { TaskStatus } from "../lib/task-types";
 
-const labels: Record<TaskStatus, string> = {
+export const STATUS_LABELS: Record<TaskStatus, string> = {
   queued: "Queued",
   running: "Running",
   "waiting-approval": "Waiting approval",
@@ -15,7 +15,7 @@ export function StatusPill({ status }: { status: TaskStatus }) {
   return (
     <span className={`status-pill status-${status}`}>
       <span className="status-dot" aria-hidden="true" />
-      {labels[status]}
+      {STATUS_LABELS[status]}
     </span>
   );
 }

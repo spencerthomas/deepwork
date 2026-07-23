@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppHeader } from "./app-header";
 import { TaskComposer } from "./task-composer";
 import { TaskDetail } from "./task-detail";
-import { TaskList } from "./task-list";
+import { filterLoadedTasks, INITIAL_INBOX_FILTERS, TaskList, type InboxFilters } from "./task-list";
 import {
   getActiveInterrupt,
   getCompletionResultText,
@@ -60,7 +60,10 @@ export function TaskWorkspace() {
   const [updatingPlan, setUpdatingPlan] = useState(false);
   const [submittedDecision, setSubmittedDecision] = useState<DecisionInput["decision"]>();
   const [listAttempt, setListAttempt] = useState(0);
+  const [inboxFilters, setInboxFilters] = useState<InboxFilters>(INITIAL_INBOX_FILTERS);
   const detailRef = useRef<HTMLElement | null>(null);
+  const firstTaskRef = useRef<HTMLButtonElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   const eventsByTaskRef = useRef<Record<string, TaskEvent[]>>({});
   const decisionRequestRef = useRef(0);
   const pendingDecisionRef = useRef<
@@ -279,7 +282,20 @@ export function TaskWorkspace() {
     };
   }, [selectedTaskId]);
 
-  const selected = tasks.find((task) => task.taskId === selectedTaskId);
+  const filteredTasks = useMemo(
+    () => filterLoadedTasks(tasks, inboxFilters),
+    [inboxFilters, tasks],
+  );
+
+  useEffect(() => {
+    if (!selectedTaskId || filteredTasks.some((task) => task.taskId === selectedTaskId)) {
+      return;
+    }
+    setSelectedTaskId(filteredTasks.at(0)?.taskId);
+    window.requestAnimationFrame(() => (firstTaskRef.current ?? searchRef.current)?.focus());
+  }, [filteredTasks, selectedTaskId]);
+
+  const selected = filteredTasks.find((task) => task.taskId === selectedTaskId);
   const detail = selectedTaskId ? detailsByTask[selectedTaskId] : undefined;
   const events = selectedTaskId ? (eventsByTask[selectedTaskId] ?? []) : [];
   const activeInterrupt = useMemo(
@@ -500,7 +516,12 @@ export function TaskWorkspace() {
 
         <div className="workspace-grid">
           <TaskList
-            tasks={tasks}
+            tasks={filteredTasks}
+            totalTaskCount={tasks.length}
+            filters={inboxFilters}
+            firstTaskRef={firstTaskRef}
+            searchRef={searchRef}
+            onFiltersChange={setInboxFilters}
             selectedTaskId={selectedTaskId}
             onSelect={selectTask}
             loading={loadingTasks}

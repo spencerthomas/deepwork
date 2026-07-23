@@ -2220,3 +2220,116 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Loaded-task inbox controls: these operate only on the current client list. */
+.inbox-controls {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-subtle) 35%, var(--surface));
+}
+
+.inbox-controls label {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.inbox-search {
+  display: grid;
+  gap: 6px;
+}
+
+.inbox-controls input[type="search"],
+.inbox-controls select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.inbox-controls input[type="search"] {
+  padding: 8px 10px;
+}
+
+.inbox-controls select {
+  padding: 8px;
+}
+
+.inbox-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.inbox-filter-row > label:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.attention-filter {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text) !important;
+}
+
+.attention-filter input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--blue);
+}
+
+.inbox-filter-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.inbox-filter-summary > span {
+  min-width: 0;
+}
+
+.text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.attention-note {
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .inbox-filter-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .inbox-filter-summary .text-button {
+    min-height: 32px;
+  }
+}

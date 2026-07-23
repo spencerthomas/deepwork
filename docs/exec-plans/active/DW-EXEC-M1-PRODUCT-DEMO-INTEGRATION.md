@@ -20,13 +20,13 @@ decision_gates: [DEC-023, DEC-026, DEC-033, DEC-034, DEC-035, DEC-038]
 gate_review_status: unreviewed
 gate_reviewed_by: []
 gate_reviewed_at: null
-authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/QUALITY_SCORE.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-API-CONSUMER.md, docs/exec-plans/active/DW-EXEC-M1-WEB-SHELL-HARNESS.md, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md, docs/exec-plans/external/DW-EXT-W1-WORKTREE-ARCH-HARNESS.md]
+authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/AGENTS.md, docs/PLANS.md, docs/SECURITY.md, docs/RELIABILITY.md, docs/QUALITY_SCORE.md, docs/design-docs/architecture/application-architecture.md, docs/design-docs/engineering/conventions.md, docs/design-docs/decisions/index.md, docs/product-specs/foundations/dw-fnd-001-repository-oss-and-delivery-foundation.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/foundations/dw-fnd-003-application-service-state-and-security.md, docs/product-specs/foundations/dw-fnd-004-sdk-stream-and-fixture-contracts.md, docs/product-specs/foundations/dw-fnd-005-domain-identity-status-and-audit-model.md, docs/product-specs/quality/dw-qual-001-accessibility-performance-security-testing-and-release.md, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-CONTRACT.md, docs/exec-plans/active/DW-EXEC-M1-FIXTURE-API-CONSUMER.md, docs/exec-plans/active/DW-EXEC-M1-PRODUCT-DEMO-API-RUNTIME-LOCK.md, docs/exec-plans/active/DW-EXEC-M1-WEB-SHELL-HARNESS.md, docs/exec-plans/active/DW-EXEC-M1-WEB-LOCK-EXTENSION.md, docs/exec-plans/active/DW-EXEC-M1-WEB-TS-REVERIFY.md, docs/exec-plans/active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md, docs/exec-plans/external/DW-EXT-W1-WORKTREE-ARCH-HARNESS.md]
 scenario_ids: [AC-DW-FND-001-01, AC-DW-FND-001-02, AC-DW-FND-001-05, AC-DW-FND-001-07, AC-DW-FND-002-01, AC-DW-FND-002-02, AC-DW-FND-003-05, AC-DW-FND-004-04, AC-DW-FND-004-05, AC-DW-FND-005-01, AC-DW-QUAL-001-07]
 dispatch_kind: cell
 dispatch_ready: false
 agent_review_required: true
-dependencies: [DW-EXEC-M1-FIXTURE-CONTRACT, DW-EXEC-M1-TS-PACKAGES-SCAFFOLD, local:DW-M1-TS-VERIFY-001, local:DW-M1-TS-FIXTURE-CONSUMER-001, DW-EXEC-M1-FIXTURE-API-CONSUMER, DW-EXEC-M1-WEB-SHELL-HARNESS, local:DW-M1-WEB-TS-REVERIFY-001]
-blockers: []
+dependencies: [DW-EXEC-M1-FIXTURE-CONTRACT, DW-EXEC-M1-FIXTURE-API-CONSUMER, local:DW-M1-PRODUCT-DEMO-API-RUNTIME-LOCK-001, local:DW-M1-FIXTURE-API-SDK-CONTRACT-001, local:DW-M1-WEB-TS-REVERIFY-001]
+blockers: [local:DW-M1-DUAL-STACK-POLICY-EXCEPTION-001]
 ---
 
 # Credential-free full product-demo integration and isolation acceptance
@@ -178,49 +178,90 @@ by `tools/worktree/harness.py`.
 
 ### Persistent dependency DAG
 
-Every row is a persistent dependency, not a transient checklist:
+Every direct row in front matter is a terminal dependency, not a transient
+milestone:
 
 | Stable dependency | Exact terminal requirement | Current state |
 |---|---|---|
-| `DW-EXEC-M1-FIXTURE-CONTRACT` | Accepted corpus implementation SHA/digest, independent `ACCEPT`, exact scope/validator evidence | Blocked; `8291218590e3f6a91a5383ae91d6e909e71b1fbe` is under review. |
-| `DW-EXEC-M1-TS-PACKAGES-SCAFFOLD` | Accepted TS package source SHA after rework | Blocked; `1bf66e1` is `REWORK REQUIRED`. |
-| `local:DW-M1-TS-VERIFY-001` | Terminal first-lock executable verification of domain/SDK/UI public packages | Planned, not represented by an active plan in this checkout. |
-| `local:DW-M1-TS-FIXTURE-CONSUMER-001` | Separately accepted TS corpus consumer with DTO/domain/reducer parity, plus public `@deepwork/sdk/product-demo` `ProductDemoFixtureClient`/`createProductDemoFixtureClient` transport; corpus is read-only and validator is not product code | Planned, not represented by an active plan in this checkout. |
-| `DW-EXEC-M1-FIXTURE-API-CONSUMER` | Accepted API/one-shot worker corpus mapping SHA | Draft in this three-plan candidate. |
-| `DW-EXEC-M1-WEB-SHELL-HARNESS` | Accepted responsive browser-local shell SHA and explicit proof limits | Draft in this three-plan candidate. |
-| `local:DW-M1-WEB-TS-REVERIFY-001` | Terminal full TS re-verification at the final web importer/lock, including domain, SDK, UI, TS fixture consumer, and web | Planned, not represented by an active plan in this checkout. |
+| `DW-EXEC-M1-FIXTURE-CONTRACT` | Accepted corpus implementation SHA/digest, independent `ACCEPT`, exact scope/validator evidence | Nonterminal at this plan-authoring base. |
+| `DW-EXEC-M1-FIXTURE-API-CONSUMER` | Final command/projection ports, `202` wire, cookie/Origin/CSRF, deterministic OpenAPI, process-local fallback, independent acceptance | Draft in this bundle. |
+| `local:DW-M1-PRODUCT-DEMO-API-RUNTIME-LOCK-001` | Exact SQLAlchemy 2/Alembic/Psycopg 3 pins, API lock digest, frozen offline package/import/OpenAPI proof | Draft in this bundle; starts only after API consumer terminal. |
+| `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001` | Accepted generated client from the terminal API OpenAPI plus handwritten public SDK transport/mapping and adapter conformance | Concurrent separately owned draft; absent from this checkout until integrated. |
+| `local:DW-M1-WEB-TS-REVERIFY-001` | Immutable final-lock proof across domain/SDK/UI, generated client, private adapter tests, web, and browser-local harness | Draft in this bundle; depends on terminal web lock. |
 
-The DAG is:
+The correct transitive private corpus-consumer alias is
+`local:DW-M1-FIXTURE-TS-CONSUMER-001`, not the previous invalid
+`local:DW-M1-TS-FIXTURE-CONSUMER-001`. It feeds the API-SDK bridge's conformance
+work but does not supply public HTTP transport itself, so the product demo depends
+on the terminal bridge rather than listing the private consumer as a transport
+owner.
+
+The full DAG is:
 
 ```text
-accepted TS source -> first TS lock -> TS verify -> TS fixture consumer
-                                     \-> web importer -> web lock extension
-                                                       -> web TS reverify -> web shell terminal
-accepted fixture corpus -> API consumer -------------------------------\
-                         -> TS fixture consumer -------------------------+-> product demo
-accepted web shell -----------------------------------------------------/
+TS source -> first TS lock -> TS verify -> private fixture TS consumer --\
+fixture corpus -> API consumer -> API-SDK bridge -------------------------+\
+                         \-> product-demo API runtime lock -----------------+-> product demo
+TS verify -> terminal web source -----------------------------------------/
+{terminal web source, terminal API-SDK bridge} -> web lock -> web reverify -/
 ```
 
-The TS fixture consumer depends on accepted corpus and accepted/verified TS
-packages. The API consumer depends only on accepted corpus and may run alongside
-TS lock/verification. The web source can be planned now, but its execution/build
-proof follows the lock sequence. Product-demo execution waits until every row is
-terminal. No product-demo dependency points back to this plan, so the graph is
-acyclic.
+The API consumer may run alongside the disjoint TS chain after fixture
+acceptance. The runtime-manifest cell is package-only and follows the API
+consumer. The web source is a whole terminal static cell before the lock
+extension; there is no dependency on a mid-plan importer milestone. Product-demo
+execution waits until every direct row is terminal at one Coordinator integration
+base. No dependency points back to this plan.
+
+### Canonical dual-stack policy blocker
+
+`AGENTS.md`, `docs/PLANS.md`, and the canonical program currently permit at most
+one running full-stack/product-demo worktree until `SPIKE-WORKTREE-001` passes.
+The final matrix in this plan necessarily starts two complete product-demo stacks
+to produce the evidence that can close that spike. Calling one checkout
+“acceptance-only” does not itself override the canonical rule.
+
+Therefore `local:DW-M1-DUAL-STACK-POLICY-EXCEPTION-001` is an explicit terminal
+blocker. Before this plan may become dispatch-ready, a separate canonical-owner
+change must be independently reviewed and accepted with exactly this narrow
+exception:
+
+> For the single final `SPIKE-WORKTREE-001` acceptance exercise only, the
+> Coordinator may run one sealed, read-only acceptance root and one clean,
+> detached, read-only peer at the identical sealed commit. The harness must
+> allocate and preflight all resources before startup, prohibit edits, installs,
+> provider/external traffic, credentials, and concurrent full-stack authoring,
+> retain scoped evidence, stop both stacks, prove cleanup, and remove the peer.
+> Failure preserves the one-active-full-stack fallback and grants no spike
+> acceptance.
+
+This plan proposes that exact text but does not edit `AGENTS.md`,
+`DW-EXEC-PROGRAM-CANONICAL.md`, `docs/PLANS.md`, or the decision register. Until a
+reviewed canonical change installs the exception and the Coordinator records its
+full SHA, execution remains single-stack and this plan remains non-dispatchable.
+After an accepted exercise, ordinary full-stack authoring remains serial until
+the Coordinator separately integrates the evidence and closes
+`SPIKE-WORKTREE-001`.
 
 ### Root/generated/lock ownership
 
 - Root manifests, workspace declarations, Turbo, `pnpm-lock.yaml`, and root
   `Makefile` remain Coordinator-owned.
-- If web or product-demo integration needs a new importer/dependency, stop before
-  code execution. The Coordinator runs
-  `local:DW-M1-WEB-LOCK-EXTENSION-001`, then
-  `local:DW-M1-WEB-TS-REVERIFY-001` against the exact accepted importer commit.
-- Generated OpenAPI/docs remain outside this worktree. If an API integration seam
-  requires public schema generation, stop and create a separately reviewed
-  coordinator/generated-contract cell; do not hand-edit generated outputs.
+- The accepted web and SDK manifests are already final inputs. The terminal
+  `local:DW-M1-WEB-LOCK-EXTENSION-001` owns only `pnpm-lock.yaml` with exactly
+  zero manifest delta; `local:DW-M1-WEB-TS-REVERIFY-001` proves the immutable
+  result. If integration needs any new importer/dependency, stop and create a new
+  source-owner -> lock -> reverify chain.
+- The API consumer owns deterministic
+  `apps/api/openapi/deepwork-api-v1.json`; the API-SDK bridge consumes it
+  read-only and owns `docs/generated/openapi.json` plus bounded SDK/adapter
+  generated outputs. This plan consumes both accepted artifacts read-only and
+  requires zero drift; it never hand-edits or regenerates them.
+- `local:DW-M1-PRODUCT-DEMO-API-RUNTIME-LOCK-001` owns only
+  `apps/api/pyproject.toml` and `apps/api/uv.lock`. The product-demo integration
+  may use the accepted packages but cannot change either file.
 - `internal/adapter-tests/**` stays with the separately accepted TS fixture
-  consumer and never becomes product-demo ownership.
+  consumer/API-SDK bridge chain and never becomes product-demo ownership.
 
 ### Optional capability fallbacks
 

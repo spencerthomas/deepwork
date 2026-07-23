@@ -1,6 +1,6 @@
 ---
 exec_plan_id: DW-EXEC-M1-WEB-SHELL-HARNESS
-title: Responsive browser-local web shell harness
+title: Responsive browser-local web shell source and importer
 status: draft
 superseded_by: null
 owner: web-shell
@@ -25,7 +25,7 @@ scenario_ids: [AC-DW-FND-002-01, AC-DW-FND-002-02, AC-DW-FND-002-03, AC-DW-FND-0
 dispatch_kind: cell
 dispatch_ready: false
 agent_review_required: true
-dependencies: [DW-EXEC-M1-TS-PACKAGES-SCAFFOLD, local:DW-M1-TS-LOCK-001]
+dependencies: [local:DW-M1-TS-VERIFY-001]
 blockers: []
 ---
 
@@ -33,28 +33,30 @@ blockers: []
 
 ## Purpose and observable result
 
-Create `apps/web` as the accessible, responsive composition root for Deep Work's
-five primary destinations—Tasks, Approvals, Agents, Schedules, and Activity—plus
-the Settings utility route. A contributor can open an unmistakable browser-local
-UI harness, select deterministic presentation states, navigate from 320 CSS
-pixels through desktop, and verify keyboard, focus, reduced-motion, zoom/reflow,
-forced-colors, and mobile navigation behavior without an API, worker, Postgres,
-object service, provider, credential, or application request.
+Create and independently accept the static `apps/web` source/importer for Deep
+Work's accessible responsive composition root: five primary destinations—Tasks,
+Approvals, Agents, Schedules, and Activity—plus the Settings utility route. The
+source contains an unmistakable browser-local UI harness, deterministic
+presentation states, responsive behavior from 320 CSS pixels through desktop,
+and the exact tests/runners that the downstream web lock and re-verification
+cells execute.
 
 The shell permanently marks the session as `Demo data · UI harness` and explains
 that persistence, worker/recovery, service failures, and full integration are not
 under test. It never claims API-backed product-demo proof or live-provider proof.
 
-This cell contributes the shell slices of `AC-DW-FND-002-01`,
+This source-only cell contributes design/static shell slices of `AC-DW-FND-002-01`,
 `AC-DW-FND-002-02`, `AC-DW-FND-002-03`, `AC-DW-FND-002-05`, and
 `AC-DW-FND-002-06`. It contributes responsive component/shell evidence only to
 `AC-DW-SURF-001-01` and `AC-DW-QUAL-001-05`; it does not complete either scenario.
 It completes zero `E2E-V1-*` scenarios.
 
-Status is **draft, prepared for independent review**. Planning and static review
-are ready now. Source execution starts only from accepted TypeScript package
-interfaces, and dependency-backed install/build/test proof waits for the
-Coordinator-owned shared TypeScript lock.
+Status is **draft, prepared for independent review**. Execution starts only after
+terminal `local:DW-M1-TS-VERIFY-001`. This cell terminates at an independently
+accepted static source/importer commit. It performs no install, build, test, or
+browser run. The separate `local:DW-M1-WEB-LOCK-EXTENSION-001` consumes that
+terminal source together with the terminal API-SDK bridge; only
+`local:DW-M1-WEB-TS-REVERIFY-001` may make executable/browser claims.
 
 ## Context and orientation
 
@@ -74,9 +76,9 @@ base. Existing client seeds are:
   evidence only and cannot be imported, modified, or treated as behavior proof.
 
 The TypeScript candidate `1bf66e1` is `REWORK REQUIRED`. No exact accepted TS
-source, first-lock, or executable-verification commit exists for this plan yet.
-The shell plan may be reviewed now, but no implementation dispatch can infer
-acceptance from the current checkout.
+executable-verification commit exists for this plan yet. The shell plan may be
+reviewed now, but no implementation dispatch can infer acceptance from the
+current checkout.
 
 The browser-local harness and API-backed product demo are separate proof levels.
 This plan owns only the former. It uses the same route/component boundaries
@@ -111,8 +113,9 @@ API request can never activate it because this cell makes no such request.
   touch targets, non-color status, reduced motion, forced colors, 320px reflow,
   200% text zoom, 400% browser zoom/reflow, safe areas, and virtual-keyboard-safe
   composition.
-- No-request guards, route/component tests, accessibility tests, responsive
-  browser proof, screenshot matrix, and network summary.
+- Source for no-request guards, route/component tests, accessibility tests,
+  responsive browser proof, screenshot matrix, and network summary. This cell
+  statically reviews their presence and boundaries; it does not execute them.
 
 ### Non-goals
 
@@ -138,12 +141,12 @@ API request can never activate it because this cell makes no such request.
 - Writes are limited to the two governed path entries in front matter.
 - No install, dependency resolution, lock generation, external network, service
   startup, credential, sibling edit, push, merge, deploy, or destructive action.
-- The implementation may run the local Next.js process only after the shared
-  lock cell is terminal and within its later authorized implementation task.
-- Browser tests may load the loopback web origin. After the initial document and
-  same-origin static assets, `fetch`, XHR, WebSocket, EventSource,
-  `sendBeacon`, service-worker registration, and external navigation must record
-  zero attempts.
+- This source/importer cell may not run the local Next.js process, package
+  manager, test runner, build, or browser. Those actions belong only to
+  `local:DW-M1-WEB-TS-REVERIFY-001` after the web lock extension is terminal.
+- The authored browser tests must fail closed after the initial loopback document
+  and same-origin static assets if `fetch`, XHR, WebSocket, EventSource,
+  `sendBeacon`, service-worker registration, or external navigation occurs.
 - Product/UX, accessibility, frontend architecture, security, and developer-
   experience review are required. The author cannot approve the plan or result.
 
@@ -153,29 +156,27 @@ API request can never activate it because this cell makes no such request.
 
 | Stable cell | Terminal evidence required | Current state |
 |---|---|---|
-| `DW-EXEC-M1-TS-PACKAGES-SCAFFOLD` / `local:DW-M1-TS-SCAFFOLD` | Exact independently accepted TS source commit with public domain/UI boundaries | Blocked; candidate `1bf66e1` is `REWORK REQUIRED`. |
-| `local:DW-M1-TS-LOCK-001` | Coordinator-owned first `pnpm-lock.yaml`, offline frozen-install/no-drift proof, exact importer inventory | Not yet represented by an active ExecPlan in this checkout; execution/build proof is blocked. |
+| `local:DW-M1-TS-VERIFY-001` | Exact terminal package source, first lock, offline executable proof, and public domain/SDK/UI exports | Not represented in this checkout; candidate `1bf66e1` is `REWORK REQUIRED` and cannot satisfy it. |
 
-Planning review requires neither cell to be terminal. Implementation dispatch
-requires both exact accepted commits. No UI source is allowed to use current
-unverified package behavior as a stable contract.
+Planning review does not require the cell to be terminal. Implementation dispatch
+does. No UI source is allowed to use current unverified package behavior as a
+stable contract.
 
 If `apps/web/package.json` adds a new workspace importer or dependency not present
 in the accepted first lock, the sequence is:
 
-1. the web worker authors and statically reviews the importer under `apps/web/**`;
-2. a fresh reviewer accepts the exact web importer/source candidate;
-3. the Coordinator alone runs a separately reviewed lock-extension cell,
-   `local:DW-M1-WEB-LOCK-EXTENSION-001`, changing only approved root/lock paths;
-4. a separate `local:DW-M1-WEB-TS-REVERIFY-001` cell reruns the complete frozen
-   TypeScript format/lint/type/test/build/package-consumer matrix for domain, SDK,
-   UI, and web at the exact extended lock; and
-5. only that terminal re-verification may support final web-shell acceptance or
-   the later product-demo integration.
+1. this web worker authors and statically reviews the final importer/manifest
+   under `apps/web/**`;
+2. a fresh reviewer accepts and terminalizes this exact web source/importer cell;
+3. the separately owned `local:DW-M1-FIXTURE-API-SDK-CONTRACT-001` terminalizes
+   the generated client and SDK mapping independently;
+4. `local:DW-M1-WEB-LOCK-EXTENSION-001` consumes both terminal cells and changes
+   only `pnpm-lock.yaml`; all manifests remain byte-identical; and
+5. `local:DW-M1-WEB-TS-REVERIFY-001` runs the complete frozen
+   packages/generated/adapter/web and browser proof.
 
-The web plan does not depend on its own terminal state, and the lock extension
-depends only on an exact accepted importer candidate—not on a completed web
-build—so the lifecycle is acyclic.
+There is no mid-plan “accepted importer” dependency. This whole cell is terminal
+before the lock extension starts, so the mechanically enforced DAG is acyclic.
 
 ### Runtime capability fallbacks
 
@@ -364,42 +365,37 @@ Acceptance:
 - unavailable/gated optional rows require no external dependency;
 - state changes do not steal focus or flood announcements.
 
-### Milestone 4 — Lock extension and full executable verification
+### Milestone 4 — Terminal static source/importer handoff
 
-If the web importer changes shared dependency resolution, stop the author lane,
-hand the exact accepted importer commit to the Coordinator, wait for the lock
-extension, then run the full TS re-verification cell.
-
-Acceptance:
-
-- root/lock changes are absent from the web candidate;
-- accepted lock extension names the exact web importer commit;
-- full TS re-verification passes at one frozen lock before final web review.
-
-### Milestone 5 — Browser evidence and independent handoff
-
-Run route/component/a11y/responsive/no-request/build proof and hand the exact
-clean candidate to independent reviewers.
+Commit the complete web source, manifest, tests, proof runners, and disabled
+product-demo seam; obtain independent source/architecture/product/security
+review; and terminalize this whole cell before any lock extension begins.
 
 Acceptance:
 
-- screenshot/state matrix identifies `UI harness`;
-- request summary shows zero application/API/external requests;
-- console has no hydration/accessibility/runtime error;
-- changed paths are exactly `apps/web/**` and this plan;
-- reviewers record contribution-only scope and zero E2E completion.
+- root/lock/package-source/generated/adapter changes are absent;
+- no package, build, test, server, or browser command ran in this cell;
+- static architecture/source review confirms the final manifest, scripts,
+  public imports, no-request guard, persistent marker, state matrix, and
+  responsive/a11y assertions are present;
+- exact terminal source SHA and independent verdict are handed to
+  `local:DW-M1-WEB-LOCK-EXTENSION-001`;
+- executable/browser acceptance remains explicitly pending
+  `local:DW-M1-WEB-TS-REVERIFY-001`; and
+- reviewers record contribution-only scope and zero E2E/live completion.
 
 ## Progress
 
 - [x] 2026-07-23 AEST — Drafted against canonical design/frontend/accessibility
   contracts and current package source; prepared for independent plan review.
-- [ ] 2026-07-23 AEST — Exact TS source and first-lock dependencies accepted.
-- [ ] 2026-07-23 AEST — Importer candidate accepted and any required
-  coordinator-owned lock extension completed.
-- [ ] 2026-07-23 AEST — Shell, state matrix, and browser-local guards implemented.
-- [ ] 2026-07-23 AEST — Full TypeScript and browser verification accepted.
-- [ ] 2026-07-23 AEST — Fresh independent implementation review and Coordinator
-  handoff complete.
+- [ ] 2026-07-23 AEST — Exact terminal TypeScript verification dependency
+  accepted.
+- [ ] 2026-07-23 AEST — Shell, state matrix, browser-local guards, tests, and
+  runners authored without package execution.
+- [ ] 2026-07-23 AEST — Static source/importer candidate accepted as this cell's
+  terminal result and handed to the web lock owner.
+- [ ] 2026-07-23 AEST — Downstream lock/reverification remains separately owned
+  and unclaimed by this cell.
 
 ## Surprises & Discoveries
 
@@ -413,6 +409,10 @@ Acceptance:
   unavailable/gated state and makes no runtime-control claim.
 - 2026-07-23 AEST — `AC-DW-QUAL-001-05` is a release-wide manual accessibility
   journey. Consequence: this plan claims a bounded shell contribution only.
+- 2026-07-23 AEST — Review found that a mid-plan importer handoff cannot satisfy
+  the repository's terminal-dependency validator. Consequence: this entire cell
+  now ends at independently accepted static source/importer; lock and executable
+  browser proof are two later cells.
 
 ## Decision Log
 
@@ -428,13 +428,14 @@ Acceptance:
   Rationale: this plan governs `apps/web/**` only. Consequence: missing token needs
   become reviewed follow-ups, not local literals.
 - 2026-07-23 AEST — Decision: lock extension and full re-verification are separate
-  coordinator cells. Rationale: root/lock ownership and importer dependency form
-  must remain acyclic. Consequence: the web author stops at an accepted importer
-  candidate before the Coordinator resolves dependencies.
+  sequential cells. Rationale: root/lock ownership and terminal dependency form
+  must remain acyclic. Consequence: the web author terminalizes the complete
+  static source/importer without executing it; the lock owner consumes that
+  terminal result, and the re-verifier alone owns executable/browser evidence.
 
 ## Detailed implementation approach
 
-1. Verify branch/base/cleanliness and exact accepted TS source/lock commits.
+1. Verify branch/base/cleanliness and exact terminal TS verification commit.
 2. Create `apps/web` guidance, manifest, strict config, and route skeleton using
    only accepted public package exports.
 3. Add root-layout semantics, persistent harness marker, primary/utility
@@ -447,11 +448,10 @@ Acceptance:
 6. Add fail-closed request/service-worker guards before application composition.
 7. Add destination fixture views and every state-matrix row using normalized
    capability/view values.
-8. Commit the importer/source candidate and stop for independent review.
-9. If required, hand it to the Coordinator's lock-extension and full TS
-   re-verification cells; make no root edit locally.
-10. Run browser matrix, console/request inspection, accessibility automation and
-   manual keyboard/focus checks; retain sanitized evidence and stop for review.
+8. Perform only install-free static source/manifest/script/architecture review.
+9. Commit the complete source/importer candidate and stop for independent review.
+10. After acceptance, terminalize this cell and hand the exact SHA to the
+    lock-extension owner. Do not run package or browser commands here.
 
 ## Validation and proof
 
@@ -472,7 +472,7 @@ file with the following nine draft/dependency diagnostics:
 
 1. active ExecPlan is not indexed;
 2. unsupported active ExecPlan status `draft`;
-3. unknown dependency `local:DW-M1-TS-LOCK-001` until its active plan exists;
+3. unknown dependency `local:DW-M1-TS-VERIFY-001` until its active plan exists;
 4. independent non-owner reviewer metadata missing;
 5. completed gate reviewer metadata missing;
 6. `reviewed_at` is not a date;
@@ -496,38 +496,11 @@ git diff --name-only "$dispatch_commit" "$web_candidate"
 test -z "$(git status --porcelain)"
 ```
 
-### Executable proof after accepted lock/re-verification
+### Downstream executable proof contract
 
-The exact package scripts are owned by the accepted web manifest. At minimum:
-
-```text
-reviewed_lock_commit="<exact reviewed 40-character lock/reverification commit>"
-test "${#reviewed_lock_commit}" -eq 40
-git cat-file -e "${reviewed_lock_commit}^{commit}"
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web format-check
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web lint
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web typecheck
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web test
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web build
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile format-check
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile lint
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile typecheck
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile test
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile build
-ui_evidence_dir="apps/web/evidence/DW-M1-WEB-SHELL-HARNESS"
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web browser-proof -- --host 127.0.0.1 --port 43120 --evidence-dir "$ui_evidence_dir" --viewports 320x800,375x812,768x1024,1440x900 --text-zoom 200 --browser-zoom 400 --require-keyboard-focus --require-reduced-motion --require-forced-colors --require-automated-a11y --require-no-application-requests
-COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web harness-reset -- --host 127.0.0.1 --port 43120 --storage-prefix deepwork:ui-harness: --evidence-dir "$ui_evidence_dir"
-python3 -B -c 'import json,pathlib; d=json.loads(pathlib.Path("apps/web/evidence/DW-M1-WEB-SHELL-HARNESS/browser-proof.json").read_text()); assert d["status"]=="passed"; assert d["application_requests"]==0; assert d["serious_a11y_violations"]==0; assert d["server_process_absent"] and d["browser_process_absent"]'
-python3 -B -c 'import json,pathlib; d=json.loads(pathlib.Path("apps/web/evidence/DW-M1-WEB-SHELL-HARNESS/reset.json").read_text()); assert d["status"]=="passed"; assert d["remaining_harness_keys"]==0; assert d["service_workers"]==0; assert d["server_process_absent"] and d["browser_process_absent"]'
-python3 tools/architecture/check.py --root . --graph tools/architecture/graph.json --fixtures internal/fixtures/architecture --verify-negative
-python3 -B tools/docs/generate.py --check
-python3 -B tools/docs/check.py
-git diff --check "$reviewed_lock_commit" HEAD
-git diff --name-only "$reviewed_lock_commit" HEAD
-test -z "$(git status --porcelain)"
-```
-
-Browser proof must retain:
+This cell must not execute the following proof. It freezes the script names and
+assertions so `local:DW-M1-WEB-TS-REVERIFY-001` can run them after
+`local:DW-M1-WEB-LOCK-EXTENSION-001` without changing source:
 
 - route/viewport matrix at 320, 375, 768, and desktop reference widths;
 - 200% text and 400% reflow observations;
@@ -540,6 +513,11 @@ Browser proof must retain:
 - explicit `AC-DW-QUAL-001-05 contribution only`, no product-demo/live proof, and
   zero `E2E-V1-*` completion.
 
+If the re-verifier discovers a missing or failing script, it returns the exact
+failure to this source owner. It may not repair source or weaken an assertion.
+Any successor source commit requires a successor lock extension and complete
+re-verification.
+
 ## Idempotence, rollback, and recovery
 
 - Scenario selection and reset are deterministic browser-local operations.
@@ -549,23 +527,17 @@ Browser proof must retain:
   presentation state only and are never replayed to a service.
 - A failed live/API path cannot route to this harness because no live/API
   repository exists in the cell.
-- Build/test interruption leaves no root or lock mutation. Package-local caches
-  are removable through the reviewed package command; broad cleanup is forbidden.
-- If the Coordinator cannot produce a frozen lock or full TS verification fails,
-  retain the accepted static importer candidate, keep the plan active/non-ready,
-  and report the exact blocker. Do not weaken scripts or hand-edit the lock.
-- Rollback input is exact `web_candidate` plus its reviewed parent. With the local
-  web process stopped, the Coordinator first runs the accepted
-  `COREPACK_ENABLE_NETWORK=0 pnpm --offline --frozen-lockfile --filter ./apps/web
-  harness-reset -- --host 127.0.0.1 --port 43120 --storage-prefix
-  deepwork:ui-harness: --evidence-dir
-  apps/web/evidence/DW-M1-WEB-SHELL-HARNESS` command against the versioned
-  `deepwork:ui-harness:*` origin storage, verifies no service worker or other app
-  storage remains, confirms the candidate diff is only `apps/web/**` plus this
-  plan, and creates `git revert --no-edit "$web_candidate"`. It then reruns the
-  frozen full TS verification, architecture/docs checks, and clean-status check
-  at the reviewed lock. A conflict, storage cleanup failure, or verification
-  failure leaves the rollback blocked with exact evidence; no root/lock file is
+- This cell creates no build/browser state, so interruption leaves only tracked
+  source changes inside governed paths.
+- If the downstream lock or re-verification fails, preserve this terminal static
+  source commit and return the exact failure. Do not weaken scripts, modify the
+  source under a proof-only cell, or hand-edit the lock.
+- Rollback input is exact `web_candidate` plus its reviewed parent. The
+  Coordinator first rolls back any dependent re-verification outcome and web lock
+  commit, confirms no web process/browser profile remains from those later
+  cells, verifies this candidate diff is only `apps/web/**` plus this plan, then
+  creates `git revert --no-edit "$web_candidate"`. A conflict or postcondition
+  failure leaves rollback blocked with exact evidence; no root/lock file is
   hand-edited and no backend/external state exists.
 
 ## Rollout and handoff
@@ -574,15 +546,14 @@ There is no live rollout. The browser-local harness may be used for component an
 route review only after its explicit marker and no-request guard are accepted.
 The handoff to the Coordinator includes:
 
-- exact TS source, first-lock, lock-extension (if any), and re-verification SHAs;
+- exact terminal TS verification input SHA;
 - exact web candidate SHA and changed files;
-- package/browser commands and results;
-- screenshot, a11y, console, and request summaries;
+- static architecture/source/manifest/script review results;
 - independent product/UX, accessibility, frontend architecture, security, and DX
   verdicts; and
-- explicit statement that API, product-demo, Postgres, worker, object, telemetry,
-  live provider, PWA/push, root/lock, generated/index, and E2E completion remain
-  outside this cell.
+- explicit statement that package/browser execution, API, product-demo, Postgres,
+  worker, object, telemetry, live provider, PWA/push, root/lock, generated/index,
+  and E2E completion remain outside this cell.
 
 The later product-demo integration consumes the accepted shell and replaces only
 the app-level repository injection through its own exact sequential paths. It

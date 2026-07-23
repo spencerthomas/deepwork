@@ -213,7 +213,7 @@ export function ActivityFeed() {
           </button>
         </div>
       ) : (
-        <ol className="relative ml-2 border-l border-border">
+        <ol aria-label="Activity timeline" className="relative ml-2 border-l border-border">
           {visibleEntries.map((entry) => (
             <FeedRow key={entry.key} entry={entry} />
           ))}

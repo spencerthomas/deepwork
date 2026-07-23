@@ -333,9 +333,9 @@ export function ApprovalsView() {
       ) : (
         <>
           {listErrorBanner}
-          <div className="space-y-3">
+          <ul aria-label="Pending approvals" className="space-y-3">
             {visibleRows.map((row) => (
-              <div key={row.task.taskId} className="rounded-2xl border border-border bg-card p-4">
+              <li key={row.task.taskId} className="rounded-2xl border border-border bg-card p-4">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
                     <ShieldQuestion className="size-3.5" />
@@ -397,9 +397,9 @@ export function ApprovalsView() {
                 ) : (
                   <DetailLoadingPanel />
                 )}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </>
       )}
     </AppShell>

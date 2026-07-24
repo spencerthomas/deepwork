@@ -8,6 +8,7 @@ import {
   pendingInterrupt,
   PLAN_REVISION_MAX,
   planEditInput,
+  planStep,
   proposedPlan,
   resultText,
   runId,
@@ -69,6 +70,20 @@ describe("client-safe task values", () => {
   it("counts Unicode code points and never silently truncates objectives", () => {
     expect(objectiveText("😀".repeat(8_000))).toHaveLength(16_000);
     expect(() => objectiveText("😀".repeat(8_001))).toThrow(TypeError);
+  });
+
+  it("rejects DEL and C1 control characters while allowing tab, newline, and carriage return", () => {
+    // Parity with opaqueIdentifier (identity.ts) and the API wire contract
+    // (_reject_unsafe_controls): C0 (except \t \n \r), DEL (0x7F), and the C1
+    // range (0x80–0x9F) are all unsupported across the shared text constructors.
+    for (const unsafe of ["\u0000", "\u001F", "\u007F", "\u0080", "\u0085", "\u009F"]) {
+      expect(() => objectiveText(`a${unsafe}b`)).toThrow(TypeError);
+      expect(() => planStep(`a${unsafe}b`)).toThrow(TypeError);
+      expect(() => resultText(`a${unsafe}b`)).toThrow(TypeError);
+    }
+    expect(objectiveText("line1\r\n\tline2")).toBe("line1\r\n\tline2");
+    expect(planStep("step\twith\nwhitespace")).toBe("step\twith\nwhitespace");
+    expect(resultText("result\r\nbody")).toBe("result\r\nbody");
   });
 
   it("freezes plans and preserves fully qualified evidence references", () => {

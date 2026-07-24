@@ -255,9 +255,12 @@ function boundedText<T extends string>(value: string, label: string, maximum: nu
   if (
     [...value].some((character) => {
       const codePoint = character.codePointAt(0) ?? 0;
+      // Reject C0 controls (allowing tab/newline/carriage return), DEL, and the
+      // C1 range (0x80–0x9F) — parity with opaqueIdentifier (identity.ts) and the
+      // API wire contract (_reject_unsafe_controls), which both reject 127–159.
       return (
         (codePoint < 32 && character !== "\t" && character !== "\n" && character !== "\r") ||
-        codePoint === 127
+        (codePoint >= 127 && codePoint <= 159)
       );
     })
   ) {

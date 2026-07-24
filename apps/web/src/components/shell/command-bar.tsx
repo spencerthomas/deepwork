@@ -44,6 +44,7 @@ export function CommandBar({
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const activeRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -107,6 +108,13 @@ export function CommandBar({
             event.preventDefault();
             setIndex((current) => Math.max(current - 1, 0));
           }
+          // The palette is aria-modal, and its result options are out of the tab
+          // order, so the search input is the only focus stop. Keep Tab from
+          // escaping to the page behind the modal by parking focus on the input.
+          if (event.key === "Tab") {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }
           const selected = filtered[index];
           if (event.key === "Enter" && selected) run(selected.href);
         }}
@@ -114,6 +122,7 @@ export function CommandBar({
         <div className="flex items-center gap-2.5 border-b border-border px-4">
           <Search className="size-4 text-muted-foreground" />
           <input
+            ref={inputRef}
             // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             value={query}

@@ -19,9 +19,11 @@
     "lint": "turbo run lint",
     "package-check": "turbo run package-check",
     "test": "turbo run test",
+    "test:e2e-demo": "playwright test",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "oxfmt": "0.60.0",
     "oxlint": "1.75.0",
     "turbo": "2.10.6",

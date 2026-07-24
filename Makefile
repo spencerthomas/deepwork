@@ -18,7 +18,7 @@ help:
 	@echo "  make check-docs         Validate and drift-check repository documentation"
 	@echo "  make test-unit          Run TypeScript and Python unit suites"
 	@echo "  make test-contract      Run the API contract suite"
-	@echo "  make test-e2e-demo      Not yet implemented (reports the gap)"
+	@echo "  make test-e2e-demo      Run the credential-free browser task journey"
 
 doctor:
 	@echo "== API toolchain =="
@@ -59,6 +59,4 @@ test-contract:
 	$(MAKE) -C apps/api contract
 
 test-e2e-demo:
-	@echo "test-e2e-demo is not implemented yet (see DEBT-002 and the Wave 1 fixture" >&2
-	@echo "loop in docs/PLANS.md). Use 'make dev-demo' for a manual product run." >&2
-	@exit 2
+	pnpm test:e2e-demo

@@ -195,6 +195,7 @@ describe("editable plan contracts", () => {
       taskId: "task_00000001",
       runId: "run_00000001",
       title: "Prepare a safe plan",
+      prompt: "Prepare a safe plan",
       status: "queued",
       evidence: [],
       pendingInterrupt: undefined,

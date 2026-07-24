@@ -368,7 +368,7 @@ export function TaskInbox() {
           <button
             type="button"
             onClick={() => setFilter(EMPTY_TASK_INBOX_FILTER)}
-            className="shrink-0 text-[13px] font-medium text-brand hover:underline"
+            className="shrink-0 text-[13px] font-medium text-brand-accent hover:underline"
           >
             Clear
           </button>
@@ -413,7 +413,7 @@ export function TaskInbox() {
             </p>
             <Link
               href="/tasks/new"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
             >
               New task
             </Link>
@@ -425,7 +425,7 @@ export function TaskInbox() {
             <button
               type="button"
               onClick={() => setFilter(EMPTY_TASK_INBOX_FILTER)}
-              className="mt-3 text-[13px] font-medium text-brand hover:underline"
+              className="mt-3 text-[13px] font-medium text-brand-accent hover:underline"
             >
               Clear filters
             </button>

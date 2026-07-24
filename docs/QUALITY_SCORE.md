@@ -1,7 +1,7 @@
 ---
 title: Deep Work quality score
 status: active
-last_reviewed: 2026-07-23
+last_reviewed: 2026-07-24
 owners: [quality, developer-experience]
 ---
 
@@ -23,7 +23,7 @@ evidence.
 | External runtime contracts | 1/4 | 1/4 | Pinned evidence and deterministic fallbacks; named live-contract spikes still open | Complete named live-contract spikes |
 | Fixture/demo proof | 0/4 | 4/4 | Credential-free product runs the full task lifecycle end-to-end (create → editable plan → ordered approval → prompt-specific result → replayable stream); `make test-e2e-demo` proves the API-backed journey with loopback-only browser traffic at tested commit `7edd55f5390e8fdd4616364deb686d664dc6ed4f`, Playwright 1.61.1, Google Chrome 150.0.7871.182, 2026-07-24 AEST, credential-free local fixture tier with no provider account, Australia/Melbourne, evidence class `executed-local-browser-acceptance`; product-demo fixture corpus validates | Keep the browser journey and fixture parity gates green |
 | Application implementation | 0/4 | 3/4 | `apps/api` (tasks, HITL, SSE, results, optional SQLite) and `apps/web` (five destinations) build and test green; `packages/{domain,sdk,ui,agent}` build and test green in CI | Durable core (auth, outbox/jobs), then live-source integration |
-| Accessibility/security/reliability proof | 1/4 | 2/4 | a11y (skip links, landmarks, reduced-motion) merged; SSRF/tenant/credential-boundary/CORS and SSE replay/reconnect + SQLite-recovery covered by tests | Add executable accessibility and load/resilience harnesses |
+| Accessibility/security/reliability proof | 1/4 | 3/4 | a11y (skip links, landmarks, reduced-motion) merged; an executable axe-core WCAG 2.2 A/AA harness (`tests/e2e/accessibility.spec.ts`) audits every destination plus the pending-approval and completed task states in light and dark themes and runs inside `make test-e2e-demo`; SSRF/tenant/credential-boundary/CORS and SSE replay/reconnect + SQLite-recovery covered by tests | Add a load/resilience harness; broaden the assistive-technology and viewport matrix |
 | Orchestration | 2/4 | 2/4 | Manual worktree process accepted; Symphony gated | Keep Symphony gated by SPIKE-SYMPHONY-001 |
 
 Scale: 0 absent, 1 specified, 2 reviewed, 3 mechanically checked, 4 executable and

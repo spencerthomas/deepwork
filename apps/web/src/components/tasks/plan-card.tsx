@@ -58,9 +58,9 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-3.5 py-2.5">
-        <ListChecks className="size-4 text-brand" />
+        <ListChecks className="size-4 text-brand-accent" />
         <span className="text-[13px] font-medium text-crisp">{plan.title || "Proposed plan"}</span>
-        <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand">
+        <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand-accent">
           rev {plan.revision}
         </span>
         {canEdit && !editing && (
@@ -174,7 +174,7 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
               disabled={saving}
               onClick={() => void save()}
               className={cn(
-                "ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-medium text-brand-foreground transition-colors hover:bg-brand/90",
+                "ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover",
                 saving && "pointer-events-none opacity-60",
               )}
             >

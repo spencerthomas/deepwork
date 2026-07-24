@@ -129,6 +129,8 @@
 
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-hover: var(--brand-hover);
   --color-brand-soft: var(--brand-soft);
 
   --color-elevated: var(--elevated);
@@ -196,7 +198,7 @@
   --secondary-foreground: #161f34;
 
   --muted: #f3f3f4;
-  --muted-foreground: #707071;
+  --muted-foreground: #5f5f60;
 
   --accent: #f3f3f4;
   --accent-foreground: #161f34;
@@ -210,21 +212,23 @@
 
   --brand: #006ddd;
   --brand-foreground: #ffffff;
+  --brand-accent: #005bc4;
+  --brand-hover: #005bc4;
   --brand-soft: #e5f4ff;
 
   --elevated: #f3f3f4;
 
-  --status-running: #006ddd;
+  --status-running: #005bc4;
   --status-running-bg: rgba(0, 109, 221, 0.1);
-  --status-review: #a15c00;
+  --status-review: #8a4f00;
   --status-review-bg: rgba(161, 92, 0, 0.12);
   --status-done: #4f6300;
   --status-done-bg: rgba(110, 137, 0, 0.13);
   --status-failed: #c0392b;
   --status-failed-bg: rgba(192, 57, 43, 0.11);
-  --status-queued: #707071;
+  --status-queued: #5f5f60;
   --status-queued-bg: rgba(112, 112, 113, 0.12);
-  --status-neutral: #707071;
+  --status-neutral: #5f5f60;
   --status-neutral-bg: rgba(112, 112, 113, 0.12);
 
   --sidebar: #ffffff;
@@ -285,6 +289,8 @@
 
   --brand: #006ddd;
   --brand-foreground: #ffffff;
+  --brand-accent: #5aa9ff;
+  --brand-hover: #005bc4;
   --brand-soft: rgba(127, 200, 255, 0.14);
 
   --elevated: #161f34;

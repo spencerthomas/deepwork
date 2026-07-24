@@ -120,7 +120,7 @@ export function AgentFleet() {
             <div className="ml-auto flex items-center gap-1">
               <Link
                 href="/agents/local"
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-medium text-brand transition-colors hover:bg-brand-soft"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-medium text-brand-accent transition-colors hover:bg-brand-soft"
               >
                 Configure <ArrowUpRight className="size-3.5" />
               </Link>

@@ -306,7 +306,7 @@ export function ApprovalsView() {
             </p>
             <Link
               href="/tasks/new"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
             >
               <Plus className="size-4" />
               New task

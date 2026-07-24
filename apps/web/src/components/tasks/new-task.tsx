@@ -105,12 +105,14 @@ export function NewTask() {
               </span>
             </span>
           </button>
-          <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-3 text-left opacity-70">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+          <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-3 text-left">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
               <Bot className="size-4" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-medium">External agent sources</span>
+              <span className="block text-sm font-medium text-muted-foreground">
+                External agent sources
+              </span>
               <span className="mt-0.5 block text-[11px] text-muted-foreground">
                 {runtimeCopy.sourceSelectionDescription}
               </span>
@@ -147,7 +149,7 @@ export function NewTask() {
           />
           <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-border pt-3">
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-border px-2.5 py-1 text-[13px] text-muted-foreground">
-              <ShieldCheck className="size-3.5 text-brand" />
+              <ShieldCheck className="size-3.5 text-brand-accent" />
               Plan approval always required
             </span>
             <span
@@ -163,7 +165,7 @@ export function NewTask() {
               type="button"
               disabled={creating || prompt.trim() === ""}
               onClick={() => void dispatch()}
-              className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90 disabled:pointer-events-none disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
             >
               {creating ? (
                 "Dispatching…"

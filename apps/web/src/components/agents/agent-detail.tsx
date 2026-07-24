@@ -98,7 +98,7 @@ function RecentTasksPanel() {
         <p className="text-[13px] font-medium text-crisp">No tasks yet this session</p>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
           Runs by this agent will appear here.{" "}
-          <Link href="/tasks/new" className="text-brand hover:underline">
+          <Link href="/tasks/new" className="text-brand-accent hover:underline">
             Create a task
           </Link>{" "}
           to see one.
@@ -158,7 +158,9 @@ export function AgentDetail() {
           <Bot className="size-4.5" />
         </span>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">Agent</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-accent">
+            Agent
+          </p>
           <h1 className="text-2xl font-semibold tracking-tight">{runtimeCopy.name}</h1>
         </div>
       </div>
@@ -173,7 +175,7 @@ export function AgentDetail() {
           <ol className="flex-1 space-y-4 overflow-auto p-4">
             {behaviorContract(mode).map((step, index) => (
               <li key={step.title} className="flex gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-[12px] font-medium text-brand">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-[12px] font-medium text-brand-accent">
                   {index + 1}
                 </span>
                 <div className="min-w-0">
@@ -185,7 +187,7 @@ export function AgentDetail() {
               </li>
             ))}
             <li className="flex gap-3">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-[12px] font-medium text-brand">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-[12px] font-medium text-brand-accent">
                 ✓
               </span>
               <div className="min-w-0">

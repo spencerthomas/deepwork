@@ -15,7 +15,9 @@ from deepwork_api.contracts.tasks import (
     PlanUpdateRequest,
     ProposedPlanResponse,
     TaskCreateRequest,
+    TaskDetailResponse,
     TaskResultResponse,
+    TaskSummaryResponse,
 )
 from deepwork_api.domain import (
     MAX_PLAN_REVISION,
@@ -79,6 +81,35 @@ def test_task_result_response_maps_a_present_result() -> None:
     response = TaskResultResponse.from_domain(_completed_snapshot("A useful brief."))
     assert response.result == "A useful brief."
     assert response.status == "completed"
+
+
+def _queued_snapshot(created_at: str | None) -> TaskSnapshot:
+    return TaskSnapshot(
+        task_id="task_00000001",
+        run_id="run_00000001",
+        created_at=created_at,
+        title="Queued task",
+        objective="Queued task",
+        status=TaskStatus.QUEUED,
+        last_event_id=1,
+        pending_interrupt_id=None,
+        proposed_plan=None,
+        evidence=(),
+        result=None,
+    )
+
+
+def test_task_summary_and_detail_serialize_a_missing_created_at_as_null() -> None:
+    # A task migrated from a pre-timestamp schema has no recorded creation time.
+    # The wire must report it as an explicit null rather than dropping the field
+    # or fabricating a value, while present timestamps still round-trip.
+    for factory in (TaskSummaryResponse.from_domain, TaskDetailResponse.from_domain):
+        migrated = factory(_queued_snapshot(None))
+        assert migrated.created_at is None
+        assert migrated.model_dump(by_alias=True)["createdAt"] is None
+
+        timestamped = factory(_queued_snapshot("2026-01-01T00:00:00+00:00"))
+        assert timestamped.created_at == "2026-01-01T00:00:00+00:00"
 
 
 @pytest.mark.parametrize("bad", ["a\x7fb", "a\x80b", "a\x85b", "a\x9fb", "a\x00b", "a\x1fb"])

@@ -162,7 +162,9 @@ class TaskSummaryResponse(_TaskWireModel):
 
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
-    created_at: str = Field(alias="createdAt", min_length=1, max_length=64)
+    # Null only for tasks migrated from a pre-timestamp schema; the field stays
+    # present on the wire so clients can distinguish "unknown" from a real time.
+    created_at: str | None = Field(alias="createdAt", min_length=1, max_length=64)
     title: str = Field(min_length=1, max_length=80)
     objective: str = Field(min_length=1, max_length=MAX_TASK_OBJECTIVE_LENGTH)
     status: TaskWireStatus

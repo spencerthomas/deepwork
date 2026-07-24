@@ -477,10 +477,17 @@
         "description": "Task summary plus the currently actionable interrupt.",
         "properties": {
           "createdAt": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Createdat",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
           },
           "evidence": {
             "items": {
@@ -625,10 +632,17 @@
         "description": "Safe task summary containing only the sanitized objective.",
         "properties": {
           "createdAt": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Createdat",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
           },
           "lastEventId": {
             "minimum": 1.0,

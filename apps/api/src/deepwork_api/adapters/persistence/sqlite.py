@@ -48,7 +48,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -99,7 +99,6 @@ CREATE TABLE tasks (
     task_number INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id TEXT NOT NULL UNIQUE,
     run_id TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL,
     title TEXT NOT NULL,
     objective TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -108,7 +107,8 @@ CREATE TABLE tasks (
     plan_title TEXT,
     plan_steps TEXT,
     plan_evidence_refs TEXT,
-    result TEXT
+    result TEXT,
+    created_at TEXT
 )
 """,
     """
@@ -149,12 +149,30 @@ CREATE TABLE decisions (
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
 )
 
+# In-place upgrades from an older on-disk schema version to _SCHEMA_VERSION,
+# keyed by the stored user_version. Each converges the `tasks` table onto the
+# single canonical shape (created_at nullable and last) so a fresh database and
+# any upgraded database validate identically. Real timestamps are preserved; a
+# never-recorded creation instant becomes NULL rather than a fabricated value.
+_SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
+    # v1 predates created_at: appending the column leaves existing rows NULL.
+    1: ("ALTER TABLE tasks ADD COLUMN created_at TEXT",),
+    # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
+    # column. Move it last and drop NOT NULL without losing the recorded values,
+    # using only column operations so child foreign keys are never disturbed.
+    2: (
+        "ALTER TABLE tasks RENAME COLUMN created_at TO created_at_legacy",
+        "ALTER TABLE tasks ADD COLUMN created_at TEXT",
+        "UPDATE tasks SET created_at = created_at_legacy",
+        "ALTER TABLE tasks DROP COLUMN created_at_legacy",
+    ),
+}
+
 _EXPECTED_COLUMNS = {
     "tasks": (
         "task_number",
         "task_id",
         "run_id",
-        "created_at",
         "title",
         "objective",
         "status",
@@ -164,6 +182,7 @@ _EXPECTED_COLUMNS = {
         "plan_steps",
         "plan_evidence_refs",
         "result",
+        "created_at",
     ),
     "events": ("task_id", "event_id", "name", "data"),
     "evidence": (
@@ -183,7 +202,6 @@ _EXPECTED_TABLE_INFO = {
         ("task_number", "INTEGER", 0, 1),
         ("task_id", "TEXT", 1, 0),
         ("run_id", "TEXT", 1, 0),
-        ("created_at", "TEXT", 1, 0),
         ("title", "TEXT", 1, 0),
         ("objective", "TEXT", 1, 0),
         ("status", "TEXT", 1, 0),
@@ -193,6 +211,9 @@ _EXPECTED_TABLE_INFO = {
         ("plan_steps", "TEXT", 0, 0),
         ("plan_evidence_refs", "TEXT", 0, 0),
         ("result", "TEXT", 0, 0),
+        # Nullable and last so a fresh database and every in-place upgrade in
+        # _SUPPORTED_UPGRADES converge on one canonical column layout.
+        ("created_at", "TEXT", 0, 0),
     ),
     "events": (
         ("task_id", "TEXT", 1, 1),
@@ -607,6 +628,14 @@ class SQLiteTaskRepository:
                     connection.execute(statement)
                 connection.execute(f"PRAGMA application_id = {_APPLICATION_ID}")
                 connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+            elif application_id == _APPLICATION_ID and version in _SUPPORTED_UPGRADES:
+                # Upgrade an older local database in place. Every statement here
+                # runs inside this initialization transaction, so if the migrated
+                # database then fails strict validation below the whole upgrade
+                # rolls back and the on-disk schema is left untouched.
+                for statement in _SUPPORTED_UPGRADES[version]:
+                    connection.execute(statement)
+                connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
             elif version != _SCHEMA_VERSION or application_id != _APPLICATION_ID:
                 raise SQLiteTaskRepositorySchemaError(
                     "local task database schema version is unsupported"
@@ -707,12 +736,12 @@ class SQLiteTaskRepository:
             cursor = connection.execute(
                 """
                 INSERT INTO tasks (
-                    task_id, run_id, created_at, title, objective, status,
+                    task_id, run_id, title, objective, status,
                     pending_interrupt_id, plan_revision, plan_title,
-                    plan_steps, plan_evidence_refs, result
-                ) VALUES ('pending', 'pending', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)
+                    plan_steps, plan_evidence_refs, result, created_at
+                ) VALUES ('pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?)
                 """,
-                (created_at, title, objective, TaskStatus.QUEUED.value),
+                (title, objective, TaskStatus.QUEUED.value, created_at),
             )
             number = cast(int, cursor.lastrowid)
             if number < 1 or number > _MAX_TASK_NUMBER:
@@ -1214,10 +1243,15 @@ class SQLiteTaskRepository:
         pending = cast(str | None, task["pending_interrupt_id"])
         if pending is not None and not pending:
             raise SQLiteTaskRepositoryDataError("stored pending interrupt identifier is invalid")
-        created_at = _bounded_stored_string(
-            task["created_at"],
-            field="task creation timestamp",
-            maximum=64,
+        created_at_value = task["created_at"]
+        created_at = (
+            None
+            if created_at_value is None
+            else _bounded_stored_string(
+                created_at_value,
+                field="task creation timestamp",
+                maximum=64,
+            )
         )
         return TaskSnapshot(
             task_id=cast(str, task["task_id"]),

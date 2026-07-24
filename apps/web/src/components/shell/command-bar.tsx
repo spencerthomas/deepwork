@@ -64,6 +64,9 @@ export function CommandBar({
 
   useEffect(() => setIndex(0), [query]);
 
+  const activeOption = filtered[index];
+  const activeOptionId = activeOption ? `cmd-option-${activeOption.id}` : undefined;
+
   // Reopening the palette remounts the list with its scroll reset, so start the
   // highlight back at the top each time it opens.
   useEffect(() => {
@@ -90,6 +93,9 @@ export function CommandBar({
       onClick={() => onOpenChange(false)}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
@@ -114,36 +120,54 @@ export function CommandBar({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search or run a command…"
             aria-label="Search commands"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-listbox"
+            aria-activedescendant={activeOptionId}
+            aria-autocomplete="list"
             className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
             esc
           </kbd>
         </div>
-        <ul className="max-h-80 overflow-auto p-2">
+        <ul
+          id="command-listbox"
+          role="listbox"
+          aria-label="Commands and loaded tasks"
+          className="max-h-80 overflow-auto p-2"
+        >
           {filtered.length === 0 && (
-            <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+            <li
+              role="presentation"
+              className="px-3 py-6 text-center text-sm text-muted-foreground"
+            >
               No commands or loaded tasks match “{query.trim()}”.
             </li>
           )}
           {filtered.map((command, i) => {
             const Icon = iconFor[command.icon];
+            const selected = i === index;
             return (
-              <li key={command.id}>
+              <li key={command.id} role="presentation">
                 <button
-                  ref={i === index ? activeRef : undefined}
+                  ref={selected ? activeRef : undefined}
                   type="button"
+                  role="option"
+                  id={`cmd-option-${command.id}`}
+                  aria-selected={selected}
+                  tabIndex={-1}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => run(command.href)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
-                    i === index ? "bg-accent" : "hover:bg-accent/60",
+                    selected ? "bg-accent" : "hover:bg-accent/60",
                   )}
                 >
                   <Icon className="size-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate font-medium">{command.label}</span>
                   <span className="shrink-0 text-muted-foreground">{command.hint}</span>
-                  {i === index && (
+                  {selected && (
                     <CornerDownLeft className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                   )}
                 </button>

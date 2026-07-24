@@ -5,11 +5,13 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  CheckSquare,
   Inbox,
   MessageSquare,
   Plus,
   RefreshCw,
   ShieldQuestion,
+  Square,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +22,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
+import { cn } from "@/lib/utils";
 
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
 import type { ApprovalCapabilityFilter, ApprovalRow, DecisionVerb } from "./approvals-model";
@@ -121,6 +124,13 @@ export function ApprovalsView() {
   const [failedDetailIds, setFailedDetailIds] = useState<ReadonlySet<string>>(() => new Set());
   const [interruptFreeIds, setInterruptFreeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmation, setConfirmation] = useState<ResolvedConfirmation>();
+  // Multi-select bulk approval. A supervisor can clear a backlog of proposed
+  // plans in one action instead of deciding each row separately. Selection is
+  // always explicit — this never auto-approves — so the human-in-the-loop
+  // contract holds; each selected plan is still approved individually.
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>();
+  const [bulkSummary, setBulkSummary] = useState<{ approved: number; failed: number }>();
   const requestedRef = useRef<Set<string>>(new Set());
 
   const rows = useMemo(
@@ -129,6 +139,68 @@ export function ApprovalsView() {
   );
   const counts = useMemo(() => approvalCapabilityCounts(rows), [rows]);
   const visibleRows = useMemo(() => filterRowsByCapability(rows, filter), [rows, filter]);
+
+  // Rows that can actually be bulk-approved: hydrated interrupts that advertise
+  // "approve". Rows still loading or offering only reject/respond are excluded.
+  const approvableRows = useMemo(
+    () => visibleRows.filter((row) => row.interrupt?.decisions.includes("approve") ?? false),
+    [visibleRows],
+  );
+  const selectedApprovable = useMemo(
+    () => approvableRows.filter((row) => selectedIds.has(row.task.taskId)),
+    [approvableRows, selectedIds],
+  );
+  const bulkRunning = bulkProgress !== undefined;
+  const allApprovableSelected =
+    approvableRows.length > 0 && selectedApprovable.length === approvableRows.length;
+
+  const toggleSelected = useCallback((taskId: string) => {
+    setSelectedIds((current) =>
+      current.has(taskId) ? removeFromSet(current, taskId) : addToSet(current, taskId),
+    );
+  }, []);
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((current) =>
+      approvableRows.length > 0 && approvableRows.every((row) => current.has(row.task.taskId))
+        ? new Set()
+        : new Set(approvableRows.map((row) => row.task.taskId)),
+    );
+  }, [approvableRows]);
+
+  const approveSelected = useCallback(async () => {
+    const targets = approvableRows.filter(
+      (row) => row.interrupt !== undefined && selectedIds.has(row.task.taskId),
+    );
+    if (targets.length === 0) {
+      return;
+    }
+    setBulkSummary(undefined);
+    setBulkProgress({ done: 0, total: targets.length });
+    let approved = 0;
+    let failed = 0;
+    // Sequential so each decision's receipt is validated and the queue drains
+    // in order; a single failure never aborts the rest of the batch.
+    for (const row of targets) {
+      const interrupt = row.interrupt;
+      if (interrupt === undefined) {
+        continue;
+      }
+      const failure = await decideForTask(row.task.taskId, {
+        interruptId: interrupt.interruptId,
+        decision: "approve",
+      });
+      if (failure === undefined) {
+        approved += 1;
+        setResolvedInterruptIds((current) => addToSet(current, interrupt.interruptId));
+        setSelectedIds((current) => removeFromSet(current, row.task.taskId));
+      } else {
+        failed += 1;
+      }
+      setBulkProgress((current) => (current ? { ...current, done: current.done + 1 } : current));
+    }
+    setBulkProgress(undefined);
+    setBulkSummary({ approved, failed });
+  }, [approvableRows, selectedIds, decideForTask]);
 
   const hydrate = useCallback(
     (taskId: string) => {
@@ -270,6 +342,49 @@ export function ApprovalsView() {
         </div>
       )}
 
+      {/* Rendered at the top level, not inside the list branch: a batch that
+          approves the last pending rows empties the queue, and the outcome must
+          still be reported after those rows are gone. */}
+      {bulkSummary && (
+        <div
+          role="status"
+          className={cn(
+            "mb-4 flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 text-[13px]",
+            bulkSummary.failed === 0
+              ? "border-status-done/35 bg-status-done-bg"
+              : "border-status-review/35 bg-status-review-bg",
+          )}
+        >
+          {bulkSummary.failed === 0 ? (
+            <CheckCircle2 className="size-4 shrink-0 text-status-done" />
+          ) : (
+            <ShieldQuestion className="size-4 shrink-0 text-status-review" />
+          )}
+          <span className="min-w-0">
+            <span className="font-medium text-crisp">
+              {bulkSummary.approved > 0
+                ? `Approved ${bulkSummary.approved} ${bulkSummary.approved === 1 ? "plan" : "plans"}`
+                : "No plans approved"}
+            </span>
+            {bulkSummary.failed > 0 && (
+              <span className="text-muted-foreground">
+                {" "}
+                — {bulkSummary.failed} could not be approved and{" "}
+                {bulkSummary.failed === 1 ? "remains" : "remain"} in the queue.
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss bulk approval summary"
+            onClick={() => setBulkSummary(undefined)}
+            className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
+
       {loadingTasks && tasks.length === 0 ? (
         <>
           <p role="status" className="sr-only">
@@ -333,10 +448,59 @@ export function ApprovalsView() {
       ) : (
         <>
           {listErrorBanner}
+          {approvableRows.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {allApprovableSelected ? (
+                  <CheckSquare className="size-3.5" />
+                ) : (
+                  <Square className="size-3.5" />
+                )}
+                {allApprovableSelected ? "Clear selection" : `Select all ${approvableRows.length}`}
+              </button>
+              <span className="text-[13px] text-muted-foreground">
+                {selectedApprovable.length > 0
+                  ? `${selectedApprovable.length} selected`
+                  : "Select plans to approve together"}
+              </span>
+              <button
+                type="button"
+                onClick={() => void approveSelected()}
+                disabled={selectedApprovable.length === 0 || bulkRunning}
+                className="ml-auto flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
+              >
+                <CheckCheck className="size-3.5" />
+                {bulkProgress
+                  ? `Approving ${bulkProgress.done} of ${bulkProgress.total}…`
+                  : `Approve selected${
+                      selectedApprovable.length > 0 ? ` (${selectedApprovable.length})` : ""
+                    }`}
+              </button>
+              <span role="status" aria-live="polite" className="sr-only">
+                {bulkProgress
+                  ? `Approving ${bulkProgress.done} of ${bulkProgress.total} selected plans.`
+                  : ""}
+              </span>
+            </div>
+          )}
           <ul aria-label="Pending approvals" className="space-y-3">
             {visibleRows.map((row) => (
               <li key={row.task.taskId} className="rounded-2xl border border-border bg-card p-4">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {(row.interrupt?.decisions.includes("approve") ?? false) && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.task.taskId)}
+                      onChange={() => toggleSelected(row.task.taskId)}
+                      disabled={bulkRunning}
+                      aria-label={`Select “${row.task.title}” for bulk approval`}
+                      className="size-4 shrink-0 cursor-pointer accent-brand disabled:cursor-not-allowed"
+                    />
+                  )}
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
                     <ShieldQuestion className="size-3.5" />
                   </span>

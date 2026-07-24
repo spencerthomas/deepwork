@@ -226,7 +226,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         )}
 
         {/* workspace: thread + right panel */}
-        <div className="flex min-h-0 flex-1 gap-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 space-y-4">
               {detail?.prompt && (
@@ -394,9 +394,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             )}
           </div>
 
-          {/* right panel */}
+          {/* Run panel. On lg+ it is the right rail; below lg it stacks under the
+              thread (via the parent's flex-col) so its tabs stay reachable on a
+              phone instead of being hidden — the header toggle controls it in
+              both layouts. */}
           {panelOpen && selected && (
-            <aside className="hidden w-96 shrink-0 self-stretch lg:block xl:w-[28rem]">
+            <aside className="w-full shrink-0 self-stretch lg:w-96 xl:w-[28rem]">
               <RunPanel
                 selected={selected}
                 detail={detail}

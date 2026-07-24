@@ -13,13 +13,16 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
+import { moveInboxFocus } from "@/components/tasks/task-inbox-navigation";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
+import { cn } from "@/lib/utils";
 
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
 import type { ApprovalCapabilityFilter, ApprovalRow, DecisionVerb } from "./approvals-model";
@@ -61,6 +64,14 @@ function removeFromSet(current: ReadonlySet<string>, value: string): ReadonlySet
   const next = new Set(current);
   next.delete(value);
   return next;
+}
+
+/** True when the keypress originates in a field, so triage keys never steal typing. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
 function ApprovalListSkeleton() {
@@ -113,8 +124,11 @@ export function ApprovalsView() {
     mode,
   } = useTasksStore();
   const runtimeCopy = taskRuntimePresentation(mode);
+  const router = useRouter();
 
   const [filter, setFilter] = useState<ApprovalCapabilityFilter>("all");
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [keyboardError, setKeyboardError] = useState<string>();
   const [resolvedInterruptIds, setResolvedInterruptIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -122,6 +136,10 @@ export function ApprovalsView() {
   const [interruptFreeIds, setInterruptFreeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmation, setConfirmation] = useState<ResolvedConfirmation>();
   const requestedRef = useRef<Set<string>>(new Set());
+  // Gate keyboard decisions while one is in flight so a held key or a fast a→r
+  // can't submit duplicate or conflicting decisions (the button panel gates the
+  // same way with its `submitting` state).
+  const decidingRef = useRef(false);
 
   const rows = useMemo(
     () => deriveApprovalRows(tasks, detailsByTask, resolvedInterruptIds),
@@ -129,6 +147,7 @@ export function ApprovalsView() {
   );
   const counts = useMemo(() => approvalCapabilityCounts(rows), [rows]);
   const visibleRows = useMemo(() => filterRowsByCapability(rows, filter), [rows, filter]);
+  const orderedIds = useMemo(() => visibleRows.map((row) => row.task.taskId), [visibleRows]);
 
   const hydrate = useCallback(
     (taskId: string) => {
@@ -168,6 +187,77 @@ export function ApprovalsView() {
     }
     setConfirmation({ decision, taskId: row.task.taskId, taskTitle: row.task.title });
   }, []);
+
+  // Keyboard triage: approve/reject the focused row without leaving the queue.
+  // Only approve/reject are keyboard-driven (respond needs a written note), and
+  // only when the interrupt actually advertises that verb.
+  const decideFromKeyboard = useCallback(
+    (row: ApprovalRow, verb: "approve" | "reject") => {
+      if (!row.interrupt || !row.interrupt.decisions.includes(verb)) return;
+      if (decidingRef.current) return;
+      decidingRef.current = true;
+      setKeyboardError(undefined);
+      void decideForTask(row.task.taskId, {
+        interruptId: row.interrupt.interruptId,
+        decision: verb,
+      }).then((failure) => {
+        decidingRef.current = false;
+        if (failure === undefined) {
+          handleResolved(row, verb);
+        } else {
+          setKeyboardError(failure);
+        }
+      });
+    },
+    [decideForTask, handleResolved],
+  );
+
+  // Roving keyboard navigation over the pending queue (mirrors the inbox):
+  // j/k or arrows move the highlight, Enter opens it, a/r decide it.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+      if (orderedIds.length === 0) return;
+      if (event.key === "j" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setFocusedId((current) => moveInboxFocus(current, orderedIds, 1));
+        return;
+      }
+      if (event.key === "k" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setFocusedId((current) => moveInboxFocus(current, orderedIds, -1));
+        return;
+      }
+      if (focusedId === null) return;
+      const row = visibleRows.find((candidate) => candidate.task.taskId === focusedId);
+      if (row === undefined) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        router.push(`/tasks/${focusedId}`);
+      } else if (event.key === "a" || event.key === "A") {
+        event.preventDefault();
+        decideFromKeyboard(row, "approve");
+      } else if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        decideFromKeyboard(row, "reject");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [orderedIds, focusedId, visibleRows, router, decideFromKeyboard]);
+
+  // Release a highlight that filtering or a resolved decision removed from view.
+  useEffect(() => {
+    if (focusedId !== null && !orderedIds.includes(focusedId)) setFocusedId(null);
+  }, [orderedIds, focusedId]);
+
+  // Move real DOM focus to the highlighted row (roving tabindex) so keyboard and
+  // assistive-technology users land on the exact request a/r will decide.
+  useEffect(() => {
+    if (focusedId === null) return;
+    document.getElementById(`approval-row-${focusedId}`)?.focus();
+  }, [focusedId]);
 
   const sidebar = (
     <nav className="flex flex-col gap-1">
@@ -270,6 +360,23 @@ export function ApprovalsView() {
         </div>
       )}
 
+      {keyboardError !== undefined && (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-status-failed/35 bg-status-failed-bg px-4 py-3 text-[13px]"
+        >
+          <span className="min-w-0 flex-1">{keyboardError}</span>
+          <button
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setKeyboardError(undefined)}
+            className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
+
       {loadingTasks && tasks.length === 0 ? (
         <>
           <p role="status" className="sr-only">
@@ -333,9 +440,26 @@ export function ApprovalsView() {
       ) : (
         <>
           {listErrorBanner}
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            Keyboard: <span className="font-medium text-foreground/80">j / k</span> move ·{" "}
+            <span className="font-medium text-foreground/80">a</span> approve ·{" "}
+            <span className="font-medium text-foreground/80">r</span> reject ·{" "}
+            <span className="font-medium text-foreground/80">Enter</span> open
+          </p>
           <ul aria-label="Pending approvals" className="space-y-3">
             {visibleRows.map((row) => (
-              <li key={row.task.taskId} className="rounded-2xl border border-border bg-card p-4">
+              <li
+                key={row.task.taskId}
+                id={`approval-row-${row.task.taskId}`}
+                tabIndex={row.task.taskId === focusedId ? 0 : -1}
+                aria-current={row.task.taskId === focusedId ? "true" : undefined}
+                className={cn(
+                  "rounded-2xl border bg-card p-4 outline-none transition-colors",
+                  row.task.taskId === focusedId
+                    ? "border-brand ring-1 ring-brand/40"
+                    : "border-border",
+                )}
+              >
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
                     <ShieldQuestion className="size-3.5" />

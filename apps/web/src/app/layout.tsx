@@ -33,7 +33,12 @@ const THEME_INIT = `(function(){try{var s=localStorage.getItem("dw-theme");var d
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className="bg-background">
+    // The pre-paint script below sets the `dark` class from client-only state
+    // (localStorage / prefers-color-scheme), so the server can't match it.
+    // suppressHydrationWarning scopes that expected <html> mismatch — without
+    // it React logs a recoverable hydration error that fails strict page-error
+    // assertions (e.g. the demo acceptance journey) whenever CI runs dark.
+    <html lang="en" className="bg-background" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>

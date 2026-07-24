@@ -1,11 +1,10 @@
 "use client";
 
-import { Check, Copy, Download, FileText, RotateCcw } from "lucide-react";
+import { Check, Copy, Download, FileText, PencilLine, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 import { formatResultBrief } from "@/lib/result-brief";
 import type { EvidenceRecord } from "@/lib/task-types";
-import { cn } from "@/lib/utils";
 
 /** Turn a task title into a safe, bounded Markdown filename stem. */
 function resultFilename(title: string): string {
@@ -34,9 +33,11 @@ const ACTION_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
 
 /**
- * Actions that make a finished run usable: copy or download the result, and
- * re-dispatch the same objective as a fresh task. Purely client-side, so it
- * works identically against the loopback API and the in-browser fixture runner.
+ * Actions that make a finished run usable: copy the raw result, copy or download
+ * a portable Markdown brief (prompt + result + evidence), and either re-dispatch
+ * the objective immediately or open it in the composer to edit first. Purely
+ * client-side, so it works identically against the loopback API and the
+ * in-browser fixture runner.
  */
 export function TaskResultActions({
   title,
@@ -46,6 +47,7 @@ export function TaskResultActions({
   onRunAgain,
   runningAgain = false,
   runError,
+  onEditRerun,
 }: {
   title: string;
   prompt?: string;
@@ -54,6 +56,7 @@ export function TaskResultActions({
   onRunAgain?: () => void;
   runningAgain?: boolean;
   runError?: string;
+  onEditRerun?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [briefCopied, setBriefCopied] = useState(false);
@@ -112,7 +115,12 @@ export function TaskResultActions({
             </button>
             <button
               type="button"
-              onClick={() => triggerDownload(resultFilename(title), `# ${title}\n\n${result}\n`)}
+              onClick={() =>
+                triggerDownload(
+                  resultFilename(title),
+                  formatResultBrief({ title, prompt, result, evidence }),
+                )
+              }
               className={ACTION_CLASS}
             >
               <Download aria-hidden className="size-3.5" />
@@ -120,21 +128,32 @@ export function TaskResultActions({
             </button>
           </>
         )}
-        {onRunAgain && (
-          <button
-            type="button"
-            onClick={onRunAgain}
-            disabled={runningAgain}
-            className={cn(ACTION_CLASS, "ml-auto")}
-          >
-            <RotateCcw aria-hidden className="size-3.5" />
-            {runningAgain ? "Starting…" : "Run again"}
-          </button>
+        {(onRunAgain || onEditRerun) && (
+          <div className="ml-auto flex items-center gap-2">
+            {onEditRerun && (
+              <button type="button" onClick={onEditRerun} className={ACTION_CLASS}>
+                <PencilLine aria-hidden className="size-3.5" />
+                Edit &amp; re-run
+              </button>
+            )}
+            {onRunAgain && (
+              <button
+                type="button"
+                onClick={onRunAgain}
+                disabled={runningAgain}
+                className={ACTION_CLASS}
+              >
+                <RotateCcw aria-hidden className="size-3.5" />
+                {runningAgain ? "Starting…" : "Run again"}
+              </button>
+            )}
+          </div>
         )}
       </div>
       {copyFailed && (
         <p role="alert" className="mt-2 text-[13px] text-status-failed">
-          Could not copy to the clipboard. Copy the result text above manually.
+          Could not copy to the clipboard. Copy the result text above, or use Download to save the
+          full brief.
         </p>
       )}
       {runError !== undefined && (

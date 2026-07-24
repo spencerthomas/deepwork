@@ -25,21 +25,23 @@ const themeOptions: { value: ThemePreference; label: string }[] = [
 export function AppearanceSection() {
   const [preference, setPreference] = useState<ThemePreference>("system");
 
+  // Load the stored preference and keep the theme class in sync. `apply` always
+  // re-reads storage and resolves through `resolveIsDark`, so an explicit
+  // Light/Dark override is honored and OS changes only take effect while
+  // "System" is selected. Reading storage here (rather than defaulting to the
+  // OS preference before the override loads) prevents a first-paint flip that
+  // would briefly drop an explicit dark override when the OS is light.
   useEffect(() => {
-    setPreference(readThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY)));
-  }, []);
-
-  // While "System" is selected, follow OS changes live.
-  useEffect(() => {
-    if (preference !== "system") {
-      return;
-    }
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => document.documentElement.classList.toggle("dark", media.matches);
+    const apply = () => {
+      const stored = readThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY));
+      setPreference(stored);
+      document.documentElement.classList.toggle("dark", resolveIsDark(stored, media.matches));
+    };
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [preference]);
+  }, []);
 
   function choose(next: ThemePreference) {
     setPreference(next);

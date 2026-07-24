@@ -3,11 +3,12 @@
 import { ArrowLeft, Bot, CornerDownLeft, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarLabel } from "@/components/shell/sidebar-nav";
+import { consumeEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
@@ -27,6 +28,16 @@ export function NewTask() {
   const [prompt, setPrompt] = useState("");
   const [validationError, setValidationError] = useState<string>();
   const runtimeCopy = taskRuntimePresentation(mode);
+
+  // Prefill from an in-session "Edit & re-run" handoff. The prompt travels
+  // through transient module state, never the URL, so private prompt content is
+  // not written to history or the referrer; the textarea's maxLength bounds it.
+  useEffect(() => {
+    const seeded = consumeEditRerunPrompt();
+    if (seeded !== null && seeded.trim() !== "") {
+      setPrompt(seeded.slice(0, PROMPT_MAX_LENGTH * 2));
+    }
+  }, []);
 
   const fieldId = useId();
   const countId = `${fieldId}-count`;

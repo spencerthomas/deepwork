@@ -38,6 +38,7 @@ import {
   INBOX_GROUP_ORDER,
   moveInboxFocus,
   orderedInboxIds,
+  sortTasksByRecency,
 } from "@/components/tasks/task-inbox-navigation";
 import { inboxViewToQuery, type InboxView, readInboxView } from "@/components/tasks/task-inbox-url";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
@@ -247,9 +248,18 @@ export function TaskInbox() {
   const filterActive = hasActiveTaskFilter(filter);
   const needsYou = counts.byStatus["waiting-approval"];
 
+  // The ungrouped "Recent" view sorts newest-created first so its label is
+  // honest; the grouped view keeps the server order within each status section.
+  // Render and keyboard navigation both read this one ordered list, so they can
+  // never drift.
+  const ordered = useMemo(
+    () => (grouped ? visible : sortTasksByRecency(visible)),
+    [visible, grouped],
+  );
+
   const orderedIds = useMemo(
-    () => orderedInboxIds(visible, grouped, filter.status),
-    [visible, grouped, filter.status],
+    () => orderedInboxIds(ordered, grouped, filter.status),
+    [ordered, grouped, filter.status],
   );
 
   // Release a highlight that filtering, grouping, or a refresh removed from view.
@@ -536,7 +546,7 @@ export function TaskInbox() {
           })
         ) : (
           <div className="divide-y divide-border">
-            {visible.map((task) => (
+            {ordered.map((task) => (
               <TaskRow
                 key={task.taskId}
                 mode={mode}

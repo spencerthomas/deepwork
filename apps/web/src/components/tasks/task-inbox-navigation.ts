@@ -40,6 +40,34 @@ export function orderedInboxIds(
   return visible.map((task) => task.taskId);
 }
 
+function recencyKey(task: TaskSummary): number {
+  // Tasks whose creation time is unknown or unparseable sort as the oldest, so
+  // they fall to the bottom of a newest-first list rather than masquerading as
+  // brand new. Never fabricate a time to fill the gap.
+  if (task.createdAt === undefined) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  const parsed = Date.parse(task.createdAt);
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+}
+
+/**
+ * The visible tasks ordered newest-created first, so the ungrouped "Recent"
+ * view lives up to its name (the API returns tasks oldest-first). The sort is
+ * stable, so tasks that share a creation instant — or both lack one — keep
+ * their original server order.
+ */
+export function sortTasksByRecency(tasks: readonly TaskSummary[]): TaskSummary[] {
+  return [...tasks].sort((first, second) => {
+    const firstKey = recencyKey(first);
+    const secondKey = recencyKey(second);
+    if (firstKey === secondKey) {
+      return 0;
+    }
+    return secondKey - firstKey;
+  });
+}
+
 /**
  * The id a j/k / arrow keypress should highlight next. With nothing highlighted
  * yet, moving down lands on the first row and up on the last; otherwise the

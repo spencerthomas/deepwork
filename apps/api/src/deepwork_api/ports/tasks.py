@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from deepwork_api.domain import (
+    CancellationRecord,
     DecisionRecord,
     DecisionValue,
     EventData,
@@ -97,3 +98,10 @@ class TaskRepository(Protocol):
         interrupt_id: str,
     ) -> DecisionValue:
         """Wait for the exact interrupt decision."""
+
+    async def cancel_task(self, task_id: str) -> CancellationRecord:
+        """Atomically move a live task to a terminal cancelled state.
+
+        Cancellation is idempotent for an already-cancelled task and refuses a
+        task that already reached another terminal state.
+        """

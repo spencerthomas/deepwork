@@ -24,6 +24,7 @@ from deepwork_api.domain import (
     DecisionValue,
     PlanRevisionConflictError,
     ProposedPlan,
+    TaskAlreadyResolvedError,
     TaskEventName,
     TaskSnapshot,
     TaskStatus,
@@ -219,6 +220,54 @@ async def test_repository_preserves_order_and_monotonic_events() -> None:
         second.task_id,
     ]
     assert (await repository.events_after(first.task_id, 1)) == (event,)
+
+
+async def test_in_memory_cancel_terminates_a_running_task_and_wakes_waiters() -> None:
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(title="Stop me", objective="Stop me")
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.RUN_STARTED,
+        data=(("runId", task.run_id), ("status", TaskStatus.RUNNING.value)),
+        status=TaskStatus.RUNNING,
+    )
+    event_waiter = asyncio.create_task(repository.wait_for_events(task.task_id, 2))
+    await asyncio.sleep(0)
+
+    record = await repository.cancel_task(task.task_id)
+    assert record.duplicate is False
+    await asyncio.wait_for(event_waiter, timeout=1)
+
+    cancelled = await repository.get_task(task.task_id)
+    assert cancelled.status is TaskStatus.CANCELLED
+    assert cancelled.status.is_terminal
+    assert cancelled.result is None
+    completion = (await repository.events_after(task.task_id, 2))[0]
+    assert completion.name is TaskEventName.RUN_COMPLETED
+    assert dict(completion.data)["status"] == TaskStatus.CANCELLED.value
+    assert dict(completion.data)["resultAvailable"] is False
+
+    # Cancelling again is an idempotent no-op; a resolved task is refused.
+    assert (await repository.cancel_task(task.task_id)).duplicate is True
+
+
+async def test_in_memory_cancel_refuses_a_rejected_task() -> None:
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(title="Already rejected", objective="Already rejected")
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.RUN_COMPLETED,
+        data=(
+            ("runId", task.run_id),
+            ("status", TaskStatus.REJECTED.value),
+            ("safeReason", "The plan was rejected."),
+            ("resultAvailable", False),
+        ),
+        status=TaskStatus.REJECTED,
+        clear_pending_interrupt=True,
+    )
+    with pytest.raises(TaskAlreadyResolvedError):
+        await repository.cancel_task(task.task_id)
 
 
 async def test_repository_rejects_plan_revision_max_without_mutation() -> None:

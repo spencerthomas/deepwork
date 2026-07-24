@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from deepwork_api.application.local_runner import LocalAgentServerRunner
 from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
+    CancellationRecord,
     DecisionRecord,
     DecisionValue,
     EvidenceKind,
@@ -352,6 +353,16 @@ class TaskService:
         """Read one local task."""
 
         return await self.repository.get_task(task_id)
+
+    async def cancel_task(self, task_id: str) -> CancellationRecord:
+        """Cancel a live task, recording an honest terminal cancelled state.
+
+        The cancellation is applied to the authoritative repository, whose
+        terminal guard stops the runner's background follower the next time it
+        touches task state; no separate runner command is required.
+        """
+
+        return await self.repository.cancel_task(task_id)
 
     async def record_decision(
         self,

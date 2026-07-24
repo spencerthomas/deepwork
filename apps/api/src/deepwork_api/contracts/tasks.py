@@ -19,6 +19,7 @@ from deepwork_api.domain import (
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
+    CancellationRecord,
     DecisionRecord,
     DecisionValue,
     EvidenceKind,
@@ -51,6 +52,7 @@ type TaskWireStatus = Literal[
     "completed",
     "rejected",
     "failed",
+    "cancelled",
 ]
 type TaskEvidenceClass = Literal["fixture", "local-source"]
 
@@ -267,6 +269,23 @@ class DecisionAcceptedResponse(_TaskWireModel):
         )
 
 
+class CancellationAcceptedResponse(_TaskWireModel):
+    """Accepted or idempotently replayed task cancellation receipt."""
+
+    task_id: TaskId = Field(alias="taskId")
+    run_id: RunId = Field(alias="runId")
+    status: Literal["cancelled"] = "cancelled"
+    duplicate: bool
+
+    @classmethod
+    def from_domain(cls, record: CancellationRecord) -> CancellationAcceptedResponse:
+        return cls(
+            task_id=record.task_id,
+            run_id=record.run_id,
+            duplicate=record.duplicate,
+        )
+
+
 class PlanUpdateRequest(_TaskWireModel):
     """Edit the exact pending plan revision without silently truncating it."""
 
@@ -389,7 +408,7 @@ class EvidenceRecordedEventData(EvidenceResponse):
 
 class RunCompletedEventData(_TaskWireModel):
     run_id: RunId = Field(alias="runId")
-    status: Literal["completed", "rejected", "failed"]
+    status: Literal["completed", "rejected", "failed", "cancelled"]
     safe_reason: str = Field(alias="safeReason", min_length=1, max_length=200)
     result_available: bool = Field(alias="resultAvailable")
 
@@ -427,4 +446,6 @@ def _wire_status(status: TaskStatus) -> TaskWireStatus:
         return "completed"
     if status is TaskStatus.REJECTED:
         return "rejected"
+    if status is TaskStatus.CANCELLED:
+        return "cancelled"
     return "failed"

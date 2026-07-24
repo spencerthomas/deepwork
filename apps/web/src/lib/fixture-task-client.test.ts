@@ -81,4 +81,68 @@ describe("fixture task client", () => {
     close();
     expect(connection).toBe("closed");
   });
+
+  it("cancels a waiting task, stays terminal, and refuses a finished task", async () => {
+    vi.useFakeTimers();
+    const client = createFixtureTaskClient();
+    const created = await client.createTask("Prepare a plan I will stop");
+    const events: TaskEvent[] = [];
+    const close = client.subscribe(created.taskId, {
+      onConnectionChange: () => undefined,
+      onError: (message) => {
+        throw new Error(message);
+      },
+      onEvent: (event) => events.push(event),
+    });
+    await Promise.resolve();
+
+    await vi.advanceTimersByTimeAsync(940);
+    expect((await client.getTask(created.taskId)).status).toBe("waiting-approval");
+
+    const receipt = await client.cancelTask(created.taskId);
+    expect(receipt).toMatchObject({ status: "cancelled", duplicate: false });
+    const completion = events.at(-1);
+    expect(completion?.name).toBe("run.completed");
+    expect(completion?.data).toMatchObject({ status: "cancelled", resultAvailable: false });
+
+    const cancelled = await client.getTask(created.taskId);
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.result).toBeUndefined();
+
+    // Any still-pending scheduled step must not re-animate the cancelled task.
+    await vi.advanceTimersByTimeAsync(5000);
+    expect((await client.getTask(created.taskId)).status).toBe("cancelled");
+    expect(events.filter((event) => event.name === "run.completed")).toHaveLength(1);
+
+    // Cancelling again is an idempotent duplicate; deciding is refused.
+    expect((await client.cancelTask(created.taskId)).duplicate).toBe(true);
+    await expect(
+      client.decide(created.taskId, { interruptId: "fixture-interrupt-1", decision: "approve" }),
+    ).rejects.toThrow(/not waiting for a decision/);
+    close();
+  });
+
+  it("refuses to cancel an already completed task", async () => {
+    vi.useFakeTimers();
+    const client = createFixtureTaskClient();
+    const created = await client.createTask("Approve me to completion");
+    const events: TaskEvent[] = [];
+    client.subscribe(created.taskId, {
+      onConnectionChange: () => undefined,
+      onError: () => undefined,
+      onEvent: (event) => events.push(event),
+    });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(940);
+    const interrupt = events.find((event) => event.name === "interrupt.requested");
+    await client.decide(created.taskId, {
+      interruptId: String(interrupt?.data.interruptId),
+      decision: "approve",
+    });
+    await vi.advanceTimersByTimeAsync(420);
+    expect((await client.getTask(created.taskId)).status).toBe("completed");
+
+    await expect(client.cancelTask(created.taskId)).rejects.toThrow(/can no longer be cancelled/);
+    expect((await client.getTask(created.taskId)).status).toBe("completed");
+  });
 });

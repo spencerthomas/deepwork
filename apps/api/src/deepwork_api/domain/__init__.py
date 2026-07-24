@@ -11,11 +11,13 @@ from deepwork_api.domain.status import (
     WorkerStatus,
 )
 from deepwork_api.domain.tasks import (
+    CANCELLATION_SAFE_REASON,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
+    CancellationRecord,
     DecisionConflictError,
     DecisionRecord,
     DecisionValue,
@@ -31,6 +33,7 @@ from deepwork_api.domain.tasks import (
     PlanUpdateRecord,
     ProposedPlan,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
     TaskNotFoundError,
@@ -41,11 +44,13 @@ from deepwork_api.domain.tasks import (
 )
 
 __all__ = [
+    "CANCELLATION_SAFE_REASON",
     "MAX_PLAN_REVISION",
     "MAX_PLAN_STEPS",
     "MAX_PLAN_STEP_LENGTH",
     "MAX_TASK_OBJECTIVE_LENGTH",
     "MAX_TASK_RESULT_LENGTH",
+    "CancellationRecord",
     "Capability",
     "CapabilityState",
     "DecisionConflictError",
@@ -67,6 +72,7 @@ __all__ = [
     "ProcessState",
     "ProposedPlan",
     "StaleInterruptError",
+    "TaskAlreadyResolvedError",
     "TaskEvent",
     "TaskEventName",
     "TaskNotFoundError",

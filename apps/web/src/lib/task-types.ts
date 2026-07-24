@@ -54,6 +54,13 @@ export interface CreateTaskResult {
   status: "queued";
 }
 
+export interface CancelResult {
+  taskId: string;
+  runId: string;
+  status: "cancelled";
+  duplicate: boolean;
+}
+
 export interface TaskEvent {
   id: string;
   name: TaskEventName;
@@ -97,6 +104,7 @@ export interface TaskEventHandlers {
 export interface TaskClient {
   readonly mode: ClientMode;
   readonly apiBaseUrl: string;
+  cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult>;
   createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult>;
   decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<DecisionResult>;
   getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail>;

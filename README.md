@@ -5,8 +5,8 @@ approving, and verifying long-running agent work across desktop and phone.
 
 > **Status:** A credential-free local product is runnable today. It creates a
 > text task, proposes an editable plan, pauses for approval, streams honest
-> progress and evidence, returns a prompt-specific result, and reopens completed
-> work during the same API process.
+> progress and evidence, lets you stop a running task at any time, returns a
+> prompt-specific result, and reopens completed work during the same API process.
 
 ## Run the local product
 

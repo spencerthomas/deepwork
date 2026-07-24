@@ -15,11 +15,13 @@ from pathlib import Path
 from typing import TypeVar, cast
 
 from deepwork_api.domain import (
+    CANCELLATION_SAFE_REASON,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
+    CancellationRecord,
     DecisionConflictError,
     DecisionRecord,
     DecisionValue,
@@ -36,6 +38,7 @@ from deepwork_api.domain import (
     PlanUpdateRecord,
     ProposedPlan,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
     TaskNotFoundError,
@@ -484,6 +487,11 @@ class SQLiteTaskRepository:
                 if decision is not None:
                     return decision
                 await state.condition.wait()
+
+    async def cancel_task(self, task_id: str) -> CancellationRecord:
+        """Atomically move a live task to a terminal cancelled state."""
+
+        return await self._mutate(self._cancel_task_sync, task_id)
 
     async def _mutate(
         self,
@@ -1076,6 +1084,52 @@ class SQLiteTaskRepository:
                 run_id=cast(str, task["run_id"]),
                 interrupt_id=interrupt_id,
                 decision=decision,
+                duplicate=False,
+            )
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _cancel_task_sync(self, task_id: str) -> CancellationRecord:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            task = self._task_row_sync(connection, task_id)
+            status = _decode_status(task["status"])
+            if status is TaskStatus.CANCELLED:
+                connection.commit()
+                return CancellationRecord(
+                    task_id=cast(str, task["task_id"]),
+                    run_id=cast(str, task["run_id"]),
+                    duplicate=True,
+                )
+            if status.is_terminal:
+                raise TaskAlreadyResolvedError
+            event = TaskEvent(
+                event_id=self._next_event_id_sync(connection, task_id),
+                name=TaskEventName.RUN_COMPLETED,
+                data=(
+                    ("runId", cast(str, task["run_id"])),
+                    ("status", TaskStatus.CANCELLED.value),
+                    ("safeReason", CANCELLATION_SAFE_REASON),
+                    ("resultAvailable", False),
+                ),
+            )
+            self._insert_event_sync(connection, task_id, event)
+            connection.execute(
+                """
+                UPDATE tasks
+                SET status = ?, pending_interrupt_id = NULL
+                WHERE task_id = ?
+                """,
+                (TaskStatus.CANCELLED.value, task_id),
+            )
+            connection.commit()
+            return CancellationRecord(
+                task_id=cast(str, task["task_id"]),
+                run_id=cast(str, task["run_id"]),
                 duplicate=False,
             )
         except Exception:

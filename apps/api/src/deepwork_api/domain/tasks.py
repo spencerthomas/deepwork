@@ -17,6 +17,7 @@ MAX_TASK_RESULT_LENGTH = (
     + MAX_PLAN_STEPS * MAX_PLAN_STEP_LENGTH
     + MAX_TASK_RESULT_FORMATTING_OVERHEAD
 )
+CANCELLATION_SAFE_REASON = "The run was cancelled before it produced a result."
 
 
 class TaskStatus(StrEnum):
@@ -28,12 +29,13 @@ class TaskStatus(StrEnum):
     COMPLETED = "completed"
     REJECTED = "rejected"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
     @property
     def is_terminal(self) -> bool:
         """Return whether no more events may be appended to the run."""
 
-        return self in {self.COMPLETED, self.REJECTED, self.FAILED}
+        return self in {self.COMPLETED, self.REJECTED, self.FAILED, self.CANCELLED}
 
 
 class DecisionValue(StrEnum):
@@ -149,6 +151,15 @@ class PlanUpdateRecord:
     plan: ProposedPlan
 
 
+@dataclass(frozen=True, slots=True)
+class CancellationRecord:
+    """Accepted cancellation receipt, including idempotent replay state."""
+
+    task_id: str
+    run_id: str
+    duplicate: bool
+
+
 class TaskDomainError(Exception):
     """Base error mapped safely at the transport boundary."""
 
@@ -171,6 +182,10 @@ class StaleInterruptError(TaskDomainError):
 
 class DecisionConflictError(TaskDomainError):
     """A different decision was already recorded for the interrupt."""
+
+
+class TaskAlreadyResolvedError(TaskDomainError):
+    """The task already reached a non-cancelled terminal state and cannot be cancelled."""
 
 
 class PlanUnavailableError(TaskDomainError):

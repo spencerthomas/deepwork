@@ -6,7 +6,9 @@ import asyncio
 from dataclasses import dataclass, field
 
 from deepwork_api.domain import (
+    CANCELLATION_SAFE_REASON,
     MAX_PLAN_REVISION,
+    CancellationRecord,
     DecisionConflictError,
     DecisionRecord,
     DecisionValue,
@@ -20,6 +22,7 @@ from deepwork_api.domain import (
     PlanUpdateRecord,
     ProposedPlan,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
     TaskNotFoundError,
@@ -347,6 +350,40 @@ class InMemoryTaskRepository:
                 if task.status.is_terminal:
                     raise StaleInterruptError
                 await self._condition.wait()
+
+    async def cancel_task(self, task_id: str) -> CancellationRecord:
+        """Move a live task to a terminal cancelled state and wake its waiters."""
+
+        async with self._condition:
+            task = self._get(task_id)
+            if task.status is TaskStatus.CANCELLED:
+                return CancellationRecord(
+                    task_id=task.task_id,
+                    run_id=task.run_id,
+                    duplicate=True,
+                )
+            if task.status.is_terminal:
+                raise TaskAlreadyResolvedError
+            task.events.append(
+                TaskEvent(
+                    event_id=len(task.events) + 1,
+                    name=TaskEventName.RUN_COMPLETED,
+                    data=(
+                        ("runId", task.run_id),
+                        ("status", TaskStatus.CANCELLED.value),
+                        ("safeReason", CANCELLATION_SAFE_REASON),
+                        ("resultAvailable", False),
+                    ),
+                )
+            )
+            task.status = TaskStatus.CANCELLED
+            task.pending_interrupt_id = None
+            self._condition.notify_all()
+            return CancellationRecord(
+                task_id=task.task_id,
+                run_id=task.run_id,
+                duplicate=False,
+            )
 
     def _get(self, task_id: str) -> _StoredTask:
         try:

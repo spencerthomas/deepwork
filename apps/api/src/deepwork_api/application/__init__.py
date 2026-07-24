@@ -4,12 +4,14 @@ from deepwork_api.application.local_runner import LocalAgentServerRunner
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
+    CancellationRecord,
     DecisionConflictError,
     InterruptMismatchError,
     InvalidEventCursorError,
     PlanRevisionConflictError,
     PlanUnavailableError,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
     TaskEvent,
     TaskNotFoundError,
     TaskSourceContractError,
@@ -18,6 +20,7 @@ from deepwork_api.domain import (
 )
 
 __all__ = [
+    "CancellationRecord",
     "DecisionConflictError",
     "DeterministicFixtureRunner",
     "InterruptMismatchError",
@@ -27,6 +30,7 @@ __all__ = [
     "PlanUnavailableError",
     "StaleInterruptError",
     "StatusService",
+    "TaskAlreadyResolvedError",
     "TaskEvent",
     "TaskNotFoundError",
     "TaskService",

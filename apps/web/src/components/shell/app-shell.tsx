@@ -16,12 +16,15 @@ import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { countTasks } from "@/components/task-inbox-filter";
 import { runtimeDisclosure, shellRuntimePresentation } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
+import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
 import { CommandBar } from "./command-bar";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
+import { approvalsNavLabel, formatPendingCount } from "./nav-badge";
 import { ThemeToggle } from "./theme-toggle";
 
 /** True while focus is in a field, so global single-key shortcuts stay dormant. */
@@ -119,6 +122,12 @@ export function AppShell({
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Surface how many loaded tasks are waiting on a human decision so the count
+  // is visible from every destination, not only the Approvals page itself.
+  const { tasks } = useTasksStore();
+  const pendingApprovals = countTasks(tasks).attention;
+  const approvalsBadge = formatPendingCount(pendingApprovals);
+
   // "?" opens the shortcuts help from anywhere the caret isn't in a field.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -205,19 +214,31 @@ export function AppShell({
         >
           {tabs.map((tab) => {
             const isActive = active === tab.label;
+            const badge = tab.label === "Approvals" ? approvalsBadge : null;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 aria-current={isActive ? "page" : undefined}
+                aria-label={
+                  tab.label === "Approvals" ? approvalsNavLabel(pendingApprovals) : undefined
+                }
                 className={cn(
-                  "relative flex h-10 items-center px-2.5 text-[13px] transition-colors",
+                  "relative flex h-10 items-center gap-1.5 px-2.5 text-[13px] transition-colors",
                   isActive
                     ? "text-crisp text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {tab.label}
+                {badge !== null && (
+                  <span
+                    aria-hidden
+                    className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full border border-status-review/30 bg-status-review-bg px-1 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-status-review"
+                  >
+                    {badge}
+                  </span>
+                )}
                 {isActive && (
                   <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />
                 )}
@@ -259,17 +280,31 @@ export function AppShell({
         {tabs.map((tab) => {
           const isActive = active === tab.label;
           const Icon = tab.icon;
+          const badge = tab.label === "Approvals" ? approvalsBadge : null;
           return (
             <Link
               key={tab.href}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
+              aria-label={
+                tab.label === "Approvals" ? approvalsNavLabel(pendingApprovals) : undefined
+              }
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
                 isActive ? "text-brand-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="size-5" />
+              <span className="relative">
+                <Icon className="size-5" />
+                {badge !== null && (
+                  <span
+                    aria-hidden
+                    className="absolute -right-2 -top-1.5 inline-flex min-w-[1rem] items-center justify-center rounded-full border border-status-review/30 bg-status-review-bg px-1 text-[9px] font-semibold leading-tight tabular-nums text-status-review"
+                  >
+                    {badge}
+                  </span>
+                )}
+              </span>
               {tab.label}
             </Link>
           );

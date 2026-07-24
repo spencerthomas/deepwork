@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { shellRuntimePresentation } from "@/lib/runtime-disclosure";
 import { taskClient } from "@/lib/task-client";
+import { TasksProvider } from "@/lib/tasks-store";
 
 import { AppShell } from "./app-shell";
 
@@ -11,14 +12,23 @@ vi.mock("./command-bar", () => ({
   CommandBar: () => null,
 }));
 
-describe("AppShell accessibility landmarks", () => {
-  it("renders a keyboard-visible skip link, labeled primary navigation, and main target", () => {
-    const markup = renderToStaticMarkup(
+/** Render AppShell inside the tasks store it now reads for the approvals badge. */
+function renderShell(active: string) {
+  return renderToStaticMarkup(
+    createElement(
+      TasksProvider,
+      null,
       createElement(AppShell, {
-        active: "Tasks",
+        active,
         children: createElement("p", null, "Task content"),
       }),
-    );
+    ),
+  );
+}
+
+describe("AppShell accessibility landmarks", () => {
+  it("renders a keyboard-visible skip link, labeled primary navigation, and main target", () => {
+    const markup = renderShell("Tasks");
 
     expect(markup).toContain('href="#main-content"');
     expect(markup).toContain("focus:translate-y-0");
@@ -33,12 +43,7 @@ describe("AppShell accessibility landmarks", () => {
   });
 
   it("renders a compact search icon and restores the text and shortcut at sm", () => {
-    const markup = renderToStaticMarkup(
-      createElement(AppShell, {
-        active: "Tasks",
-        children: createElement("p", null, "Task content"),
-      }),
-    );
+    const markup = renderShell("Tasks");
 
     expect(markup).toContain('aria-label="Search or run a command"');
     expect(markup).toContain("lucide-search");

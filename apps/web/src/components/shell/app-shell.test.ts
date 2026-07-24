@@ -12,6 +12,12 @@ vi.mock("./command-bar", () => ({
   CommandBar: () => null,
 }));
 
+// AppShell reads the router for its global "n" shortcut; the static render has
+// no app-router context, so stub it.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: () => {}, replace: () => {} }),
+}));
+
 /** Render AppShell inside the tasks store it now reads for the approvals badge. */
 function renderShell(active: string) {
   return renderToStaticMarkup(

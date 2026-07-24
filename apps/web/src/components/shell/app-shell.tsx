@@ -13,6 +13,7 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -119,6 +120,7 @@ export function AppShell({
   rail?: ReactNode;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -128,18 +130,23 @@ export function AppShell({
   const pendingApprovals = countTasks(tasks).attention;
   const approvalsBadge = formatPendingCount(pendingApprovals);
 
-  // "?" opens the shortcuts help from anywhere the caret isn't in a field.
+  // Global single-key shortcuts, dormant while a field has the caret or an
+  // overlay is open: "?" opens the shortcuts help, "n" starts a new task.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === "?" && !isTypingTarget(event.target)) {
+      if (isTypingTarget(event.target)) return;
+      if (event.key === "?") {
         event.preventDefault();
         setHelpOpen(true);
+      } else if (event.key === "n" && !cmdOpen && !helpOpen) {
+        event.preventDefault();
+        router.push("/tasks/new");
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [cmdOpen, helpOpen, router]);
 
   return (
     <div className="min-h-screen bg-background">

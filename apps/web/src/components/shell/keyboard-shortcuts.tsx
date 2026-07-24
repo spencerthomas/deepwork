@@ -19,6 +19,7 @@ const GROUPS: readonly ShortcutGroup[] = [
     title: "Global",
     shortcuts: [
       { keys: ["⌘", "K"], label: "Open the command palette" },
+      { keys: ["N"], label: "Start a new task" },
       { keys: ["?"], label: "Show this shortcuts help" },
       { keys: ["Esc"], label: "Close a dialog or overlay" },
     ],

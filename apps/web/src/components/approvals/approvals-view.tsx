@@ -136,6 +136,10 @@ export function ApprovalsView() {
   const [interruptFreeIds, setInterruptFreeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmation, setConfirmation] = useState<ResolvedConfirmation>();
   const requestedRef = useRef<Set<string>>(new Set());
+  // Gate keyboard decisions while one is in flight so a held key or a fast a→r
+  // can't submit duplicate or conflicting decisions (the button panel gates the
+  // same way with its `submitting` state).
+  const decidingRef = useRef(false);
 
   const rows = useMemo(
     () => deriveApprovalRows(tasks, detailsByTask, resolvedInterruptIds),
@@ -190,11 +194,14 @@ export function ApprovalsView() {
   const decideFromKeyboard = useCallback(
     (row: ApprovalRow, verb: "approve" | "reject") => {
       if (!row.interrupt || !row.interrupt.decisions.includes(verb)) return;
+      if (decidingRef.current) return;
+      decidingRef.current = true;
       setKeyboardError(undefined);
       void decideForTask(row.task.taskId, {
         interruptId: row.interrupt.interruptId,
         decision: verb,
       }).then((failure) => {
+        decidingRef.current = false;
         if (failure === undefined) {
           handleResolved(row, verb);
         } else {
@@ -244,6 +251,13 @@ export function ApprovalsView() {
   useEffect(() => {
     if (focusedId !== null && !orderedIds.includes(focusedId)) setFocusedId(null);
   }, [orderedIds, focusedId]);
+
+  // Move real DOM focus to the highlighted row (roving tabindex) so keyboard and
+  // assistive-technology users land on the exact request a/r will decide.
+  useEffect(() => {
+    if (focusedId === null) return;
+    document.getElementById(`approval-row-${focusedId}`)?.focus();
+  }, [focusedId]);
 
   const sidebar = (
     <nav className="flex flex-col gap-1">
@@ -436,9 +450,11 @@ export function ApprovalsView() {
             {visibleRows.map((row) => (
               <li
                 key={row.task.taskId}
-                onClick={() => setFocusedId(row.task.taskId)}
+                id={`approval-row-${row.task.taskId}`}
+                tabIndex={row.task.taskId === focusedId ? 0 : -1}
+                aria-current={row.task.taskId === focusedId ? "true" : undefined}
                 className={cn(
-                  "rounded-2xl border bg-card p-4 transition-colors",
+                  "rounded-2xl border bg-card p-4 outline-none transition-colors",
                   row.task.taskId === focusedId
                     ? "border-brand ring-1 ring-brand/40"
                     : "border-border",

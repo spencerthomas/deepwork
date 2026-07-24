@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   DRAFT_MAX_LENGTH,
   DRAFT_TTL_MS,
+  draftStorageKey,
+  formatDraftAge,
   parseComposerDraft,
   serializeComposerDraft,
 } from "./composer-draft";
 
 const NOW = 1_700_000_000_000;
+const MINUTE = 60_000;
 
 describe("parseComposerDraft", () => {
   it("returns null for absent, empty, or malformed values", () => {
@@ -62,5 +65,31 @@ describe("serializeComposerDraft", () => {
     const parsed = JSON.parse(raw) as { prompt: string; savedAt: number };
     expect(parsed.prompt.length).toBe(DRAFT_MAX_LENGTH);
     expect(parsed.savedAt).toBe(NOW);
+  });
+});
+
+describe("draftStorageKey", () => {
+  it("qualifies the key by the given source scope", () => {
+    expect(draftStorageKey("fixture")).toBe("dw-task-draft:fixture");
+    expect(draftStorageKey("api")).toBe("dw-task-draft:api");
+    // Distinct scopes never collide, so one source's draft cannot surface in another.
+    expect(draftStorageKey("fixture")).not.toBe(draftStorageKey("api"));
+  });
+});
+
+describe("formatDraftAge", () => {
+  it("describes the age at each unit boundary", () => {
+    expect(formatDraftAge(NOW, NOW)).toBe("just now");
+    expect(formatDraftAge(NOW - 30_000, NOW)).toBe("just now");
+    expect(formatDraftAge(NOW - MINUTE, NOW)).toBe("1 minute ago");
+    expect(formatDraftAge(NOW - 5 * MINUTE, NOW)).toBe("5 minutes ago");
+    expect(formatDraftAge(NOW - 60 * MINUTE, NOW)).toBe("1 hour ago");
+    expect(formatDraftAge(NOW - 5 * 60 * MINUTE, NOW)).toBe("5 hours ago");
+    expect(formatDraftAge(NOW - 24 * 60 * MINUTE, NOW)).toBe("1 day ago");
+    expect(formatDraftAge(NOW - 3 * 24 * 60 * MINUTE, NOW)).toBe("3 days ago");
+  });
+
+  it("never reports negative ages for a future stamp", () => {
+    expect(formatDraftAge(NOW + 5 * MINUTE, NOW)).toBe("just now");
   });
 });

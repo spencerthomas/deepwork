@@ -13,9 +13,18 @@
  * storage or the clock; the load/save/clear wrappers add the `window` and
  * try/catch guards (private mode, quota, disabled storage) so a lost draft can
  * never break typing.
+ *
+ * Tenant boundary: this client is single-tenant and device-local — there is no
+ * authenticated actor/workspace identity exposed to it (the "workspace" label
+ * is the build-time runtime mode, fixed per origin, not a runtime tenant). So
+ * there is nothing to namespace the key by today. If an authenticated
+ * actor/workspace identity later becomes available client-side, this key MUST
+ * be partitioned by it (or the draft purged on every identity change) before a
+ * shared origin can serve more than one actor — see AGENTS.md "Enforce
+ * tenant... boundaries."
  */
 
-export const DRAFT_STORAGE_KEY = "dw-task-draft";
+export const DRAFT_STORAGE_PREFIX = "dw-task-draft";
 
 /** Drafts older than this (or future-dated) are treated as expired and dropped. */
 export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -26,6 +35,33 @@ export const DRAFT_MAX_LENGTH = 20_000;
 export interface ComposerDraft {
   prompt: string;
   savedAt: number;
+}
+
+/**
+ * Storage key for a draft, qualified by the client's source identity (`scope` —
+ * the runtime mode). This is the only source qualifier the client has today; an
+ * authenticated actor/workspace identity must be folded in here (or trigger a
+ * purge) once one exists, per the tenant-boundary note above.
+ */
+export function draftStorageKey(scope: string): string {
+  return `${DRAFT_STORAGE_PREFIX}:${scope}`;
+}
+
+/** Human-readable age of a saved draft (pure): "just now", "5 minutes ago", … */
+export function formatDraftAge(savedAt: number, now: number): string {
+  const minutes = Math.floor(Math.max(0, now - savedAt) / 60_000);
+  if (minutes < 1) {
+    return "just now";
+  }
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 /**
@@ -75,44 +111,45 @@ function storage(): Storage | null {
   }
 }
 
-/** Read the current live draft, or `null` when there is none. */
-export function loadComposerDraft(now: number = Date.now()): ComposerDraft | null {
+/** Read the current live draft for `scope`, or `null` when there is none. */
+export function loadComposerDraft(scope: string, now: number = Date.now()): ComposerDraft | null {
   const store = storage();
   if (store === null) {
     return null;
   }
   try {
-    return parseComposerDraft(store.getItem(DRAFT_STORAGE_KEY), now);
+    return parseComposerDraft(store.getItem(draftStorageKey(scope)), now);
   } catch {
     return null;
   }
 }
 
 /** Persist a non-empty draft; an empty/whitespace prompt clears any stored draft. */
-export function saveComposerDraft(prompt: string, now: number = Date.now()): void {
+export function saveComposerDraft(scope: string, prompt: string, now: number = Date.now()): void {
   const store = storage();
   if (store === null) {
     return;
   }
+  const key = draftStorageKey(scope);
   try {
     if (prompt.trim() === "") {
-      store.removeItem(DRAFT_STORAGE_KEY);
+      store.removeItem(key);
       return;
     }
-    store.setItem(DRAFT_STORAGE_KEY, serializeComposerDraft(prompt, now));
+    store.setItem(key, serializeComposerDraft(prompt, now));
   } catch {
     // Storage can be unavailable or full; a lost draft must never break typing.
   }
 }
 
-/** Remove any stored draft (explicit discard, or a successful dispatch). */
-export function clearComposerDraft(): void {
+/** Remove any stored draft for `scope` (explicit discard, or a successful dispatch). */
+export function clearComposerDraft(scope: string): void {
   const store = storage();
   if (store === null) {
     return;
   }
   try {
-    store.removeItem(DRAFT_STORAGE_KEY);
+    store.removeItem(draftStorageKey(scope));
   } catch {
     // Best effort; nothing to recover if removal fails.
   }

@@ -1,23 +1,77 @@
-import { expect, test } from "@playwright/test";
+import { createServer } from "node:http";
 
-test("creates, approves, and completes one API-backed task", async ({ page }) => {
+import { expect, test as base } from "@playwright/test";
+
+const redirectGuardProbeHost = "browser-redirect-guard.invalid";
+
+const test = base.extend<{ redirectProbeUrl: string }>({
+  redirectProbeUrl: async ({ browserName: _browserName }, use) => {
+    const server = createServer((_request, response) => {
+      response.writeHead(302, {
+        "access-control-allow-origin": "*",
+        location: `https://${redirectGuardProbeHost}/redirect-probe`,
+      });
+      response.end();
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", () => {
+        server.off("error", reject);
+        resolve();
+      });
+    });
+    const address = server.address();
+    if (address === null || typeof address === "string") {
+      throw new Error("The redirect probe server did not expose a loopback TCP address.");
+    }
+    try {
+      await use(`http://127.0.0.1:${address.port}/redirect-probe`);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
+  },
+});
+
+test("creates, approves, and completes one API-backed task", async ({
+  context,
+  page,
+  redirectProbeUrl,
+}) => {
   const guardProbeHost = "browser-guard.invalid";
   const blockedGuardProbes = new Set<string>();
+  const blockedRedirectGuardProbes = new Set<string>();
   const unexpectedEgress = new Set<string>();
   const pageErrors: string[] = [];
+  let redirectProbeWasRequested = false;
 
-  await page.route("**/*", async (route) => {
-    const url = new URL(route.request().url());
-    if ((url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "127.0.0.1") {
-      if (url.hostname === guardProbeHost) {
-        blockedGuardProbes.add(url.protocol);
-      } else {
-        unexpectedEgress.add(url.origin);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Fetch.enable", {
+    patterns: [{ urlPattern: "http://*" }, { urlPattern: "https://*" }],
+  });
+  cdp.on("Fetch.requestPaused", (event) => {
+    void (async () => {
+      const url = new URL(event.request.url);
+      if (url.href === redirectProbeUrl) {
+        redirectProbeWasRequested = true;
       }
-      await route.abort();
-      return;
-    }
-    await route.continue();
+      if (url.hostname !== "127.0.0.1") {
+        if (url.hostname === guardProbeHost) {
+          blockedGuardProbes.add(url.protocol);
+        } else if (url.hostname === redirectGuardProbeHost && redirectProbeWasRequested) {
+          blockedRedirectGuardProbes.add(url.href);
+        } else {
+          unexpectedEgress.add(url.origin);
+        }
+        await cdp.send("Fetch.failRequest", {
+          requestId: event.requestId,
+          errorReason: "BlockedByClient",
+        });
+        return;
+      }
+      await cdp.send("Fetch.continueRequest", { requestId: event.requestId });
+    })();
   });
   await page.routeWebSocket(/^wss?:\/\//, async (webSocket) => {
     const url = new URL(webSocket.url());
@@ -46,6 +100,11 @@ test("creates, approves, and completes one API-backed task", async ({ page }) =>
     await Promise.all([fetch(`https://${host}/http-probe`).catch(() => undefined), webSocketProbe]);
   }, guardProbeHost);
   await expect.poll(() => [...blockedGuardProbes].sort()).toEqual(["https:", "wss:"]);
+
+  await page.evaluate((url) => fetch(url).catch(() => undefined), redirectProbeUrl);
+  await expect
+    .poll(() => [...blockedRedirectGuardProbes])
+    .toEqual([`https://${redirectGuardProbeHost}/redirect-probe`]);
 
   const prompt = "Prepare a credential-free browser acceptance result";
   await page.getByLabel("Task", { exact: true }).fill(prompt);

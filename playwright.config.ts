@@ -13,6 +13,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:3000",
     channel: "chrome",
     screenshot: "only-on-failure",
+    serviceWorkers: "block",
     trace: "retain-on-failure",
   },
   webServer: {

@@ -120,6 +120,7 @@ class TaskSnapshot:
 
     task_id: str
     run_id: str
+    created_at: str
     title: str
     objective: str
     status: TaskStatus

@@ -198,7 +198,7 @@ function canonicalEventContext(context: TaskEventMappingContext): TaskEventMappi
 function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSummary {
   const wire = record(
     value,
-    ["taskId", "runId", "title", "objective", "status", "lastEventId"],
+    ["taskId", "runId", "createdAt", "title", "objective", "status", "lastEventId"],
     "Task summary",
   );
   const mappedTaskId = taskId(identifier(wire.taskId, "Task identifier", TASK_ID_PATTERN));
@@ -219,6 +219,7 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
     taskId: mappedTaskId,
     sourceThread,
     run,
+    createdAt: string(wire.createdAt, "Task creation timestamp", 64),
     title: displayText(string(wire.title, "Task title", 80), "Task title", 80),
     objective: objectiveText(string(wire.objective, "Task objective", 8_000)),
     facts: factsForWireStatus(wireStatus(wire.status)),
@@ -371,6 +372,7 @@ export function mapTaskDetail(
       [
         "taskId",
         "runId",
+        "createdAt",
         "title",
         "objective",
         "status",
@@ -386,6 +388,7 @@ export function mapTaskDetail(
       {
         taskId: wire.taskId,
         runId: wire.runId,
+        createdAt: wire.createdAt,
         title: wire.title,
         objective: wire.objective,
         status: wire.status,

@@ -6,6 +6,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import httpx
@@ -19,10 +20,15 @@ from deepwork_api.domain import (
     TaskStatus,
 )
 
+# A fixed clock keeps the recorded task creation timestamp deterministic so the
+# exact-match wire assertions below stay stable.
+_FIXED_NOW = datetime(2026, 1, 1, tzinfo=UTC)
+_FIXED_CREATED_AT = _FIXED_NOW.isoformat()
+
 
 @asynccontextmanager
 async def _client() -> AsyncIterator[httpx.AsyncClient]:
-    app = create_app()
+    app = create_app(clock=lambda: _FIXED_NOW)
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(
@@ -177,6 +183,7 @@ async def test_create_list_detail_and_real_pause() -> None:
             {
                 "taskId": "task_00000001",
                 "runId": "run_00000001",
+                "createdAt": _FIXED_CREATED_AT,
                 "title": objective,
                 "objective": objective,
                 "status": "waiting-approval",

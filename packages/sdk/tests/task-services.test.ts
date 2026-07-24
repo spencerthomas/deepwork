@@ -56,6 +56,7 @@ function checkpointDetail(lastEventId: number) {
   return {
     taskId: "task_00000001",
     runId: "run_00000001",
+    createdAt: "2026-01-01T00:00:00+00:00",
     title: "Task",
     objective: "Inspect the bounded contract.",
     status: "running",
@@ -75,6 +76,7 @@ describe("separate task services", () => {
           {
             taskId: "task_00000001",
             runId: "run_00000001",
+            createdAt: "2026-01-01T00:00:00+00:00",
             title: "Task",
             objective: "Inspect the bounded contract.",
             status: "completed",

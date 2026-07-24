@@ -34,6 +34,24 @@ const GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: "Approvals queue",
+    shortcuts: [
+      { keys: ["J", "↓"], label: "Move the highlight down" },
+      { keys: ["K", "↑"], label: "Move the highlight up" },
+      { keys: ["A"], label: "Approve the highlighted request" },
+      { keys: ["R"], label: "Reject the highlighted request" },
+      { keys: ["↵"], label: "Open the highlighted task" },
+    ],
+  },
+  {
+    title: "Activity feed",
+    shortcuts: [
+      { keys: ["J", "↓"], label: "Move the highlight down" },
+      { keys: ["K", "↑"], label: "Move the highlight up" },
+      { keys: ["↵"], label: "Open the highlighted entry" },
+    ],
+  },
+  {
     title: "Run panel",
     shortcuts: [
       { keys: ["←", "→"], label: "Switch between tabs" },

@@ -44,10 +44,22 @@ TaskPath = Annotated[str, Path(pattern=r"^task_[0-9]{8}$")]
 _MAX_EVENT_CURSOR = 2_147_483_647
 
 
-def build_task_router(service: TaskService) -> APIRouter:
-    """Build the shared internal task API around an injected service."""
+def build_task_router(
+    service: TaskService,
+    *,
+    dependencies: list | None = None,
+) -> APIRouter:
+    """Build the shared internal task API around an injected service.
 
-    router = APIRouter(prefix="/api/v1/tasks", tags=["tasks"])
+    ``dependencies`` are attached to every route (for example a session guard
+    when authentication is enabled); the default is an open router.
+    """
+
+    router = APIRouter(
+        prefix="/api/v1/tasks",
+        tags=["tasks"],
+        dependencies=dependencies or [],
+    )
 
     @router.post("", response_model=TaskAcceptedResponse, status_code=202)
     async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse | JSONResponse:

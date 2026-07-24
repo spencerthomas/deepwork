@@ -8,11 +8,13 @@ from pathlib import Path
 from typing import cast
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
@@ -21,6 +23,7 @@ from deepwork_api.adapters.sources.local import (
     LocalSourceGatedError,
 )
 from deepwork_api.application import (
+    AuthService,
     DeterministicFixtureRunner,
     LocalAgentServerRunner,
     StatusService,
@@ -28,7 +31,7 @@ from deepwork_api.application import (
 )
 from deepwork_api.application.local_runner import LocalSource
 from deepwork_api.ports import TaskRepository
-from deepwork_api.transport import build_router, build_task_router
+from deepwork_api.transport import build_auth_router, build_router, build_session_guard, build_task_router
 
 _WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 _LOCAL_SOURCE_GATED_MESSAGE = (
@@ -77,6 +80,7 @@ def create_app(
     classic_deployment_endpoint: str | None = None,
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
+    access_key: str | None = None,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
 
@@ -179,12 +183,19 @@ def create_app(
         redoc_url=None,
         lifespan=lifespan,
     )
+    # Authentication is enabled only when an access key is configured. The key is
+    # read on the server and never returned; task routes are then guarded and the
+    # /api/v1/auth routes are exposed. Without a key the API stays open (fixture
+    # and local-development default).
+    auth_service = AuthService(store=InMemorySessionStore(), access_key=access_key) if access_key else None
+    task_dependencies = [Depends(build_session_guard(auth_service))] if auth_service else None
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(_WEB_ORIGINS),
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-        allow_headers=["Content-Type", "Last-Event-ID"],
+        allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
     )
 
     @app.exception_handler(RequestValidationError)
@@ -200,11 +211,22 @@ def create_app(
             },
         )
 
+    @app.exception_handler(HTTPException)
+    async def problem_http_exception(request: Request, error: HTTPException) -> JSONResponse:
+        # Render structured problem bodies (for example the auth guard's 401)
+        # while preserving FastAPI's default rendering for plain-string details.
+        if isinstance(error.detail, dict):
+            return JSONResponse(status_code=error.status_code, content=error.detail)
+        return cast("JSONResponse", await http_exception_handler(request, error))
+
     app.include_router(build_router(status_service))
-    app.include_router(build_task_router(task_service))
+    app.include_router(build_task_router(task_service, dependencies=task_dependencies))
+    if auth_service is not None:
+        app.include_router(build_auth_router(auth_service))
     app.state.task_repository = task_repository
     app.state.task_runner = task_runner
     app.state.task_service = task_service
+    app.state.auth_service = auth_service
     return app
 
 
@@ -272,10 +294,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the credential-free local API on a fixed loopback host."""
 
     args = _parser().parse_args(argv)
-    # The deployment credential is only ever read from the server environment.
+    # Credentials and the access key are only ever read from the server environment.
     classic_credential = os.environ.get("DEEPWORK_CLASSIC_CREDENTIAL") or os.environ.get(
         "LANGSMITH_API_KEY"
     )
+    access_key = os.environ.get("DEEPWORK_ACCESS_KEY")
     uvicorn.run(
         create_app(
             task_database_path=args.task_database,
@@ -285,6 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             classic_deployment_endpoint=args.classic_deployment_endpoint,
             classic_deployment_assistant=args.classic_deployment_assistant,
             classic_deployment_credential=classic_credential,
+            access_key=access_key,
         ),
         host="127.0.0.1",
         port=args.port,

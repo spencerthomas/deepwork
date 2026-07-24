@@ -1,5 +1,12 @@
 """Pure application-service domain values."""
 
+from deepwork_api.domain.auth import (
+    AuthError,
+    InvalidCredentialError,
+    Session,
+    SessionExpiredError,
+    SessionNotFoundError,
+)
 from deepwork_api.domain.status import (
     Capability,
     CapabilityState,
@@ -45,6 +52,11 @@ from deepwork_api.domain.tasks import (
 )
 
 __all__ = [
+    "AuthError",
+    "InvalidCredentialError",
+    "Session",
+    "SessionExpiredError",
+    "SessionNotFoundError",
     "CANCELLATION_SAFE_REASON",
     "MAX_PLAN_REVISION",
     "MAX_PLAN_STEPS",

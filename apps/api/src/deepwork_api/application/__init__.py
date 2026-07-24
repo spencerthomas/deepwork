@@ -1,5 +1,6 @@
 """Application use cases."""
 
+from deepwork_api.application.auth import AuthService
 from deepwork_api.application.local_runner import LocalAgentServerRunner
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
@@ -21,6 +22,7 @@ from deepwork_api.domain import (
 )
 
 __all__ = [
+    "AuthService",
     "CancellationRecord",
     "DecisionConflictError",
     "DeterministicFixtureRunner",

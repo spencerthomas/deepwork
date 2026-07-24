@@ -2,13 +2,15 @@
 
 import { ArrowLeft, Bot, ListChecks, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
 import { agentRuntimeCopy } from "@/lib/agent-cards";
+import { describeTaskCounts, summarizeTasks } from "@/lib/task-count-summary";
+import { formatTaskAge } from "@/lib/task-time";
 import { PLAN_STEP_MAX_COUNT, PLAN_STEP_MAX_LENGTH } from "@/lib/task-types";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
@@ -85,6 +87,14 @@ function CapabilitiesPanel() {
 function RecentTasksPanel() {
   const { tasks, loadingTasks } = useTasksStore();
 
+  // Advance a slow client-only clock so each row's relative creation age
+  // ("just now" → "1m ago") keeps moving without a task update or refresh.
+  const [, advanceAgeClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => advanceAgeClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (loadingTasks) {
     return (
       <p className="p-4 text-[13px] text-muted-foreground" role="status">
@@ -106,22 +116,41 @@ function RecentTasksPanel() {
       </div>
     );
   }
+  const summary = describeTaskCounts(summarizeTasks(tasks));
   return (
-    <ul className="divide-y divide-border">
-      {tasks.map((task) => (
-        <li key={task.taskId}>
-          <Link
-            href={`/tasks/${task.taskId}`}
-            className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/50"
-          >
-            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
-              {task.title}
-            </span>
-            <StatusChip status={task.status} />
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {summary !== undefined && (
+        <p className="border-b border-border px-4 py-2 text-[12px] text-muted-foreground">
+          {summary}
+        </p>
+      )}
+      <ul className="divide-y divide-border">
+        {tasks.map((task) => {
+          const age = formatTaskAge(task.createdAt);
+          return (
+            <li key={task.taskId}>
+              <Link
+                href={`/tasks/${task.taskId}`}
+                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/50"
+              >
+                <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                  {task.title}
+                </span>
+                {age !== undefined && (
+                  <span
+                    className="shrink-0 whitespace-nowrap text-[12px] text-muted-foreground"
+                    title={task.createdAt}
+                  >
+                    {age}
+                  </span>
+                )}
+                <StatusChip status={task.status} />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

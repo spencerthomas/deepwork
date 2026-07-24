@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Bot, ListChecks, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
@@ -16,12 +16,14 @@ import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
 
+import { type InspectTab, inspectTabToQuery, readInspectTab } from "./agent-detail-url";
+
 const panelTabs = [
   { key: "capabilities", label: "Capabilities", icon: ShieldCheck },
   { key: "recent-tasks", label: "Recent tasks", icon: ListChecks },
 ] as const;
 
-type TabKey = (typeof panelTabs)[number]["key"];
+type TabKey = InspectTab;
 
 const DECISION_VERBS = ["approve", "reject", "respond"] as const;
 
@@ -159,6 +161,26 @@ export function AgentDetail() {
   const { mode, apiBaseUrl } = useTasksStore();
   const runtimeCopy = agentRuntimeCopy(mode);
 
+  // Mirror the inspect tab in the URL so a specific view is shareable and
+  // survives a refresh, and restore it on first load and browser back/forward —
+  // the same contract the run panel uses.
+  const selectTab = useCallback((next: TabKey) => {
+    setTab((current) => {
+      if (current === next) return current;
+      const query = inspectTabToQuery(next);
+      const { pathname } = window.location;
+      window.history.pushState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () => setTab(readInspectTab(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   const sidebar = (
     <div className="flex flex-col gap-1">
       <Link
@@ -174,7 +196,7 @@ export function AgentDetail() {
           icon={t.icon}
           label={t.label}
           active={tab === t.key}
-          onClick={() => setTab(t.key)}
+          onClick={() => selectTab(t.key)}
         />
       ))}
     </div>
@@ -248,7 +270,7 @@ export function AgentDetail() {
               <button
                 key={t.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => selectTab(t.key)}
                 className={cn(
                   "rounded-lg px-2.5 py-1 font-mono text-[12px] transition-colors",
                   tab === t.key

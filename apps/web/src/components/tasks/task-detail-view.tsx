@@ -12,7 +12,8 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
@@ -21,6 +22,7 @@ import { ApprovalCard } from "@/components/tasks/approval-card";
 import { PlanCard } from "@/components/tasks/plan-card";
 import { ResultActions } from "@/components/tasks/result-actions";
 import { RunPanel } from "@/components/tasks/run-panel";
+import { TaskResultActions } from "@/components/tasks/task-result-actions";
 import { buildThread } from "@/components/tasks/task-thread-model";
 import {
   getActiveInterrupt,
@@ -79,8 +81,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     mode,
     decide,
     updatePlan,
+    createTask,
+    creating,
+    createError,
   } = store;
+  const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(true);
+  const [rerunAttempted, setRerunAttempted] = useState(false);
 
   const selected = tasks.find((task) => task.taskId === taskId);
   const detail = detailsByTask[taskId];
@@ -105,6 +112,18 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const hasInterruptItem = thread.some((item) => item.kind === "interrupt");
   const hasPlanItem = thread.some((item) => item.kind === "plan");
   const title = detail?.title ?? selected?.title ?? taskId;
+  // Re-dispatch the original request (the full prompt, not the truncated title)
+  // as a brand-new task and follow it.
+  const rerunPrompt = detail?.prompt ?? selected?.prompt;
+  const runAgain = useCallback(async () => {
+    // Mark the attempt so the store's createError only surfaces here after a
+    // re-run this view actually started — never a stale error from elsewhere.
+    setRerunAttempted(true);
+    const created = await createTask(rerunPrompt ?? title);
+    if (created) {
+      router.push(`/tasks/${created.taskId}`);
+    }
+  }, [createTask, router, rerunPrompt, title]);
 
   const sidebar = (
     <div className="flex flex-col gap-1">
@@ -302,6 +321,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                           />
                         </>
                       )}
+                      <TaskResultActions
+                        title={title}
+                        result={success ? detail?.result : undefined}
+                        onRunAgain={() => void runAgain()}
+                        runningAgain={creating}
+                        runError={rerunAttempted ? createError : undefined}
+                      />
                     </div>
                   );
                 }

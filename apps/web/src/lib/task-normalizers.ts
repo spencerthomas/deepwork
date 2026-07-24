@@ -164,7 +164,10 @@ export function normalizeTaskSummary(value: unknown, context = "Task"): TaskSumm
   }
 
   const taskId = requiredString(value, "taskId", context);
-  const prompt = optionalString(value, "prompt");
+  // The API returns the full sanitized request as `objective`; keep it as the
+  // task's prompt so re-dispatch and the detail subtitle use the real text
+  // rather than the display title, which the server truncates.
+  const prompt = optionalString(value, "prompt") ?? optionalString(value, "objective");
   const explicitTitle = optionalString(value, "title");
   const fallbackTitle = prompt ?? `Task ${taskId.slice(0, 8)}`;
 

@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -38,6 +38,7 @@ import {
   EVENT_LABELS,
   filterActivityFeed,
 } from "./activity-model";
+import { activityFilterToQuery, readActivityFilter } from "./activity-url";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -148,6 +149,29 @@ export function ActivityFeed() {
   const runtimeCopy = taskRuntimePresentation(mode);
   const router = useRouter();
 
+  // Mirror the active filter in the URL so a filtered feed is shareable, and
+  // restore it on first load and on browser back/forward — the same contract
+  // the task inbox uses. Each discrete filter change pushes a history entry so
+  // back/forward step through prior views.
+  const selectFilter = useCallback((next: ActivityFilter) => {
+    setFilter((current) => {
+      if (current === next) return current;
+      const query = activityFilterToQuery(next);
+      const { pathname } = window.location;
+      const url = query ? `${pathname}?${query}` : pathname;
+      window.history.pushState(window.history.state, "", url);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () =>
+      setFilter(readActivityFilter(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   const entries = useMemo(() => buildActivityFeed(tasks, eventsByTask), [tasks, eventsByTask]);
   const counts = useMemo(() => activityFilterCounts(entries), [entries]);
   const visibleEntries = useMemo(() => filterActivityFeed(entries, filter), [entries, filter]);
@@ -204,7 +228,7 @@ export function ActivityFeed() {
           label={ACTIVITY_FILTER_LABELS[candidate]}
           count={counts[candidate]}
           active={filter === candidate}
-          onClick={() => setFilter(candidate)}
+          onClick={() => selectFilter(candidate)}
         />
       ))}
     </nav>
@@ -278,7 +302,7 @@ export function ActivityFeed() {
           </p>
           <button
             type="button"
-            onClick={() => setFilter("all")}
+            onClick={() => selectFilter("all")}
             className="mt-3 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-accent"
           >
             Show all events

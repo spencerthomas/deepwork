@@ -146,6 +146,20 @@ test("creates, approves, and completes one API-backed task", async ({
   expect(clipboardBrief).toContain("## Result");
   expect(clipboardBrief).toContain(prompt);
 
+  // A terminal task can be re-dispatched: "Run again" creates a fresh task from
+  // the same prompt and navigates to it, without retyping.
+  const completedUrl = page.url();
+  const rerunResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url() === "http://127.0.0.1:8000/api/v1/tasks",
+  );
+  await page.getByRole("button", { name: "Run again" }).click();
+  expect((await rerunResponse).status()).toBe(202);
+  await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
+  expect(page.url()).not.toBe(completedUrl);
+  await expect(taskHeader.getByText("Needs review", { exact: true })).toBeVisible();
+
   expect([...unexpectedEgress]).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

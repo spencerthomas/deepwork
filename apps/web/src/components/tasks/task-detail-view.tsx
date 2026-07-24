@@ -19,6 +19,7 @@ import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
 import { ApprovalCard } from "@/components/tasks/approval-card";
 import { PlanCard } from "@/components/tasks/plan-card";
+import { RerunTaskButton } from "@/components/tasks/rerun-task-button";
 import { ResultActions } from "@/components/tasks/result-actions";
 import { RunPanel } from "@/components/tasks/run-panel";
 import { buildThread } from "@/components/tasks/task-thread-model";
@@ -105,6 +106,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const hasInterruptItem = thread.some((item) => item.kind === "interrupt");
   const hasPlanItem = thread.some((item) => item.kind === "plan");
   const title = detail?.title ?? selected?.title ?? taskId;
+  const rerunPrompt = detail?.prompt ?? selected?.prompt;
 
   const sidebar = (
     <div className="flex flex-col gap-1">
@@ -173,6 +175,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {terminal && rerunPrompt && <RerunTaskButton prompt={rerunPrompt} />}
             <button
               type="button"
               onClick={() => setPanelOpen((open) => !open)}

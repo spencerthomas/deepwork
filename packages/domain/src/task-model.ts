@@ -512,7 +512,12 @@ export function pendingInterrupt(input: {
 }
 
 const ISO_8601_INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** Days in a (1-indexed) month, honoring leap years, via the day-0 rollover. */
+function daysInUtcMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
 
 /**
  * Accept a task creation timestamp: a bounded ISO-8601 instant with an explicit
@@ -522,7 +527,28 @@ const ISO_8601_INSTANT_PATTERN =
  */
 export function createdAtTimestamp(value: string): string {
   const trimmed = value.trim();
-  if (trimmed.length > 64 || !ISO_8601_INSTANT_PATTERN.test(trimmed)) {
+  const match = ISO_8601_INSTANT_PATTERN.exec(trimmed);
+  if (trimmed.length > 64 || match === null) {
+    throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
+  }
+  // The pattern fixes the shape and offset; validate the calendar/clock fields
+  // explicitly so overflow values it allows are rejected rather than silently
+  // normalized (Date.parse turns "2026-02-31" into March 3 instead of failing).
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInUtcMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
     throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
   }
   return trimmed;

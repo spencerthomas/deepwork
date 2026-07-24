@@ -74,7 +74,7 @@ export function SchedulesView() {
             href={PLANS_DOC_URL}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-medium text-brand transition-colors hover:bg-brand-soft"
+            className="mt-2 flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-medium text-brand-accent transition-colors hover:bg-brand-soft"
           >
             Read the delivery plan (docs/PLANS.md) <ArrowUpRight className="size-3.5" />
           </a>

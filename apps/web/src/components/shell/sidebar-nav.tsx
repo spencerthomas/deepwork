@@ -38,14 +38,14 @@ export function SidebarItem({
   );
   const body = (
     <>
-      {Icon && <Icon className={cn("size-4", active ? "text-brand" : "")} />}
+      {Icon && <Icon className={cn("size-4", active ? "text-brand-accent" : "")} />}
       {dot && <span className={cn("size-1.5 rounded-full", dot)} aria-hidden />}
       <span className="truncate">{label}</span>
       {count !== undefined && (
         <span
           className={cn(
             "ml-auto rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
-            active ? "bg-brand/15 text-brand" : "bg-accent text-muted-foreground",
+            active ? "bg-brand/15 text-brand-accent" : "bg-accent text-muted-foreground",
           )}
         >
           {count}

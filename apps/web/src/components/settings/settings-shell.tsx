@@ -86,7 +86,7 @@ export function SettingsShell({ section }: { section: SettingsSectionId }) {
                           : "text-muted-foreground hover:bg-accent hover:text-foreground",
                       )}
                     >
-                      <Icon className={cn("size-4", isActive && "text-brand")} />
+                      <Icon className={cn("size-4", isActive && "text-brand-accent")} />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   );

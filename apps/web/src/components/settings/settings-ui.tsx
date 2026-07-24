@@ -32,7 +32,7 @@ export function SettingsHeader({
                   href={learnMore}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-brand hover:underline"
+                  className="text-brand-accent hover:underline"
                 >
                   Learn more
                 </a>
@@ -224,7 +224,7 @@ export function Select<T extends string>({
             >
               <Check
                 className={cn(
-                  "mt-0.5 size-3.5 shrink-0 text-brand",
+                  "mt-0.5 size-3.5 shrink-0 text-brand-accent",
                   option.value === value ? "opacity-100" : "opacity-0",
                 )}
               />

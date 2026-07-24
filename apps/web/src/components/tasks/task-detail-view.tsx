@@ -53,7 +53,7 @@ export function TaskThreadMarker({ label, detail }: { label: string; detail?: st
       <span className="size-1.5 shrink-0 rounded-full bg-border" aria-hidden />
       <span className="min-w-0 sm:shrink-0">{label}</span>
       {detail && (
-        <span className="basis-full break-words pl-3.5 opacity-70 sm:min-w-0 sm:flex-1 sm:truncate sm:pl-0">
+        <span className="basis-full break-words pl-3.5 sm:min-w-0 sm:flex-1 sm:truncate sm:pl-0">
           · {detail}
         </span>
       )}
@@ -163,7 +163,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         {/* toolbar */}
         <div className="mb-4 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-brand">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-accent">
               Task · <span className="font-mono normal-case">{taskId}</span>
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -180,7 +180,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               className={cn(
                 "flex size-8 items-center justify-center rounded-lg border transition-colors",
                 panelOpen
-                  ? "border-brand/30 bg-brand/10 text-brand"
+                  ? "border-brand/30 bg-brand/10 text-brand-accent"
                   : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >

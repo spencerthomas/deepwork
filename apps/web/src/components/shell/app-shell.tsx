@@ -96,7 +96,7 @@ function RuntimeBanner() {
     <div className="flex min-h-10 items-center justify-center gap-2 bg-brand px-4 text-center text-[13px] text-brand-foreground">
       <span className="font-medium">{runtimeDisclosure(taskClient.mode)}</span>
       <span
-        className="hidden rounded-md bg-white/15 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
+        className="hidden rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
         title={taskClient.apiBaseUrl}
       >
         {fixture ? "fixture" : taskClient.apiBaseUrl}
@@ -183,7 +183,7 @@ export function AppShell({
             aria-label="Settings"
             className={cn(
               "flex size-8 items-center justify-center rounded-xl transition-colors hover:bg-accent hover:text-foreground",
-              active === "Settings" ? "text-brand" : "text-muted-foreground",
+              active === "Settings" ? "text-brand-accent" : "text-muted-foreground",
             )}
           >
             <Settings className="size-4" />
@@ -266,7 +266,7 @@ export function AppShell({
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-                isActive ? "text-brand" : "text-muted-foreground hover:text-foreground",
+                isActive ? "text-brand-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icon className="size-5" />

@@ -368,7 +368,7 @@ export function TaskInbox() {
           <button
             type="button"
             onClick={() => setFilter(EMPTY_TASK_INBOX_FILTER)}
-            className="shrink-0 text-[13px] font-medium text-brand hover:underline"
+            className="shrink-0 text-[13px] font-medium text-brand-accent hover:underline"
           >
             Clear
           </button>
@@ -425,7 +425,7 @@ export function TaskInbox() {
             <button
               type="button"
               onClick={() => setFilter(EMPTY_TASK_INBOX_FILTER)}
-              className="mt-3 text-[13px] font-medium text-brand hover:underline"
+              className="mt-3 text-[13px] font-medium text-brand-accent hover:underline"
             >
               Clear filters
             </button>

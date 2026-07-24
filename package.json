@@ -23,7 +23,9 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
     "@playwright/test": "1.61.1",
+    "axe-core": "4.11.0",
     "oxfmt": "0.60.0",
     "oxlint": "1.75.0",
     "turbo": "2.10.6",

@@ -105,7 +105,7 @@ function FeedRow({ entry }: { entry: ActivityEntry }) {
 
       <Link
         href={`/tasks/${entry.taskId}`}
-        className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-brand hover:underline"
+        className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-brand-accent hover:underline"
       >
         tasks/{entry.taskId} <ArrowUpRight className="size-3" />
       </Link>

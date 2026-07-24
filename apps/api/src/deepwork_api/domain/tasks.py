@@ -188,6 +188,14 @@ class TaskAlreadyResolvedError(TaskDomainError):
     """The task already reached a non-cancelled terminal state and cannot be cancelled."""
 
 
+class TaskCancellationUnsupportedError(TaskDomainError):
+    """The active task source cannot truthfully stop an executing run.
+
+    Publishing a terminal cancelled state here would falsely report a run that
+    keeps executing upstream as stopped, so the operation is refused instead.
+    """
+
+
 class PlanUnavailableError(TaskDomainError):
     """The task has no editable proposed plan."""
 

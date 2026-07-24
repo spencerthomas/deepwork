@@ -19,6 +19,7 @@ from deepwork_api.domain import (
     EvidenceSource,
     PlanUpdateRecord,
     ProposedPlan,
+    TaskCancellationUnsupportedError,
     TaskEvent,
     TaskEventName,
     TaskSnapshot,
@@ -357,11 +358,21 @@ class TaskService:
     async def cancel_task(self, task_id: str) -> CancellationRecord:
         """Cancel a live task, recording an honest terminal cancelled state.
 
-        The cancellation is applied to the authoritative repository, whose
-        terminal guard stops the runner's background follower the next time it
-        touches task state; no separate runner command is required.
+        This is only truthful when Deep Work itself executes the task: the
+        deterministic fixture runner runs the work in-process, so marking the
+        repository terminal genuinely stops it. The gated loopback Agent Server
+        source exposes no cancel operation and streams with
+        ``cancel_on_disconnect=False``, so marking the task terminal would leave
+        the upstream run executing while reporting it stopped. That mode refuses
+        cancellation rather than publishing a false terminal state.
+
+        For the fixture runner the cancellation is applied to the authoritative
+        repository, whose terminal guard stops the background follower the next
+        time it touches task state; no separate runner command is required.
         """
 
+        if isinstance(self.runner, LocalAgentServerRunner):
+            raise TaskCancellationUnsupportedError
         return await self.repository.cancel_task(task_id)
 
     async def record_decision(

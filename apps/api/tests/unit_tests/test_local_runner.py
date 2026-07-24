@@ -15,6 +15,7 @@ from deepwork_api.application.tasks import TaskService
 from deepwork_api.domain import (
     DecisionValue,
     ProposedPlan,
+    TaskCancellationUnsupportedError,
     TaskEventName,
     TaskSnapshot,
     TaskStatus,
@@ -104,6 +105,26 @@ async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
         pending_interrupt_id="interrupt_1",
     )
     return await repository.get_task(task.task_id)
+
+
+@pytest.mark.asyncio
+async def test_cancel_is_refused_without_a_source_cancel_capability() -> None:
+    # The loopback Agent Server source exposes no cancel operation, so marking
+    # the task terminal would leave the upstream run executing while reporting
+    # it stopped. The service must refuse rather than publish a false state.
+    repository = InMemoryTaskRepository()
+    runner = LocalAgentServerRunner(repository, _Source())
+    service = TaskService(repository=repository, runner=runner)
+    task = await _paused_task(repository)
+    before = await repository.get_task(task.task_id)
+
+    with pytest.raises(TaskCancellationUnsupportedError):
+        await service.cancel_task(task.task_id)
+
+    after = await repository.get_task(task.task_id)
+    assert after == before
+    assert not after.status.is_terminal
+    await runner.close()
 
 
 @pytest.mark.asyncio

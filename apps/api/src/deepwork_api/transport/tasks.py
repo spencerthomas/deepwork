@@ -16,6 +16,7 @@ from deepwork_api.application import (
     PlanUnavailableError,
     StaleInterruptError,
     TaskAlreadyResolvedError,
+    TaskCancellationUnsupportedError,
     TaskEvent,
     TaskNotFoundError,
     TaskService,
@@ -173,6 +174,12 @@ def build_task_router(service: TaskService) -> APIRouter:
     ) -> CancellationAcceptedResponse | JSONResponse:
         try:
             cancellation = await service.cancel_task(task_id)
+        except TaskCancellationUnsupportedError:
+            return _problem(
+                409,
+                "task_cancellation_unsupported",
+                "The configured task source cannot stop an executing run.",
+            )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
         except TaskAlreadyResolvedError:

@@ -61,12 +61,21 @@ const FILTER_ICONS: Record<ActivityFilter, IconComponent> = {
   completions: CheckCircle2,
 };
 
-/** True when the keypress originates in a field, so triage keys never steal typing. */
-function isTypingTarget(target: EventTarget | null): boolean {
+const INTERACTIVE_TARGET_SELECTOR =
+  'a[href], button, input, textarea, select, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [contenteditable="true"]';
+
+/**
+ * Yield the shortcut keys whenever focus is on a control the user is operating —
+ * the Refresh button, a sidebar filter, or a row's task link. Otherwise a
+ * window-level Enter would hijack the control's own activation (and typing would
+ * move the highlight). Mirrors the task inbox's guard so the keyboard-navigable
+ * lists behave identically. The highlighted row itself is not matched by the
+ * selector, so resting focus on it keeps j/k/Enter working.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  return target.closest(INTERACTIVE_TARGET_SELECTOR) !== null;
 }
 
 function TimelineSkeleton() {
@@ -150,7 +159,7 @@ export function ActivityFeed() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
+      if (isInteractiveTarget(event.target)) return;
       if (orderedKeys.length === 0) return;
       if (event.key === "j" || event.key === "ArrowDown") {
         event.preventDefault();

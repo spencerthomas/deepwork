@@ -18,11 +18,17 @@ test("opens a task from the activity feed by keyboard", async ({ page }) => {
   await expect(page.getByRole("list", { name: "Activity timeline" })).toBeVisible();
 
   // Move focus off the heading, then drive the timeline with the keyboard:
-  // j highlights the first entry, Enter opens its task.
+  // j highlights the first entry and moves real DOM focus to its row.
   await page.getByRole("heading", { name: "Activity" }).click();
   await page.keyboard.press("j");
-  await expect(page.locator('li[aria-current="true"]')).toBeVisible();
-  await page.keyboard.press("Enter");
+  const focusedRow = page.locator('li[aria-current="true"]');
+  await expect(focusedRow).toBeFocused();
 
-  await page.waitForURL(/\/tasks\/task_[0-9]{8}$/);
+  // Enter opens exactly the task the highlighted row points at — read the row's
+  // own link so the assertion holds under a shared server where another spec's
+  // task may be the newest entry.
+  const focusedTaskPath = await focusedRow.getByRole("link").getAttribute("href");
+  expect(focusedTaskPath).toMatch(/^\/tasks\/task_[0-9]{8}$/);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${focusedTaskPath}$`));
 });

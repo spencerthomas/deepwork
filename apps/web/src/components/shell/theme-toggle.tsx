@@ -3,20 +3,50 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { readThemePreference, resolveIsDark, THEME_STORAGE_KEY } from "@/lib/theme-preference";
+
 export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    // The pre-paint script in the root layout already applied the theme class;
-    // read it so the icon matches without recomputing (or re-flashing).
-    setDark(document.documentElement.classList.contains("dark"));
+    const root = document.documentElement;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    // Keep the icon mirroring the theme that is actually applied, whoever set
+    // it — this toggle, the Settings Appearance section (same tab), or another
+    // tab. Watching the class rather than local state avoids a stale sun/moon.
+    const syncIcon = () => setDark(root.classList.contains("dark"));
+
+    // Re-resolve from the stored preference. While "System" is selected this is
+    // how an OS light/dark switch takes effect on every page — the header is
+    // mounted app-wide, whereas the Settings section only exists on its route.
+    const applyFromStorage = () => {
+      const preference = readThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY));
+      root.classList.toggle("dark", resolveIsDark(preference, media.matches));
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === THEME_STORAGE_KEY) applyFromStorage();
+    };
+
+    syncIcon();
+    const observer = new MutationObserver(syncIcon);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    media.addEventListener("change", applyFromStorage);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      observer.disconnect();
+      media.removeEventListener("change", applyFromStorage);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   function toggle() {
-    const next = !dark;
-    setDark(next);
+    // The header sets an explicit override, opposite the theme in effect. The
+    // MutationObserver above updates the icon once the class flips.
+    const next = !document.documentElement.classList.contains("dark");
+    window.localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
-    window.localStorage.setItem("dw-theme", next ? "dark" : "light");
   }
 
   return (

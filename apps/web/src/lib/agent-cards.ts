@@ -7,7 +7,7 @@
  */
 
 import { CAPABILITY_NAMES, capabilityState, type DemoStatus } from "./demo-status";
-import type { ClientMode } from "./task-types";
+import type { ClientMode, TaskSummary } from "./task-types";
 
 export type AgentCardState = "active" | "inactive" | "gated" | "unknown";
 
@@ -117,6 +117,27 @@ export function deriveAgentCards(
 
 export function activeAgentCount(cards: readonly AgentCardModel[]): number {
   return cards.filter((card) => card.state === "active").length;
+}
+
+/**
+ * The `createdAt` of the most recently created task, or undefined when none
+ * carry a parseable timestamp. Pure and time-independent so the caller decides
+ * how to render it (e.g. through the shared `formatTaskAge`).
+ */
+export function mostRecentCreatedAt(tasks: readonly TaskSummary[]): string | undefined {
+  let bestIso: string | undefined;
+  let bestMs = Number.NEGATIVE_INFINITY;
+  for (const task of tasks) {
+    if (task.createdAt === undefined) {
+      continue;
+    }
+    const ms = Date.parse(task.createdAt);
+    if (!Number.isNaN(ms) && ms > bestMs) {
+      bestMs = ms;
+      bestIso = task.createdAt;
+    }
+  }
+  return bestIso;
 }
 
 /**

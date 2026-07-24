@@ -14,7 +14,9 @@ import {
   agentSessionTaskLabel,
   type AgentCardModel,
   deriveAgentCards,
+  mostRecentCreatedAt,
 } from "@/lib/agent-cards";
+import { formatTaskAge } from "@/lib/task-time";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
@@ -55,6 +57,13 @@ export function AgentFleet() {
   const activeCount = activeAgentCount(cards);
   const availableCapabilities =
     status?.capabilities.filter((capability) => capability.state === "available") ?? [];
+
+  // How long ago the local runner last started a task — only when the list is
+  // trustworthy (loaded, no error), so a failed fetch never implies "no runs".
+  const lastRunAge =
+    !loadingTasks && listError === undefined
+      ? formatTaskAge(mostRecentCreatedAt(tasks))
+      : undefined;
 
   const [filter, setFilter] = useState<AgentFilter>("all");
 
@@ -163,6 +172,9 @@ export function AgentFleet() {
               <span className="tabular-nums">
                 {agentSessionTaskLabel(loadingTasks, tasks.length, listError)}
               </span>
+              {lastRunAge !== undefined && (
+                <span className="text-muted-foreground">· last run {lastRunAge}</span>
+              )}
               <div className="ml-auto flex items-center gap-1">
                 <Link
                   href="/agents/local"

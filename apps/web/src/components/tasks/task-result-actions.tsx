@@ -132,6 +132,11 @@ export function TaskResultActions({
           </button>
         )}
       </div>
+      {copyFailed && (
+        <p role="alert" className="mt-2 text-[13px] text-status-failed">
+          Could not copy to the clipboard. Copy the result text above manually.
+        </p>
+      )}
       {runError !== undefined && (
         <p role="alert" className="mt-2 text-[13px] text-status-failed">
           The re-run could not be started. {runError}
@@ -140,7 +145,6 @@ export function TaskResultActions({
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? "Result copied to clipboard." : ""}
         {briefCopied ? "Result brief copied to clipboard." : ""}
-        {copyFailed ? "Could not copy the result. Copy it manually from the text above." : ""}
       </span>
     </div>
   );

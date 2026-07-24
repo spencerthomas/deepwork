@@ -233,6 +233,15 @@ export function TaskInbox() {
     [setFilter],
   );
 
+  // Re-render on a slow cadence so an open inbox's relative creation ages
+  // ("just now" → "1m ago") keep advancing without a task update or manual
+  // refresh. The interval is client-only, so no rows exist to hydrate against.
+  const [, advanceAgeClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => advanceAgeClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const counts = countTasks(tasks);
   const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
   const filterActive = hasActiveTaskFilter(filter);

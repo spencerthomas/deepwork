@@ -1,6 +1,7 @@
 """FastAPI composition root and local CLI."""
 
 import argparse
+import os
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -171,25 +172,32 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--local-agent-server-endpoint",
+        default=os.environ.get("DEEPWORK_LOCAL_AGENT_ENDPOINT"),
         help=(
             "Explicit HTTP loopback IP origin of a langgraph dev Agent Server "
             "(for example http://127.0.0.1:2024); local development only, requires "
-            "the assistant flag and --allow-ungated-local-agent-source."
+            "the assistant flag and --allow-ungated-local-agent-source. Defaults "
+            "to the DEEPWORK_LOCAL_AGENT_ENDPOINT environment variable."
         ),
     )
     parser.add_argument(
         "--local-agent-server-assistant",
-        help="Assistant identifier registered on the loopback Agent Server.",
+        default=os.environ.get("DEEPWORK_LOCAL_AGENT_ASSISTANT"),
+        help=(
+            "Assistant identifier registered on the loopback Agent Server. "
+            "Defaults to the DEEPWORK_LOCAL_AGENT_ASSISTANT environment variable."
+        ),
     )
     parser.add_argument(
         "--allow-ungated-local-agent-source",
         action="store_true",
+        default=os.environ.get("DEEPWORK_ENABLE_LOCAL_AGENT") == "1",
         help=(
             "Deliberately opt in to the local-development-only loopback Agent "
             "Server task execution path, which is otherwise gated off pending "
             "accepted live-contract evidence (SPIKE-SOURCE-001). Without this "
             "flag the API runs in credential-free fixture mode and makes no "
-            "provider/service calls."
+            "provider/service calls. Defaults on when DEEPWORK_ENABLE_LOCAL_AGENT=1."
         ),
     )
     return parser

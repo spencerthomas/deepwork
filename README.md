@@ -25,13 +25,40 @@ Node.js version (`>=24.14.0 <25`), and the reviewed package dependencies. Set
 
 This experience uses the API's deterministic in-memory fixture runner. It does
 not call the separately packaged LangChain/LangGraph agent runtime, choose a model,
-read provider credentials, or contact an external provider. A server-only loopback
-source adapter for an explicitly configured Agent Server exists and uses the
-official LangGraph SDK, but the local product launcher does not select or configure
-it. Authentication, external providers, durable jobs, and production readiness
-remain unavailable. Tasks, events, evidence, decisions, and results survive
-navigation and reconnects only while the same API process remains alive; restarting
-it clears the local task list.
+read provider credentials, or contact an external provider. Authentication, durable
+jobs, and production readiness remain unavailable. Tasks, events, evidence,
+decisions, and results survive navigation and reconnects only while the same API
+process remains alive; restarting it clears the local task list.
+
+## Run with a real agent (local development)
+
+The launcher can run a real local LangGraph Agent Server instead of the fixture
+runner, so a task is planned, approved, and executed by the actual
+`packages/agent` graph. This is a local-development opt-in and stays off by default.
+
+```bash
+# 1. Install the agent package and the LangGraph dev server into its venv.
+uv venv --python 3.12 packages/agent/.venv
+uv pip install --python packages/agent/.venv -e packages/agent 'langgraph-cli[inmem]'
+
+# 2a. Keyless: prove the full loop with the deterministic stand-in (no provider key).
+DEEPWORK_REAL_AGENT=1 DEEPWORK_AGENT_FAKE=1 ./dev
+
+# 2b. Real model: point the agent at a provider (credential stays server-side).
+DEEPWORK_REAL_AGENT=1 DEEPWORK_AGENT_MODEL=anthropic:claude-sonnet-5 \
+  ANTHROPIC_API_KEY=... ./dev
+```
+
+Verify the engine independently of the web tier at any time:
+
+```bash
+DEEPWORK_AGENT_FAKE=1 python tools/smoke/agent_roundtrip.py
+```
+
+The smoke gate drives the real graph through plan → interrupt → decision →
+terminal state and passes only when the engine actually turns. Real-agent mode is
+in-memory (no durable task recovery yet) and requires the same supported Node.js
+and Python versions as the fixture launcher.
 
 ## Start here
 

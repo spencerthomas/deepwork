@@ -29,3 +29,6 @@ output/playwright/
 .vercel/
 *.tsbuildinfo
 .claude/
+
+# local agent dev venv
+packages/agent/.venv/

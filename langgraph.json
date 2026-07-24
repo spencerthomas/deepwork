@@ -1,0 +1,7 @@
+{
+  "dependencies": ["./packages/agent"],
+  "graphs": {
+    "deep-work-local-agent": "./packages/agent/src/deepwork_agent/runtime.py:graph"
+  },
+  "env": ".env"
+}

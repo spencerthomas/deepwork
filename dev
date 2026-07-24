@@ -15,6 +15,9 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parent
 API_EXECUTABLE = ROOT / "apps" / "api" / ".venv" / "bin" / "deepwork-api"
 NEXT_EXECUTABLE = ROOT / "apps" / "web" / "node_modules" / "next" / "dist" / "bin" / "next"
+LANGGRAPH_EXECUTABLE = ROOT / "packages" / "agent" / ".venv" / "bin" / "langgraph"
+LOCAL_AGENT_ENDPOINT = "http://127.0.0.1:2024"
+LOCAL_AGENT_ASSISTANT = "deep-work-local-agent"
 MINIMUM_NODE_VERSION = (24, 14, 0)
 MAXIMUM_NODE_MAJOR = 25
 
@@ -119,6 +122,30 @@ def main() -> int:
     child_env["NEXT_PUBLIC_API_BASE_URL"] = "http://127.0.0.1:8000"
     child_env.pop("NEXT_PUBLIC_DEMO_MODE", None)
 
+    # Real-agent mode is an explicit opt-in: run a local LangGraph Agent Server
+    # and point the API at it, instead of the deterministic fixture runner.
+    real_agent = os.environ.get("DEEPWORK_REAL_AGENT") == "1"
+    if real_agent:
+        if not LANGGRAPH_EXECUTABLE.is_file():
+            print(
+                "Real-agent mode needs the LangGraph CLI in the agent venv: "
+                "`uv pip install --python packages/agent/.venv 'langgraph-cli[inmem]'` "
+                "after installing packages/agent.",
+                file=sys.stderr,
+            )
+            return 2
+        if not (os.environ.get("DEEPWORK_AGENT_MODEL") or os.environ.get("DEEPWORK_AGENT_FAKE")):
+            print(
+                "Real-agent mode needs a model: set DEEPWORK_AGENT_MODEL (with the "
+                "provider credential) or DEEPWORK_AGENT_FAKE=1 for the keyless "
+                "deterministic stand-in.",
+                file=sys.stderr,
+            )
+            return 2
+        child_env["DEEPWORK_LOCAL_AGENT_ENDPOINT"] = LOCAL_AGENT_ENDPOINT
+        child_env["DEEPWORK_LOCAL_AGENT_ASSISTANT"] = LOCAL_AGENT_ASSISTANT
+        child_env["DEEPWORK_ENABLE_LOCAL_AGENT"] = "1"
+
     processes: list[subprocess.Popen[bytes]] = []
     stopping = False
 
@@ -130,7 +157,19 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     try:
-        print("Starting Deep Work API + deterministic local runtime on 127.0.0.1:8000")
+        if real_agent:
+            print(f"Starting local LangGraph Agent Server on {LOCAL_AGENT_ENDPOINT}")
+            agent_server = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
+                [str(LANGGRAPH_EXECUTABLE), "dev", "--host", "127.0.0.1", "--port", "2024",
+                 "--no-browser"],
+                cwd=ROOT,
+                env=child_env,
+            )
+            processes.append(agent_server)
+            _wait_for(f"{LOCAL_AGENT_ENDPOINT}/ok", agent_server, 60)
+
+        runtime_label = "real local LangGraph agent" if real_agent else "deterministic local runtime"
+        print(f"Starting Deep Work API + {runtime_label} on 127.0.0.1:8000")
         api = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
             [str(API_EXECUTABLE), "--port", "8000"],
             cwd=ROOT / "apps" / "api",
@@ -158,8 +197,17 @@ def main() -> int:
         _wait_for("http://127.0.0.1:3000", web, 30)
         print("")
         print("Deep Work is ready: http://127.0.0.1:3000")
-        print("Mode: deterministic local execution")
-        print("External providers: unavailable")
+        if real_agent:
+            model_label = (
+                "keyless deterministic stand-in"
+                if os.environ.get("DEEPWORK_AGENT_FAKE") == "1"
+                else os.environ.get("DEEPWORK_AGENT_MODEL", "configured provider model")
+            )
+            print("Mode: real local LangGraph agent")
+            print(f"Model: {model_label}")
+        else:
+            print("Mode: deterministic local execution")
+            print("External providers: unavailable")
         print("Press Ctrl-C to stop all services.")
 
         while not stopping and all(process.poll() is None for process in processes):

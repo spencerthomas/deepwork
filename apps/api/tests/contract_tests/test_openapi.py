@@ -38,6 +38,7 @@ def test_openapi_documents_the_versioned_surface() -> None:
         "/api/v1/demo/status",
         "/api/v1/tasks",
         "/api/v1/tasks/{task_id}",
+        "/api/v1/tasks/{task_id}/cancel",
         "/api/v1/tasks/{task_id}/decisions",
         "/api/v1/tasks/{task_id}/events",
         "/api/v1/tasks/{task_id}/plan",

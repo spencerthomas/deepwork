@@ -831,3 +831,75 @@ async def test_cors_allows_only_local_next_origins() -> None:
         )
         assert denied.status_code == 400
         assert "access-control-allow-origin" not in denied.headers
+
+
+async def test_cancel_moves_a_waiting_task_to_terminal_cancelled() -> None:
+    async with _client() as client:
+        created = await _create_task(client, "Prepare a plan I will stop early")
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        cursor = paused["lastEventId"]
+
+        cancel = await client.post(f"/api/v1/tasks/{created['taskId']}/cancel")
+        assert cancel.status_code == 202
+        assert cancel.json() == {
+            "taskId": created["taskId"],
+            "runId": created["runId"],
+            "status": "cancelled",
+            "duplicate": False,
+        }
+
+        settled = await _wait_for_status(client, created["taskId"], {"cancelled"})
+        assert settled["status"] == "cancelled"
+        assert settled["pendingInterrupt"] is None
+        assert settled["result"] is None
+
+        # The result endpoint stays honest: a cancelled run never has a result.
+        result = await client.get(f"/api/v1/tasks/{created['taskId']}/result")
+        assert result.status_code == 409
+        assert result.json()["code"] == "task_result_unavailable"
+
+        stream = await client.get(
+            f"/api/v1/tasks/{created['taskId']}/events",
+            headers={"Last-Event-ID": str(cursor)},
+        )
+        assert stream.status_code == 200
+        events = _sse_events(stream.text)
+        completion = next(event for event in events if event["event"] == "run.completed")
+        assert completion["data"]["status"] == "cancelled"
+        assert completion["data"]["resultAvailable"] is False
+
+
+async def test_cancel_is_idempotent_and_refuses_finished_tasks() -> None:
+    async with _client() as client:
+        # A cancelled task can be cancelled again as an idempotent no-op.
+        created = await _create_task(client, "Cancel me twice")
+        await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        first = await client.post(f"/api/v1/tasks/{created['taskId']}/cancel")
+        assert first.status_code == 202
+        assert first.json()["duplicate"] is False
+        second = await client.post(f"/api/v1/tasks/{created['taskId']}/cancel")
+        assert second.status_code == 202
+        assert second.json()["duplicate"] is True
+
+        # A task that already completed cannot be cancelled.
+        done = await _create_task(client, "Approve me to completion")
+        paused = await _wait_for_status(client, done["taskId"], {"waiting-approval"})
+        approve = await client.post(
+            f"/api/v1/tasks/{done['taskId']}/decisions",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "decision": "approve",
+            },
+        )
+        assert approve.status_code == 202
+        await _wait_for_status(client, done["taskId"], {"completed"})
+        refused = await client.post(f"/api/v1/tasks/{done['taskId']}/cancel")
+        assert refused.status_code == 409
+        assert refused.json()["code"] == "task_already_resolved"
+
+
+async def test_cancel_unknown_task_is_not_found() -> None:
+    async with _client() as client:
+        response = await client.post("/api/v1/tasks/task_00000099/cancel")
+        assert response.status_code == 404
+        assert response.json()["code"] == "task_not_found"

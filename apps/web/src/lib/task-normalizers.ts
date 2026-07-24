@@ -1,5 +1,6 @@
 import type {
   ActiveInterrupt,
+  CancelResult,
   CreateTaskResult,
   DecisionInput,
   DecisionResult,
@@ -262,6 +263,27 @@ export function normalizeCreateTaskResult(value: unknown): CreateTaskResult {
     taskId: requiredString(value, "taskId", "Create-task response"),
     runId: requiredString(value, "runId", "Create-task response"),
     status,
+  };
+}
+
+export function normalizeCancelResult(value: unknown): CancelResult {
+  if (!isRecord(value)) {
+    throw new ContractError("Cancel response must be an object.");
+  }
+
+  const status = requiredString(value, "status", "Cancel response");
+  if (status !== "cancelled") {
+    throw new ContractError(`Cancel response status must be cancelled, received ${status}.`);
+  }
+  if (typeof value.duplicate !== "boolean") {
+    throw new ContractError("Cancel response is missing a valid duplicate flag.");
+  }
+
+  return {
+    taskId: requiredString(value, "taskId", "Cancel response"),
+    runId: requiredString(value, "runId", "Cancel response"),
+    status,
+    duplicate: value.duplicate,
   };
 }
 

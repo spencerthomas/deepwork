@@ -1,4 +1,5 @@
 import type {
+  CancelResult,
   CreateTaskResult,
   DecisionInput,
   DecisionResult,
@@ -14,6 +15,17 @@ import type {
   TaskSummary,
 } from "./task-types";
 import { validateDecisionInput, validatePlanSteps, validatePrompt } from "./task-normalizers";
+
+const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
+  "completed",
+  "rejected",
+  "failed",
+  "cancelled",
+]);
+
+function isTerminalFixtureStatus(status: TaskStatus): boolean {
+  return TERMINAL_STATUSES.has(status);
+}
 
 interface FixtureTask extends TaskDetail {
   events: TaskEvent[];
@@ -108,7 +120,12 @@ function scheduleRun(task: FixtureTask) {
   ];
 
   for (const [delay, callback] of steps) {
-    globalThis.setTimeout(callback, delay);
+    globalThis.setTimeout(() => {
+      // A cancelled (or otherwise terminal) task must never be re-animated by a
+      // still-pending scheduled step.
+      if (isTerminalFixtureStatus(task.status)) return;
+      callback();
+    }, delay);
   }
 }
 
@@ -191,6 +208,7 @@ export function createFixtureTaskClient(): TaskClient {
       if (input.decision === "respond") {
         updateStatus(task, "running");
         globalThis.setTimeout(() => {
+          if (isTerminalFixtureStatus(task.status)) return;
           task.responseNumber += 1;
           const currentPlan = task.proposedPlan;
           if (!currentPlan) {
@@ -228,6 +246,7 @@ export function createFixtureTaskClient(): TaskClient {
       }
 
       globalThis.setTimeout(() => {
+        if (isTerminalFixtureStatus(task.status)) return;
         const status = input.decision === "approve" ? "completed" : "rejected";
         updateStatus(task, status);
         task.result =
@@ -248,6 +267,27 @@ export function createFixtureTaskClient(): TaskClient {
         status: "accepted",
         duplicate: false,
       };
+    },
+
+    async cancelTask(taskId: string): Promise<CancelResult> {
+      const task = tasks.get(taskId);
+      if (!task) {
+        throw new Error("The fixture task could not be found.");
+      }
+      const runId = task.runId ?? "";
+      if (task.status === "cancelled") {
+        return { taskId: task.taskId, runId, status: "cancelled", duplicate: true };
+      }
+      if (isTerminalFixtureStatus(task.status)) {
+        throw new Error("This fixture task already finished and can no longer be cancelled.");
+      }
+      updateStatus(task, "cancelled");
+      emit(task, "run.completed", {
+        runId: task.runId,
+        status: "cancelled",
+        resultAvailable: false,
+      });
+      return { taskId: task.taskId, runId, status: "cancelled", duplicate: false };
     },
 
     async updatePlan(taskId: string, input: PlanUpdateInput): Promise<PlanUpdateResult> {

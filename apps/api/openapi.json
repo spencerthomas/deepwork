@@ -1,6 +1,39 @@
 {
   "components": {
     "schemas": {
+      "CancellationAcceptedResponse": {
+        "additionalProperties": false,
+        "description": "Accepted or idempotently replayed task cancellation receipt.",
+        "properties": {
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "runId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Runid",
+            "type": "string"
+          },
+          "status": {
+            "const": "cancelled",
+            "default": "cancelled",
+            "title": "Status",
+            "type": "string"
+          },
+          "taskId": {
+            "pattern": "^task_[0-9]{8}$",
+            "title": "Taskid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "runId",
+          "duplicate"
+        ],
+        "title": "CancellationAcceptedResponse",
+        "type": "object"
+      },
       "CapabilityResponse": {
         "additionalProperties": false,
         "description": "One fixture capability response.",
@@ -633,7 +666,8 @@
           "waiting-approval",
           "completed",
           "rejected",
-          "failed"
+          "failed",
+          "cancelled"
         ],
         "type": "string"
       },
@@ -803,6 +837,49 @@
           }
         },
         "summary": "Get Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "operationId": "cancel_task_api_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "pattern": "^task_[0-9]{8}$",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellationAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Task",
         "tags": [
           "tasks"
         ]

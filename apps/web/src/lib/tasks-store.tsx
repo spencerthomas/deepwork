@@ -66,12 +66,15 @@ export interface TasksStore {
   streamError?: string;
   actionError?: string;
   planError?: string;
+  cancelError?: string;
   submittingDecision: boolean;
   submittedDecision?: DecisionInput["decision"];
   updatingPlan: boolean;
+  cancelling: boolean;
   decide: (input: DecisionInput) => Promise<void>;
   decideForTask: (taskId: string, input: DecisionInput) => Promise<string | undefined>;
   updatePlan: (input: PlanUpdateInput) => Promise<boolean>;
+  cancelTask: (taskId: string) => Promise<string | undefined>;
 
   mode: typeof taskClient.mode;
   apiBaseUrl: string;
@@ -91,10 +94,12 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [createError, setCreateError] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const [planError, setPlanError] = useState<string>();
+  const [cancelError, setCancelError] = useState<string>();
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [creating, setCreating] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [updatingPlan, setUpdatingPlan] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [submittedDecision, setSubmittedDecision] = useState<DecisionInput["decision"]>();
   const [listAttempt, setListAttempt] = useState(0);
   const eventsByTaskRef = useRef<Record<string, TaskEvent[]>>({});
@@ -161,6 +166,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     setSubmittingDecision(false);
     setActionError(undefined);
     setPlanError(undefined);
+    setCancelError(undefined);
+    setCancelling(false);
     decisionRequestRef.current += 1;
     pendingDecisionRef.current = undefined;
 
@@ -535,6 +542,42 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * Cancel a live task. The authoritative terminal state arrives over the
+   * stream as a run.completed(cancelled) event, but we also reload the detail so
+   * a non-streaming caller (or a task whose stream already closed) reflects the
+   * cancelled state immediately. Returns an error message on failure.
+   */
+  const cancelTask = useCallback(
+    async (taskId: string): Promise<string | undefined> => {
+      setCancelling(true);
+      setCancelError(undefined);
+      try {
+        const receipt = await taskClient.cancelTask(taskId);
+        const expectedRunId =
+          detailsByTaskRef.current[taskId]?.runId ??
+          tasksRef.current.find((task) => task.taskId === taskId)?.runId;
+        if (
+          receipt.taskId !== taskId ||
+          (expectedRunId !== undefined && receipt.runId !== expectedRunId)
+        ) {
+          const mismatch = "The cancel receipt did not match the selected task and run.";
+          setCancelError(mismatch);
+          return mismatch;
+        }
+        await loadDetail(taskId);
+        return undefined;
+      } catch (error) {
+        const message = messageFrom(error);
+        setCancelError(message);
+        return message;
+      } finally {
+        setCancelling(false);
+      }
+    },
+    [loadDetail],
+  );
+
   const store = useMemo<TasksStore>(
     () => ({
       tasks,
@@ -554,12 +597,15 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       streamError,
       actionError,
       planError,
+      cancelError,
       submittingDecision,
       submittedDecision,
       updatingPlan,
+      cancelling,
       decide,
       decideForTask,
       updatePlan,
+      cancelTask,
       mode: taskClient.mode,
       apiBaseUrl: taskClient.apiBaseUrl,
     }),
@@ -580,12 +626,15 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       streamError,
       actionError,
       planError,
+      cancelError,
       submittingDecision,
       submittedDecision,
       updatingPlan,
+      cancelling,
       decide,
       decideForTask,
       updatePlan,
+      cancelTask,
     ],
   );
 

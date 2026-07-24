@@ -15,6 +15,8 @@ from deepwork_api.application import (
     PlanRevisionConflictError,
     PlanUnavailableError,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
+    TaskCancellationUnsupportedError,
     TaskEvent,
     TaskNotFoundError,
     TaskService,
@@ -23,6 +25,7 @@ from deepwork_api.application import (
     TaskStatus,
 )
 from deepwork_api.contracts import (
+    CancellationAcceptedResponse,
     DecisionAcceptedResponse,
     DecisionRequest,
     PlanUpdateRequest,
@@ -160,6 +163,32 @@ def build_task_router(service: TaskService) -> APIRouter:
                 "A different decision was already recorded.",
             )
         return DecisionAcceptedResponse.from_domain(decision)
+
+    @router.post(
+        "/{task_id}/cancel",
+        response_model=CancellationAcceptedResponse,
+        status_code=202,
+    )
+    async def cancel_task(
+        task_id: TaskPath,
+    ) -> CancellationAcceptedResponse | JSONResponse:
+        try:
+            cancellation = await service.cancel_task(task_id)
+        except TaskCancellationUnsupportedError:
+            return _problem(
+                409,
+                "task_cancellation_unsupported",
+                "The configured task source cannot stop an executing run.",
+            )
+        except TaskNotFoundError:
+            return _problem(404, "task_not_found", "Task was not found.")
+        except TaskAlreadyResolvedError:
+            return _problem(
+                409,
+                "task_already_resolved",
+                "Task already finished and can no longer be cancelled.",
+            )
+        return CancellationAcceptedResponse.from_domain(cancellation)
 
     @router.patch(
         "/{task_id}/plan",

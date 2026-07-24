@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Ban,
   Bot,
   CheckCircle2,
   CircleDot,
@@ -64,6 +65,53 @@ export function TaskThreadMarker({ label, detail }: { label: string; detail?: st
   );
 }
 
+/**
+ * Two-step "Stop run" control. The first click reveals an inline confirmation
+ * so a task is never cancelled by a single stray click; confirming calls the
+ * store, which records an honest terminal cancelled state.
+ */
+function StopRunControl({ onStop, cancelling }: { onStop: () => void; cancelling: boolean }) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:border-status-failed/40 hover:bg-status-failed-bg hover:text-status-failed"
+      >
+        <Ban className="size-3.5" /> Stop run
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5" role="group" aria-label="Confirm stopping the run">
+      <span className="hidden text-[13px] text-muted-foreground sm:inline">Stop this run?</span>
+      <button
+        type="button"
+        disabled={cancelling}
+        onClick={onStop}
+        className={cn(
+          "flex items-center gap-1.5 rounded-lg border border-status-failed/50 bg-status-failed-bg px-2.5 py-1.5 text-[13px] font-medium text-status-failed transition-colors hover:bg-status-failed/15",
+          cancelling && "pointer-events-none opacity-60",
+        )}
+      >
+        <Ban className="size-3.5" />
+        {cancelling ? "Stopping…" : "Stop"}
+      </button>
+      <button
+        type="button"
+        disabled={cancelling}
+        onClick={() => setConfirming(false)}
+        className="rounded-lg border border-border px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
+      >
+        Keep going
+      </button>
+    </div>
+  );
+}
+
 export function TaskDetailView({ taskId }: { taskId: string }) {
   const store = useActiveTask(taskId);
   const {
@@ -78,9 +126,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     submittingDecision,
     submittedDecision,
     updatingPlan,
+    cancelling,
+    cancelError,
     mode,
     decide,
     updatePlan,
+    cancelTask,
     createTask,
     creating,
     createError,
@@ -197,6 +248,9 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {!terminal && (selected ?? detail) && (
+              <StopRunControl onStop={() => void cancelTask(taskId)} cancelling={cancelling} />
+            )}
             <button
               type="button"
               onClick={() => setPanelOpen((open) => !open)}
@@ -222,6 +276,18 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           >
             <AlertTriangle className="size-4 shrink-0 text-status-review" />
             <p className="min-w-0 text-sm text-foreground/90">{detailError ?? streamError}</p>
+          </div>
+        )}
+
+        {cancelError && (
+          <div
+            className="mb-4 flex items-center gap-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
+            role="alert"
+          >
+            <Ban className="size-4 shrink-0 text-status-failed" />
+            <p className="min-w-0 text-sm text-foreground/90">
+              <span className="font-medium">Couldn’t stop the run.</span> {cancelError}
+            </p>
           </div>
         )}
 
@@ -311,7 +377,9 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                           ? "Run completed"
                           : item.status === "rejected"
                             ? "Run stopped — plan rejected"
-                            : "Run failed"}
+                            : item.status === "cancelled"
+                              ? "Run stopped — you cancelled it"
+                              : "Run failed"}
                       </p>
                       {success && detail?.result && (
                         <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">

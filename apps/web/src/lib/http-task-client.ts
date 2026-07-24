@@ -1,4 +1,5 @@
 import {
+  normalizeCancelResult,
   normalizeCreateTaskResult,
   normalizeDecisionResult,
   normalizePlanUpdateResult,
@@ -10,6 +11,7 @@ import {
 } from "./task-normalizers";
 import { subscribeToTaskEvents } from "./sse";
 import type {
+  CancelResult,
   CreateTaskResult,
   DecisionInput,
   DecisionResult,
@@ -199,6 +201,19 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
         receipt.decision !== decision.decision
       ) {
         throw new Error("The decision receipt did not match the requested task and interrupt.");
+      }
+      return receipt;
+    },
+
+    async cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult> {
+      const body = await request(
+        `${taskUrl}/${encodeURIComponent(taskId)}/cancel`,
+        { method: "POST", signal },
+        202,
+      );
+      const receipt = normalizeCancelResult(body);
+      if (receipt.taskId !== taskId) {
+        throw new Error("The cancel receipt did not match the requested task.");
       }
       return receipt;
     },

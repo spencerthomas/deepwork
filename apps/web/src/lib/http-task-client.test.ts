@@ -279,4 +279,71 @@ describe("Outcome 2 HTTP client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "GET" });
   });
+
+  it("posts to the cancel endpoint and normalizes the receipt", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            taskId: "task-1",
+            runId: "run-1",
+            status: "cancelled",
+            duplicate: false,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createHttpTaskClient("http://api.test").cancelTask("task-1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/api/v1/tasks/task-1/cancel",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(result).toEqual({
+      taskId: "task-1",
+      runId: "run-1",
+      status: "cancelled",
+      duplicate: false,
+    });
+  });
+
+  it("reports a 409 when a finished task can no longer be cancelled", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: "task_already_resolved",
+            message: "Task already finished and can no longer be cancelled.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createHttpTaskClient("http://api.test").cancelTask("task-1")).rejects.toThrow(
+      /can no longer be cancelled/,
+    );
+  });
+
+  it("rejects a cancel receipt for a different task", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            taskId: "task-2",
+            runId: "run-2",
+            status: "cancelled",
+            duplicate: false,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createHttpTaskClient("http://api.test").cancelTask("task-1")).rejects.toThrow(
+      /did not match the requested task/,
+    );
+  });
 });

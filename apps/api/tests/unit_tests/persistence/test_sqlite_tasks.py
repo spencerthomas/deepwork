@@ -37,6 +37,7 @@ from deepwork_api.domain import (
     PlanUpdateRecord,
     ProposedPlan,
     StaleInterruptError,
+    TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
     TaskStatus,
@@ -88,6 +89,74 @@ async def _waiting_task(
         pending_interrupt_id=interrupt_id,
     )
     return task.task_id, task.run_id, interrupt_id, plan
+
+
+async def test_cancellation_is_durable_idempotent_and_wakes_waiters(tmp_path: Path) -> None:
+    database = tmp_path / "tasks.sqlite"
+    first = SQLiteTaskRepository(database)
+    task_id, run_id, interrupt_id, _ = await _waiting_task(first)
+    before = await first.get_task(task_id)
+
+    # A pending decision waiter must be released the moment cancellation lands.
+    decision_waiter = asyncio.create_task(first.wait_for_decision(task_id, interrupt_id))
+    await asyncio.sleep(0)
+    record = await first.cancel_task(task_id)
+    assert record.task_id == task_id
+    assert record.run_id == run_id
+    assert record.duplicate is False
+    with pytest.raises(StaleInterruptError):
+        await asyncio.wait_for(decision_waiter, timeout=1)
+
+    cancelled = await first.get_task(task_id)
+    assert cancelled.status is TaskStatus.CANCELLED
+    assert cancelled.pending_interrupt_id is None
+    assert cancelled.result is None
+    assert cancelled.last_event_id == before.last_event_id + 1
+    completion = (await first.events_after(task_id, before.last_event_id))[0]
+    assert completion.name is TaskEventName.RUN_COMPLETED
+    assert dict(completion.data)["status"] == TaskStatus.CANCELLED.value
+
+    # Idempotent replay returns a duplicate receipt without a second event.
+    duplicate = await first.cancel_task(task_id)
+    assert duplicate.duplicate is True
+    assert (await first.get_task(task_id)).last_event_id == cancelled.last_event_id
+    await first.close()
+
+    # The cancelled terminal state survives a reopen.
+    reopened = SQLiteTaskRepository(database)
+    recovered = await reopened.get_task(task_id)
+    assert recovered == cancelled
+    assert (await reopened.cancel_task(task_id)).duplicate is True
+    await reopened.close()
+
+
+async def test_cancellation_refuses_a_completed_task(tmp_path: Path) -> None:
+    repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
+    task_id, _, interrupt_id, _ = await _waiting_task(repository)
+    await repository.record_decision(
+        task_id,
+        interrupt_id=interrupt_id,
+        decision=DecisionValue.APPROVE,
+        comment_provided=False,
+        response_digest=None,
+    )
+    await repository.append_event(
+        task_id,
+        name=TaskEventName.RUN_COMPLETED,
+        data=(
+            ("runId", "run_00000001"),
+            ("status", TaskStatus.COMPLETED.value),
+            ("safeReason", "Completed by the local runner."),
+            ("resultAvailable", True),
+        ),
+        status=TaskStatus.COMPLETED,
+        clear_pending_interrupt=True,
+        result="A useful durable result.",
+    )
+    with pytest.raises(TaskAlreadyResolvedError):
+        await repository.cancel_task(task_id)
+    assert (await repository.get_task(task_id)).status is TaskStatus.COMPLETED
+    await repository.close()
 
 
 def _repository_is_closed(repository: SQLiteTaskRepository) -> bool:

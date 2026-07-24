@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Bot, CornerDownLeft, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Bot, CornerDownLeft, History, ShieldCheck, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
@@ -8,6 +8,7 @@ import { useEffect, useId, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarLabel } from "@/components/shell/sidebar-nav";
+import { clearComposerDraft, loadComposerDraft, saveComposerDraft } from "@/lib/composer-draft";
 import { consumeEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
@@ -27,17 +28,38 @@ export function NewTask() {
   const { creating, createError, createTask, mode } = useTasksStore();
   const [prompt, setPrompt] = useState("");
   const [validationError, setValidationError] = useState<string>();
+  const [draftRestored, setDraftRestored] = useState(false);
   const runtimeCopy = taskRuntimePresentation(mode);
 
-  // Prefill from an in-session "Edit & re-run" handoff. The prompt travels
-  // through transient module state, never the URL, so private prompt content is
-  // not written to history or the referrer; the textarea's maxLength bounds it.
+  // Seed the composer once on mount. An in-session "Edit & re-run" handoff wins
+  // (an explicit action, carried through transient module state — never the URL,
+  // so private prompt content is not written to history or the referrer);
+  // otherwise a persisted device-local draft is restored so navigating away or
+  // reloading does not lose in-progress work.
   useEffect(() => {
     const seeded = consumeEditRerunPrompt();
     if (seeded !== null && seeded.trim() !== "") {
       setPrompt(seeded.slice(0, PROMPT_MAX_LENGTH * 2));
+      return;
+    }
+    const draft = loadComposerDraft();
+    if (draft !== null) {
+      setPrompt(draft.prompt.slice(0, PROMPT_MAX_LENGTH * 2));
+      setDraftRestored(true);
     }
   }, []);
+
+  // Persist the in-progress prompt device-locally; emptying the field clears it.
+  useEffect(() => {
+    saveComposerDraft(prompt);
+  }, [prompt]);
+
+  function discardDraft() {
+    clearComposerDraft();
+    setPrompt("");
+    setDraftRestored(false);
+    setValidationError(undefined);
+  }
 
   const fieldId = useId();
   const countId = `${fieldId}-count`;
@@ -61,6 +83,10 @@ export function NewTask() {
     setValidationError(undefined);
     const created = await createTask(prompt);
     if (created) {
+      // The work is now a real task; drop the local draft so a later visit
+      // starts clean.
+      clearComposerDraft();
+      setDraftRestored(false);
       router.push(`/tasks/${created.taskId}`);
     }
   }
@@ -137,6 +163,32 @@ export function NewTask() {
         >
           Task
         </label>
+        {draftRestored && (
+          <div
+            role="status"
+            className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-[13px]"
+          >
+            <History className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 text-muted-foreground">
+              Restored an unsent draft from this device.
+            </span>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="ml-auto rounded-lg border border-border bg-card px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              Discard draft
+            </button>
+            <button
+              type="button"
+              aria-label="Keep the draft and dismiss this notice"
+              onClick={() => setDraftRestored(false)}
+              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
         <div className="rounded-2xl border border-border bg-card p-3">
           <textarea
             id="new-task-prompt"
@@ -149,6 +201,7 @@ export function NewTask() {
             onChange={(event) => {
               setPrompt(event.target.value);
               setValidationError(undefined);
+              setDraftRestored(false);
             }}
             onKeyDown={(event) => {
               if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {

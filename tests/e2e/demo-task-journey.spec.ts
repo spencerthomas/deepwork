@@ -133,6 +133,19 @@ test("creates, approves, and completes one API-backed task", async ({
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: prompt, exact: true })).toBeVisible();
 
+  // The completed result must be exportable: the user can take the deep-work
+  // output out of the app. Assert the controls render and actually copy the
+  // Markdown brief (prompt + result + evidence) to the OS clipboard.
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await expect(page.getByRole("button", { name: "Copy result" })).toBeVisible();
+  const copyBrief = page.getByRole("button", { name: "Copy brief" });
+  await expect(copyBrief).toBeVisible();
+  await copyBrief.click();
+  await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
+  const clipboardBrief = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboardBrief).toContain("## Result");
+  expect(clipboardBrief).toContain(prompt);
+
   expect([...unexpectedEgress]).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

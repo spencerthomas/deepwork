@@ -19,6 +19,7 @@ import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
 import { ApprovalCard } from "@/components/tasks/approval-card";
 import { PlanCard } from "@/components/tasks/plan-card";
+import { ResultActions } from "@/components/tasks/result-actions";
 import { RunPanel } from "@/components/tasks/run-panel";
 import { buildThread } from "@/components/tasks/task-thread-model";
 import {
@@ -289,9 +290,17 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                             : "Run failed"}
                       </p>
                       {success && detail?.result && (
-                        <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
-                          {detail.result}
-                        </p>
+                        <>
+                          <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
+                            {detail.result}
+                          </p>
+                          <ResultActions
+                            title={detail.title}
+                            prompt={detail.prompt}
+                            result={detail.result}
+                            evidence={evidence}
+                          />
+                        </>
                       )}
                     </div>
                   );

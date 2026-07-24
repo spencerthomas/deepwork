@@ -27,7 +27,10 @@ import {
   filterTasks,
   hasActiveTaskFilter,
   normalizeTaskQuery,
+  TASK_DATE_WINDOW_LABELS,
+  TASK_DATE_WINDOW_OPTIONS,
   TASK_SEARCH_MAX_LENGTH,
+  type TaskDateWindow,
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "@/components/task-inbox-filter";
@@ -172,13 +175,16 @@ export function TaskInbox() {
     const statusSame = prev.filter.status === next.filter.status;
     const groupedSame = prev.grouped === next.grouped;
     const attentionSame = prev.filter.attentionOnly === next.filter.attentionOnly;
+    const dateSame = prev.filter.dateWindow === next.filter.dateWindow;
     const querySame = prev.filter.query === next.filter.query;
-    if (statusSame && groupedSame && attentionSame && querySame) return;
+    if (statusSame && groupedSame && attentionSame && dateSame && querySame) return;
     setView(next);
     const query = inboxViewToQuery(next);
     const { pathname } = window.location;
     const url = query ? `${pathname}?${query}` : pathname;
-    const onlyQueryChanged = statusSame && groupedSame && attentionSame;
+    // Only a search keystroke replaces history; discrete changes (status,
+    // grouping, attention, date window) push so back/forward step through views.
+    const onlyQueryChanged = statusSame && groupedSame && attentionSame && dateSame;
     if (onlyQueryChanged) {
       window.history.replaceState(window.history.state, "", url);
     } else {
@@ -380,6 +386,29 @@ export function TaskInbox() {
             /
           </kbd>
         )}
+      </div>
+
+      <div className="mb-4 flex items-center gap-2">
+        <label htmlFor="task-date-window" className="text-[13px] text-muted-foreground">
+          Created
+        </label>
+        <select
+          id="task-date-window"
+          value={filter.dateWindow}
+          onChange={(event) =>
+            setFilter((current) => ({
+              ...current,
+              dateWindow: event.target.value as TaskDateWindow,
+            }))
+          }
+          className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground outline-none transition-colors hover:bg-accent focus:border-brand/50"
+        >
+          {TASK_DATE_WINDOW_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {TASK_DATE_WINDOW_LABELS[option]}
+            </option>
+          ))}
+        </select>
       </div>
 
       {listError && (

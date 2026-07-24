@@ -1,7 +1,9 @@
 import {
   EMPTY_TASK_INBOX_FILTER,
   normalizeTaskQuery,
+  TASK_DATE_WINDOW_OPTIONS,
   TASK_STATUS_FILTER_OPTIONS,
+  type TaskDateWindow,
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "../task-inbox-filter";
@@ -16,8 +18,12 @@ const STATUS_PARAM = "status";
 const QUERY_PARAM = "q";
 const VIEW_PARAM = "view";
 const RECENT_VIEW = "recent";
+const SINCE_PARAM = "since";
 
 const KNOWN_STATUS = new Set<string>(["all", ...TASK_STATUS_FILTER_OPTIONS]);
+// "any" is the default and is expressed by omitting the param, so it is not a
+// recognised value here.
+const KNOWN_SINCE = new Set<string>(TASK_DATE_WINDOW_OPTIONS.filter((option) => option !== "any"));
 
 interface ReadonlyParams {
   get(name: string): string | null;
@@ -32,9 +38,12 @@ export function readInboxView(params: ReadonlyParams): InboxView {
   const status: TaskStatusFilter =
     rawStatus !== null && KNOWN_STATUS.has(rawStatus) ? (rawStatus as TaskStatusFilter) : "all";
   const query = normalizeTaskQuery(params.get(QUERY_PARAM) ?? "");
+  const rawSince = params.get(SINCE_PARAM);
+  const dateWindow: TaskDateWindow =
+    rawSince !== null && KNOWN_SINCE.has(rawSince) ? (rawSince as TaskDateWindow) : "any";
   const grouped = params.get(VIEW_PARAM) !== RECENT_VIEW;
   return {
-    filter: { ...EMPTY_TASK_INBOX_FILTER, status, query },
+    filter: { ...EMPTY_TASK_INBOX_FILTER, status, query, dateWindow },
     grouped,
   };
 }
@@ -50,6 +59,9 @@ export function inboxViewToQuery(view: InboxView): string {
   }
   if (view.filter.query.trim() !== "") {
     params.set(QUERY_PARAM, view.filter.query);
+  }
+  if (view.filter.dateWindow !== "any") {
+    params.set(SINCE_PARAM, view.filter.dateWindow);
   }
   if (!view.grouped) {
     params.set(VIEW_PARAM, RECENT_VIEW);

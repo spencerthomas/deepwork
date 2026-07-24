@@ -8,6 +8,7 @@ import {
   describeTaskFilter,
   filterTasks,
   hasActiveTaskFilter,
+  matchesDateWindow,
   matchesTaskFilter,
   normalizeTaskQuery,
   requiresAttention,
@@ -16,6 +17,11 @@ import {
   type TaskInboxFilter,
 } from "./task-inbox-filter";
 import type { TaskSummary } from "../lib/task-types";
+
+const NOW = Date.parse("2026-07-24T12:00:00.000Z");
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const at = (offsetMs: number): string => new Date(NOW - offsetMs).toISOString();
 
 const waiting: TaskSummary = {
   taskId: "fixture-task-1",
@@ -106,6 +112,69 @@ describe("task inbox status and attention filters", () => {
   });
 });
 
+describe("task inbox date window filter", () => {
+  const recent: TaskSummary = {
+    taskId: "t-recent",
+    title: "Recent",
+    status: "completed",
+    createdAt: at(2 * HOUR),
+  };
+  const lastWeek: TaskSummary = {
+    taskId: "t-week",
+    title: "This week",
+    status: "completed",
+    createdAt: at(3 * DAY),
+  };
+  const old: TaskSummary = {
+    taskId: "t-old",
+    title: "Old",
+    status: "completed",
+    createdAt: at(40 * DAY),
+  };
+  const undated: TaskSummary = { taskId: "t-undated", title: "Undated", status: "completed" };
+  const future: TaskSummary = {
+    taskId: "t-future",
+    title: "Future",
+    status: "completed",
+    createdAt: at(-2 * HOUR),
+  };
+  const dated = [recent, lastWeek, old, undated, future];
+
+  it("keeps everything under the 'any' window", () => {
+    expect(matchesDateWindow(old, "any", NOW)).toBe(true);
+    expect(matchesDateWindow(undated, "any", NOW)).toBe(true);
+    expect(filterTasks(dated, filterWith({ dateWindow: "any" }), NOW)).toEqual(dated);
+  });
+
+  it("keeps only tasks inside the selected window", () => {
+    expect(filterTasks(dated, filterWith({ dateWindow: "24h" }), NOW)).toEqual([recent]);
+    expect(filterTasks(dated, filterWith({ dateWindow: "7d" }), NOW)).toEqual([recent, lastWeek]);
+    expect(filterTasks(dated, filterWith({ dateWindow: "30d" }), NOW)).toEqual([recent, lastWeek]);
+  });
+
+  it("includes the exact window boundary", () => {
+    const edge: TaskSummary = {
+      taskId: "edge",
+      title: "Edge",
+      status: "completed",
+      createdAt: at(7 * DAY),
+    };
+    expect(matchesDateWindow(edge, "7d", NOW)).toBe(true);
+  });
+
+  it("shows timestamp-less and future-dated tasks only under 'any'", () => {
+    expect(matchesDateWindow(undated, "7d", NOW)).toBe(false);
+    expect(matchesDateWindow(future, "24h", NOW)).toBe(false);
+    expect(matchesDateWindow({ ...undated, createdAt: "not-a-date" }, "7d", NOW)).toBe(false);
+  });
+
+  it("combines with other criteria", () => {
+    expect(filterTasks(dated, filterWith({ dateWindow: "7d", query: "recent" }), NOW)).toEqual([
+      recent,
+    ]);
+  });
+});
+
 describe("task inbox filter state helpers", () => {
   it("reports whether any filter is active", () => {
     expect(hasActiveTaskFilter(EMPTY_TASK_INBOX_FILTER)).toBe(false);
@@ -113,6 +182,7 @@ describe("task inbox filter state helpers", () => {
     expect(hasActiveTaskFilter(filterWith({ query: "x" }))).toBe(true);
     expect(hasActiveTaskFilter(filterWith({ status: "queued" }))).toBe(true);
     expect(hasActiveTaskFilter(filterWith({ attentionOnly: true }))).toBe(true);
+    expect(hasActiveTaskFilter(filterWith({ dateWindow: "7d" }))).toBe(true);
   });
 
   it("explains exactly which criteria removed every result", () => {
@@ -125,5 +195,18 @@ describe("task inbox filter state helpers", () => {
     expect(
       describeTaskFilter(filterWith({ query: "deploy", status: "failed", attentionOnly: true })),
     ).toBe("No loaded tasks match “deploy”, have the Failed status, and need attention.");
+  });
+
+  it("names the date window and joins four criteria naturally", () => {
+    expect(describeTaskFilter(filterWith({ dateWindow: "7d" }))).toBe(
+      "No loaded tasks were created in the last 7 days.",
+    );
+    expect(
+      describeTaskFilter(
+        filterWith({ query: "deploy", status: "failed", attentionOnly: true, dateWindow: "24h" }),
+      ),
+    ).toBe(
+      "No loaded tasks match “deploy”, have the Failed status, need attention, and were created in the last 24 hours.",
+    );
   });
 });

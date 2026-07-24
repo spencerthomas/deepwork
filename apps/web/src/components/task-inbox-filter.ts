@@ -28,14 +28,39 @@ export const TASK_STATUS_FILTER_OPTIONS = [
 
 export type TaskStatusFilter = "all" | TaskStatus;
 
+/** Recency windows for the inbox date filter, measured against the local clock. */
+export type TaskDateWindow = "any" | "24h" | "7d" | "30d";
+
+export const TASK_DATE_WINDOW_OPTIONS = [
+  "any",
+  "24h",
+  "7d",
+  "30d",
+] as const satisfies readonly TaskDateWindow[];
+
+export const TASK_DATE_WINDOW_LABELS: Record<TaskDateWindow, string> = {
+  any: "Any time",
+  "24h": "Last 24 hours",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+};
+
+const DATE_WINDOW_MS: Record<Exclude<TaskDateWindow, "any">, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+};
+
 export interface TaskInboxFilter {
   attentionOnly: boolean;
+  dateWindow: TaskDateWindow;
   query: string;
   status: TaskStatusFilter;
 }
 
 export const EMPTY_TASK_INBOX_FILTER: TaskInboxFilter = {
   attentionOnly: false,
+  dateWindow: "any",
   query: "",
   status: "all",
 };
@@ -66,11 +91,38 @@ export function visibleTaskText(task: TaskSummary): string {
   return [task.title, taskIdentifierLabel(task), TASK_STATUS_LABELS[task.status]].join("\n");
 }
 
-export function matchesTaskFilter(task: TaskSummary, filter: TaskInboxFilter): boolean {
+/**
+ * Whether a task falls inside the selected recency window, measured against the
+ * browser's local clock. A task with no (or unparseable) `createdAt` has no
+ * known time, so it appears only under "Any time" — never silently placed in a
+ * window. Future-dated tasks are likewise excluded from "last N" windows.
+ */
+export function matchesDateWindow(task: TaskSummary, window: TaskDateWindow, now: number): boolean {
+  if (window === "any") {
+    return true;
+  }
+  if (task.createdAt === undefined) {
+    return false;
+  }
+  const created = Date.parse(task.createdAt);
+  if (Number.isNaN(created)) {
+    return false;
+  }
+  return created <= now && now - created <= DATE_WINDOW_MS[window];
+}
+
+export function matchesTaskFilter(
+  task: TaskSummary,
+  filter: TaskInboxFilter,
+  now: number = Date.now(),
+): boolean {
   if (filter.status !== "all" && task.status !== filter.status) {
     return false;
   }
   if (filter.attentionOnly && !requiresAttention(task)) {
+    return false;
+  }
+  if (!matchesDateWindow(task, filter.dateWindow, now)) {
     return false;
   }
   const query = normalizeTaskQuery(filter.query).trim().toLocaleLowerCase();
@@ -80,8 +132,12 @@ export function matchesTaskFilter(task: TaskSummary, filter: TaskInboxFilter): b
   return visibleTaskText(task).toLocaleLowerCase().includes(query);
 }
 
-export function filterTasks(tasks: readonly TaskSummary[], filter: TaskInboxFilter): TaskSummary[] {
-  return tasks.filter((task) => matchesTaskFilter(task, filter));
+export function filterTasks(
+  tasks: readonly TaskSummary[],
+  filter: TaskInboxFilter,
+  now: number = Date.now(),
+): TaskSummary[] {
+  return tasks.filter((task) => matchesTaskFilter(task, filter, now));
 }
 
 export interface TaskInboxCounts {
@@ -105,7 +161,23 @@ export function countTasks(tasks: readonly TaskSummary[]): TaskInboxCounts {
 }
 
 export function hasActiveTaskFilter(filter: TaskInboxFilter): boolean {
-  return filter.query.trim() !== "" || filter.status !== "all" || filter.attentionOnly;
+  return (
+    filter.query.trim() !== "" ||
+    filter.status !== "all" ||
+    filter.attentionOnly ||
+    filter.dateWindow !== "any"
+  );
+}
+
+/** Join criteria into a natural list ("a", "a and b", "a, b, and c", …). */
+function joinCriteria(items: readonly string[]): string {
+  if (items.length === 1) {
+    return items[0];
+  }
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
 /**
@@ -124,14 +196,13 @@ export function describeTaskFilter(filter: TaskInboxFilter): string {
   if (filter.attentionOnly) {
     criteria.push("need attention");
   }
+  if (filter.dateWindow !== "any") {
+    criteria.push(
+      `were created in the ${TASK_DATE_WINDOW_LABELS[filter.dateWindow].toLowerCase()}`,
+    );
+  }
   if (criteria.length === 0) {
     return "No loaded tasks match the current filters.";
   }
-  const joined =
-    criteria.length === 1
-      ? criteria[0]
-      : criteria.length === 2
-        ? `${criteria[0]} and ${criteria[1]}`
-        : `${criteria[0]}, ${criteria[1]}, and ${criteria[2]}`;
-  return `No loaded tasks ${joined}.`;
+  return `No loaded tasks ${joinCriteria(criteria)}.`;
 }

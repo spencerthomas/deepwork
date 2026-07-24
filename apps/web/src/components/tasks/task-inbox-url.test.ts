@@ -27,6 +27,12 @@ describe("readInboxView", () => {
     expect(result.grouped).toBe(true);
   });
 
+  it("reads a known date window and ignores an unknown or 'any' since value", () => {
+    expect(readInboxView(new URLSearchParams("since=7d")).filter.dateWindow).toBe("7d");
+    expect(readInboxView(new URLSearchParams("since=any")).filter.dateWindow).toBe("any");
+    expect(readInboxView(new URLSearchParams("since=forever")).filter.dateWindow).toBe("any");
+  });
+
   it("caps an over-long query the same way the search field does", () => {
     const long = "x".repeat(5_000);
     expect(readInboxView(new URLSearchParams(`q=${long}`)).filter.query).toHaveLength(200);
@@ -42,6 +48,8 @@ describe("inboxViewToQuery", () => {
     expect(inboxViewToQuery(view({ status: "waiting-approval" }))).toBe("status=waiting-approval");
     expect(inboxViewToQuery(view({}, false))).toBe("view=recent");
     expect(inboxViewToQuery(view({ query: "hello world" }))).toBe("q=hello+world");
+    expect(inboxViewToQuery(view({ dateWindow: "7d" }))).toBe("since=7d");
+    expect(inboxViewToQuery(view({ dateWindow: "any" }))).toBe("");
   });
 
   it("omits a whitespace-only query", () => {
@@ -49,7 +57,7 @@ describe("inboxViewToQuery", () => {
   });
 
   it("round-trips a fully specified view", () => {
-    const original = view({ status: "failed", query: "retry" }, false);
+    const original = view({ status: "failed", query: "retry", dateWindow: "30d" }, false);
     const restored = readInboxView(new URLSearchParams(inboxViewToQuery(original)));
     expect(restored).toEqual(original);
   });

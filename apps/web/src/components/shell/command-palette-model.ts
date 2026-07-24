@@ -1,4 +1,5 @@
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
+import { formatTaskAge } from "@/lib/task-time";
 import type { ClientMode, TaskSummary } from "@/lib/task-types";
 
 import { countTasks, visibleTaskText } from "../task-inbox-filter";
@@ -94,15 +95,20 @@ function matches(query: string, ...fields: readonly string[]): boolean {
   return fields.some((field) => field.toLowerCase().includes(needle));
 }
 
-/** The command row for a loaded task — navigates to its detail page. */
-export function taskCommandItem(task: TaskSummary): CommandItem {
+/**
+ * The command row for a loaded task — navigates to its detail page. The hint
+ * carries the same visible facts a row shows: the truncated run/task identifier
+ * and, when the API recorded one, the task's age (never a fabricated time).
+ */
+export function taskCommandItem(task: TaskSummary, now: number = Date.now()): CommandItem {
   const identifier = task.runId
     ? `Run ${task.runId.slice(0, 10)}`
     : `Task ${task.taskId.slice(0, 10)}`;
+  const age = formatTaskAge(task.createdAt, now);
   return {
     id: `task:${task.taskId}`,
     label: task.title,
-    hint: `Open task · ${identifier}`,
+    hint: age === undefined ? `Open task · ${identifier}` : `Open task · ${identifier} · ${age}`,
     href: `/tasks/${task.taskId}`,
     icon: "task",
   };
@@ -121,6 +127,7 @@ export function buildCommandResults(
   tasks: readonly TaskSummary[],
   limit: number = TASK_RESULT_LIMIT,
   mode: ClientMode = "api",
+  now: number = Date.now(),
 ): CommandItem[] {
   const pending = countTasks(tasks).attention;
   const routes = routeCommands(mode)
@@ -137,6 +144,6 @@ export function buildCommandResults(
       : tasks
           .filter((task) => matches(query, visibleTaskText(task)))
           .slice(0, limit)
-          .map(taskCommandItem);
+          .map((task) => taskCommandItem(task, now));
   return [...routes, ...taskItems];
 }

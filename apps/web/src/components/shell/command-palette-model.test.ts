@@ -119,6 +119,19 @@ describe("buildCommandResults", () => {
     expect(taskCommandItem(tasks[0]).hint).toBe("Open task · Run run_000000");
     expect(taskCommandItem(tasks[2]).hint).toBe("Open task · Task task_00000");
   });
+
+  it("appends the task's age to the hint when the API recorded one", () => {
+    const now = Date.parse("2026-07-24T12:00:00.000Z");
+    const created = new Date(now - 5 * 60 * 1000).toISOString();
+    const aged: TaskSummary = {
+      taskId: "task_00000009",
+      title: "Aged",
+      status: "running",
+      runId: "run_00000009",
+      createdAt: created,
+    };
+    expect(taskCommandItem(aged, now).hint).toBe("Open task · Run run_000000 · 5m ago");
+  });
 });
 
 describe("approvalsCommandHint", () => {

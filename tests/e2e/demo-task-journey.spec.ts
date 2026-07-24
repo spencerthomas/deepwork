@@ -148,6 +148,10 @@ test("creates, approves, and completes one API-backed task", async ({
   expect(clipboardBrief).toContain("## Result");
   expect(clipboardBrief).toContain(prompt);
 
+  // "Edit & re-run" opens the composer to revise the objective before a fresh
+  // dispatch; it ships alongside the one-click "Run again".
+  await expect(page.getByRole("button", { name: "Edit & re-run" })).toBeVisible();
+
   // Re-dispatch: "Run again" creates a fresh task from the same prompt and
   // navigates to it. Wait for the POST and for the URL to change to a
   // *different* task id (the completed task already matches the id pattern).

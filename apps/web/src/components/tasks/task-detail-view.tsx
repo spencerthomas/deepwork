@@ -23,6 +23,7 @@ import { PlanCard } from "@/components/tasks/plan-card";
 import { RunPanel } from "@/components/tasks/run-panel";
 import { TaskResultActions } from "@/components/tasks/task-result-actions";
 import { buildThread } from "@/components/tasks/task-thread-model";
+import { setEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import {
   getActiveInterrupt,
   getEvidenceRecords,
@@ -123,6 +124,11 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       router.push(`/tasks/${created.taskId}`);
     }
   }, [createTask, router, rerunPrompt, title]);
+  const editRerun = useCallback(() => {
+    // Hand the full prompt to the composer through transient state, not the URL.
+    setEditRerunPrompt(rerunPrompt ?? title);
+    router.push("/tasks/new");
+  }, [rerunPrompt, router, title]);
 
   const sidebar = (
     <div className="flex flex-col gap-1">
@@ -314,12 +320,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                       )}
                       <TaskResultActions
                         title={title}
-                        prompt={detail?.prompt}
+                        prompt={rerunPrompt}
                         result={success ? detail?.result : undefined}
                         evidence={evidence}
                         onRunAgain={() => void runAgain()}
                         runningAgain={creating}
                         runError={rerunAttempted ? createError : undefined}
+                        onEditRerun={editRerun}
                       />
                     </div>
                   );

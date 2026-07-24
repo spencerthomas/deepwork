@@ -1068,6 +1068,7 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
                 task_number INTEGER,
                 task_id TEXT,
                 run_id TEXT,
+                created_at TEXT,
                 title TEXT,
                 objective TEXT,
                 status TEXT,
@@ -1091,7 +1092,7 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
             CREATE INDEX events_task_order ON events(task_id, event_id);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 1;
+            PRAGMA user_version = 2;
             """
         )
 

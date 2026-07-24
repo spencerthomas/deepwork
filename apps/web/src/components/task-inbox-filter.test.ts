@@ -113,6 +113,7 @@ describe("task inbox filter state helpers", () => {
     expect(hasActiveTaskFilter(filterWith({ query: "x" }))).toBe(true);
     expect(hasActiveTaskFilter(filterWith({ status: "queued" }))).toBe(true);
     expect(hasActiveTaskFilter(filterWith({ attentionOnly: true }))).toBe(true);
+    expect(hasActiveTaskFilter(filterWith({ createdWithin: "7d" }))).toBe(true);
   });
 
   it("explains exactly which criteria removed every result", () => {
@@ -122,8 +123,63 @@ describe("task inbox filter state helpers", () => {
     expect(describeTaskFilter(filterWith({ status: "running", attentionOnly: true }))).toBe(
       "No loaded tasks have the Running status and need attention.",
     );
+    expect(describeTaskFilter(filterWith({ createdWithin: "7d" }))).toBe(
+      "No loaded tasks were created in the last 7 days.",
+    );
     expect(
-      describeTaskFilter(filterWith({ query: "deploy", status: "failed", attentionOnly: true })),
-    ).toBe("No loaded tasks match “deploy”, have the Failed status, and need attention.");
+      describeTaskFilter(
+        filterWith({
+          query: "deploy",
+          status: "failed",
+          attentionOnly: true,
+          createdWithin: "24h",
+        }),
+      ),
+    ).toBe(
+      "No loaded tasks match “deploy”, have the Failed status, need attention, and were created in the last 24 hours.",
+    );
+  });
+});
+
+describe("task inbox created-within date filter", () => {
+  const NOW = Date.parse("2026-07-24T12:00:00Z");
+  const sixHoursAgo: TaskSummary = {
+    ...running,
+    taskId: "t-recent",
+    createdAt: "2026-07-24T06:00:00Z",
+  };
+  const fiveDaysAgo: TaskSummary = {
+    ...running,
+    taskId: "t-week",
+    createdAt: "2026-07-19T12:00:00Z",
+  };
+  const monthAgo: TaskSummary = {
+    ...running,
+    taskId: "t-month",
+    createdAt: "2026-06-20T12:00:00Z",
+  };
+
+  it("keeps only tasks created inside the rolling window", () => {
+    expect(matchesTaskFilter(sixHoursAgo, filterWith({ createdWithin: "24h" }), NOW)).toBe(true);
+    expect(matchesTaskFilter(fiveDaysAgo, filterWith({ createdWithin: "24h" }), NOW)).toBe(false);
+    expect(matchesTaskFilter(fiveDaysAgo, filterWith({ createdWithin: "7d" }), NOW)).toBe(true);
+    expect(matchesTaskFilter(monthAgo, filterWith({ createdWithin: "7d" }), NOW)).toBe(false);
+    expect(matchesTaskFilter(monthAgo, filterWith({ createdWithin: "30d" }), NOW)).toBe(false);
+  });
+
+  it("fails closed when a task's creation time is missing or unparseable", () => {
+    expect(matchesTaskFilter(running, filterWith({ createdWithin: "30d" }), NOW)).toBe(false);
+    expect(
+      matchesTaskFilter(
+        { ...running, createdAt: "not-a-date" },
+        filterWith({ createdWithin: "30d" }),
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  it("excludes future-dated tasks from every window", () => {
+    const future: TaskSummary = { ...running, createdAt: "2026-07-25T12:00:00Z" };
+    expect(matchesTaskFilter(future, filterWith({ createdWithin: "30d" }), NOW)).toBe(false);
   });
 });

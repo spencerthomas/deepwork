@@ -27,6 +27,13 @@ describe("readInboxView", () => {
     expect(result.grouped).toBe(true);
   });
 
+  it("reads a known created-within window and drops an unknown one", () => {
+    expect(readInboxView(new URLSearchParams("created=7d")).filter.createdWithin).toBe("7d");
+    expect(
+      readInboxView(new URLSearchParams("created=all-time")).filter.createdWithin,
+    ).toBeUndefined();
+  });
+
   it("caps an over-long query the same way the search field does", () => {
     const long = "x".repeat(5_000);
     expect(readInboxView(new URLSearchParams(`q=${long}`)).filter.query).toHaveLength(200);
@@ -48,8 +55,12 @@ describe("inboxViewToQuery", () => {
     expect(inboxViewToQuery(view({ query: "   " }))).toBe("");
   });
 
+  it("emits the created-within window", () => {
+    expect(inboxViewToQuery(view({ createdWithin: "30d" }))).toBe("created=30d");
+  });
+
   it("round-trips a fully specified view", () => {
-    const original = view({ status: "failed", query: "retry" }, false);
+    const original = view({ status: "failed", query: "retry", createdWithin: "7d" }, false);
     const restored = readInboxView(new URLSearchParams(inboxViewToQuery(original)));
     expect(restored).toEqual(original);
   });

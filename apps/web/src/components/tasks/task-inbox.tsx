@@ -27,7 +27,10 @@ import {
   filterTasks,
   hasActiveTaskFilter,
   normalizeTaskQuery,
+  TASK_DATE_WINDOW_LABELS,
+  TASK_DATE_WINDOW_OPTIONS,
   TASK_SEARCH_MAX_LENGTH,
+  type TaskDateWindow,
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "@/components/task-inbox-filter";
@@ -173,12 +176,13 @@ export function TaskInbox() {
     const groupedSame = prev.grouped === next.grouped;
     const attentionSame = prev.filter.attentionOnly === next.filter.attentionOnly;
     const querySame = prev.filter.query === next.filter.query;
-    if (statusSame && groupedSame && attentionSame && querySame) return;
+    const createdSame = prev.filter.createdWithin === next.filter.createdWithin;
+    if (statusSame && groupedSame && attentionSame && querySame && createdSame) return;
     setView(next);
     const query = inboxViewToQuery(next);
     const { pathname } = window.location;
     const url = query ? `${pathname}?${query}` : pathname;
-    const onlyQueryChanged = statusSame && groupedSame && attentionSame;
+    const onlyQueryChanged = statusSame && groupedSame && attentionSame && createdSame;
     if (onlyQueryChanged) {
       window.history.replaceState(window.history.state, "", url);
     } else {
@@ -204,6 +208,19 @@ export function TaskInbox() {
   const setGrouped = useCallback(
     (next: boolean) => commitView({ filter: viewRef.current.filter, grouped: next }),
     [commitView],
+  );
+
+  const setCreatedWithin = useCallback(
+    (window: TaskDateWindow | undefined) =>
+      setFilter((current) => {
+        if (window === undefined) {
+          const next = { ...current };
+          delete next.createdWithin;
+          return next;
+        }
+        return { ...current, createdWithin: window };
+      }),
+    [setFilter],
   );
 
   const counts = countTasks(tasks);
@@ -380,6 +397,47 @@ export function TaskInbox() {
             /
           </kbd>
         )}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span id="created-filter-label" className="text-[12px] font-medium text-muted-foreground">
+          Created
+        </span>
+        <div
+          role="group"
+          aria-labelledby="created-filter-label"
+          className="inline-flex items-center gap-0.5 rounded-xl border border-border bg-card p-0.5"
+        >
+          <button
+            type="button"
+            aria-pressed={filter.createdWithin === undefined}
+            onClick={() => setCreatedWithin(undefined)}
+            className={cn(
+              "rounded-[9px] px-2.5 py-1 text-[12px] font-medium transition-colors",
+              filter.createdWithin === undefined
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Any time
+          </button>
+          {TASK_DATE_WINDOW_OPTIONS.map((window) => (
+            <button
+              key={window}
+              type="button"
+              aria-pressed={filter.createdWithin === window}
+              onClick={() => setCreatedWithin(window)}
+              className={cn(
+                "rounded-[9px] px-2.5 py-1 text-[12px] font-medium transition-colors",
+                filter.createdWithin === window
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {TASK_DATE_WINDOW_LABELS[window]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {listError && (

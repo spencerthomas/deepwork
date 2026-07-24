@@ -37,6 +37,7 @@ function resolver(sourceName: string): TaskBindingResolver {
 const waitingDetail = {
   taskId: "task_00000001",
   runId: "run_00000001",
+  createdAt: "2026-01-01T00:00:00+00:00",
   title: "Review the task",
   objective: "Inspect the accepted task contract.",
   status: "waiting-approval",
@@ -389,6 +390,7 @@ describe("strict accepted task mapping", () => {
             {
               taskId: "task_00000001",
               runId: "run_00000001",
+              createdAt: "2026-01-01T00:00:00+00:00",
               title: "Task",
               objective: "Objective",
               status: "queued",

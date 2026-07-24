@@ -45,9 +45,10 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskStatus,
 )
+from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -98,6 +99,7 @@ CREATE TABLE tasks (
     task_number INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id TEXT NOT NULL UNIQUE,
     run_id TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
     title TEXT NOT NULL,
     objective TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -152,6 +154,7 @@ _EXPECTED_COLUMNS = {
         "task_number",
         "task_id",
         "run_id",
+        "created_at",
         "title",
         "objective",
         "status",
@@ -180,6 +183,7 @@ _EXPECTED_TABLE_INFO = {
         ("task_number", "INTEGER", 0, 1),
         ("task_id", "TEXT", 1, 0),
         ("run_id", "TEXT", 1, 0),
+        ("created_at", "TEXT", 1, 0),
         ("title", "TEXT", 1, 0),
         ("objective", "TEXT", 1, 0),
         ("status", "TEXT", 1, 0),
@@ -265,8 +269,9 @@ class SQLiteTaskRepository:
     the canonical PostgreSQL durability implementation.
     """
 
-    def __init__(self, database_path: str | Path) -> None:
+    def __init__(self, database_path: str | Path, *, clock: Clock = system_clock) -> None:
         self._path = _safe_database_path(database_path)
+        self._clock = clock
         self._initialized = False
         self._closed = False
         self._initialization_lock = asyncio.Lock()
@@ -698,15 +703,16 @@ class SQLiteTaskRepository:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            created_at = self._clock().isoformat()
             cursor = connection.execute(
                 """
                 INSERT INTO tasks (
-                    task_id, run_id, title, objective, status,
+                    task_id, run_id, created_at, title, objective, status,
                     pending_interrupt_id, plan_revision, plan_title,
                     plan_steps, plan_evidence_refs, result
-                ) VALUES ('pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)
+                ) VALUES ('pending', 'pending', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)
                 """,
-                (title, objective, TaskStatus.QUEUED.value),
+                (created_at, title, objective, TaskStatus.QUEUED.value),
             )
             number = cast(int, cursor.lastrowid)
             if number < 1 or number > _MAX_TASK_NUMBER:
@@ -1208,9 +1214,15 @@ class SQLiteTaskRepository:
         pending = cast(str | None, task["pending_interrupt_id"])
         if pending is not None and not pending:
             raise SQLiteTaskRepositoryDataError("stored pending interrupt identifier is invalid")
+        created_at = _bounded_stored_string(
+            task["created_at"],
+            field="task creation timestamp",
+            maximum=64,
+        )
         return TaskSnapshot(
             task_id=cast(str, task["task_id"]),
             run_id=cast(str, task["run_id"]),
+            created_at=created_at,
             title=title,
             objective=objective,
             status=_decode_status(task["status"]),

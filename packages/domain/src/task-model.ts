@@ -127,6 +127,9 @@ export interface TaskSummary {
   readonly taskId: TaskId;
   readonly sourceThread: SourceThreadKey;
   readonly run: SourceRunKey;
+  // Present when the summary comes from an API snapshot; the event-sourced
+  // reducer does not observe creation time, so it stays absent there.
+  readonly createdAt?: string;
   readonly title: DisplayText;
   readonly objective: ObjectiveText;
   readonly facts: TaskStateFacts;
@@ -508,6 +511,23 @@ export function pendingInterrupt(input: {
   });
 }
 
+const ISO_8601_INSTANT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * Accept a task creation timestamp: a bounded ISO-8601 instant with an explicit
+ * offset (as produced by the API's `datetime.isoformat()`). The value is a real
+ * recorded instant, never fabricated, so an unparseable or unbounded string is
+ * rejected rather than coerced.
+ */
+export function createdAtTimestamp(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length > 64 || !ISO_8601_INSTANT_PATTERN.test(trimmed)) {
+    throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
+  }
+  return trimmed;
+}
+
 export function taskSummary(
   input: Omit<TaskSummary, "status" | "title" | "objective"> & {
     readonly title: string;
@@ -535,6 +555,7 @@ export function taskSummary(
     taskId: acceptedTaskId,
     sourceThread: acceptedSourceThread,
     run: acceptedRun,
+    ...(input.createdAt === undefined ? {} : { createdAt: createdAtTimestamp(input.createdAt) }),
     title: displayText(input.title, "Task title", 80),
     objective: objectiveText(input.objective),
     facts,
@@ -614,6 +635,7 @@ export function taskDetail(
     taskId: summary.taskId,
     sourceThread: summary.sourceThread,
     run: summary.run,
+    ...(summary.createdAt === undefined ? {} : { createdAt: summary.createdAt }),
     title: summary.title,
     objective: summary.objective,
     facts: summary.facts,

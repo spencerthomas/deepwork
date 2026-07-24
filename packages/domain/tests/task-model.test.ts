@@ -1,5 +1,6 @@
 import {
   applicationEventId,
+  createdAtTimestamp,
   deriveTaskStatus,
   evidenceId,
   evidenceRecord,
@@ -32,6 +33,25 @@ const task = taskId("task_00000001");
 const thread = threadId("thread-1");
 const run = runId("run_00000001");
 const interrupt = sourceInterruptKey(source, task, thread, run, interruptId("interrupt_00000001"));
+
+describe("createdAtTimestamp", () => {
+  it("accepts bounded ISO-8601 instants with an explicit offset", () => {
+    expect(createdAtTimestamp("2026-01-01T00:00:00+00:00")).toBe("2026-01-01T00:00:00+00:00");
+    expect(createdAtTimestamp("2026-07-24T07:30:00.123456+00:00")).toBe(
+      "2026-07-24T07:30:00.123456+00:00",
+    );
+    expect(createdAtTimestamp("  2026-01-01T00:00:00Z  ")).toBe("2026-01-01T00:00:00Z");
+  });
+
+  it("rejects timestamps without an offset, malformed strings, and unbounded input", () => {
+    expect(() => createdAtTimestamp("2026-01-01T00:00:00")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("not-a-date")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("")).toThrow(TypeError);
+    expect(() => createdAtTimestamp(`2026-01-01T00:00:00+00:00${" ".repeat(64)}z`)).toThrow(
+      TypeError,
+    );
+  });
+});
 
 describe("client-safe task values", () => {
   it("uses canonical presentation precedence over orthogonal facts", () => {

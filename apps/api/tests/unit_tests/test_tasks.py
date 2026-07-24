@@ -55,6 +55,7 @@ def _completed_snapshot(result: str | None) -> TaskSnapshot:
     return TaskSnapshot(
         task_id="task_00000001",
         run_id="run_00000001",
+        created_at="2026-01-01T00:00:00+00:00",
         title="Completed task",
         objective="Completed task",
         status=TaskStatus.COMPLETED,

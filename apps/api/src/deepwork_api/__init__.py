@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+
     from fastapi import FastAPI
 
 __all__ = ["create_app"]
@@ -17,6 +20,7 @@ def create_app(
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
+    clock: Callable[[], datetime] | None = None,
 ) -> FastAPI:
     """Load and create the local application only when explicitly called.
 
@@ -32,9 +36,19 @@ def create_app(
 
     from deepwork_api.bootstrap.api import create_app as _create_app
 
+    # Forward an explicit clock only when supplied; otherwise the bootstrap
+    # default (system_clock) applies, so this facade never imports it directly.
+    if clock is None:
+        return _create_app(
+            task_database_path=task_database_path,
+            local_agent_server_endpoint=local_agent_server_endpoint,
+            local_agent_server_assistant=local_agent_server_assistant,
+            allow_ungated_local_agent_source=allow_ungated_local_agent_source,
+        )
     return _create_app(
         task_database_path=task_database_path,
         local_agent_server_endpoint=local_agent_server_endpoint,
         local_agent_server_assistant=local_agent_server_assistant,
         allow_ungated_local_agent_source=allow_ungated_local_agent_source,
+        clock=clock,
     )

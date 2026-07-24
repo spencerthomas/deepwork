@@ -59,6 +59,30 @@ describe("buildCommandResults", () => {
     ).toBe(true);
   });
 
+  it("finds a task by the truncated run identifier the row shows", () => {
+    const results = buildCommandResults("run_000000", tasks);
+    const taskResults = results.filter((item) => item.id.startsWith("task:"));
+    // Both run-bearing tasks share the truncated identifier prefix; the id-less
+    // task does not.
+    expect(taskResults.map((item) => item.id)).toEqual([
+      "task:task_00000001",
+      "task:task_00000002",
+    ]);
+  });
+
+  it("finds a task by its canonical status label", () => {
+    const results = buildCommandResults("running", tasks);
+    // All three fixtures are running, so the status match surfaces every task.
+    expect(results.filter((item) => item.id.startsWith("task:"))).toHaveLength(3);
+  });
+
+  it("does not match hidden fields the row never displays", () => {
+    // The raw, untruncated run id is not visible text, so it must not match.
+    expect(buildCommandResults("run_00000001", tasks).some((i) => i.id.startsWith("task:"))).toBe(
+      false,
+    );
+  });
+
   it("caps the number of task results", () => {
     const many = Array.from({ length: 20 }, (_, i) =>
       task(`task_${String(i).padStart(8, "0")}`, "shared token"),

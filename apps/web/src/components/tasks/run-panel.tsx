@@ -1,10 +1,12 @@
 "use client";
 
 import { Activity, ListChecks, ShieldCheck, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { StatusChip } from "@/components/shell/status-chip";
+import { eventDetailText } from "@/components/activity/activity-model";
 import { nextPanelTab, PANEL_TABS, type PanelTab } from "@/components/tasks/run-panel-tabs";
+import { panelTabToQuery, readPanelTab } from "@/components/tasks/run-panel-url";
 import type {
   ClientMode,
   ConnectionState,
@@ -79,6 +81,27 @@ export function RunPanel({
   const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
   const runtimeCopy = taskRuntimePresentation(mode);
 
+  // Reflect the active tab in the URL so a task's Evidence, Stream, or Trace
+  // view is deep-linkable and survives a refresh or reopening the panel — the
+  // same URL-restore contract the inbox and queues use. Other params on the
+  // task-detail URL are preserved.
+  const selectTab = useCallback((next: PanelTab) => {
+    setTab((current) => {
+      if (current === next) return current;
+      const { pathname, search } = window.location;
+      const query = panelTabToQuery(next, new URLSearchParams(search));
+      window.history.pushState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () => setTab(readPanelTab(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-1 border-b border-border px-2">
@@ -91,7 +114,7 @@ export function RunPanel({
             const next = nextPanelTab(tab, event.key);
             if (next === null) return;
             event.preventDefault();
-            setTab(next);
+            selectTab(next);
             tabRefs.current[next]?.focus();
           }}
         >
@@ -112,7 +135,7 @@ export function RunPanel({
                 // active tab's panel.
                 aria-controls={isActive ? "run-tabpanel" : undefined}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => setTab(t.key)}
+                onClick={() => selectTab(t.key)}
                 className={cn(
                   "relative shrink-0 px-2.5 py-2.5 text-[13px] transition-colors",
                   isActive
@@ -220,22 +243,29 @@ export function RunPanel({
               </p>
             ) : (
               <ol className="space-y-0.5">
-                {events.map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex items-baseline gap-2.5 rounded-lg px-2 py-1.5 hover:bg-accent/40"
-                  >
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                      #{event.id}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70">
-                      {event.name}
-                    </span>
-                    <span className="min-w-0 truncate text-[12px] text-muted-foreground">
-                      {eventLabels[event.name] ?? event.name}
-                    </span>
-                  </li>
-                ))}
+                {events.map((event) => {
+                  const detail = eventDetailText(event);
+                  return (
+                    <li key={event.id} className="rounded-lg px-2 py-1.5 hover:bg-accent/40">
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          #{event.id}
+                        </span>
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70">
+                          {event.name}
+                        </span>
+                        <span className="min-w-0 truncate text-[12px] text-muted-foreground">
+                          {eventLabels[event.name] ?? event.name}
+                        </span>
+                      </div>
+                      {detail !== undefined && (
+                        <p className="mt-1 ml-1.5 border-l border-border pl-2.5 text-[12px] leading-relaxed text-foreground/80">
+                          {detail}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             )}
             <p className="border-t border-border px-2 py-2 text-[11px] text-muted-foreground">

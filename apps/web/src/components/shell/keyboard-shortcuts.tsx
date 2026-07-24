@@ -19,6 +19,7 @@ const GROUPS: readonly ShortcutGroup[] = [
     title: "Global",
     shortcuts: [
       { keys: ["⌘", "K"], label: "Open the command palette" },
+      { keys: ["N"], label: "Start a new task" },
       { keys: ["?"], label: "Show this shortcuts help" },
       { keys: ["Esc"], label: "Close a dialog or overlay" },
     ],
@@ -30,6 +31,24 @@ const GROUPS: readonly ShortcutGroup[] = [
       { keys: ["J", "↓"], label: "Move the highlight down" },
       { keys: ["K", "↑"], label: "Move the highlight up" },
       { keys: ["↵"], label: "Open the highlighted task" },
+    ],
+  },
+  {
+    title: "Approvals queue",
+    shortcuts: [
+      { keys: ["J", "↓"], label: "Move the highlight down" },
+      { keys: ["K", "↑"], label: "Move the highlight up" },
+      { keys: ["A"], label: "Approve the highlighted request" },
+      { keys: ["R"], label: "Reject the highlighted request" },
+      { keys: ["↵"], label: "Open the highlighted task" },
+    ],
+  },
+  {
+    title: "Activity feed",
+    shortcuts: [
+      { keys: ["J", "↓"], label: "Move the highlight down" },
+      { keys: ["K", "↑"], label: "Move the highlight up" },
+      { keys: ["↵"], label: "Open the highlighted entry" },
     ],
   },
   {

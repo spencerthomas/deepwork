@@ -62,6 +62,17 @@ describe("buildCommandResults", () => {
     expect(approvals?.hint).toBe("2 waiting for you");
   });
 
+  it("still finds Approvals by its base hint even when the count hint is shown", () => {
+    const withPending = [
+      ...tasks,
+      taskWithStatus("task_00000004", "Approve the deploy", "waiting-approval"),
+    ];
+    // "agents need" matches the descriptive base hint, not the "1 waiting…" one.
+    const results = buildCommandResults("agents need", withPending);
+    const approvals = results.find((item) => item.id === "route:approvals");
+    expect(approvals?.hint).toBe("1 waiting for you");
+  });
+
   it("still filters route commands by the query", () => {
     const results = buildCommandResults("approvals", tasks);
     expect(results.some((item) => item.id === "route:approvals")).toBe(true);

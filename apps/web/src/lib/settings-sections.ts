@@ -80,7 +80,7 @@ export function filterSettingsGroups(query: string): SettingsGroup[] {
   }
   const matches = (item: SettingsSectionDef): boolean =>
     item.label.toLowerCase().includes(needle) ||
-    item.keywords.some((keyword) => keyword.includes(needle));
+    item.keywords.some((keyword) => keyword.toLowerCase().includes(needle));
   return SETTINGS_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(matches),

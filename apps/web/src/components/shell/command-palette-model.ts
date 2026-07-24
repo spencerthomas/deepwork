@@ -130,13 +130,16 @@ export function buildCommandResults(
   now: number = Date.now(),
 ): CommandItem[] {
   const pending = countTasks(tasks).attention;
+  // Filter against the original (descriptive) hint so a query like "agents need"
+  // still finds Approvals, then fold the pending count into the *displayed* hint
+  // for the rows that survive.
   const routes = routeCommands(mode)
+    .filter((command) => matches(query, command.label, command.hint))
     .map((command) =>
       command.id === "route:approvals"
         ? { ...command, hint: approvalsCommandHint(pending, command.hint) }
         : command,
-    )
-    .filter((command) => matches(query, command.label, command.hint));
+    );
   const trimmed = query.trim();
   const taskItems =
     trimmed === ""

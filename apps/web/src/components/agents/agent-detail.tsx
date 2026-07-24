@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Bot, ListChecks, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
@@ -190,15 +190,17 @@ export function AgentDetail() {
 
   // Mirror the inspect tab in the URL so a specific view is shareable and
   // survives a refresh, and restore it on first load and browser back/forward —
-  // the same contract the run panel uses.
+  // the same contract the run panel uses. The current tab is read from a ref so
+  // the state updater stays pure (no pushState inside it, which React Strict
+  // Mode would replay into a duplicate history entry).
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   const selectTab = useCallback((next: TabKey) => {
-    setTab((current) => {
-      if (current === next) return current;
-      const query = inspectTabToQuery(next);
-      const { pathname } = window.location;
-      window.history.pushState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
-      return next;
-    });
+    if (tabRef.current === next) return;
+    const query = inspectTabToQuery(next);
+    const { pathname } = window.location;
+    window.history.pushState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
+    setTab(next);
   }, []);
 
   useEffect(() => {

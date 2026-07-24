@@ -58,6 +58,15 @@ export function AgentFleet() {
   const availableCapabilities =
     status?.capabilities.filter((capability) => capability.state === "available") ?? [];
 
+  // Advance a slow client-only clock so the "last run" age keeps moving
+  // ("just now" → "1m ago") without a store or filter update (mirrors the
+  // Recent tasks panel).
+  const [, advanceAgeClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => advanceAgeClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   // How long ago the local runner last started a task — only when the list is
   // trustworthy (loaded, no error), so a failed fetch never implies "no runs".
   const lastRunAge =

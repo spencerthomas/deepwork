@@ -29,6 +29,10 @@ export function ThemeToggle() {
       if (event.key === null || event.key === THEME_STORAGE_KEY) applyFromStorage();
     };
 
+    // Resolve the stored preference onto the root class on mount, so a stale
+    // pre-paint class (e.g. after the OS flipped while "System") is corrected
+    // immediately rather than waiting for the next OS/storage event.
+    applyFromStorage();
     syncIcon();
     const observer = new MutationObserver(syncIcon);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });

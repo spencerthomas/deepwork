@@ -1,10 +1,16 @@
 "use client";
 
 import { Activity, ListChecks, ShieldCheck, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { StatusChip } from "@/components/shell/status-chip";
-import { eventDetailText } from "@/components/activity/activity-model";
+import {
+  ACTIVITY_FILTERS,
+  ACTIVITY_FILTER_LABELS,
+  eventDetailText,
+  eventMatchesActivityFilter,
+  type ActivityFilter,
+} from "@/components/activity/activity-model";
 import { nextPanelTab, PANEL_TABS, type PanelTab } from "@/components/tasks/run-panel-tabs";
 import { panelTabToQuery, readPanelTab } from "@/components/tasks/run-panel-url";
 import type {
@@ -78,8 +84,17 @@ export function RunPanel({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
+  const [streamFilter, setStreamFilter] = useState<ActivityFilter>("all");
   const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
   const runtimeCopy = taskRuntimePresentation(mode);
+
+  // Narrow the Stream tab's event list to one kind (plans, evidence, …) using
+  // the same filter vocabulary as the Activity feed. Session-local; the full,
+  // unfiltered event history is always one click ("All") away.
+  const visibleStreamEvents = useMemo(
+    () => events.filter((event) => eventMatchesActivityFilter(event.name, streamFilter)),
+    [events, streamFilter],
+  );
 
   // Reflect the active tab in the URL so a task's Evidence, Stream, or Trace
   // view is deep-linkable and survives a refresh or reopening the panel — the
@@ -237,13 +252,44 @@ export function RunPanel({
 
         {tab === "stream" && (
           <div className="px-2 py-2">
+            {events.length > 0 && (
+              <div
+                role="group"
+                aria-label="Filter stream events"
+                className="mb-2 flex flex-wrap items-center gap-1 px-1"
+              >
+                {ACTIVITY_FILTERS.map((option) => {
+                  const active = streamFilter === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setStreamFilter(option)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 text-[12px] transition-colors",
+                        active
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                      )}
+                    >
+                      {ACTIVITY_FILTER_LABELS[option]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {events.length === 0 ? (
               <p className="px-2 py-8 text-center text-[13px] text-muted-foreground">
                 Waiting for the first event…
               </p>
+            ) : visibleStreamEvents.length === 0 ? (
+              <p className="px-2 py-8 text-center text-[13px] text-muted-foreground">
+                No {ACTIVITY_FILTER_LABELS[streamFilter].toLowerCase()} in this run yet.
+              </p>
             ) : (
               <ol className="space-y-0.5">
-                {events.map((event) => {
+                {visibleStreamEvents.map((event) => {
                   const detail = eventDetailText(event);
                   return (
                     <li key={event.id} className="rounded-lg px-2 py-1.5 hover:bg-accent/40">
@@ -269,7 +315,9 @@ export function RunPanel({
               </ol>
             )}
             <p className="border-t border-border px-2 py-2 text-[11px] text-muted-foreground">
-              {events.length} events · {runtimeCopy.runEventSource}
+              {streamFilter === "all"
+                ? `${events.length} events · ${runtimeCopy.runEventSource}`
+                : `Showing ${visibleStreamEvents.length} of ${events.length} events · ${runtimeCopy.runEventSource}`}
             </p>
           </div>
         )}

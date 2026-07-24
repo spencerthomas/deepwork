@@ -5,6 +5,7 @@ import {
   activityFilterCounts,
   buildActivityFeed,
   eventDetailText,
+  eventMatchesActivityFilter,
   filterActivityFeed,
 } from "./activity-model";
 
@@ -136,5 +137,27 @@ describe("filterActivityFeed", () => {
       decisions: 2,
       completions: 1,
     });
+  });
+});
+
+describe("eventMatchesActivityFilter", () => {
+  it("matches every event name under 'all'", () => {
+    expect(eventMatchesActivityFilter("content.delta", "all")).toBe(true);
+    expect(eventMatchesActivityFilter("run.completed", "all")).toBe(true);
+    expect(eventMatchesActivityFilter("task.created", "all")).toBe(true);
+  });
+
+  it("matches only the event names in a named group", () => {
+    expect(eventMatchesActivityFilter("plan.proposed", "plans")).toBe(true);
+    expect(eventMatchesActivityFilter("plan.updated", "plans")).toBe(true);
+    expect(eventMatchesActivityFilter("evidence.recorded", "plans")).toBe(false);
+
+    expect(eventMatchesActivityFilter("evidence.recorded", "evidence")).toBe(true);
+
+    expect(eventMatchesActivityFilter("interrupt.requested", "decisions")).toBe(true);
+    expect(eventMatchesActivityFilter("decision.recorded", "decisions")).toBe(true);
+
+    expect(eventMatchesActivityFilter("run.completed", "completions")).toBe(true);
+    expect(eventMatchesActivityFilter("content.delta", "decisions")).toBe(false);
   });
 });

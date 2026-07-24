@@ -1,7 +1,7 @@
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import type { ClientMode, TaskSummary } from "@/lib/task-types";
 
-import { visibleTaskText } from "../task-inbox-filter";
+import { countTasks, visibleTaskText } from "../task-inbox-filter";
 
 export type CommandIconKey =
   | "new-task"
@@ -73,6 +73,18 @@ export function routeCommands(mode: ClientMode): readonly CommandItem[] {
 /** Fail-closed default retained for consumers that do not select a client mode. */
 export const ROUTE_COMMANDS: readonly CommandItem[] = routeCommands("api");
 
+/**
+ * The Approvals command hint, folding in how many loaded tasks are waiting on a
+ * decision so the count is visible the moment the palette opens (mirrors the nav
+ * badge). Zero or an invalid count leaves the descriptive base hint untouched.
+ */
+export function approvalsCommandHint(pending: number, base: string): string {
+  if (!Number.isFinite(pending) || pending <= 0) {
+    return base;
+  }
+  return `${Math.floor(pending)} waiting for you`;
+}
+
 /** How many task matches the palette surfaces at once. */
 export const TASK_RESULT_LIMIT = 6;
 
@@ -110,9 +122,14 @@ export function buildCommandResults(
   limit: number = TASK_RESULT_LIMIT,
   mode: ClientMode = "api",
 ): CommandItem[] {
-  const routes = routeCommands(mode).filter((command) =>
-    matches(query, command.label, command.hint),
-  );
+  const pending = countTasks(tasks).attention;
+  const routes = routeCommands(mode)
+    .map((command) =>
+      command.id === "route:approvals"
+        ? { ...command, hint: approvalsCommandHint(pending, command.hint) }
+        : command,
+    )
+    .filter((command) => matches(query, command.label, command.hint));
   const trimmed = query.trim();
   const taskItems =
     trimmed === ""

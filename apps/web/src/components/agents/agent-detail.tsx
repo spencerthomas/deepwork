@@ -50,7 +50,7 @@ function behaviorContract(mode: "api" | "fixture") {
 }
 
 function CapabilitiesPanel() {
-  const { status, loading } = useDemoStatus();
+  const { status, loading, refetch } = useDemoStatus();
 
   if (loading) {
     return (
@@ -61,9 +61,17 @@ function CapabilitiesPanel() {
   }
   if (!status) {
     return (
-      <p className="m-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
-        The runtime did not report its capabilities. States are unknown, not assumed.
-      </p>
+      <div className="m-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
+        <p>The runtime did not report its capabilities. States are unknown, not assumed.</p>
+        <button
+          type="button"
+          onClick={refetch}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-status-review/40 px-2.5 py-1 text-[12px] font-medium transition-colors hover:bg-status-review/10"
+        >
+          <RefreshCw className="size-3.5" />
+          Check again
+        </button>
+      </div>
     );
   }
   return (

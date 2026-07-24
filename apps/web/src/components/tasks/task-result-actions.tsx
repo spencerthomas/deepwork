@@ -41,11 +41,13 @@ export function TaskResultActions({
   result,
   onRunAgain,
   runningAgain = false,
+  runError,
 }: {
   title: string;
   result?: string;
   onRunAgain?: () => void;
   runningAgain?: boolean;
+  runError?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -66,37 +68,44 @@ export function TaskResultActions({
   const hasResult = result !== undefined && result.trim() !== "";
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-      {hasResult && (
-        <>
-          <button type="button" onClick={() => void copyResult()} className={ACTION_CLASS}>
-            {copied ? (
-              <Check aria-hidden className="size-3.5 text-status-done" />
-            ) : (
-              <Copy aria-hidden className="size-3.5" />
-            )}
-            {copied ? "Copied" : "Copy"}
-          </button>
+    <div className="mt-3 border-t border-border/60 pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {hasResult && (
+          <>
+            <button type="button" onClick={() => void copyResult()} className={ACTION_CLASS}>
+              {copied ? (
+                <Check aria-hidden className="size-3.5 text-status-done" />
+              ) : (
+                <Copy aria-hidden className="size-3.5" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerDownload(resultFilename(title), `# ${title}\n\n${result}\n`)}
+              className={ACTION_CLASS}
+            >
+              <Download aria-hidden className="size-3.5" />
+              Download
+            </button>
+          </>
+        )}
+        {onRunAgain && (
           <button
             type="button"
-            onClick={() => triggerDownload(resultFilename(title), `# ${title}\n\n${result}\n`)}
-            className={ACTION_CLASS}
+            onClick={onRunAgain}
+            disabled={runningAgain}
+            className={cn(ACTION_CLASS, "ml-auto")}
           >
-            <Download aria-hidden className="size-3.5" />
-            Download
+            <RotateCcw aria-hidden className="size-3.5" />
+            {runningAgain ? "Starting…" : "Run again"}
           </button>
-        </>
-      )}
-      {onRunAgain && (
-        <button
-          type="button"
-          onClick={onRunAgain}
-          disabled={runningAgain}
-          className={cn(ACTION_CLASS, "ml-auto")}
-        >
-          <RotateCcw aria-hidden className="size-3.5" />
-          {runningAgain ? "Starting…" : "Run again"}
-        </button>
+        )}
+      </div>
+      {runError !== undefined && (
+        <p role="alert" className="mt-2 text-[13px] text-status-failed">
+          The re-run could not be started. {runError}
+        </p>
       )}
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? "Result copied to clipboard." : ""}

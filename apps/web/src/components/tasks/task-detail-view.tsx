@@ -82,9 +82,11 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     updatePlan,
     createTask,
     creating,
+    createError,
   } = store;
   const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(true);
+  const [rerunAttempted, setRerunAttempted] = useState(false);
 
   const selected = tasks.find((task) => task.taskId === taskId);
   const detail = detailsByTask[taskId];
@@ -113,8 +115,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   // as a brand-new task and follow it.
   const rerunPrompt = detail?.prompt ?? selected?.prompt;
   const runAgain = useCallback(async () => {
-    const prompt = rerunPrompt ?? title;
-    const created = await createTask(prompt);
+    // Mark the attempt so the store's createError only surfaces here after a
+    // re-run this view actually started — never a stale error from elsewhere.
+    setRerunAttempted(true);
+    const created = await createTask(rerunPrompt ?? title);
     if (created) {
       router.push(`/tasks/${created.taskId}`);
     }
@@ -313,6 +317,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                         result={success ? detail?.result : undefined}
                         onRunAgain={() => void runAgain()}
                         runningAgain={creating}
+                        runError={rerunAttempted ? createError : undefined}
                       />
                     </div>
                   );

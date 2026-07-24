@@ -138,10 +138,7 @@ export function CommandBar({
           className="max-h-80 overflow-auto p-2"
         >
           {filtered.length === 0 && (
-            <li
-              role="presentation"
-              className="px-3 py-6 text-center text-sm text-muted-foreground"
-            >
+            <li role="presentation" className="px-3 py-6 text-center text-sm text-muted-foreground">
               No commands or loaded tasks match “{query.trim()}”.
             </li>
           )}

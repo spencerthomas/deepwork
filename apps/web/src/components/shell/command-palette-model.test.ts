@@ -78,9 +78,9 @@ describe("buildCommandResults", () => {
 
   it("does not match hidden fields the row never displays", () => {
     // The raw, untruncated run id is not visible text, so it must not match.
-    expect(
-      buildCommandResults("run_00000001", tasks).some((i) => i.id.startsWith("task:")),
-    ).toBe(false);
+    expect(buildCommandResults("run_00000001", tasks).some((i) => i.id.startsWith("task:"))).toBe(
+      false,
+    );
   });
 
   it("caps the number of task results", () => {

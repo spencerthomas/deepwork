@@ -41,6 +41,7 @@ import {
 } from "@/components/tasks/task-inbox-navigation";
 import { inboxViewToQuery, type InboxView, readInboxView } from "@/components/tasks/task-inbox-url";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
+import { formatTaskAge } from "@/lib/task-time";
 import { useTasksStore } from "@/lib/tasks-store";
 import type { ClientMode, TaskStatus, TaskSummary } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,7 @@ function TaskRow({
 }) {
   const runtimeCopy = taskRuntimePresentation(mode);
   const ref = useRef<HTMLAnchorElement>(null);
+  const age = formatTaskAge(task.createdAt);
 
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: "nearest" });
@@ -119,6 +121,14 @@ function TaskRow({
           <span className="truncate font-mono text-xs">
             {task.runId ? `Run ${task.runId.slice(0, 10)}` : `Task ${task.taskId.slice(0, 10)}`}
           </span>
+          {age !== undefined && (
+            <>
+              <span className="text-border">·</span>
+              <span className="shrink-0 whitespace-nowrap" title={task.createdAt}>
+                {age}
+              </span>
+            </>
+          )}
         </div>
       </div>
       <StatusChip status={task.status} />
@@ -222,6 +232,15 @@ export function TaskInbox() {
       }),
     [setFilter],
   );
+
+  // Re-render on a slow cadence so an open inbox's relative creation ages
+  // ("just now" → "1m ago") keep advancing without a task update or manual
+  // refresh. The interval is client-only, so no rows exist to hydrate against.
+  const [, advanceAgeClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => advanceAgeClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const counts = countTasks(tasks);
   const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);

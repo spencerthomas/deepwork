@@ -1,6 +1,8 @@
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import type { ClientMode, TaskSummary } from "@/lib/task-types";
 
+import { visibleTaskText } from "../task-inbox-filter";
+
 export type CommandIconKey =
   | "new-task"
   | "tasks"
@@ -97,8 +99,10 @@ export function taskCommandItem(task: TaskSummary): CommandItem {
 /**
  * Merge the static route commands with matching loaded tasks. Route commands
  * always show (filtered by the query); tasks surface only once the user types,
- * matched on their visible title, and capped — the palette searches the tasks
- * already loaded in this session, never a global or provider index.
+ * matched on the same visible text the inbox row shows — title, the truncated
+ * run/task identifier, and the canonical status label — and capped. The palette
+ * searches the tasks already loaded in this session, never a global or provider
+ * index, and never hidden fields the row does not display.
  */
 export function buildCommandResults(
   query: string,
@@ -114,7 +118,7 @@ export function buildCommandResults(
     trimmed === ""
       ? []
       : tasks
-          .filter((task) => matches(query, task.title))
+          .filter((task) => matches(query, visibleTaskText(task)))
           .slice(0, limit)
           .map(taskCommandItem);
   return [...routes, ...taskItems];

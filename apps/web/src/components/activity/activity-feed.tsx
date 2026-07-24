@@ -38,6 +38,7 @@ import {
   EVENT_LABELS,
   filterActivityFeed,
 } from "./activity-model";
+import { activityEntryHref } from "./activity-links";
 import { activityFilterToQuery, readActivityFilter } from "./activity-url";
 
 type IconComponent = ComponentType<{ className?: string }>;
@@ -133,7 +134,7 @@ function FeedRow({ entry, focused }: { entry: ActivityEntry; focused: boolean })
       )}
 
       <Link
-        href={`/tasks/${entry.taskId}`}
+        href={activityEntryHref(entry)}
         className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-brand-accent hover:underline"
       >
         tasks/{entry.taskId} <ArrowUpRight className="size-3" />

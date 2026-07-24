@@ -68,4 +68,33 @@ describe("formatResultBrief", () => {
     expect(brief).toContain("# Task result");
     expect(brief).toContain("## Result\n\n_No result was produced._");
   });
+
+  it("neutralizes active Markdown and HTML in untrusted result and evidence text", () => {
+    const brief = formatResultBrief({
+      title: "Report <img src=x>",
+      prompt: "Summarize.",
+      result: "Leaked pixel ![pixel](https://attacker.example/x) and <img src=y onerror=1>.",
+      evidence: [
+        {
+          evidenceId: "evidence_00000001",
+          kind: "citation",
+          source: "https://attacker.example/z",
+          summary: "See [click me](https://attacker.example/w).",
+          verified: false,
+        },
+      ],
+    });
+
+    // No active image / raw HTML / link syntax survives unescaped: pasting the
+    // brief into a Markdown renderer must not issue an external request. Every
+    // construct-opening character from untrusted text is backslash-escaped, so
+    // no unescaped `![`, `<`, or `[…](` remains.
+    expect(brief).not.toMatch(/(?<!\\)!\[/);
+    expect(brief).not.toMatch(/(?<!\\)<img/);
+    expect(brief).not.toMatch(/(?<!\\)\[click me\]/);
+    // The literal characters are still present, just backslash-escaped.
+    expect(brief).toContain("!\\[pixel\\]");
+    expect(brief).toContain("\\<img src=y onerror=1\\>");
+    expect(brief).toContain("\\[click me\\]");
+  });
 });

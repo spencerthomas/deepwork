@@ -48,7 +48,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -149,6 +149,25 @@ CREATE TABLE decisions (
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
 )
 
+# In-place upgrades from an older on-disk schema version to _SCHEMA_VERSION,
+# keyed by the stored user_version. Each converges the `tasks` table onto the
+# single canonical shape (created_at nullable and last) so a fresh database and
+# any upgraded database validate identically. Real timestamps are preserved; a
+# never-recorded creation instant becomes NULL rather than a fabricated value.
+_SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
+    # v1 predates created_at: appending the column leaves existing rows NULL.
+    1: ("ALTER TABLE tasks ADD COLUMN created_at TEXT",),
+    # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
+    # column. Move it last and drop NOT NULL without losing the recorded values,
+    # using only column operations so child foreign keys are never disturbed.
+    2: (
+        "ALTER TABLE tasks RENAME COLUMN created_at TO created_at_legacy",
+        "ALTER TABLE tasks ADD COLUMN created_at TEXT",
+        "UPDATE tasks SET created_at = created_at_legacy",
+        "ALTER TABLE tasks DROP COLUMN created_at_legacy",
+    ),
+}
+
 _EXPECTED_COLUMNS = {
     "tasks": (
         "task_number",
@@ -192,8 +211,8 @@ _EXPECTED_TABLE_INFO = {
         ("plan_steps", "TEXT", 0, 0),
         ("plan_evidence_refs", "TEXT", 0, 0),
         ("result", "TEXT", 0, 0),
-        # Nullable and last so a fresh v2 schema matches a v1 database migrated
-        # by `ALTER TABLE tasks ADD COLUMN created_at`, which appends the column.
+        # Nullable and last so a fresh database and every in-place upgrade in
+        # _SUPPORTED_UPGRADES converge on one canonical column layout.
         ("created_at", "TEXT", 0, 0),
     ),
     "events": (
@@ -609,12 +628,13 @@ class SQLiteTaskRepository:
                     connection.execute(statement)
                 connection.execute(f"PRAGMA application_id = {_APPLICATION_ID}")
                 connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
-            elif version == 1 and application_id == _APPLICATION_ID:
-                # Migrate a pre-timestamp database in place. Appending the column
-                # leaves existing rows with created_at = NULL: their real creation
-                # instant was never recorded, and inventing one would be dishonest.
-                # ADD COLUMN appends last, matching the fresh v2 column order.
-                connection.execute("ALTER TABLE tasks ADD COLUMN created_at TEXT")
+            elif application_id == _APPLICATION_ID and version in _SUPPORTED_UPGRADES:
+                # Upgrade an older local database in place. Every statement here
+                # runs inside this initialization transaction, so if the migrated
+                # database then fails strict validation below the whole upgrade
+                # rolls back and the on-disk schema is left untouched.
+                for statement in _SUPPORTED_UPGRADES[version]:
+                    connection.execute(statement)
                 connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
             elif version != _SCHEMA_VERSION or application_id != _APPLICATION_ID:
                 raise SQLiteTaskRepositorySchemaError(

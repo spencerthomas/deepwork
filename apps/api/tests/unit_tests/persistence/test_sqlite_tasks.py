@@ -1092,7 +1092,7 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
             CREATE INDEX events_task_order ON events(task_id, event_id);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 2;
+            PRAGMA user_version = 3;
             """
         )
 
@@ -1197,12 +1197,13 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     assert fresh.created_at is not None
     await repository.close()
 
-    # The migration is durable: the database now reports schema v2 with the
-    # appended nullable column, and reopening validates without re-migrating.
+    # The migration is durable: the database now reports the current schema
+    # with the appended nullable column, and reopening validates without
+    # re-migrating.
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(tasks)")]
-    assert version == 2
+    assert version == 3
     assert columns[-1] == "created_at"
 
     reopened = SQLiteTaskRepository(database)
@@ -1210,6 +1211,127 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     assert [task.task_id for task in listing] == ["task_00000001", "task_00000002"]
     assert listing[0].created_at is None
     assert listing[1].created_at is not None
+    await reopened.close()
+
+
+def _seed_legacy_v2_database(database: Path, *, created_at: str) -> None:
+    """Create a first-timestamp-release (schema v2) database with one task.
+
+    The v2 layout stored ``created_at`` as a NOT NULL fourth column, before the
+    current schema moved it last and made it nullable.
+    """
+
+    created_event = sqlite_adapter._encode_event_data(
+        (
+            ("taskId", "task_00000001"),
+            ("runId", "run_00000001"),
+            ("status", TaskStatus.QUEUED.value),
+        )
+    )
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE tasks (
+                task_number INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT NOT NULL UNIQUE,
+                run_id TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                title TEXT NOT NULL,
+                objective TEXT NOT NULL,
+                status TEXT NOT NULL,
+                pending_interrupt_id TEXT,
+                plan_revision INTEGER,
+                plan_title TEXT,
+                plan_steps TEXT,
+                plan_evidence_refs TEXT,
+                result TEXT
+            );
+            CREATE TABLE events (
+                task_id TEXT NOT NULL,
+                event_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                data TEXT NOT NULL,
+                PRIMARY KEY (task_id, event_id),
+                FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+            );
+            CREATE TABLE evidence (
+                task_id TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                evidence_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                source TEXT NOT NULL,
+                verified INTEGER NOT NULL,
+                PRIMARY KEY (task_id, position),
+                UNIQUE (task_id, evidence_id),
+                FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+            );
+            CREATE TABLE decisions (
+                task_id TEXT NOT NULL,
+                interrupt_id TEXT NOT NULL,
+                decision TEXT NOT NULL,
+                response_digest TEXT,
+                PRIMARY KEY (task_id, interrupt_id),
+                FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+            );
+            CREATE INDEX events_task_order ON events(task_id, event_id);
+            CREATE INDEX evidence_task_order ON evidence(task_id, position);
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO tasks (task_id, run_id, created_at, title, objective, status)
+            VALUES ('task_00000001', 'run_00000001', ?, ?, ?, ?)
+            """,
+            (
+                created_at,
+                "Timestamped task",
+                "Timestamped durable objective",
+                TaskStatus.QUEUED.value,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO events (task_id, event_id, name, data) VALUES (?, 1, ?, ?)",
+            ("task_00000001", TaskEventName.TASK_CREATED.value, created_event),
+        )
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 2")
+
+
+async def test_legacy_v2_database_upgrades_preserving_recorded_timestamps(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "legacy-v2.sqlite"
+    recorded = "2026-07-24T08:00:00+00:00"
+    _seed_legacy_v2_database(database, created_at=recorded)
+
+    repository = SQLiteTaskRepository(database)
+    recovered = await repository.get_task("task_00000001")
+    # A task from the first timestamp release keeps its real recorded creation
+    # time through the column move -- it is preserved, never dropped to null.
+    assert recovered.created_at == recorded
+    assert recovered.title == "Timestamped task"
+    assert recovered.last_event_id == 1
+
+    fresh = await repository.create_task(title="After", objective="Post-upgrade objective")
+    assert fresh.task_id == "task_00000002"
+    assert fresh.created_at is not None
+    await repository.close()
+
+    # The upgrade converges on the canonical layout: created_at nullable and
+    # last, reported at the current schema version, validating on reopen.
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(tasks)")]
+        notnull = {
+            str(row[1]): int(row[3]) for row in connection.execute("PRAGMA table_info(tasks)")
+        }
+    assert version == 3
+    assert columns[-1] == "created_at"
+    assert notnull["created_at"] == 0
+
+    reopened = SQLiteTaskRepository(database)
+    assert (await reopened.get_task("task_00000001")).created_at == recorded
     await reopened.close()
 
 

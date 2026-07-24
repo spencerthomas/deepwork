@@ -20,7 +20,6 @@ import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
 import { ApprovalCard } from "@/components/tasks/approval-card";
 import { PlanCard } from "@/components/tasks/plan-card";
-import { ResultActions } from "@/components/tasks/result-actions";
 import { RunPanel } from "@/components/tasks/run-panel";
 import { TaskResultActions } from "@/components/tasks/task-result-actions";
 import { buildThread } from "@/components/tasks/task-thread-model";
@@ -309,21 +308,15 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                             : "Run failed"}
                       </p>
                       {success && detail?.result && (
-                        <>
-                          <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
-                            {detail.result}
-                          </p>
-                          <ResultActions
-                            title={detail.title}
-                            prompt={detail.prompt}
-                            result={detail.result}
-                            evidence={evidence}
-                          />
-                        </>
+                        <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
+                          {detail.result}
+                        </p>
                       )}
                       <TaskResultActions
                         title={title}
+                        prompt={detail?.prompt}
                         result={success ? detail?.result : undefined}
+                        evidence={evidence}
                         onRunAgain={() => void runAgain()}
                         runningAgain={creating}
                         runError={rerunAttempted ? createError : undefined}

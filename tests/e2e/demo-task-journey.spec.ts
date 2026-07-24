@@ -134,10 +134,12 @@ test("creates, approves, and completes one API-backed task", async ({
   await expect(page.getByRole("heading", { name: prompt, exact: true })).toBeVisible();
 
   // The completed result must be exportable: the user can take the deep-work
-  // output out of the app. Assert the controls render and actually copy the
-  // Markdown brief (prompt + result + evidence) to the OS clipboard.
+  // output out of the app. Assert the controls render and that "Copy brief"
+  // actually copies the Markdown brief (prompt + result + evidence) to the OS
+  // clipboard.
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await expect(page.getByRole("button", { name: "Copy result" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download" })).toBeVisible();
   const copyBrief = page.getByRole("button", { name: "Copy brief" });
   await expect(copyBrief).toBeVisible();
   await copyBrief.click();
@@ -145,6 +147,22 @@ test("creates, approves, and completes one API-backed task", async ({
   const clipboardBrief = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboardBrief).toContain("## Result");
   expect(clipboardBrief).toContain(prompt);
+
+  // Re-dispatch: "Run again" creates a fresh task from the same prompt and
+  // navigates to it. Wait for the POST and for the URL to change to a
+  // *different* task id (the completed task already matches the id pattern).
+  const completedUrl = page.url();
+  const rerunResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url() === "http://127.0.0.1:8000/api/v1/tasks",
+  );
+  await page.getByRole("button", { name: "Run again" }).click();
+  expect((await rerunResponse).status()).toBe(202);
+  await page.waitForURL(
+    (url) => /\/tasks\/task_[0-9]{8}$/.test(url.pathname) && url.href !== completedUrl,
+  );
+  await expect(taskHeader.getByText("Needs review", { exact: true })).toBeVisible();
 
   expect([...unexpectedEgress]).toEqual([]);
   expect(pageErrors).toEqual([]);

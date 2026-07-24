@@ -1,8 +1,10 @@
 "use client";
 
-import { Check, Copy, Download, RotateCcw } from "lucide-react";
+import { Check, Copy, Download, FileText, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
+import { formatResultBrief } from "@/lib/result-brief";
+import type { EvidenceRecord } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
 /** Turn a task title into a safe, bounded Markdown filename stem. */
@@ -38,18 +40,23 @@ const ACTION_CLASS =
  */
 export function TaskResultActions({
   title,
+  prompt,
   result,
+  evidence = [],
   onRunAgain,
   runningAgain = false,
   runError,
 }: {
   title: string;
+  prompt?: string;
   result?: string;
+  evidence?: EvidenceRecord[];
   onRunAgain?: () => void;
   runningAgain?: boolean;
   runError?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [briefCopied, setBriefCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
   async function copyResult(): Promise<void> {
@@ -61,6 +68,21 @@ export function TaskResultActions({
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard access can be denied; surface it instead of failing silently.
+      setCopyFailed(true);
+    }
+  }
+
+  async function copyBrief(): Promise<void> {
+    if (!result) return;
+    try {
+      // A portable Markdown brief: prompt + result + recorded evidence. The
+      // formatter neutralizes active Markdown/HTML in untrusted fields so the
+      // pasted brief cannot issue an unapproved external request.
+      await navigator.clipboard.writeText(formatResultBrief({ title, prompt, result, evidence }));
+      setCopyFailed(false);
+      setBriefCopied(true);
+      window.setTimeout(() => setBriefCopied(false), 2000);
+    } catch {
       setCopyFailed(true);
     }
   }
@@ -79,6 +101,14 @@ export function TaskResultActions({
                 <Copy aria-hidden className="size-3.5" />
               )}
               {copied ? "Copied" : "Copy"}
+            </button>
+            <button type="button" onClick={() => void copyBrief()} className={ACTION_CLASS}>
+              {briefCopied ? (
+                <Check aria-hidden className="size-3.5 text-status-done" />
+              ) : (
+                <FileText aria-hidden className="size-3.5" />
+              )}
+              {briefCopied ? "Copied" : "Copy brief"}
             </button>
             <button
               type="button"
@@ -102,6 +132,11 @@ export function TaskResultActions({
           </button>
         )}
       </div>
+      {copyFailed && (
+        <p role="alert" className="mt-2 text-[13px] text-status-failed">
+          Could not copy to the clipboard. Copy the result text above manually.
+        </p>
+      )}
       {runError !== undefined && (
         <p role="alert" className="mt-2 text-[13px] text-status-failed">
           The re-run could not be started. {runError}
@@ -109,7 +144,7 @@ export function TaskResultActions({
       )}
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? "Result copied to clipboard." : ""}
-        {copyFailed ? "Could not copy the result. Copy it manually from the text above." : ""}
+        {briefCopied ? "Result brief copied to clipboard." : ""}
       </span>
     </div>
   );

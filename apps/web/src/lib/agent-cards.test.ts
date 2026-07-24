@@ -5,8 +5,15 @@ import {
   agentRuntimeCopy,
   agentSessionTaskLabel,
   deriveAgentCards,
+  mostRecentCreatedAt,
 } from "./agent-cards";
 import { fixtureDemoStatus, normalizeDemoStatus } from "./demo-status";
+import type { TaskStatus, TaskSummary } from "./task-types";
+
+function summary(id: string, createdAt?: string): TaskSummary {
+  const status: TaskStatus = "completed";
+  return { taskId: id, title: id, status, ...(createdAt ? { createdAt } : {}) };
+}
 
 describe("deriveAgentCards", () => {
   it("lists exactly the two real agents, in order", () => {
@@ -96,5 +103,22 @@ describe("agentSessionTaskLabel", () => {
     expect(runner.name).toBe("API task runner");
     expect(apiText).toContain("backend runner");
     expect(apiText).not.toMatch(/deterministic|embedded|no external providers/i);
+  });
+});
+
+describe("mostRecentCreatedAt", () => {
+  it("is undefined when no task carries a parseable timestamp", () => {
+    expect(mostRecentCreatedAt([])).toBeUndefined();
+    expect(mostRecentCreatedAt([summary("a"), summary("b", "not-a-date")])).toBeUndefined();
+  });
+
+  it("returns the newest createdAt, ignoring order and unparseable values", () => {
+    const tasks = [
+      summary("older", "2026-07-24T10:00:00.000Z"),
+      summary("newest", "2026-07-24T12:00:00.000Z"),
+      summary("bad", "nonsense"),
+      summary("middle", "2026-07-24T11:00:00.000Z"),
+    ];
+    expect(mostRecentCreatedAt(tasks)).toBe("2026-07-24T12:00:00.000Z");
   });
 });

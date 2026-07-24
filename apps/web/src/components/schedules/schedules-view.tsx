@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowUpRight, Calendar, CalendarOff, Clock, Pause } from "lucide-react";
+import { ArrowUpRight, CalendarOff } from "lucide-react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
+import { SidebarLabel } from "@/components/shell/sidebar-nav";
 import { CAPABILITY_NAMES, capabilityState } from "@/lib/demo-status";
 import { schedulePresentation } from "@/lib/schedule-presentation";
 import { useDemoStatus } from "@/lib/use-demo-status";
@@ -17,12 +17,15 @@ export function SchedulesView() {
   const durableJobs = capabilityState(status, CAPABILITY_NAMES.durableJobs);
   const presentation = schedulePresentation(loading, durableJobs);
 
+  // No schedule records and no mutation capability yet, so All/Active/Paused
+  // filter controls would be dead toggles. Present an honest note instead of
+  // inert buttons until a verified schedule source exists.
   const sidebar = (
     <nav className="flex flex-col gap-1">
       <SidebarLabel>Schedules</SidebarLabel>
-      <SidebarItem icon={Calendar} label="All" count={0} active />
-      <SidebarItem icon={Clock} label="Active" count={0} />
-      <SidebarItem icon={Pause} label="Paused" count={0} />
+      <p className="px-3 text-[12px] leading-relaxed text-muted-foreground">
+        Active and paused filters appear once a source that can list schedules is connected.
+      </p>
     </nav>
   );
 

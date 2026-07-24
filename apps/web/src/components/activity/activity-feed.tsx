@@ -200,7 +200,8 @@ export function ActivityFeed() {
         const entry = visibleEntries.find((candidate) => candidate.key === focusedKey);
         if (entry === undefined) return;
         event.preventDefault();
-        router.push(`/tasks/${entry.taskId}`);
+        // Match the row's visible link: deep-link to the relevant run-panel tab.
+        router.push(activityEntryHref(entry));
       }
     }
     window.addEventListener("keydown", onKey);

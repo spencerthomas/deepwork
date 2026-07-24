@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Bot, ListChecks, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Bot, ListChecks, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -87,7 +87,7 @@ function CapabilitiesPanel() {
 }
 
 function RecentTasksPanel() {
-  const { tasks, loadingTasks } = useTasksStore();
+  const { tasks, loadingTasks, listError, refreshList } = useTasksStore();
 
   // Advance a slow client-only clock so each row's relative creation age
   // ("just now" → "1m ago") keeps moving without a task update or refresh.
@@ -97,11 +97,30 @@ function RecentTasksPanel() {
     return () => window.clearInterval(timer);
   }, []);
 
-  if (loadingTasks) {
+  if (loadingTasks && tasks.length === 0) {
     return (
       <p className="p-4 text-[13px] text-muted-foreground" role="status">
         Loading tasks…
       </p>
+    );
+  }
+  // A failed list fetch leaves `tasks` empty; surfacing "No tasks yet" here
+  // would fabricate an empty session, so report the failure and offer a retry
+  // (the fleet card's task-count label guards the same way).
+  if (tasks.length === 0 && listError !== undefined) {
+    return (
+      <div className="p-4" role="alert">
+        <p className="text-[13px] font-medium text-crisp">Recent tasks unavailable</p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{listError}</p>
+        <button
+          type="button"
+          onClick={refreshList}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-medium transition-colors hover:bg-accent"
+        >
+          <RefreshCw className="size-3.5" />
+          Retry
+        </button>
+      </div>
     );
   }
   if (tasks.length === 0) {

@@ -120,7 +120,9 @@ class TaskSnapshot:
 
     task_id: str
     run_id: str
-    created_at: str
+    # Absent (None) only for tasks migrated from a pre-timestamp schema, whose
+    # real creation instant was never recorded and must not be fabricated.
+    created_at: str | None
     title: str
     objective: str
     status: TaskStatus

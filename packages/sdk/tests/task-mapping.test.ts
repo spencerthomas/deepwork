@@ -404,6 +404,40 @@ describe("strict accepted task mapping", () => {
     ).toMatchObject({ ok: false, error: { category: "contract" } });
   });
 
+  it("maps a null createdAt to an absent creation time without fabricating one", () => {
+    const summaryFor = (createdAt: string | null) =>
+      mapTaskList(
+        {
+          items: [
+            {
+              taskId: "task_00000001",
+              runId: "run_00000001",
+              createdAt,
+              title: "Task",
+              objective: "Objective",
+              status: "queued",
+              lastEventId: 1,
+            },
+          ],
+        },
+        resolver("source-a"),
+      );
+
+    const migrated = summaryFor(null);
+    if (!migrated.ok) {
+      throw new Error("Expected an accepted migrated task summary.");
+    }
+    // A pre-timestamp task reports no creation time rather than a made-up one.
+    expect(migrated.value[0]?.createdAt).toBeUndefined();
+    expect("createdAt" in (migrated.value[0] ?? {})).toBe(false);
+
+    const timestamped = summaryFor("2026-01-01T00:00:00+00:00");
+    if (!timestamped.ok) {
+      throw new Error("Expected an accepted timestamped task summary.");
+    }
+    expect(timestamped.value[0]?.createdAt).toBe("2026-01-01T00:00:00+00:00");
+  });
+
   it("requires coherent completed/detail result state", () => {
     expect(
       mapTaskDetail(

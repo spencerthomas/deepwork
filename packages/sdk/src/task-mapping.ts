@@ -219,7 +219,11 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
     taskId: mappedTaskId,
     sourceThread,
     run,
-    createdAt: string(wire.createdAt, "Task creation timestamp", 64),
+    // Null marks a task migrated from a pre-timestamp schema; drop the field so
+    // the summary reports an unknown creation time rather than a fabricated one.
+    ...(wire.createdAt === null
+      ? {}
+      : { createdAt: string(wire.createdAt, "Task creation timestamp", 64) }),
     title: displayText(string(wire.title, "Task title", 80), "Task title", 80),
     objective: objectiveText(string(wire.objective, "Task objective", 8_000)),
     facts: factsForWireStatus(wireStatus(wire.status)),

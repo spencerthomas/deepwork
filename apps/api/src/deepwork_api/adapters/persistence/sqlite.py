@@ -99,7 +99,6 @@ CREATE TABLE tasks (
     task_number INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id TEXT NOT NULL UNIQUE,
     run_id TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL,
     title TEXT NOT NULL,
     objective TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -108,7 +107,8 @@ CREATE TABLE tasks (
     plan_title TEXT,
     plan_steps TEXT,
     plan_evidence_refs TEXT,
-    result TEXT
+    result TEXT,
+    created_at TEXT
 )
 """,
     """
@@ -154,7 +154,6 @@ _EXPECTED_COLUMNS = {
         "task_number",
         "task_id",
         "run_id",
-        "created_at",
         "title",
         "objective",
         "status",
@@ -164,6 +163,7 @@ _EXPECTED_COLUMNS = {
         "plan_steps",
         "plan_evidence_refs",
         "result",
+        "created_at",
     ),
     "events": ("task_id", "event_id", "name", "data"),
     "evidence": (
@@ -183,7 +183,6 @@ _EXPECTED_TABLE_INFO = {
         ("task_number", "INTEGER", 0, 1),
         ("task_id", "TEXT", 1, 0),
         ("run_id", "TEXT", 1, 0),
-        ("created_at", "TEXT", 1, 0),
         ("title", "TEXT", 1, 0),
         ("objective", "TEXT", 1, 0),
         ("status", "TEXT", 1, 0),
@@ -193,6 +192,9 @@ _EXPECTED_TABLE_INFO = {
         ("plan_steps", "TEXT", 0, 0),
         ("plan_evidence_refs", "TEXT", 0, 0),
         ("result", "TEXT", 0, 0),
+        # Nullable and last so a fresh v2 schema matches a v1 database migrated
+        # by `ALTER TABLE tasks ADD COLUMN created_at`, which appends the column.
+        ("created_at", "TEXT", 0, 0),
     ),
     "events": (
         ("task_id", "TEXT", 1, 1),
@@ -607,6 +609,13 @@ class SQLiteTaskRepository:
                     connection.execute(statement)
                 connection.execute(f"PRAGMA application_id = {_APPLICATION_ID}")
                 connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+            elif version == 1 and application_id == _APPLICATION_ID:
+                # Migrate a pre-timestamp database in place. Appending the column
+                # leaves existing rows with created_at = NULL: their real creation
+                # instant was never recorded, and inventing one would be dishonest.
+                # ADD COLUMN appends last, matching the fresh v2 column order.
+                connection.execute("ALTER TABLE tasks ADD COLUMN created_at TEXT")
+                connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
             elif version != _SCHEMA_VERSION or application_id != _APPLICATION_ID:
                 raise SQLiteTaskRepositorySchemaError(
                     "local task database schema version is unsupported"
@@ -707,12 +716,12 @@ class SQLiteTaskRepository:
             cursor = connection.execute(
                 """
                 INSERT INTO tasks (
-                    task_id, run_id, created_at, title, objective, status,
+                    task_id, run_id, title, objective, status,
                     pending_interrupt_id, plan_revision, plan_title,
-                    plan_steps, plan_evidence_refs, result
-                ) VALUES ('pending', 'pending', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)
+                    plan_steps, plan_evidence_refs, result, created_at
+                ) VALUES ('pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?)
                 """,
-                (created_at, title, objective, TaskStatus.QUEUED.value),
+                (title, objective, TaskStatus.QUEUED.value, created_at),
             )
             number = cast(int, cursor.lastrowid)
             if number < 1 or number > _MAX_TASK_NUMBER:
@@ -1214,10 +1223,15 @@ class SQLiteTaskRepository:
         pending = cast(str | None, task["pending_interrupt_id"])
         if pending is not None and not pending:
             raise SQLiteTaskRepositoryDataError("stored pending interrupt identifier is invalid")
-        created_at = _bounded_stored_string(
-            task["created_at"],
-            field="task creation timestamp",
-            maximum=64,
+        created_at_value = task["created_at"]
+        created_at = (
+            None
+            if created_at_value is None
+            else _bounded_stored_string(
+                created_at_value,
+                field="task creation timestamp",
+                maximum=64,
+            )
         )
         return TaskSnapshot(
             task_id=cast(str, task["task_id"]),

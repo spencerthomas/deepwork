@@ -51,6 +51,11 @@ describe("createdAtTimestamp", () => {
       TypeError,
     );
   });
+
+  it("rejects shape-valid but impossible calendar/clock values", () => {
+    expect(() => createdAtTimestamp("2026-99-99T99:99:99Z")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("2026-13-01T00:00:00+00:00")).toThrow(TypeError);
+  });
 });
 
 describe("client-safe task values", () => {

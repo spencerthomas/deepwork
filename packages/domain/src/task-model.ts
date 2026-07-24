@@ -522,7 +522,13 @@ const ISO_8601_INSTANT_PATTERN =
  */
 export function createdAtTimestamp(value: string): string {
   const trimmed = value.trim();
-  if (trimmed.length > 64 || !ISO_8601_INSTANT_PATTERN.test(trimmed)) {
+  // The pattern fixes the shape and offset; Date.parse rejects impossible
+  // calendar/clock values the regex alone would accept (e.g. month/day 99).
+  if (
+    trimmed.length > 64 ||
+    !ISO_8601_INSTANT_PATTERN.test(trimmed) ||
+    Number.isNaN(Date.parse(trimmed))
+  ) {
     throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
   }
   return trimmed;

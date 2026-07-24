@@ -31,9 +31,15 @@ describe("activityEntryHref", () => {
     expect(activityEntryHref(eventEntry("evidence.recorded"))).toBe("/tasks/task_1?panel=evidence");
   });
 
+  it("deep-links a plan event to the Status tab, where the plan renders", () => {
+    // Status is the run panel's default tab, so no ?panel= is needed.
+    expect(activityEntryHref(eventEntry("plan.proposed"))).toBe("/tasks/task_1");
+    expect(activityEntryHref(eventEntry("plan.updated"))).toBe("/tasks/task_1");
+  });
+
   it("deep-links other events to the Stream tab", () => {
-    expect(activityEntryHref(eventEntry("plan.proposed"))).toBe("/tasks/task_1?panel=stream");
     expect(activityEntryHref(eventEntry("decision.recorded"))).toBe("/tasks/task_1?panel=stream");
     expect(activityEntryHref(eventEntry("content.delta"))).toBe("/tasks/task_1?panel=stream");
+    expect(activityEntryHref(eventEntry("run.completed"))).toBe("/tasks/task_1?panel=stream");
   });
 });

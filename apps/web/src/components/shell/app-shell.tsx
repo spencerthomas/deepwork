@@ -191,7 +191,7 @@ export function AppShell({
           <Link
             href="/tasks/new"
             aria-label="New task"
-            className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90"
+            className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
           >
             <Plus aria-hidden className="size-4" />
             <span className="hidden sm:inline">New task</span>

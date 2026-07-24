@@ -130,6 +130,7 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-hover: var(--brand-hover);
   --color-brand-soft: var(--brand-soft);
 
   --color-elevated: var(--elevated);
@@ -212,6 +213,7 @@
   --brand: #006ddd;
   --brand-foreground: #ffffff;
   --brand-accent: #005bc4;
+  --brand-hover: #005bc4;
   --brand-soft: #e5f4ff;
 
   --elevated: #f3f3f4;
@@ -288,6 +290,7 @@
   --brand: #006ddd;
   --brand-foreground: #ffffff;
   --brand-accent: #5aa9ff;
+  --brand-hover: #005bc4;
   --brand-soft: rgba(127, 200, 255, 0.14);
 
   --elevated: #161f34;

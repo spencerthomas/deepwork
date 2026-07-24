@@ -148,7 +148,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           <p className="mt-2 text-sm text-muted-foreground">{detailError}</p>
           <Link
             href="/tasks"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground hover:bg-brand/90"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground hover:bg-brand-hover"
           >
             Back to tasks
           </Link>

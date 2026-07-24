@@ -210,7 +210,7 @@ export function ApprovalDecisionPanel({
                 className={cn(
                   "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55",
                   meta.primary
-                    ? "bg-brand text-brand-foreground hover:bg-brand/90"
+                    ? "bg-brand text-brand-foreground hover:bg-brand-hover"
                     : "border border-border bg-card text-foreground hover:bg-accent",
                 )}
               >

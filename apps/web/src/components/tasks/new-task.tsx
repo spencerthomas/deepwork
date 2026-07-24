@@ -165,7 +165,7 @@ export function NewTask() {
               type="button"
               disabled={creating || prompt.trim() === ""}
               onClick={() => void dispatch()}
-              className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90 disabled:pointer-events-none disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
             >
               {creating ? (
                 "Dispatching…"

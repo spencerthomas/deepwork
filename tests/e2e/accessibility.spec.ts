@@ -1,8 +1,10 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// WCAG 2.1 Level A and AA is the acceptance bar for E2E-V1-08-RESPONSIVE-ACCESS.
-const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+// WCAG 2.2 Level A and AA is the repository acceptance bar (AGENTS.md) for
+// E2E-V1-08-RESPONSIVE-ACCESS; the older-version tags stay listed so every
+// applicable success criterion, including 2.2-only rules, is executed.
+const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
 // Every primary destination plus the utility settings route. The task detail and
 // its approval card are exercised separately because they only exist after a run.
@@ -35,6 +37,9 @@ async function blockNonLoopbackEgress(page: Page): Promise<void> {
 }
 
 async function expectNoViolations(page: Page, label: string): Promise<void> {
+  // Park the cursor on inert chrome so a leftover :hover state from a prior
+  // click cannot make the audit depend on pointer position.
+  await page.mouse.move(2, 2);
   const results = await new AxeBuilder({ page })
     .withTags(WCAG_TAGS)
     // The Next.js dev server injects its own tooling overlay; it is not part of

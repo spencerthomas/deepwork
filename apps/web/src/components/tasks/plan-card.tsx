@@ -174,7 +174,7 @@ export function PlanCard({ plan, activeInterrupt, error, saving, onUpdate }: Pla
               disabled={saving}
               onClick={() => void save()}
               className={cn(
-                "ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-medium text-brand-foreground transition-colors hover:bg-brand/90",
+                "ml-auto rounded-lg bg-brand px-3 py-1.5 text-[12px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover",
                 saving && "pointer-events-none opacity-60",
               )}
             >

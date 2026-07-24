@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Bot, ListChecks, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Bot, ListChecks, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { AppShell } from "@/components/shell/app-shell";
@@ -16,12 +16,14 @@ import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
 
+import { type InspectTab, inspectTabToQuery, readInspectTab } from "./agent-detail-url";
+
 const panelTabs = [
   { key: "capabilities", label: "Capabilities", icon: ShieldCheck },
   { key: "recent-tasks", label: "Recent tasks", icon: ListChecks },
 ] as const;
 
-type TabKey = (typeof panelTabs)[number]["key"];
+type TabKey = InspectTab;
 
 const DECISION_VERBS = ["approve", "reject", "respond"] as const;
 
@@ -48,7 +50,7 @@ function behaviorContract(mode: "api" | "fixture") {
 }
 
 function CapabilitiesPanel() {
-  const { status, loading } = useDemoStatus();
+  const { status, loading, refetch } = useDemoStatus();
 
   if (loading) {
     return (
@@ -59,9 +61,17 @@ function CapabilitiesPanel() {
   }
   if (!status) {
     return (
-      <p className="m-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
-        The runtime did not report its capabilities. States are unknown, not assumed.
-      </p>
+      <div className="m-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
+        <p>The runtime did not report its capabilities. States are unknown, not assumed.</p>
+        <button
+          type="button"
+          onClick={refetch}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-status-review/40 px-2.5 py-1 text-[12px] font-medium transition-colors hover:bg-status-review/10"
+        >
+          <RefreshCw className="size-3.5" />
+          Check again
+        </button>
+      </div>
     );
   }
   return (
@@ -85,7 +95,7 @@ function CapabilitiesPanel() {
 }
 
 function RecentTasksPanel() {
-  const { tasks, loadingTasks } = useTasksStore();
+  const { tasks, loadingTasks, listError, refreshList } = useTasksStore();
 
   // Advance a slow client-only clock so each row's relative creation age
   // ("just now" → "1m ago") keeps moving without a task update or refresh.
@@ -95,11 +105,30 @@ function RecentTasksPanel() {
     return () => window.clearInterval(timer);
   }, []);
 
-  if (loadingTasks) {
+  if (loadingTasks && tasks.length === 0) {
     return (
       <p className="p-4 text-[13px] text-muted-foreground" role="status">
         Loading tasks…
       </p>
+    );
+  }
+  // A failed list fetch leaves `tasks` empty; surfacing "No tasks yet" here
+  // would fabricate an empty session, so report the failure and offer a retry
+  // (the fleet card's task-count label guards the same way).
+  if (tasks.length === 0 && listError !== undefined) {
+    return (
+      <div className="p-4" role="alert">
+        <p className="text-[13px] font-medium text-crisp">Recent tasks unavailable</p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{listError}</p>
+        <button
+          type="button"
+          onClick={refreshList}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-medium transition-colors hover:bg-accent"
+        >
+          <RefreshCw className="size-3.5" />
+          Retry
+        </button>
+      </div>
     );
   }
   if (tasks.length === 0) {
@@ -159,6 +188,28 @@ export function AgentDetail() {
   const { mode, apiBaseUrl } = useTasksStore();
   const runtimeCopy = agentRuntimeCopy(mode);
 
+  // Mirror the inspect tab in the URL so a specific view is shareable and
+  // survives a refresh, and restore it on first load and browser back/forward —
+  // the same contract the run panel uses. The current tab is read from a ref so
+  // the state updater stays pure (no pushState inside it, which React Strict
+  // Mode would replay into a duplicate history entry).
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const selectTab = useCallback((next: TabKey) => {
+    if (tabRef.current === next) return;
+    const query = inspectTabToQuery(next);
+    const { pathname } = window.location;
+    window.history.pushState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
+    setTab(next);
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () => setTab(readInspectTab(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   const sidebar = (
     <div className="flex flex-col gap-1">
       <Link
@@ -174,7 +225,7 @@ export function AgentDetail() {
           icon={t.icon}
           label={t.label}
           active={tab === t.key}
-          onClick={() => setTab(t.key)}
+          onClick={() => selectTab(t.key)}
         />
       ))}
     </div>
@@ -248,7 +299,7 @@ export function AgentDetail() {
               <button
                 key={t.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => selectTab(t.key)}
                 className={cn(
                   "rounded-lg px-2.5 py-1 font-mono text-[12px] transition-colors",
                   tab === t.key

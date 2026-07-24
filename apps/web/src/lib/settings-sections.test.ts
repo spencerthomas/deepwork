@@ -47,4 +47,20 @@ describe("settings catalog", () => {
     expect(filterSettingsGroups("  ")).toHaveLength(1);
     expect(filterSettingsGroups("nothing-matches")).toEqual([]);
   });
+
+  it("finds a section by a keyword, not only its label", () => {
+    const idsFor = (query: string) =>
+      filterSettingsGroups(query).flatMap((group) => group.items.map((item) => item.id));
+    expect(idsFor("theme")).toEqual(["appearance"]);
+    expect(idsFor("dark")).toEqual(["appearance"]);
+    expect(idsFor("diagnostics")).toEqual(["runtime"]);
+    expect(idsFor("version")).toEqual(["about"]);
+    expect(idsFor("license")).toEqual(["about"]);
+  });
+
+  it("gives every section at least one keyword", () => {
+    for (const section of ALL_SETTINGS_SECTIONS) {
+      expect(section.keywords.length).toBeGreaterThan(0);
+    }
+  });
 });

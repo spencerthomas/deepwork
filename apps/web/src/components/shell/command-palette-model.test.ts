@@ -1,17 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  approvalsCommandHint,
   buildCommandResults,
   ROUTE_COMMANDS,
   routeCommands,
   TASK_RESULT_LIMIT,
   taskCommandItem,
 } from "./command-palette-model";
-import type { TaskSummary } from "../../lib/task-types";
+import type { TaskStatus, TaskSummary } from "../../lib/task-types";
 
 function task(id: string, title: string, runId?: string): TaskSummary {
   return { taskId: id, title, status: "running", ...(runId ? { runId } : {}) };
 }
+
+function taskWithStatus(id: string, title: string, status: TaskStatus): TaskSummary {
+  return { taskId: id, title, status };
+}
+
+const APPROVALS_BASE_HINT = "What agents need from you";
 
 const tasks: TaskSummary[] = [
   task("task_00000001", "Refresh the billing summary", "run_00000001"),
@@ -36,6 +43,34 @@ describe("buildCommandResults", () => {
       href: "/tasks/task_00000001",
       icon: "task",
     });
+  });
+
+  it("leaves the Approvals hint descriptive when nothing is waiting", () => {
+    const approvals = buildCommandResults("", tasks).find((item) => item.id === "route:approvals");
+    expect(approvals?.hint).toBe(APPROVALS_BASE_HINT);
+  });
+
+  it("folds the pending count into the Approvals hint", () => {
+    const withPending = [
+      ...tasks,
+      taskWithStatus("task_00000004", "Approve the deploy", "waiting-approval"),
+      taskWithStatus("task_00000005", "Approve the migration", "waiting-approval"),
+    ];
+    const approvals = buildCommandResults("", withPending).find(
+      (item) => item.id === "route:approvals",
+    );
+    expect(approvals?.hint).toBe("2 waiting for you");
+  });
+
+  it("still finds Approvals by its base hint even when the count hint is shown", () => {
+    const withPending = [
+      ...tasks,
+      taskWithStatus("task_00000004", "Approve the deploy", "waiting-approval"),
+    ];
+    // "agents need" matches the descriptive base hint, not the "1 waiting…" one.
+    const results = buildCommandResults("agents need", withPending);
+    const approvals = results.find((item) => item.id === "route:approvals");
+    expect(approvals?.hint).toBe("1 waiting for you");
   });
 
   it("still filters route commands by the query", () => {
@@ -94,5 +129,35 @@ describe("buildCommandResults", () => {
   it("labels the task row with its visible identifier, not hidden fields", () => {
     expect(taskCommandItem(tasks[0]).hint).toBe("Open task · Run run_000000");
     expect(taskCommandItem(tasks[2]).hint).toBe("Open task · Task task_00000");
+  });
+
+  it("appends the task's age to the hint when the API recorded one", () => {
+    const now = Date.parse("2026-07-24T12:00:00.000Z");
+    const created = new Date(now - 5 * 60 * 1000).toISOString();
+    const aged: TaskSummary = {
+      taskId: "task_00000009",
+      title: "Aged",
+      status: "running",
+      runId: "run_00000009",
+      createdAt: created,
+    };
+    expect(taskCommandItem(aged, now).hint).toBe("Open task · Run run_000000 · 5m ago");
+  });
+});
+
+describe("approvalsCommandHint", () => {
+  it("keeps the base hint when nothing is pending", () => {
+    expect(approvalsCommandHint(0, APPROVALS_BASE_HINT)).toBe(APPROVALS_BASE_HINT);
+    expect(approvalsCommandHint(-2, APPROVALS_BASE_HINT)).toBe(APPROVALS_BASE_HINT);
+    expect(approvalsCommandHint(Number.NaN, APPROVALS_BASE_HINT)).toBe(APPROVALS_BASE_HINT);
+  });
+
+  it("reports the pending count when tasks are waiting", () => {
+    expect(approvalsCommandHint(1, APPROVALS_BASE_HINT)).toBe("1 waiting for you");
+    expect(approvalsCommandHint(5, APPROVALS_BASE_HINT)).toBe("5 waiting for you");
+  });
+
+  it("floors a fractional count", () => {
+    expect(approvalsCommandHint(3.7, APPROVALS_BASE_HINT)).toBe("3 waiting for you");
   });
 });

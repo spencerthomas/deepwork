@@ -58,9 +58,12 @@ export function CommandBar({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
+  // `open` is a dependency so reopening the palette recomputes results with a
+  // fresh clock — otherwise a task's age hint ("5m ago") could persist stale
+  // from a much earlier open with the same query and tasks.
   const filtered = useMemo(
     () => buildCommandResults(query, tasks, undefined, mode),
-    [mode, query, tasks],
+    [mode, query, tasks, open],
   );
 
   useEffect(() => setIndex(0), [query]);

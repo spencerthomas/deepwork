@@ -122,10 +122,30 @@ def main() -> int:
     child_env["NEXT_PUBLIC_API_BASE_URL"] = "http://127.0.0.1:8000"
     child_env.pop("NEXT_PUBLIC_DEMO_MODE", None)
 
-    # Real-agent mode is an explicit opt-in: run a local LangGraph Agent Server
-    # and point the API at it, instead of the deterministic fixture runner.
+    # Two real-agent paths, both opt-in. Classic points the API at a hosted
+    # LangGraph/LangSmith deployment (nothing runs locally but the API + web);
+    # local runs a LangGraph Agent Server on this machine. Default stays fixture.
+    classic_endpoint = os.environ.get("DEEPWORK_CLASSIC_ENDPOINT")
     real_agent = os.environ.get("DEEPWORK_REAL_AGENT") == "1"
-    if real_agent:
+    if classic_endpoint:
+        if not (
+            os.environ.get("LANGSMITH_API_KEY") or os.environ.get("DEEPWORK_CLASSIC_CREDENTIAL")
+        ):
+            print(
+                "Classic deployment mode needs a credential: set LANGSMITH_API_KEY "
+                "(or DEEPWORK_CLASSIC_CREDENTIAL).",
+                file=sys.stderr,
+            )
+            return 2
+        if not os.environ.get("DEEPWORK_CLASSIC_ASSISTANT"):
+            print(
+                "Classic deployment mode needs DEEPWORK_CLASSIC_ASSISTANT "
+                "(the assistant/graph id on the deployment).",
+                file=sys.stderr,
+            )
+            return 2
+        child_env["DEEPWORK_ENABLE_LOCAL_AGENT"] = "1"
+    elif real_agent:
         if not LANGGRAPH_EXECUTABLE.is_file():
             print(
                 "Real-agent mode needs the LangGraph CLI in the agent venv: "
@@ -168,7 +188,12 @@ def main() -> int:
             processes.append(agent_server)
             _wait_for(f"{LOCAL_AGENT_ENDPOINT}/ok", agent_server, 60)
 
-        runtime_label = "real local LangGraph agent" if real_agent else "deterministic local runtime"
+        if classic_endpoint:
+            runtime_label = "hosted classic deployment"
+        elif real_agent:
+            runtime_label = "real local LangGraph agent"
+        else:
+            runtime_label = "deterministic local runtime"
         print(f"Starting Deep Work API + {runtime_label} on 127.0.0.1:8000")
         api = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
             [str(API_EXECUTABLE), "--port", "8000"],
@@ -197,7 +222,11 @@ def main() -> int:
         _wait_for("http://127.0.0.1:3000", web, 30)
         print("")
         print("Deep Work is ready: http://127.0.0.1:3000")
-        if real_agent:
+        if classic_endpoint:
+            print("Mode: hosted classic LangSmith/LangGraph deployment")
+            print(f"Deployment: {classic_endpoint}")
+            print(f"Assistant: {os.environ.get('DEEPWORK_CLASSIC_ASSISTANT')}")
+        elif real_agent:
             model_label = (
                 "keyless deterministic stand-in"
                 if os.environ.get("DEEPWORK_AGENT_FAKE") == "1"

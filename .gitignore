@@ -32,3 +32,6 @@ output/playwright/
 
 # local agent dev venv
 packages/agent/.venv/
+
+# local api dev venv
+apps/api/.venv/

@@ -60,6 +60,26 @@ terminal state and passes only when the engine actually turns. Real-agent mode i
 in-memory (no durable task recovery yet) and requires the same supported Node.js
 and Python versions as the fixture launcher.
 
+## Run against a hosted deployment (classic LangSmith/LangGraph)
+
+Instead of running an agent locally, Deep Work can drive a hosted classic
+LangSmith/LangGraph Deployment (the same protocol a Managed Deep Agents
+deployment speaks). Deploy the `packages/agent` graph to the platform using the
+`langgraph.json` in this repo, then point the launcher at it:
+
+```bash
+DEEPWORK_CLASSIC_ENDPOINT=https://<your-deployment>.smith.langchain.com \
+DEEPWORK_CLASSIC_ASSISTANT=deep-work-local-agent \
+LANGSMITH_API_KEY=... \
+./dev
+```
+
+The deployment credential is read only on the server and is never returned to a
+client, written to task content, or included in the event stream. The model key
+lives in the deployment's own configuration, not in Deep Work. This path is
+gated off by default; the launcher enables it when `DEEPWORK_CLASSIC_ENDPOINT`
+is set with a credential and assistant.
+
 ## Start here
 
 | Need                             | Canonical source                                                                     |

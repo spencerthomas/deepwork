@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
+from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
 from deepwork_api.adapters.sources.local import (
     LocalAgentServerSource,
     LocalSourceGatedError,
@@ -52,12 +53,30 @@ def _build_local_agent_server_source(
     )
 
 
+def _build_classic_deployment_source(
+    *,
+    endpoint: str,
+    assistant_id: str,
+    credential: str,
+) -> ClassicDeploymentSource:
+    """Build the hosted classic deployment source through the SDK; test seam."""
+
+    return ClassicDeploymentSource.from_classic_deployment(
+        endpoint=endpoint,
+        assistant_id=assistant_id,
+        credential=credential,
+    )
+
+
 def create_app(
     *,
     task_database_path: Path | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
+    classic_deployment_endpoint: str | None = None,
+    classic_deployment_assistant: str | None = None,
+    classic_deployment_credential: str | None = None,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
 
@@ -81,9 +100,36 @@ def create_app(
         sqlite_repository = SQLiteTaskRepository(task_database_path)
         task_repository = sqlite_repository
     local_source: LocalAgentServerSource | None = None
-    if local_agent_server_endpoint is None:
+    if classic_deployment_endpoint is not None:
+        # Hosted classic LangSmith/LangGraph Deployment runtime. Mutually
+        # exclusive with the loopback source; the deployment credential stays
+        # server-held and never enters a response.
+        if local_agent_server_endpoint is not None:
+            raise ValueError(
+                "configure either the local Agent Server or a classic deployment, not both"
+            )
+        if not allow_ungated_local_agent_source:
+            raise LocalSourceGatedError(_LOCAL_SOURCE_GATED_MESSAGE)
+        if task_database_path is not None:
+            raise ValueError("classic deployment mode does not support persistent task recovery")
+        if classic_deployment_assistant is None:
+            raise ValueError("classic deployment mode requires an explicit assistant identifier")
+        if not classic_deployment_credential:
+            raise ValueError("classic deployment mode requires a server-held deployment credential")
+        local_source = _build_classic_deployment_source(
+            endpoint=classic_deployment_endpoint,
+            assistant_id=classic_deployment_assistant,
+            credential=classic_deployment_credential,
+        )
+        task_runner = LocalAgentServerRunner(
+            repository=task_repository,
+            source=cast("LocalSource", local_source),
+        )
+    elif local_agent_server_endpoint is None:
         if local_agent_server_assistant is not None:
             raise ValueError("local Agent Server assistant requires an explicit loopback endpoint")
+        if classic_deployment_assistant is not None or classic_deployment_credential is not None:
+            raise ValueError("classic deployment settings require an explicit deployment endpoint")
         if allow_ungated_local_agent_source:
             raise ValueError(
                 "allow_ungated_local_agent_source requires an explicit loopback endpoint "
@@ -200,6 +246,25 @@ def _parser() -> argparse.ArgumentParser:
             "provider/service calls. Defaults on when DEEPWORK_ENABLE_LOCAL_AGENT=1."
         ),
     )
+    parser.add_argument(
+        "--classic-deployment-endpoint",
+        default=os.environ.get("DEEPWORK_CLASSIC_ENDPOINT"),
+        help=(
+            "Qualified HTTPS origin of a hosted classic LangSmith/LangGraph "
+            "Deployment (for example https://my-deployment.smith.langchain.com). "
+            "Requires the classic assistant flag, a credential, and "
+            "--allow-ungated-local-agent-source. Defaults to the "
+            "DEEPWORK_CLASSIC_ENDPOINT environment variable."
+        ),
+    )
+    parser.add_argument(
+        "--classic-deployment-assistant",
+        default=os.environ.get("DEEPWORK_CLASSIC_ASSISTANT"),
+        help=(
+            "Assistant/graph identifier on the classic deployment. Defaults to the "
+            "DEEPWORK_CLASSIC_ASSISTANT environment variable."
+        ),
+    )
     return parser
 
 
@@ -207,12 +272,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the credential-free local API on a fixed loopback host."""
 
     args = _parser().parse_args(argv)
+    # The deployment credential is only ever read from the server environment.
+    classic_credential = os.environ.get("DEEPWORK_CLASSIC_CREDENTIAL") or os.environ.get(
+        "LANGSMITH_API_KEY"
+    )
     uvicorn.run(
         create_app(
             task_database_path=args.task_database,
             local_agent_server_endpoint=args.local_agent_server_endpoint,
             local_agent_server_assistant=args.local_agent_server_assistant,
             allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,
+            classic_deployment_endpoint=args.classic_deployment_endpoint,
+            classic_deployment_assistant=args.classic_deployment_assistant,
+            classic_deployment_credential=classic_credential,
         ),
         host="127.0.0.1",
         port=args.port,

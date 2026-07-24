@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Bot, LayoutGrid, Server } from "lucide-react";
+import { ArrowUpRight, Bot, LayoutGrid, RefreshCw, Server } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -50,7 +50,7 @@ function CardStateIndicator({ card }: { card: AgentCardModel }) {
 
 export function AgentFleet() {
   const { mode, tasks, loadingTasks, listError } = useTasksStore();
-  const { status, loading: statusLoading } = useDemoStatus();
+  const { status, loading: statusLoading, refetch: refetchStatus } = useDemoStatus();
 
   const runtimeCopy = agentRuntimeCopy(mode);
   const cards = deriveAgentCards(status, mode);
@@ -125,10 +125,20 @@ export function AgentFleet() {
       <PageHeader eyebrow="Fleet" title="Agents" description={runtimeCopy.fleetDescription} />
 
       {!statusLoading && status === undefined && (
-        <p className="mb-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
-          The runtime did not report its capabilities, so agent states are shown as unknown rather
-          than assumed.
-        </p>
+        <div className="mb-4 rounded-xl bg-status-review-bg px-3.5 py-2.5 text-[13px] text-status-review">
+          <p>
+            The runtime did not report its capabilities, so agent states are shown as unknown rather
+            than assumed.
+          </p>
+          <button
+            type="button"
+            onClick={refetchStatus}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-status-review/40 px-2.5 py-1 text-[12px] font-medium transition-colors hover:bg-status-review/10"
+          >
+            <RefreshCw className="size-3.5" />
+            Check again
+          </button>
+        </div>
       )}
       {statusLoading && (
         <p className="mb-4 text-[13px] text-muted-foreground" role="status">

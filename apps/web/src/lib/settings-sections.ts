@@ -31,7 +31,16 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
       {
         id: "runtime",
         label: "Runtime",
-        keywords: ["diagnostics", "capabilities", "connection", "api", "adapter", "provider", "health", "status"],
+        keywords: [
+          "diagnostics",
+          "capabilities",
+          "connection",
+          "api",
+          "adapter",
+          "provider",
+          "health",
+          "status",
+        ],
       },
       {
         id: "about",

@@ -807,16 +807,17 @@ def _stream_event(value: object) -> LocalStreamEvent:
         )
     if event_name == "updates":
         update = _as_mapping(data)
+        # Real LangGraph servers include framework keys in update events (for
+        # example "__interrupt__" when a node interrupts). Keep the recognizable
+        # node names and ignore the rest, rather than failing the whole stream on
+        # what is only an informational progress event.
         nodes = tuple(
             sorted(
-                _validate_identifier(key, field="updated node")
+                key
                 for key in update
-                if isinstance(key, str)
+                if isinstance(key, str) and _IDENTIFIER.fullmatch(key)
             )
         )
-        if len(nodes) != len(update):
-            message = "local Agent Server update event is invalid"
-            raise LocalSourceContractError(message)
         return LocalStreamEvent(
             cursor=cursor,
             kind="progress",

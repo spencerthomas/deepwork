@@ -81,6 +81,7 @@ def create_app(
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
+    web_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
 
@@ -192,7 +193,7 @@ def create_app(
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=list(_WEB_ORIGINS),
+        allow_origins=list(web_origins or _WEB_ORIGINS),
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
         allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
@@ -299,6 +300,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "LANGSMITH_API_KEY"
     )
     access_key = os.environ.get("DEEPWORK_ACCESS_KEY")
+    raw_origins = os.environ.get("DEEPWORK_WEB_ORIGINS")
+    web_origins = (
+        tuple(origin.strip() for origin in raw_origins.split(",") if origin.strip())
+        if raw_origins
+        else None
+    )
+    # Hosting platforms (Railway, etc.) inject $PORT and require binding 0.0.0.0.
+    # Local default stays loopback so nothing is exposed unless deliberately hosted.
+    host = os.environ.get("DEEPWORK_HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", str(args.port)))
     uvicorn.run(
         create_app(
             task_database_path=args.task_database,
@@ -309,9 +320,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             classic_deployment_assistant=args.classic_deployment_assistant,
             classic_deployment_credential=classic_credential,
             access_key=access_key,
+            web_origins=web_origins,
         ),
-        host="127.0.0.1",
-        port=args.port,
+        host=host,
+        port=port,
         access_log=False,
     )
     return 0

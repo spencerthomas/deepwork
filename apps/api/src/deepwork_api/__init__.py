@@ -21,6 +21,7 @@ def create_app(
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
+    web_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Load and create the local application only when explicitly called.
 
@@ -49,4 +50,5 @@ def create_app(
         classic_deployment_assistant=classic_deployment_assistant,
         classic_deployment_credential=classic_deployment_credential,
         access_key=access_key,
+        web_origins=web_origins,
     )

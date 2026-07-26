@@ -99,8 +99,11 @@ def build_model() -> BaseChatModel:
 
 
 def make_graph() -> LocalAgentGraph:
-    """Build the servable compiled graph around the resolved model."""
+    """Build the servable compiled graph around the resolved model.
+
+    This is the entry point referenced by ``langgraph.json``. It is a factory so
+    the model (and its credential) is resolved when the server builds the graph,
+    not at module import — a deployment can import this module without the model
+    environment being present yet.
+    """
     return create_graph(model=build_model(), config=AgentConfig())
-
-
-graph = make_graph()

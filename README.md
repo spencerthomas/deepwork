@@ -8,6 +8,56 @@ approving, and verifying long-running agent work across desktop and phone.
 > progress and evidence, lets you stop a running task at any time, returns a
 > prompt-specific result, and reopens completed work during the same API process.
 
+## Live validation deployment
+
+A full hosted instance is running for validation: a signed-in user creates a
+task, a real LangGraph agent proposes a plan, the user approves, and the agent
+executes it against a real model — end to end, on real infrastructure.
+
+| Component | URL | Notes |
+| --------- | --- | ----- |
+| Web app (test here) | <https://web-brown-xi-10.vercel.app> | Next.js on Vercel; sign in at `/login` |
+| Application API | `https://deepwork-api-production.up.railway.app` | FastAPI on Railway; session-authed |
+| Agent runtime | `https://deepwork-agent-production.up.railway.app` | LangGraph server on Railway; called only by the API |
+
+```text
+Web UI (Vercel) → login (session cookie) → Application API (Railway)
+   → LangGraph agent (Railway) → OpenRouter → model → plan → approval → result
+```
+
+### How to test
+
+1. Open the web app and sign in at `/login` with the access key. The key is the
+   `DEEPWORK_ACCESS_KEY` value set on the Railway API service (obtain it from the
+   project owner or Railway → Variables; it is not committed to this repository).
+2. Create a task (for example, "List two concrete benefits of writing unit
+   tests"). The agent proposes a plan and pauses for approval.
+3. Approve the plan. The agent executes and returns a result.
+
+API-only smoke test (replace the placeholder with the real access key):
+
+```bash
+API=https://deepwork-api-production.up.railway.app
+TOKEN=$(curl -s -X POST "$API/api/v1/auth/login" -H 'content-type: application/json' \
+  -d '{"accessKey":"<DEEPWORK_ACCESS_KEY>"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+curl -s "$API/api/v1/tasks" -H "Authorization: Bearer $TOKEN"
+```
+
+### Model and configuration
+
+The agent's model is selected with `DEEPWORK_AGENT_MODEL` on the agent service,
+using OpenRouter (`openrouter:<model>`, one key serves the leading model
+families). The current validation model is `openrouter:openai/gpt-5.6-luna`;
+alternatives include `openrouter:z-ai/glm-5.2` (cheaper) and
+`openrouter:moonshotai/kimi-k2.7-code`. Provider/model credentials
+(`OPENROUTER_API_KEY`, `LANGSMITH_API_KEY`) live only in the hosting
+environment and are never committed.
+
+> This is an ephemeral **validation** environment: task state is in-memory (a
+> restart clears tasks), the access and model keys rotate, and the agent runtime
+> is not yet hardened for public exposure. It is for verifying the end-to-end
+> product, not production traffic.
+
 ## Run the local product
 
 Bootstrap the API and web dependencies once, then start the API, embedded

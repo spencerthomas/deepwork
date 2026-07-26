@@ -36,6 +36,8 @@ __all__ = ["DeterministicLocalModel", "build_model", "make_graph", "graph"]
 
 _MODEL_ENV = "DEEPWORK_AGENT_MODEL"
 _FAKE_ENV = "DEEPWORK_AGENT_FAKE"
+_OPENROUTER_PREFIX = "openrouter:"
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 class DeterministicLocalModel(BaseChatModel):
@@ -81,11 +83,13 @@ def build_model() -> BaseChatModel:
     if not identifier:
         msg = (
             "no model configured: set DEEPWORK_AGENT_MODEL (for example "
-            "'anthropic:claude-sonnet-5') with the provider credential in the "
-            "server environment, or set DEEPWORK_AGENT_FAKE=1 for the keyless "
-            "deterministic development stand-in"
+            "'anthropic:claude-sonnet-5' or 'openrouter:openai/gpt-4o-mini') with the "
+            "provider credential in the server environment, or set "
+            "DEEPWORK_AGENT_FAKE=1 for the keyless deterministic development stand-in"
         )
         raise RuntimeError(msg)
+    if identifier.startswith(_OPENROUTER_PREFIX):
+        return _openrouter_model(identifier[len(_OPENROUTER_PREFIX) :])
     try:
         from langchain.chat_models import init_chat_model
     except ImportError as error:  # pragma: no cover - depends on optional provider extra
@@ -96,6 +100,27 @@ def build_model() -> BaseChatModel:
         )
         raise RuntimeError(msg) from error
     return init_chat_model(identifier)
+
+
+def _openrouter_model(model_name: str) -> BaseChatModel:
+    """Build a chat model backed by OpenRouter's OpenAI-compatible gateway.
+
+    OpenRouter serves leading provider models (``anthropic/...``, ``openai/...``,
+    ``google/...``) behind one account and one ``OPENROUTER_API_KEY``.
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key or not api_key.strip():
+        msg = "OPENROUTER_API_KEY is required for an 'openrouter:' model"
+        raise RuntimeError(msg)
+    if not model_name.strip():
+        msg = "openrouter model id is empty (use for example 'openrouter:openai/gpt-4o-mini')"
+        raise RuntimeError(msg)
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError as error:  # pragma: no cover - optional provider extra
+        msg = "install 'langchain-openai' to use OpenRouter models"
+        raise RuntimeError(msg) from error
+    return ChatOpenAI(model=model_name, base_url=_OPENROUTER_BASE_URL, api_key=api_key)
 
 
 def make_graph() -> LocalAgentGraph:

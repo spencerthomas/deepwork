@@ -144,18 +144,37 @@ def make_graph() -> LocalAgentGraph:
     if os.environ.get("DEEPWORK_SANDBOX") == "langsmith":
         sandbox_factory = _langsmith_sandbox_factory()
     rubric = _default_rubric() if os.environ.get("DEEPWORK_VERIFY") == "1" else None
-    enable_memory = os.environ.get("DEEPWORK_MEMORY") == "1"
-    # On a hosted Agent Server the runtime injects a persistent store into the
-    # graph at execution time, so workspace memory survives across tasks; leaving
-    # ``store`` unset here lets that server-provided store flow through.
+    memory_backend = _memory_backend()
     return create_graph(
         model=build_model(),
         config=AgentConfig(),
         system_prompt=system_prompt,
         sandbox_factory=sandbox_factory,
         rubric=rubric,
-        enable_memory=enable_memory,
+        memory_backend=memory_backend,
     )
+
+
+def _memory_backend() -> object | None:
+    """Resolve the durable workspace-memory backend from the server environment.
+
+    ``DEEPWORK_SUPABASE_URL`` + ``DEEPWORK_SUPABASE_SERVICE_KEY`` -> Supabase
+    Postgres over PostgREST (durable across redeploys). Otherwise, when
+    ``DEEPWORK_MEMORY=1`` is set without Supabase, a process-local stand-in that
+    remembers within the running deployment. Memory is off by default.
+    """
+    url = os.environ.get("DEEPWORK_SUPABASE_URL")
+    key = os.environ.get("DEEPWORK_SUPABASE_SERVICE_KEY")
+    if url and key:
+        from deepwork_agent.memory import SupabaseWorkspaceMemory
+
+        table = os.environ.get("DEEPWORK_MEMORY_TABLE", "workspace_memory")
+        return SupabaseWorkspaceMemory(url, key, table=table)
+    if os.environ.get("DEEPWORK_MEMORY") == "1":
+        from deepwork_agent.memory import InMemoryWorkspaceMemory
+
+        return InMemoryWorkspaceMemory()
+    return None
 
 
 def _default_rubric() -> object:

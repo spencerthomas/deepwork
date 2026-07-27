@@ -36,16 +36,33 @@ def _by_type(
 
 
 def test_default_reliability_middleware_enforces_run_caps() -> None:
-    """Model/tool call-limit middleware are wired to end the run at the cap."""
+    """Model/tool call-limit middleware raise at the cap rather than fake success.
+
+    ``exit_behavior="error"`` makes a reached cap raise a catchable exception so
+    the graph fails the run honestly, instead of ``"end"`` injecting a synthetic
+    AI message that could be surfaced as a completed answer.
+    """
     middleware = build_reliability_middleware(AgentConfig())
 
     model_limit = _by_type(middleware, ModelCallLimitMiddleware)
     assert model_limit.run_limit == DEFAULT_MODEL_CALL_LIMIT
-    assert model_limit.exit_behavior == "end"
+    assert model_limit.exit_behavior == "error"
 
     tool_limit = _by_type(middleware, ToolCallLimitMiddleware)
     assert tool_limit.run_limit == DEFAULT_TOOL_CALL_LIMIT
-    assert tool_limit.exit_behavior == "end"
+    assert tool_limit.exit_behavior == "error"
+
+
+def test_tool_retries_are_off_by_default() -> None:
+    """The default envelope adds model retries but not blanket tool retries.
+
+    Retrying an arbitrary tool on any exception could duplicate a non-idempotent
+    side effect, so tool retries are opt-in.
+    """
+    middleware = build_reliability_middleware(AgentConfig())
+
+    assert any(isinstance(m, ModelRetryMiddleware) for m in middleware)
+    assert not any(isinstance(m, ToolRetryMiddleware) for m in middleware)
 
 
 def test_reliability_middleware_honors_custom_limits() -> None:

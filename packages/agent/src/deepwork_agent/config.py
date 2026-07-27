@@ -39,7 +39,11 @@ class AgentConfig:
     max_model_calls: int = 25
     max_tool_calls: int = 50
     model_max_retries: int = 2
-    tool_max_retries: int = 2
+    # Tool retries default OFF: retrying an arbitrary tool on any exception can
+    # duplicate a non-idempotent side effect (a push, a PR, a write) whose call
+    # succeeded remotely but whose response failed. A caller that knows its tools
+    # are idempotent may opt in by raising this.
+    tool_max_retries: int = 0
     recursion_limit: int = 50
 
     def __post_init__(self) -> None:
@@ -50,21 +54,26 @@ class AgentConfig:
         if self.runtime_mode != "local-runtime":
             msg = "only the injected-model local-runtime mode is supported"
             raise ValueError(msg)
-        if not _MIN_PLAN_STEPS <= self.max_plan_steps <= _MAX_PLAN_STEPS:
-            msg = "max_plan_steps must be between 1 and 12"
-            raise ValueError(msg)
-        if not _MIN_MODEL_CALLS <= self.max_model_calls <= _MAX_MODEL_CALLS:
-            msg = "max_model_calls must be between 1 and 200"
-            raise ValueError(msg)
-        if not _MIN_TOOL_CALLS <= self.max_tool_calls <= _MAX_TOOL_CALLS:
-            msg = "max_tool_calls must be between 1 and 500"
-            raise ValueError(msg)
-        if not _MIN_RECURSION_LIMIT <= self.recursion_limit <= _MAX_RECURSION_LIMIT:
-            msg = "recursion_limit must be between 4 and 500"
-            raise ValueError(msg)
-        if not 0 <= self.model_max_retries <= _MAX_RETRIES_CEILING:
-            msg = "model_max_retries must be between 0 and 8"
-            raise ValueError(msg)
-        if not 0 <= self.tool_max_retries <= _MAX_RETRIES_CEILING:
-            msg = "tool_max_retries must be between 0 and 8"
-            raise ValueError(msg)
+        self._validate_reliability_envelope()
+
+    def _validate_reliability_envelope(self) -> None:
+        """Reject non-integer or out-of-range reliability settings.
+
+        Integer-ness is checked first because ``bool`` is an ``int`` subclass and a
+        fractional value would otherwise pass the bound comparisons.
+        """
+        bounds = (
+            ("max_plan_steps", self.max_plan_steps, _MIN_PLAN_STEPS, _MAX_PLAN_STEPS),
+            ("max_model_calls", self.max_model_calls, _MIN_MODEL_CALLS, _MAX_MODEL_CALLS),
+            ("max_tool_calls", self.max_tool_calls, _MIN_TOOL_CALLS, _MAX_TOOL_CALLS),
+            ("model_max_retries", self.model_max_retries, 0, _MAX_RETRIES_CEILING),
+            ("tool_max_retries", self.tool_max_retries, 0, _MAX_RETRIES_CEILING),
+            ("recursion_limit", self.recursion_limit, _MIN_RECURSION_LIMIT, _MAX_RECURSION_LIMIT),
+        )
+        for name, value, low, high in bounds:
+            if type(value) is not int:
+                msg = f"{name} must be an integer"
+                raise ValueError(msg)
+            if not low <= value <= high:
+                msg = f"{name} must be between {low} and {high}"
+                raise ValueError(msg)

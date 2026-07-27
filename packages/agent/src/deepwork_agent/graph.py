@@ -15,10 +15,13 @@ from langchain.agents.middleware import (
     ToolCallLimitMiddleware,
     ToolRetryMiddleware,
 )
+from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
+from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -44,6 +47,7 @@ __all__ = [
     "DEEP_WORK_SYSTEM_PROMPT",
     "PROTECTED_ACTION",
     "RUNTIME_MODE",
+    "ExecutionBudgetExceededError",
     "RuntimeCapabilities",
     "build_reliability_middleware",
     "create_graph",
@@ -55,6 +59,15 @@ __all__ = [
 RUNTIME_MODE = "local-runtime"
 
 
+class ExecutionBudgetExceededError(RuntimeError):
+    """Raised when a run hits its model-call, tool-call, or recursion budget.
+
+    The message is a fixed, non-secret string. Hitting a budget is an honest
+    failure of the run, not a completion — the executor's partial output is
+    deliberately not surfaced as a final answer.
+    """
+
+
 def build_reliability_middleware(settings: AgentConfig) -> list[AgentMiddleware]:
     """Return the maintained LangChain reliability middleware for the executor.
 
@@ -63,10 +76,14 @@ def build_reliability_middleware(settings: AgentConfig) -> list[AgentMiddleware]
     the maintained middleware rather than writing a custom budget engine:
 
     * ``ModelCallLimitMiddleware`` / ``ToolCallLimitMiddleware`` cap model and tool
-      calls per run and end the run cleanly (``exit_behavior="end"``) when reached,
-      so the agent returns what it has instead of erroring.
-    * ``ModelRetryMiddleware`` / ``ToolRetryMiddleware`` retry transient failures
-      with bounded exponential backoff, then continue rather than crash the run.
+      calls per run. They use ``exit_behavior="error"`` so a reached cap raises a
+      catchable exception instead of injecting a synthetic AI message that
+      :func:`create_graph`'s ``execute`` node would otherwise expose as a
+      successful final answer. ``execute`` catches it and fails the run honestly.
+    * ``ModelRetryMiddleware`` retries transient model failures with bounded
+      exponential backoff. Tool retries are added only when
+      ``tool_max_retries > 0`` (off by default): retrying an arbitrary tool on any
+      exception can duplicate a non-idempotent side effect, so it is opt-in.
 
     A LangGraph ``recursion_limit`` (applied at invoke) is the outer backstop.
     """
@@ -74,8 +91,8 @@ def build_reliability_middleware(settings: AgentConfig) -> list[AgentMiddleware]
     # specialized generic parameters as distinct, so the list is annotated to the
     # base type with a scoped ignore, matching this module's TypedDict handling.
     middleware: list[AgentMiddleware] = [  # ty: ignore[invalid-assignment]  # subclass generics
-        ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="end"),
-        ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="end"),
+        ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="error"),
+        ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="error"),
     ]
     if settings.model_max_retries > 0:
         middleware.append(ModelRetryMiddleware(max_retries=settings.model_max_retries))
@@ -147,7 +164,7 @@ def runtime_capabilities() -> RuntimeCapabilities:
     )
 
 
-def create_graph(
+def create_graph(  # noqa: PLR0913 - keyword-only factory with explicit, documented knobs
     *,
     model: BaseChatModel,
     tools: Sequence[ToolLike] = (),
@@ -165,6 +182,11 @@ def create_graph(
         config: Local-only graph settings.
         checkpointer: Optional caller-owned checkpoint saver. The default is an
             ephemeral in-memory saver suitable for local pause/resume.
+        system_prompt: Optional per-run system prompt overriding the bundled
+            default; the package never persists or edits it.
+        sandbox_factory: Optional context-manager factory yielding a per-task
+            execution backend (for example a real sandbox). When omitted, the
+            executor uses the in-memory virtual filesystem.
 
     Returns:
         A compiled LangGraph that plans, requests approval, and then executes.
@@ -179,7 +201,7 @@ def create_graph(
     settings = config or AgentConfig()
     reliability_middleware = build_reliability_middleware(settings)
 
-    def build_executor(backend: Any | None) -> Any:
+    def build_executor(backend: Any | None) -> Any:  # noqa: ANN401 - deepagents backend union
         # The full Deep Agents executor: planning, virtual filesystem, and
         # subagents by default. When a sandbox backend is supplied, its
         # filesystem and shell/execute run in that real sandbox instead. The
@@ -203,9 +225,11 @@ def create_graph(
     def _invoke_executor(execution_request: str) -> dict[str, object]:
         message = HumanMessage(content=execution_request)
         if sandbox_factory is None:
+            # default_executor is built (non-None) exactly when sandbox_factory is
+            # None, which is this branch; ty cannot narrow the closure variable.
             return cast(
                 "dict[str, object]",
-                default_executor.invoke({"messages": [message]}, config=invoke_config),
+                default_executor.invoke({"messages": [message]}, config=invoke_config),  # ty: ignore[unresolved-attribute]
             )
         with sandbox_factory() as backend:
             executor = build_executor(backend)
@@ -220,10 +244,20 @@ def create_graph(
             list(state["plan"]),
             closing="Execute the approved plan and provide the final answer.",
         )
-        result = _invoke_executor(execution_request)
+        try:
+            result = _invoke_executor(execution_request)
+        except (
+            ModelCallLimitExceededError,
+            ToolCallLimitExceededError,
+            GraphRecursionError,
+        ):
+            # A reached budget is an honest failure, not a completion. Raise from
+            # None so no upstream detail (which could echo tool arguments) leaks.
+            msg = "execution stopped: the task exceeded its model, tool, or recursion budget"
+            raise ExecutionBudgetExceededError(msg) from None
         messages = result.get("messages", [])
         final_message = next(
-            (message for message in reversed(messages) if isinstance(message, AIMessage)),
+            (message for message in reversed(messages) if isinstance(message, AIMessage)),  # ty: ignore[no-matching-overload]
             None,
         )
         if final_message is None:

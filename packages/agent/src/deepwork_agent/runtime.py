@@ -23,9 +23,8 @@ from __future__ import annotations
 
 import os
 import shlex
-from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager, suppress
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
@@ -33,6 +32,9 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 from deepwork_agent.config import AgentConfig
 from deepwork_agent.graph import LocalAgentGraph, create_graph
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
 
 __all__ = [
     "DeterministicLocalModel",
@@ -69,8 +71,11 @@ class DeterministicLocalModel(BaseChatModel):
         return "deepwork-deterministic-local"
 
     def bind_tools(self, tools: Any, **kwargs: Any) -> DeterministicLocalModel:  # noqa: ANN401, ARG002
-        # The stand-in never requests tools; expose the interface so tool-using
-        # executors (deepagents) accept it as their model.
+        """Accept tool binding as a no-op so tool-using executors accept this model.
+
+        The stand-in never requests tools; it only needs to expose the interface
+        deepagents calls during setup.
+        """
         return self
 
     def _generate(
@@ -107,7 +112,7 @@ def build_model() -> BaseChatModel:
     if identifier.startswith(_OPENROUTER_PREFIX):
         return _openrouter_model(identifier[len(_OPENROUTER_PREFIX) :])
     try:
-        from langchain.chat_models import init_chat_model
+        from langchain.chat_models import init_chat_model  # noqa: PLC0415 - optional provider extra
     except ImportError as error:  # pragma: no cover - depends on optional provider extra
         msg = (
             "DEEPWORK_AGENT_MODEL is set but 'langchain' with a provider integration "
@@ -132,7 +137,7 @@ def _openrouter_model(model_name: str) -> BaseChatModel:
         msg = "openrouter model id is empty (use for example 'openrouter:openai/gpt-4o-mini')"
         raise RuntimeError(msg)
     try:
-        from langchain_openai import ChatOpenAI
+        from langchain_openai import ChatOpenAI  # noqa: PLC0415 - optional provider extra
     except ImportError as error:  # pragma: no cover - optional provider extra
         msg = "install 'langchain-openai' to use OpenRouter models"
         raise RuntimeError(msg) from error
@@ -167,7 +172,7 @@ def make_graph() -> LocalAgentGraph:
 
 
 def _langsmith_sandbox_factory() -> Callable[[], object] | None:
-    """A context-manager factory yielding a fresh per-task LangSmith sandbox backend.
+    """Return a context-manager factory yielding a per-task LangSmith sandbox backend.
 
     Returns ``None`` when no LangSmith credential is configured, so the graph
     falls back to the in-memory virtual filesystem. The credential is read only
@@ -181,24 +186,40 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
 
     @contextmanager
     def factory() -> Iterator[object]:
-        from deepagents.backends import LangSmithSandbox
-        from langsmith.sandbox import SandboxClient
+        from deepagents.backends import LangSmithSandbox  # noqa: PLC0415 - optional runtime backend
+        from langsmith.sandbox import SandboxClient  # noqa: PLC0415 - optional runtime backend
 
         client = SandboxClient(api_key=api_key, timeout=30.0)
         sandbox = client.create_sandbox(name="deepwork-task", timeout=120)
-        if github_token:
-            _configure_sandbox_github(sandbox, github_token)
-        try:
-            yield LangSmithSandbox(sandbox)
-        finally:
-            # Cleanup must never mask the task result, but it must not vanish
-            # silently either: a leaked sandbox still holds the credential.
-            with suppress(Exception):
-                client.delete_sandbox(sandbox.id)
-            with suppress(Exception):
-                client.close()
+        with _sandbox_lifecycle(client, sandbox, github_token) as ready_sandbox:
+            yield LangSmithSandbox(ready_sandbox)
 
     return factory
+
+
+@contextmanager
+def _sandbox_lifecycle(
+    client: Any,  # noqa: ANN401 - the langsmith SandboxClient is loaded lazily
+    sandbox: Any,  # noqa: ANN401 - provider sandbox handle
+    github_token: str | None,
+) -> Iterator[Any]:
+    """Configure the optional credential, then guarantee sandbox teardown.
+
+    Credential setup runs inside the cleanup-protected region so that a setup
+    failure still deletes the sandbox — a partially configured sandbox would
+    otherwise leak while holding the credential.
+    """
+    try:
+        if github_token:
+            _configure_sandbox_github(sandbox, github_token)
+        yield sandbox
+    finally:
+        # Cleanup must never mask the task result, but it must not vanish
+        # silently either: a leaked sandbox still holds the credential.
+        with suppress(Exception):
+            client.delete_sandbox(sandbox.id)
+        with suppress(Exception):
+            client.close()
 
 
 def build_git_credential_setup_command(token: str) -> str:
@@ -238,7 +259,9 @@ def _configure_sandbox_github(sandbox: object, token: str) -> None:
 
     """
     try:
-        sandbox.run(build_git_credential_setup_command(token))  # type: ignore[attr-defined]
-    except Exception as error:  # noqa: BLE001 - normalized to a non-secret failure
+        sandbox.run(build_git_credential_setup_command(token))  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+    except Exception:  # noqa: BLE001 - normalized to a non-secret failure
+        # Raise from None: the underlying error may echo the setup command (which
+        # embeds the token), so it must not be retained as __cause__/__context__.
         msg = "failed to configure the sandbox GitHub credential"
-        raise SandboxCredentialError(msg) from error
+        raise SandboxCredentialError(msg) from None

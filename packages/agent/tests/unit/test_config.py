@@ -7,7 +7,8 @@ from deepwork_agent import AgentConfig
 DEFAULT_MAX_PLAN_STEPS = 6
 DEFAULT_MAX_MODEL_CALLS = 25
 DEFAULT_MAX_TOOL_CALLS = 50
-DEFAULT_MAX_RETRIES = 2
+DEFAULT_MODEL_RETRIES = 2
+DEFAULT_TOOL_RETRIES = 0
 DEFAULT_RECURSION_LIMIT = 50
 
 
@@ -46,8 +47,10 @@ def test_reliability_envelope_has_bounded_defaults() -> None:
 
     assert config.max_model_calls == DEFAULT_MAX_MODEL_CALLS
     assert config.max_tool_calls == DEFAULT_MAX_TOOL_CALLS
-    assert config.model_max_retries == DEFAULT_MAX_RETRIES
-    assert config.tool_max_retries == DEFAULT_MAX_RETRIES
+    assert config.model_max_retries == DEFAULT_MODEL_RETRIES
+    # Tool retries default OFF: retrying a non-idempotent tool could duplicate a
+    # side effect, so callers must opt in explicitly.
+    assert config.tool_max_retries == DEFAULT_TOOL_RETRIES
     assert config.recursion_limit == DEFAULT_RECURSION_LIMIT
 
 
@@ -83,3 +86,25 @@ def test_retry_counts_are_bounded(field: str, message: str) -> None:
     """Retry counts are non-negative and capped."""
     with pytest.raises(ValueError, match=message):
         AgentConfig(**{field: 9})
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "max_plan_steps",
+        "max_model_calls",
+        "max_tool_calls",
+        "model_max_retries",
+        "tool_max_retries",
+        "recursion_limit",
+    ],
+)
+@pytest.mark.parametrize("bad_value", [1.5, True])
+def test_reliability_fields_reject_non_integers(field: str, bad_value: object) -> None:
+    """Fractional and boolean values are rejected before range checks.
+
+    ``bool`` is an ``int`` subclass and ``1.5 <= n <= 200`` would otherwise pass,
+    so integer-ness is enforced explicitly.
+    """
+    with pytest.raises(ValueError, match=f"{field} must be an integer"):
+        AgentConfig(**{field: bad_value})

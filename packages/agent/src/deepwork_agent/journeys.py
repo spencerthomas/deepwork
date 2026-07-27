@@ -38,6 +38,7 @@ from deepwork_agent.artifacts import (
     validate_artifact,
 )
 from deepwork_agent.config import AgentConfig
+from deepwork_agent.graph import build_reliability_middleware
 from deepwork_agent.state import (
     AgentInput,
     AgentState,
@@ -454,7 +455,12 @@ def create_journey_graph(  # noqa: PLR0913 - keyword-only factory mirrors create
                     model=grader_model,
                     max_iterations=profile.rubric.max_iterations,
                     on_evaluation=evaluations.append,
-                )
+                ),
+                # Same reuse-first reliability envelope as create_graph, so the
+                # AgentConfig caps apply here too rather than being silently
+                # ignored. A reached cap raises (exit_behavior="error") and fails
+                # the run honestly instead of surfacing partial work.
+                *build_reliability_middleware(settings),
             ],
             subagents=subagent_specs or None,
             response_format=JourneyArtifactDraft,
@@ -473,7 +479,8 @@ def create_journey_graph(  # noqa: PLR0913 - keyword-only factory mirrors create
             {
                 "messages": [HumanMessage(content=execution_request)],
                 "rubric": rubric_text,
-            }
+            },
+            config={"recursion_limit": settings.recursion_limit},
         )
         draft = result.get("structured_response")
         if draft is None:

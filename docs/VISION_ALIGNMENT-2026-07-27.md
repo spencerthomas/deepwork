@@ -206,7 +206,14 @@ but leveraged in code approximately nowhere.
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| A2.1 Bound execution (reliability middleware + caps) | **executed** | commit(s) on `claude/deepwork-code-audit-igcla3`; agent unit tests |
-| A2.2 Safe credential injection | **executed** | same branch; runtime tests |
+| A2.1 Bound execution (reliability middleware + caps) | **executed** | `7489c35`; +13 agent unit tests (config bounds, middleware wiring, bounded-run integration); agent suite 90 passed, ruff/ty at baseline |
+| A2.2 Safe credential injection | **executed** | `473d7a7`; `build_git_credential_setup_command` + 3 injection-safety tests; ruff debt 19→16 in the touched file |
 | A2.3 GitHub App tokens | planned (next) | — |
 | all others | planned | — |
+
+> Verification note: `packages/agent` ran green under its own CI commands
+> (`ruff`, `ruff format --check`, `ty`, `pytest --disable-socket`) via a Python 3.12
+> venv. The pre-existing 16 `ruff` / 5 `ty` findings in `packages/agent` predate this
+> work and belong to milestone **X0** (fix `main`); the executed milestones add none.
+> `apps/api` and the web/TS suites were **not** run here (they need the repo's
+> Node ≥24.14 toolchain, unavailable in this environment).

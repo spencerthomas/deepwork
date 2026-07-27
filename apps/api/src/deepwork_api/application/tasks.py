@@ -8,9 +8,10 @@ import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
-from deepwork_api.application.local_runner import LocalAgentServerRunner
+from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalAgentSummary
 from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
+    AgentRegistryUnavailableError,
     CancellationRecord,
     DecisionRecord,
     DecisionValue,
@@ -334,16 +335,65 @@ class TaskService:
     repository: TaskRepository
     runner: DeterministicFixtureRunner | LocalAgentServerRunner
 
-    async def create_task(self, prompt: str) -> TaskSnapshot:
-        """Create a queued task and start its deterministic runner."""
+    async def create_task(self, prompt: str, *, agent_id: str | None = None) -> TaskSnapshot:
+        """Create a queued task and start its deterministic runner.
+
+        ``agent_id`` selects a specific registered agent for a real-agent-mode
+        task; it has no effect in fixture mode, which has no agent registry.
+        """
 
         objective = sanitize_objective(prompt)
         title = _build_task_title(objective)
         if isinstance(self.runner, LocalAgentServerRunner):
-            return await self.runner.create(title=title, objective=objective)
+            return await self.runner.create(title=title, objective=objective, agent_id=agent_id)
         task = await self.repository.create_task(title=title, objective=objective)
         self.runner.start(task)
         return task
+
+    async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
+        """List agents registered on the configured real task source.
+
+        Fixture mode owns no agent registry, so this reports an honest
+        unavailable state instead of a fabricated empty list.
+        """
+
+        if not isinstance(self.runner, LocalAgentServerRunner):
+            raise AgentRegistryUnavailableError
+        return await self.runner.list_agents()
+
+    async def create_agent(
+        self, *, name: str, description: str | None, system_prompt: str | None
+    ) -> LocalAgentSummary:
+        """Register a new agent sharing the deployed graph."""
+
+        if not isinstance(self.runner, LocalAgentServerRunner):
+            raise AgentRegistryUnavailableError
+        return await self.runner.create_agent(
+            name=name, description=description, system_prompt=system_prompt
+        )
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> LocalAgentSummary:
+        """Replace the editable fields of one non-default registered agent."""
+
+        if not isinstance(self.runner, LocalAgentServerRunner):
+            raise AgentRegistryUnavailableError
+        return await self.runner.update_agent(
+            agent_id, name=name, description=description, system_prompt=system_prompt
+        )
+
+    async def delete_agent(self, agent_id: str) -> None:
+        """Remove one non-default registered agent."""
+
+        if not isinstance(self.runner, LocalAgentServerRunner):
+            raise AgentRegistryUnavailableError
+        await self.runner.delete_agent(agent_id)
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List local task summaries."""

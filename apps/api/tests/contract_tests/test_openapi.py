@@ -35,6 +35,8 @@ def test_openapi_documents_the_versioned_surface() -> None:
     paths = set(document["paths"])
     assert "/health" in paths
     assert {path for path in paths if path.startswith("/api/v1/")} == {
+        "/api/v1/agents",
+        "/api/v1/agents/{agent_id}",
         "/api/v1/demo/status",
         "/api/v1/tasks",
         "/api/v1/tasks/{task_id}",

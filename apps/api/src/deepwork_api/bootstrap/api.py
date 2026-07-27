@@ -35,6 +35,7 @@ from deepwork_api.application.local_runner import LocalSource
 from deepwork_api.domain import TaskEventName, TaskStatus
 from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
 from deepwork_api.transport import (
+    build_agents_router,
     build_auth_router,
     build_router,
     build_session_guard,
@@ -251,7 +252,7 @@ def create_app(
         CORSMiddleware,
         allow_origins=list(web_origins or _WEB_ORIGINS),
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "PUT", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
     )
 
@@ -285,6 +286,7 @@ def create_app(
         )
     )
     app.include_router(build_settings_router(prompt_store, dependencies=task_dependencies))
+    app.include_router(build_agents_router(task_service, dependencies=task_dependencies))
     if auth_service is not None:
         app.include_router(build_auth_router(auth_service))
     app.state.task_repository = task_repository

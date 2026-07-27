@@ -12,10 +12,12 @@ import httpx
 import pytest
 
 from deepwork_api.adapters.sources.local import (
+    AgentSummary,
     LocalAgentServerSource,
     LocalRunReference,
     LocalSourceConfigurationError,
     LocalSourceContractError,
+    LocalSourceDefaultAgentImmutableError,
     LocalSourceStaleInterruptError,
     LocalSourceUnavailableError,
     create_official_client,
@@ -242,14 +244,87 @@ class FakeRuns:
 
 @dataclass
 class FakeAssistants:
-    response: object = field(default_factory=lambda: {"assistant_id": "deep-work-local-agent"})
+    response: object = field(
+        default_factory=lambda: {
+            "assistant_id": "deep-work-local-agent",
+            "graph_id": "deep-work-local-agent",
+        }
+    )
     error: Exception | None = None
+    search_response: object = field(default_factory=list)
+    search_calls: list[dict[str, object]] = field(default_factory=list)
+    search_error: Exception | None = None
+    create_response: object | None = None
+    create_calls: list[dict[str, object]] = field(default_factory=list)
+    create_error: Exception | None = None
+    update_response: object | None = None
+    update_calls: list[dict[str, object]] = field(default_factory=list)
+    update_error: Exception | None = None
+    delete_calls: list[str] = field(default_factory=list)
+    delete_error: Exception | None = None
 
     async def get(self, assistant_id: str) -> object:
         assert assistant_id == "deep-work-local-agent"
         if self.error is not None:
             raise self.error
         return self.response
+
+    async def search(
+        self, *, graph_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        if self.search_error is not None:
+            raise self.search_error
+        self.search_calls.append({"graph_id": graph_id, "limit": limit, "offset": offset})
+        return self.search_response
+
+    async def create(
+        self,
+        graph_id: str | None,
+        config: Mapping[str, object] | None = None,
+        *,
+        metadata: Mapping[str, object] | None = None,
+        assistant_id: str | None = None,
+        if_exists: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        if self.create_error is not None:
+            raise self.create_error
+        self.create_calls.append(
+            {
+                "graph_id": graph_id,
+                "config": config,
+                "name": name,
+                "description": description,
+                "if_exists": if_exists,
+            }
+        )
+        return self.create_response
+
+    async def update(
+        self,
+        assistant_id: str,
+        *,
+        config: Mapping[str, object] | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        if self.update_error is not None:
+            raise self.update_error
+        self.update_calls.append(
+            {
+                "assistant_id": assistant_id,
+                "config": config,
+                "name": name,
+                "description": description,
+            }
+        )
+        return self.update_response
+
+    async def delete(self, assistant_id: str) -> None:
+        if self.delete_error is not None:
+            raise self.delete_error
+        self.delete_calls.append(assistant_id)
 
 
 @dataclass
@@ -401,6 +476,182 @@ async def test_status_is_sanitized_and_makes_no_provider_claim() -> None:
     unavailable = await failing.status()
     assert unavailable.code == "unavailable"
     assert "private" not in repr(unavailable)
+
+
+async def test_start_with_agent_id_overrides_the_default_assistant() -> None:
+    source, client = _source()
+
+    run = await source.start("Prepare a release brief", agent_id="assistant-2")
+
+    assert run == LocalRunReference(thread_id="thread-official-1", run_id="run-official-1")
+    assert client.runs.create_calls[0]["assistant_id"] == "assistant-2"
+
+
+async def test_start_with_agent_id_ignores_the_workspace_prompt_override() -> None:
+    """A selected named agent's own config governs it; the two never fight."""
+    source, client = _source()
+
+    await source.start(
+        "Prepare a release brief", system_prompt="Always be terse.", agent_id="assistant-2"
+    )
+
+    call = client.runs.create_calls[0]
+    assert call["input"] == {"task": "Prepare a release brief"}
+    assert call["config"] is None
+
+
+async def test_resume_and_update_plan_replay_the_thread_bound_assistant() -> None:
+    """A thread started with a non-default agent keeps using that exact agent."""
+    source, client = _source()
+    await source.start("Prepare a release brief", agent_id="assistant-2")
+
+    await source.resume("thread-official-1", interrupt_id=OFFICIAL_INTERRUPT_ID, decision="approve")
+
+    assert client.runs.create_calls[-1]["assistant_id"] == "assistant-2"
+
+
+async def test_list_agents_scopes_search_to_the_default_agents_graph() -> None:
+    assistant = {
+        "assistant_id": "assistant-2",
+        "name": "Terse reviewer",
+        "description": "Keeps everything short.",
+        "config": {"configurable": {"system_prompt": "Always be terse."}},
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z",
+    }
+    default: dict[str, object] = {
+        "assistant_id": "deep-work-local-agent",
+        "name": "deep-work-local-agent",
+        "description": None,
+        "config": {},
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+    assistants = FakeAssistants(search_response=[default, assistant])
+    source, client = _source(FakeClient(assistants=assistants))
+
+    agents = await source.list_agents()
+
+    assert client.assistants.search_calls == [
+        {"graph_id": "deep-work-local-agent", "limit": 100, "offset": 0}
+    ]
+    assert agents == (
+        AgentSummary(
+            agent_id="deep-work-local-agent",
+            name="deep-work-local-agent",
+            description=None,
+            system_prompt=None,
+            is_default=True,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        ),
+        AgentSummary(
+            agent_id="assistant-2",
+            name="Terse reviewer",
+            description="Keeps everything short.",
+            system_prompt="Always be terse.",
+            is_default=False,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-02T00:00:00Z",
+        ),
+    )
+
+
+async def test_create_agent_binds_to_the_default_agents_graph_with_its_own_config() -> None:
+    created = {
+        "assistant_id": "assistant-3",
+        "name": "Release reviewer",
+        "description": "Reviews release notes.",
+        "config": {"configurable": {"system_prompt": "Be precise."}},
+        "created_at": "2026-01-03T00:00:00Z",
+        "updated_at": "2026-01-03T00:00:00Z",
+    }
+    assistants = FakeAssistants(create_response=created)
+    source, client = _source(FakeClient(assistants=assistants))
+
+    agent = await source.create_agent(
+        name="  Release reviewer  ",
+        description="  Reviews release notes.  ",
+        system_prompt="  Be precise.  ",
+    )
+
+    assert client.assistants.create_calls == [
+        {
+            "graph_id": "deep-work-local-agent",
+            "config": {"configurable": {"system_prompt": "Be precise."}},
+            "name": "Release reviewer",
+            "description": "Reviews release notes.",
+            "if_exists": "raise",
+        }
+    ]
+    assert agent.agent_id == "assistant-3"
+    assert agent.is_default is False
+
+
+async def test_update_agent_sends_an_explicit_empty_config_to_clear_the_prompt() -> None:
+    updated: dict[str, object] = {
+        "assistant_id": "assistant-3",
+        "name": "Renamed reviewer",
+        "description": None,
+        "config": {},
+        "created_at": "2026-01-03T00:00:00Z",
+        "updated_at": "2026-01-04T00:00:00Z",
+    }
+    assistants = FakeAssistants(update_response=updated)
+    source, client = _source(FakeClient(assistants=assistants))
+
+    agent = await source.update_agent(
+        "assistant-3", name="Renamed reviewer", description=None, system_prompt=None
+    )
+
+    assert client.assistants.update_calls == [
+        {
+            "assistant_id": "assistant-3",
+            "config": {},
+            "name": "Renamed reviewer",
+            "description": None,
+        }
+    ]
+    assert agent.system_prompt is None
+
+
+async def test_update_and_delete_reject_the_default_agent() -> None:
+    source, client = _source()
+
+    with pytest.raises(LocalSourceDefaultAgentImmutableError):
+        await source.update_agent(
+            "deep-work-local-agent", name="x", description=None, system_prompt=None
+        )
+    with pytest.raises(LocalSourceDefaultAgentImmutableError):
+        await source.delete_agent("deep-work-local-agent")
+    assert client.assistants.update_calls == []
+    assert client.assistants.delete_calls == []
+
+
+async def test_delete_agent_deletes_a_non_default_assistant() -> None:
+    source, client = _source()
+
+    await source.delete_agent("assistant-3")
+
+    assert client.assistants.delete_calls == ["assistant-3"]
+
+
+async def test_agent_registry_calls_wrap_upstream_failures() -> None:
+    failing, _ = _source(FakeClient(assistants=FakeAssistants(search_error=RuntimeError("boom"))))
+    with pytest.raises(LocalSourceUnavailableError):
+        await failing.list_agents()
+
+    failing, _ = _source(FakeClient(assistants=FakeAssistants(create_error=RuntimeError("boom"))))
+    with pytest.raises(LocalSourceUnavailableError):
+        await failing.create_agent(name="x", description=None, system_prompt=None)
+
+    failing, _ = _source(FakeClient(assistants=FakeAssistants(update_error=RuntimeError("boom"))))
+    with pytest.raises(LocalSourceUnavailableError):
+        await failing.update_agent("assistant-3", name="x", description=None, system_prompt=None)
+
+    failing, _ = _source(FakeClient(assistants=FakeAssistants(delete_error=RuntimeError("boom"))))
+    with pytest.raises(LocalSourceUnavailableError):
+        await failing.delete_agent("assistant-3")
 
 
 async def test_state_uses_official_interrupt_id_and_omits_private_fields() -> None:

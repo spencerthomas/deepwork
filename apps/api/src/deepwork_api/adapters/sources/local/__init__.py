@@ -3,6 +3,7 @@
 from deepwork_api.adapters.sources.local.source import (
     DEFAULT_LOCAL_AGENT_SERVER_ASSISTANT,
     DEFAULT_LOCAL_AGENT_SERVER_URL,
+    AgentSummary,
     LocalAgentServerCapabilities,
     LocalAgentServerSource,
     LocalAgentServerStatus,
@@ -11,6 +12,7 @@ from deepwork_api.adapters.sources.local.source import (
     LocalRunReference,
     LocalSourceConfigurationError,
     LocalSourceContractError,
+    LocalSourceDefaultAgentImmutableError,
     LocalSourceError,
     LocalSourceGatedError,
     LocalSourceStaleInterruptError,
@@ -24,6 +26,7 @@ from deepwork_api.adapters.sources.local.source import (
 __all__ = [
     "DEFAULT_LOCAL_AGENT_SERVER_ASSISTANT",
     "DEFAULT_LOCAL_AGENT_SERVER_URL",
+    "AgentSummary",
     "LocalAgentServerCapabilities",
     "LocalAgentServerSource",
     "LocalAgentServerStatus",
@@ -32,6 +35,7 @@ __all__ = [
     "LocalRunReference",
     "LocalSourceConfigurationError",
     "LocalSourceContractError",
+    "LocalSourceDefaultAgentImmutableError",
     "LocalSourceError",
     "LocalSourceGatedError",
     "LocalSourceStaleInterruptError",

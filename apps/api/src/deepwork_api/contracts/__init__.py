@@ -1,5 +1,11 @@
 """Pydantic wire contracts."""
 
+from deepwork_api.contracts.agents import (
+    AgentCreateRequest,
+    AgentListResponse,
+    AgentSummaryResponse,
+    AgentUpdateRequest,
+)
 from deepwork_api.contracts.settings import SystemPromptResponse, SystemPromptUpdateRequest
 from deepwork_api.contracts.status import DemoStatusResponse, HealthResponse, WorkerStatusResponse
 from deepwork_api.contracts.tasks import (
@@ -19,6 +25,10 @@ from deepwork_api.contracts.tasks import (
 )
 
 __all__ = [
+    "AgentCreateRequest",
+    "AgentListResponse",
+    "AgentSummaryResponse",
+    "AgentUpdateRequest",
     "CancellationAcceptedResponse",
     "DecisionAcceptedResponse",
     "DecisionRequest",

@@ -53,7 +53,7 @@ export interface TasksStore {
 
   creating: boolean;
   createError?: string;
-  createTask: (prompt: string) => Promise<TaskSummary | undefined>;
+  createTask: (prompt: string, agentId?: string) => Promise<TaskSummary | undefined>;
 
   detailsByTask: Record<string, TaskDetail>;
   eventsByTask: Record<string, TaskEvent[]>;
@@ -332,41 +332,44 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createTask = useCallback(async (prompt: string): Promise<TaskSummary | undefined> => {
-    setCreating(true);
-    setCreateError(undefined);
-    try {
-      // Stamp the dispatch instant *before* awaiting the create call, so the
-      // optimistic createdAt reflects when this task was dispatched rather than
-      // when the response happened to arrive — concurrent creates then keep
-      // dispatch order in the newest-first "Recent" view. It is the client's
-      // firsthand time of its own action, not a guessed value, and is replaced by
-      // the server's authoritative createdAt on the next list refresh.
-      const dispatchedAt = new Date().toISOString();
-      const created = await taskClient.createTask(prompt);
-      const optimisticTask: TaskSummary = {
-        ...created,
-        title: prompt,
-        prompt,
-        createdAt: dispatchedAt,
-      };
-      setDetailsByTask((current) => ({
-        ...current,
-        [created.taskId]: optimisticTask,
-      }));
-      setTasks((current) => [
-        optimisticTask,
-        ...current.filter((task) => task.taskId !== created.taskId),
-      ]);
-      setListError(undefined);
-      return optimisticTask;
-    } catch (error) {
-      setCreateError(messageFrom(error));
-      return undefined;
-    } finally {
-      setCreating(false);
-    }
-  }, []);
+  const createTask = useCallback(
+    async (prompt: string, agentId?: string): Promise<TaskSummary | undefined> => {
+      setCreating(true);
+      setCreateError(undefined);
+      try {
+        // Stamp the dispatch instant *before* awaiting the create call, so the
+        // optimistic createdAt reflects when this task was dispatched rather than
+        // when the response happened to arrive — concurrent creates then keep
+        // dispatch order in the newest-first "Recent" view. It is the client's
+        // firsthand time of its own action, not a guessed value, and is replaced by
+        // the server's authoritative createdAt on the next list refresh.
+        const dispatchedAt = new Date().toISOString();
+        const created = await taskClient.createTask(prompt, agentId);
+        const optimisticTask: TaskSummary = {
+          ...created,
+          title: prompt,
+          prompt,
+          createdAt: dispatchedAt,
+        };
+        setDetailsByTask((current) => ({
+          ...current,
+          [created.taskId]: optimisticTask,
+        }));
+        setTasks((current) => [
+          optimisticTask,
+          ...current.filter((task) => task.taskId !== created.taskId),
+        ]);
+        setListError(undefined);
+        return optimisticTask;
+      } catch (error) {
+        setCreateError(messageFrom(error));
+        return undefined;
+      } finally {
+        setCreating(false);
+      }
+    },
+    [],
+  );
 
   const decide = useCallback(async (input: DecisionInput): Promise<void> => {
     const taskId = activeTaskIdRef.current;

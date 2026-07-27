@@ -1,12 +1,14 @@
 """Application use cases."""
 
 from deepwork_api.application.auth import AuthService
-from deepwork_api.application.local_runner import LocalAgentServerRunner
+from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalAgentSummary
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
+    AgentRegistryUnavailableError,
     CancellationRecord,
     DecisionConflictError,
+    DefaultAgentImmutableError,
     InterruptMismatchError,
     InvalidEventCursorError,
     PlanRevisionConflictError,
@@ -22,13 +24,16 @@ from deepwork_api.domain import (
 )
 
 __all__ = [
+    "AgentRegistryUnavailableError",
     "AuthService",
     "CancellationRecord",
     "DecisionConflictError",
+    "DefaultAgentImmutableError",
     "DeterministicFixtureRunner",
     "InterruptMismatchError",
     "InvalidEventCursorError",
     "LocalAgentServerRunner",
+    "LocalAgentSummary",
     "PlanRevisionConflictError",
     "PlanUnavailableError",
     "StaleInterruptError",

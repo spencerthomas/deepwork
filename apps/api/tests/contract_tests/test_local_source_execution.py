@@ -278,6 +278,37 @@ class _FakeAssistants:
         self.server.fail("assistants.get")
         return {"assistant_id": assistant_id}
 
+    async def search(
+        self, *, graph_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def create(
+        self,
+        graph_id: str | None,
+        config: Mapping[str, object] | None = None,
+        *,
+        metadata: Mapping[str, object] | None = None,
+        assistant_id: str | None = None,
+        if_exists: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def update(
+        self,
+        assistant_id: str,
+        *,
+        config: Mapping[str, object] | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def delete(self, assistant_id: str) -> None:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
 
 @dataclass(slots=True)
 class _Harness:

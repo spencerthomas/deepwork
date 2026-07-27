@@ -16,6 +16,7 @@ describe("resolveSettingsSection", () => {
   it("resolves every known section id", () => {
     expect(resolveSettingsSection(["appearance"])).toBe("appearance");
     expect(resolveSettingsSection(["prompt"])).toBe("prompt");
+    expect(resolveSettingsSection(["agents"])).toBe("agents");
     expect(resolveSettingsSection(["runtime"])).toBe("runtime");
     expect(resolveSettingsSection(["about"])).toBe("about");
   });
@@ -36,6 +37,7 @@ describe("settings catalog", () => {
     expect(SETTINGS_GROUPS.map((group) => group.label)).toEqual(["Agent", "Workspace"]);
     expect(ALL_SETTINGS_SECTIONS.map((section) => section.id)).toEqual([
       "prompt",
+      "agents",
       "appearance",
       "runtime",
       "about",
@@ -60,6 +62,8 @@ describe("settings catalog", () => {
     expect(idsFor("license")).toEqual(["about"]);
     expect(idsFor("persona")).toEqual(["prompt"]);
     expect(idsFor("instructions")).toEqual(["prompt"]);
+    expect(idsFor("fleet")).toEqual(["agents"]);
+    expect(idsFor("registry")).toEqual(["agents"]);
   });
 
   it("gives every section at least one keyword", () => {

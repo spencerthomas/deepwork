@@ -65,13 +65,14 @@ def test_local_mode_requires_complete_explicit_configuration(tmp_path: Path) -> 
         )
     with pytest.raises(ValueError, match="explicit loopback endpoint"):
         create_app(local_agent_server_assistant=_LOCAL_ASSISTANT)
-    with pytest.raises(ValueError, match="persistent task recovery"):
-        create_app(
-            task_database_path=(tmp_path / "tasks.sqlite").resolve(),
-            local_agent_server_endpoint=_LOCAL_ENDPOINT,
-            local_agent_server_assistant=_LOCAL_ASSISTANT,
-            allow_ungated_local_agent_source=True,
-        )
+    # Durable task persistence is now supported alongside the local source.
+    app = create_app(
+        task_database_path=(tmp_path / "tasks.sqlite").resolve(),
+        local_agent_server_endpoint=_LOCAL_ENDPOINT,
+        local_agent_server_assistant=_LOCAL_ASSISTANT,
+        allow_ungated_local_agent_source=True,
+    )
+    assert app.state.task_repository is not None
 
 
 @pytest.mark.parametrize(

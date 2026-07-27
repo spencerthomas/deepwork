@@ -30,6 +30,7 @@ from deepwork_api.application import (
     TaskService,
 )
 from deepwork_api.application.local_runner import LocalSource
+from deepwork_api.domain import TaskEventName, TaskStatus
 from deepwork_api.ports import Clock, TaskRepository, system_clock
 from deepwork_api.transport import build_auth_router, build_router, build_session_guard, build_task_router
 
@@ -116,8 +117,6 @@ def create_app(
             )
         if not allow_ungated_local_agent_source:
             raise LocalSourceGatedError(_LOCAL_SOURCE_GATED_MESSAGE)
-        if task_database_path is not None:
-            raise ValueError("classic deployment mode does not support persistent task recovery")
         if classic_deployment_assistant is None:
             raise ValueError("classic deployment mode requires an explicit assistant identifier")
         if not classic_deployment_credential:
@@ -148,8 +147,6 @@ def create_app(
         # a deliberate, documented local-development opt-in.
         if not allow_ungated_local_agent_source:
             raise LocalSourceGatedError(_LOCAL_SOURCE_GATED_MESSAGE)
-        if task_database_path is not None:
-            raise ValueError("local Agent Server mode does not support persistent task recovery")
         if local_agent_server_assistant is None:
             raise ValueError("local Agent Server mode requires an explicit assistant identifier")
         local_source = _build_local_agent_server_source(
@@ -162,11 +159,37 @@ def create_app(
         )
     task_service = TaskService(repository=task_repository, runner=task_runner)
 
+    async def _reconcile_orphaned_tasks() -> None:
+        """Fail-closed recovery for real-agent mode after a process restart.
+
+        Persisted history and results survive as-is. A task that was still in
+        flight when the process died has lost its in-memory follower and thread
+        binding, so it is marked failed with an honest reason instead of being
+        shown as running forever. Fixture mode keeps its own recovery behavior.
+        """
+        for task in await task_repository.list_tasks():
+            if task.status.is_terminal:
+                continue
+            await task_repository.append_event(
+                task.task_id,
+                name=TaskEventName.RUN_COMPLETED,
+                data=(
+                    ("runId", task.run_id),
+                    ("status", "failed"),
+                    ("safeReason", "The service restarted while this task was in progress."),
+                    ("resultAvailable", False),
+                ),
+                status=TaskStatus.FAILED,
+                clear_pending_interrupt=True,
+            )
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         try:
             if sqlite_repository is not None:
                 await sqlite_repository.initialize()
+                if isinstance(task_runner, LocalAgentServerRunner):
+                    await _reconcile_orphaned_tasks()
             yield
         finally:
             try:
@@ -238,7 +261,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--task-database",
         type=Path,
-        help="Absolute path to a SQLite database for local fixture persistence.",
+        default=(
+            Path(os.environ["DEEPWORK_TASK_DB"]) if os.environ.get("DEEPWORK_TASK_DB") else None
+        ),
+        help=(
+            "Absolute path to a SQLite database for durable task persistence "
+            "(fixture and real-agent modes). Defaults to the DEEPWORK_TASK_DB "
+            "environment variable."
+        ),
     )
     parser.add_argument(
         "--local-agent-server-endpoint",

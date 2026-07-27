@@ -22,7 +22,8 @@ Model resolution, in order:
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -32,7 +33,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from deepwork_agent.config import AgentConfig
 from deepwork_agent.graph import LocalAgentGraph, create_graph
 
-__all__ = ["DeterministicLocalModel", "build_model", "make_graph", "graph"]
+__all__ = ["DeterministicLocalModel", "build_model", "make_graph"]
 
 _MODEL_ENV = "DEEPWORK_AGENT_MODEL"
 _FAKE_ENV = "DEEPWORK_AGENT_FAKE"
@@ -133,7 +134,51 @@ def make_graph() -> LocalAgentGraph:
 
     The system prompt comes from ``DEEPWORK_AGENT_SYSTEM_PROMPT`` when set (the
     deployment-level edit point), otherwise the bundled default in
-    ``system_prompt.txt``.
+    ``system_prompt.txt``. When ``DEEPWORK_SANDBOX=langsmith`` is set (with
+    ``LANGSMITH_API_KEY``), each task executes with a real LangSmith sandbox
+    backend — full filesystem plus shell/code execution — instead of the
+    in-memory virtual filesystem.
     """
     system_prompt = os.environ.get("DEEPWORK_AGENT_SYSTEM_PROMPT") or None
-    return create_graph(model=build_model(), config=AgentConfig(), system_prompt=system_prompt)
+    sandbox_factory = None
+    if os.environ.get("DEEPWORK_SANDBOX") == "langsmith":
+        sandbox_factory = _langsmith_sandbox_factory()
+    return create_graph(
+        model=build_model(),
+        config=AgentConfig(),
+        system_prompt=system_prompt,
+        sandbox_factory=sandbox_factory,
+    )
+
+
+def _langsmith_sandbox_factory() -> Callable[[], object] | None:
+    """A context-manager factory yielding a fresh per-task LangSmith sandbox backend.
+
+    Returns ``None`` when no LangSmith credential is configured, so the graph
+    falls back to the in-memory virtual filesystem. The credential is read only
+    here, in the composition seam — never in the graph.
+    """
+    api_key = os.environ.get("LANGSMITH_API_KEY")
+    if not api_key:
+        return None
+
+    @contextmanager
+    def factory() -> Iterator[object]:
+        from deepagents.backends import LangSmithSandbox
+        from langsmith.sandbox import SandboxClient
+
+        client = SandboxClient(api_key=api_key, timeout=30.0)
+        sandbox = client.create_sandbox(name="deepwork-task", timeout=120)
+        try:
+            yield LangSmithSandbox(sandbox)
+        finally:
+            try:
+                client.delete_sandbox(sandbox.id)
+            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
+                pass
+            try:
+                client.close()
+            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
+                pass
+
+    return factory

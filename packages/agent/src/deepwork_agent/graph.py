@@ -116,6 +116,7 @@ def create_graph(
     config: AgentConfig | None = None,
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     system_prompt: str | None = None,
+    sandbox_factory: Callable[[], Any] | None = None,
 ) -> LocalAgentGraph:
     """Create the local plan-first graph around a public Deep Agents executor.
 
@@ -138,12 +139,30 @@ def create_graph(
         msg = "model must be an initialized BaseChatModel"
         raise TypeError(msg)
     settings = config or AgentConfig()
-    executor = create_deep_agent(
-        model=model,
-        tools=list(tools),
-        system_prompt=system_prompt or DEEP_WORK_SYSTEM_PROMPT,
-        name="deep-work-executor",
-    )
+
+    def build_executor(backend: Any | None) -> Any:
+        # The full Deep Agents executor: planning, virtual filesystem, and
+        # subagents by default. When a sandbox backend is supplied, its
+        # filesystem and shell/execute run in that real sandbox instead.
+        return create_deep_agent(
+            model=model,
+            tools=list(tools),
+            system_prompt=system_prompt or DEEP_WORK_SYSTEM_PROMPT,
+            name="deep-work-executor",
+            backend=backend,
+        )
+
+    # Build once when there is no per-task sandbox; otherwise build per task
+    # around a fresh sandbox from the injected factory.
+    default_executor = build_executor(None) if sandbox_factory is None else None
+
+    def _invoke_executor(execution_request: str) -> dict[str, object]:
+        message = HumanMessage(content=execution_request)
+        if sandbox_factory is None:
+            return cast("dict[str, object]", default_executor.invoke({"messages": [message]}))
+        with sandbox_factory() as backend:
+            executor = build_executor(backend)
+            return cast("dict[str, object]", executor.invoke({"messages": [message]}))
 
     def execute(state: AgentState) -> dict[str, object]:
         execution_request = numbered_plan_request(
@@ -151,7 +170,7 @@ def create_graph(
             list(state["plan"]),
             closing="Execute the approved plan and provide the final answer.",
         )
-        result = executor.invoke({"messages": [HumanMessage(content=execution_request)]})
+        result = _invoke_executor(execution_request)
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),

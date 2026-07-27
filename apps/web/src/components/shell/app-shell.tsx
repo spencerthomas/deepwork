@@ -91,7 +91,6 @@ function WorkspaceSelector() {
  * client mode must stay unmistakable, so this strip is not dismissible.
  */
 function RuntimeBanner() {
-  const fixture = taskClient.mode === "fixture";
   return (
     <div className="flex min-h-10 items-center justify-center gap-2 bg-brand px-4 text-center text-[13px] text-brand-foreground">
       <span className="font-medium">{runtimeDisclosure(taskClient.mode)}</span>
@@ -99,7 +98,7 @@ function RuntimeBanner() {
         className="hidden rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
         title={taskClient.apiBaseUrl}
       >
-        {fixture ? "fixture" : taskClient.apiBaseUrl}
+        {shellRuntimePresentation(taskClient.mode).workspaceLabel}
       </span>
     </div>
   );

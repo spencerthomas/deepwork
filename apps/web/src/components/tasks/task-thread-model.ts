@@ -86,7 +86,7 @@ export function buildThread(
         items.push({
           kind: "marker",
           id: event.id,
-          label: "Evidence recorded",
+          label: "Sources recorded",
           detail: typeof event.data.summary === "string" ? event.data.summary : undefined,
         });
         break;

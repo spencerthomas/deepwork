@@ -23,7 +23,7 @@ const eventLabels: Record<string, string> = {
   "content.delta": "Narration",
   "plan.proposed": "Plan proposed",
   "plan.updated": "Plan updated",
-  "evidence.recorded": "Evidence recorded",
+  "evidence.recorded": "Sources recorded",
   "interrupt.requested": "Approval requested",
   "decision.recorded": "Decision recorded",
   "run.completed": "Run completed",

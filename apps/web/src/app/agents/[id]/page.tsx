@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AgentDetail } from "@/components/agents/agent-detail";
 
 export const metadata = {
-  title: "Task runner — Deep Work",
+  title: "Agent — Deep Work",
 };
 
 /** Only the task-runner inspection route exists; every other id is a real 404. */

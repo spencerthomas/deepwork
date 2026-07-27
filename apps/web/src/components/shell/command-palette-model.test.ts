@@ -44,13 +44,13 @@ describe("buildCommandResults", () => {
     expect(results.some((item) => item.id === "route:agents")).toBe(false);
   });
 
-  it("keeps the new-task hint mode-aware without inferring an API runner", () => {
+  it("uses a plain, task-focused new-task hint in both modes", () => {
     const apiHint = routeCommands("api").find((item) => item.id === "route:new")?.hint;
     const fixtureHint = routeCommands("fixture").find((item) => item.id === "route:new")?.hint;
 
-    expect(apiHint).toBe("Dispatch through the configured API");
-    expect(apiHint).not.toMatch(/local|runner|deterministic/i);
-    expect(fixtureHint).toBe("Dispatch the in-browser fixture runner");
+    expect(apiHint).toBe("Start a task");
+    expect(fixtureHint).toBe("Start a task");
+    expect(`${apiHint} ${fixtureHint}`).not.toMatch(/dispatch|runner|adapter|transport/i);
   });
 
   it("matches the task title case-insensitively and ignores surrounding space", () => {

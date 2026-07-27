@@ -128,7 +128,7 @@ export function NewTask() {
     <AppShell active="Tasks" sidebar={sidebar}>
       <div className="mx-auto max-w-2xl">
         <PageHeader
-          eyebrow="Dispatch"
+          eyebrow="New task"
           title="New task"
           description={runtimeCopy.newTaskDescription}
         />
@@ -244,7 +244,7 @@ export function NewTask() {
               className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
             >
               {creating ? (
-                "Dispatching…"
+                "Starting…"
               ) : (
                 <>
                   <Sparkles className="size-3.5" /> Dispatch

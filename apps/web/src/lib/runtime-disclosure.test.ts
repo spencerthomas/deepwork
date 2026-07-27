@@ -3,33 +3,28 @@ import { describe, expect, it } from "vitest";
 import { runtimeDisclosure, shellRuntimePresentation } from "./runtime-disclosure";
 
 describe("runtimeDisclosure", () => {
-  it("discloses the deterministic in-browser adapter in fixture mode", () => {
-    expect(runtimeDisclosure("fixture")).toBe(
-      "Demo fixture mode — deterministic in-browser data, no external providers.",
-    );
+  it("uses plain demo language in demo mode", () => {
+    expect(runtimeDisclosure("fixture")).toBe("Demo — runs in your browser with sample data.");
   });
 
-  it("does not infer the backend runner or provider state in API mode", () => {
+  it("uses plain connected language in api mode", () => {
     const disclosure = runtimeDisclosure("api");
 
-    expect(disclosure).toBe(
-      "API mode — backend runner and external-provider availability are unknown to this client.",
-    );
-    expect(disclosure).not.toContain("embedded deterministic runner");
-    expect(disclosure).not.toContain("providers are unavailable");
+    expect(disclosure).toBe("Connected to your Deep Work workspace.");
+    expect(disclosure).not.toMatch(/adapter|transport|runner|provider|api mode/i);
   });
 
-  it("labels the persistent shell from the selected client mode", () => {
+  it("labels the shell in plain, user-facing words", () => {
     expect(shellRuntimePresentation("fixture")).toEqual({
-      workspaceLabel: "fixture",
-      workspaceSubtitle: "in-browser workspace",
+      workspaceLabel: "Demo",
+      workspaceSubtitle: "sample data",
     });
     expect(shellRuntimePresentation("api")).toEqual({
-      workspaceLabel: "configured API",
-      workspaceSubtitle: "control surface",
+      workspaceLabel: "Workspace",
+      workspaceSubtitle: "connected",
     });
     expect(Object.values(shellRuntimePresentation("api")).join(" ")).not.toMatch(
-      /local|runner|provider/i,
+      /adapter|transport|runner|provider/i,
     );
   });
 });

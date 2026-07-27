@@ -1,12 +1,12 @@
 import type { ClientMode } from "./task-types";
 
 /**
- * Browser-safe runtime language for task surfaces.
+ * User-facing copy for task surfaces, written for the person and their task.
  *
- * Fixture mode can describe the adapter this bundle selects directly. API mode
- * only identifies the configured HTTP boundary; runner, provider, and
- * durability details stay unknown unless an explicit capability response
- * proves them elsewhere.
+ * The voice is plain and outcome-first: say what the user can do and what will
+ * happen, not how the system is wired. Demo mode says it is a demo; connected
+ * mode speaks to the user's workspace. No transport, adapter, or provider
+ * vocabulary leaks into the interface.
  */
 export interface TaskRuntimePresentation {
   taskConnectionLabel: string;
@@ -30,75 +30,67 @@ export interface TaskRuntimePresentation {
   settingsStatusSourceDescription: string;
 }
 
+// Shared, mode-independent copy: the user doesn't care how the task is routed.
+const START_A_TASK = "Start a task";
+const DESCRIBE_TASK =
+  "Describe what you want done. Deep Work suggests a plan and checks with you before it starts.";
+const APPROVALS =
+  "When a task needs your go-ahead, it waits here. You decide what happens next — nothing runs without you.";
+const INBOX_DESCRIPTION = "Hand off a task, watch it work, adjust the plan, and get the result.";
+const INBOX_EMPTY =
+  "Start your first task. Describe what you want, and Deep Work plans it, checks with you, then does it.";
+const RUN_EVENTS = "as the task runs";
+const SETTINGS_MODE =
+  "Demo runs in your browser with sample data. Connected runs your tasks through your Deep Work workspace.";
+
 export function taskRuntimePresentation(
   mode: ClientMode,
-  apiBaseUrl = "the configured API",
+  apiBaseUrl = "your workspace",
 ): TaskRuntimePresentation {
   if (mode === "fixture") {
     return {
-      taskConnectionLabel: "Client adapter",
-      taskOriginLabel: "In-browser fixture runner",
+      taskConnectionLabel: "Mode",
+      taskOriginLabel: "Demo",
       dispatchTargetLabel: "Agent",
-      newTaskDescription:
-        "Describe the outcome you want. The in-browser fixture runner proposes a plan and waits for your approval before executing.",
-      sourceSelectionDescription:
-        "Unavailable — fixture mode uses deterministic in-browser data with no external providers.",
-      commandNewTaskHint: "Dispatch the in-browser fixture runner",
-      approvalsDescription:
-        "Every in-browser fixture run paused for your decision. The available verbs come from each interruption itself — nothing here acts without you.",
-      activityDescription:
-        "Task status plus every fixture event this browser session has observed. Reloading the page resets fixture task history; entries are ordered by task and event id — no timestamps are fabricated.",
-      activitySessionNote:
-        "Fixture events are captured in this browser; status rows come from the in-browser fixture task list.",
-      inboxEyebrow: "Workspace · fixture",
-      inboxDescription:
-        "Dispatch work to the in-browser fixture runner, watch it run, steer the plan, and review the evidence behind every result.",
-      inboxScope:
-        "Search and filters cover deterministic fixture tasks in this browser session. This client does not provide global or provider-side search.",
-      inboxEmptyDescription:
-        "Dispatch your first task to the in-browser fixture runner — it plans, pauses for your approval, and reports evidence-backed results.",
-      runEventSource: "replayed and appended by the in-browser fixture adapter",
+      newTaskDescription: DESCRIBE_TASK,
+      sourceSelectionDescription: "Demo mode — sample data, no account needed.",
+      commandNewTaskHint: START_A_TASK,
+      approvalsDescription: APPROVALS,
+      activityDescription: "Everything Deep Work has done on your tasks, most recent first.",
+      activitySessionNote: "This is a demo — your tasks reset when you reload the page.",
+      inboxEyebrow: "Demo",
+      inboxDescription: INBOX_DESCRIPTION,
+      inboxScope: "Search covers the tasks in this demo.",
+      inboxEmptyDescription: INBOX_EMPTY,
+      runEventSource: RUN_EVENTS,
       runFilesDescription:
-        "File changes appear here when a coding-capable source runs the task. The in-browser fixture runner produces a text brief only.",
-      runFooter: "Deterministic in-browser fixture runner · no external providers",
-      settingsModeDescription:
-        "fixture selects a deterministic in-browser adapter with no network; api sends requests to the configured Deep Work API.",
-      settingsConnectionTarget: "in-browser fixture adapter",
-      settingsStatusSourceDescription:
-        "This fixture status was synthesized by the in-browser adapter, not fetched from an API.",
+        "Files show up here when a task changes code. This demo returns a written answer only.",
+      runFooter: "Demo · sample data",
+      settingsModeDescription: SETTINGS_MODE,
+      settingsConnectionTarget: "demo",
+      settingsStatusSourceDescription: "This status is from the demo.",
     };
   }
 
   return {
-    taskConnectionLabel: "Client transport",
-    taskOriginLabel: "Task via configured API",
-    dispatchTargetLabel: "Dispatch target",
-    newTaskDescription:
-      "Describe the outcome you want. The task request is sent to the configured API. Any plan or approval request shown here comes from events returned by that API.",
-    sourceSelectionDescription:
-      "Source selection is unavailable in this client. API-side execution and provider configuration are not inferred.",
-    commandNewTaskHint: "Dispatch through the configured API",
-    approvalsDescription:
-      "Approval requests returned by the configured API. The available verbs come from each interruption itself — nothing here acts without you.",
-    activityDescription:
-      "Task status plus every event this browser session has observed from the configured API. Entries are ordered by task and event id — no timestamps are fabricated. Server-side retention is not inferred.",
-    activitySessionNote:
-      "Streamed events are captured while a task page is open in this tab; status rows come from the configured API task list.",
-    inboxEyebrow: "Workspace · API",
-    inboxDescription:
-      "Send work through the configured API, inspect returned task events, steer reported plans, and review the evidence attached to each result.",
-    inboxScope:
-      "Search and filters cover tasks loaded from the configured API in this session. This client does not provide global or provider-side search.",
-    inboxEmptyDescription:
-      "Dispatch your first task through the configured API — the server-side execution implementation and provider configuration remain unknown to this client.",
-    runEventSource: "replayed and appended from the configured API",
-    runFilesDescription:
-      "File changes appear here when a coding-capable source runs the task. This client has not established that capability for the configured API.",
-    runFooter: "Task via configured API · server-side execution and provider configuration unknown",
-    settingsModeDescription:
-      "api sends requests to the configured Deep Work API; fixture selects a deterministic in-browser adapter with no network.",
+    taskConnectionLabel: "Mode",
+    taskOriginLabel: "Connected",
+    dispatchTargetLabel: "Agent",
+    newTaskDescription: DESCRIBE_TASK,
+    sourceSelectionDescription: "Connected to your Deep Work workspace.",
+    commandNewTaskHint: START_A_TASK,
+    approvalsDescription: APPROVALS,
+    activityDescription: "Everything Deep Work has done on your tasks, most recent first.",
+    activitySessionNote: "Live updates appear while a task is open.",
+    inboxEyebrow: "Workspace",
+    inboxDescription: INBOX_DESCRIPTION,
+    inboxScope: "Search covers your tasks.",
+    inboxEmptyDescription: INBOX_EMPTY,
+    runEventSource: RUN_EVENTS,
+    runFilesDescription: "Files show up here when a task changes code.",
+    runFooter: "Connected to your workspace",
+    settingsModeDescription: SETTINGS_MODE,
     settingsConnectionTarget: apiBaseUrl,
-    settingsStatusSourceDescription:
-      "api means this status was fetched from the configured API. It does not identify the server-side execution implementation, provider configuration, or durability model.",
+    settingsStatusSourceDescription: "This status is live from your workspace.",
   };
 }

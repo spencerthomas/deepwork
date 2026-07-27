@@ -31,7 +31,7 @@ export function SchedulesView() {
       <PageHeader
         eyebrow="Recurring"
         title="Schedules"
-        description="Recurring task dispatch. Availability follows the runtime-reported durable jobs capability; authoring is not yet implemented in this client."
+        description="Set tasks to run on a schedule. This isn't available yet."
       />
 
       <div className="rounded-2xl border border-border bg-card p-8">

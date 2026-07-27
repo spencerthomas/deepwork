@@ -68,7 +68,7 @@ export function RuntimeSection() {
       <GroupLabel>Evidence</GroupLabel>
       <Card>
         <Row
-          title="Evidence class"
+          title="Source"
           description="How the runtime labels the provenance of everything it produces."
           control={<MonoValue>{status?.evidenceClass ?? "unknown"}</MonoValue>}
         />

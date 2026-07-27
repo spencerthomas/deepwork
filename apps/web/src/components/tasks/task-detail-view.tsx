@@ -198,7 +198,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           count={plan.steps.length}
         />
       )}
-      <SidebarItem icon={ShieldCheck} label="Evidence" count={evidence.length} />
+      <SidebarItem icon={ShieldCheck} label="Sources" count={evidence.length} />
       <div className="my-3 h-px bg-border" />
       <SidebarLabel>Other tasks</SidebarLabel>
       {tasks

@@ -32,15 +32,15 @@ function behaviorContract(mode: "api" | "fixture") {
     },
     {
       title: "Waits for approval",
-      detail: "Every run pauses at an interrupt. Nothing executes until a reviewer decides.",
+      detail: "Every task pauses for your approval before anything runs. You decide what happens next.",
     },
     {
       title: runtimeCopy.executionTitle,
       detail: runtimeCopy.executionDetail,
     },
     {
-      title: "Records evidence",
-      detail: "Each run produces an evidence-backed brief tied to the recorded events.",
+      title: "Shows its work",
+      detail: "Each task returns a clear result, with the steps and sources behind it.",
     },
   ];
 }
@@ -238,7 +238,7 @@ export function AgentDetail() {
 
           <div className="border-t border-border px-4 py-2.5">
             <span className="font-mono text-[11px] text-muted-foreground">
-              reported by {mode === "fixture" ? "the local fixture adapter" : apiBaseUrl}
+              reported by {mode === "fixture" ? "the demo" : apiBaseUrl}
             </span>
           </div>
         </div>

@@ -2,12 +2,12 @@
 export type PanelTab = "status" | "stream" | "evidence" | "files" | "git" | "trace";
 
 export const PANEL_TABS: readonly { key: PanelTab; label: string }[] = [
-  { key: "status", label: "Status" },
-  { key: "stream", label: "Stream" },
-  { key: "evidence", label: "Evidence" },
+  { key: "status", label: "Overview" },
+  { key: "stream", label: "Activity" },
+  { key: "evidence", label: "Sources" },
   { key: "files", label: "Files" },
-  { key: "git", label: "Git" },
-  { key: "trace", label: "Trace" },
+  { key: "git", label: "Changes" },
+  { key: "trace", label: "Details" },
 ];
 
 const PANEL_TAB_KEYS: readonly PanelTab[] = PANEL_TABS.map((tab) => tab.key);

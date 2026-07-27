@@ -8,26 +8,25 @@ export interface ShellRuntimePresentation {
 export function shellRuntimePresentation(mode: ClientMode): ShellRuntimePresentation {
   if (mode === "fixture") {
     return {
-      workspaceLabel: "fixture",
-      workspaceSubtitle: "in-browser workspace",
+      workspaceLabel: "Demo",
+      workspaceSubtitle: "sample data",
     };
   }
 
   return {
-    workspaceLabel: "configured API",
-    workspaceSubtitle: "control surface",
+    workspaceLabel: "Workspace",
+    workspaceSubtitle: "connected",
   };
 }
 
 /**
- * Describe only runtime facts the browser can prove from its selected adapter.
- * API mode identifies a transport boundary, not the server-side runner or its
- * provider configuration.
+ * A short, plain line about where the user's tasks run — for the person, not
+ * the system. Demo says it is a demo; connected speaks to their workspace.
  */
 export function runtimeDisclosure(mode: ClientMode): string {
   if (mode === "fixture") {
-    return "Demo fixture mode — deterministic in-browser data, no external providers.";
+    return "Demo — runs in your browser with sample data.";
   }
 
-  return "API mode — backend runner and external-provider availability are unknown to this client.";
+  return "Connected to your Deep Work workspace.";
 }

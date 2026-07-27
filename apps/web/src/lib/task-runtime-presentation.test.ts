@@ -6,59 +6,39 @@ function renderedCopy(copy: ReturnType<typeof taskRuntimePresentation>): string 
   return Object.values(copy).join("\n");
 }
 
+// Language the interface must never surface to a user: it describes plumbing,
+// not the person or their task.
+const SYSTEMS_JARGON =
+  /client adapter|client transport|dispatch target|interruption|provider configuration|server-side (?:execution|retention)|fixture runner|deterministic in-browser|not inferred|no external providers/i;
+
 describe("taskRuntimePresentation", () => {
-  it("labels fixture task surfaces as deterministic and in-browser", () => {
-    const copy = taskRuntimePresentation("fixture");
-    const text = renderedCopy(copy);
-
-    expect(copy.taskConnectionLabel).toBe("Client adapter");
-    expect(copy.taskOriginLabel).toBe("In-browser fixture runner");
-    expect(copy.dispatchTargetLabel).toBe("Agent");
-    expect(text).toMatch(/deterministic/i);
-    expect(text).toMatch(/in-browser fixture/i);
-    expect(text).toMatch(/no external providers/i);
-    expect(copy.runEventSource).not.toMatch(/api/i);
-  });
-
-  it("uses transport-only API labels without inferring a runner identity", () => {
+  it("speaks to the user and the task, without systems jargon (connected)", () => {
     const copy = taskRuntimePresentation("api", "https://deepwork.example.test");
     const text = renderedCopy(copy);
 
-    expect(copy.taskConnectionLabel).toBe("Client transport");
-    expect(copy.taskOriginLabel).toBe("Task via configured API");
-    expect(copy.dispatchTargetLabel).toBe("Dispatch target");
+    expect(text).not.toMatch(SYSTEMS_JARGON);
+    expect(copy.newTaskDescription).toMatch(/describe what you want/i);
+    expect(copy.approvalsDescription).toMatch(/you decide|go-ahead/i);
+    expect(copy.commandNewTaskHint).toBe("Start a task");
+    // The workspace address is still shown verbatim in settings.
     expect(copy.settingsConnectionTarget).toBe("https://deepwork.example.test");
-    expect(text).toContain(
-      "server-side execution implementation and provider configuration remain unknown",
-    );
-    expect(text).toContain("Server-side retention is not inferred");
-    expect(text).not.toMatch(
-      /runner|local (?:api|agent|runtime)|deterministic api|embedded|no external providers|providers? (?:are|is) unavailable/i,
-    );
-    expect(copy.newTaskDescription).toContain("events returned by that API");
-    expect(copy.newTaskDescription).not.toMatch(/configured API.+(?:plans|pauses)/i);
   });
 
-  it("keeps API task, approval, activity, run-panel, command, and settings copy fail closed", () => {
-    const copy = taskRuntimePresentation("api");
-    const surfaces = [
-      copy.newTaskDescription,
-      copy.sourceSelectionDescription,
-      copy.commandNewTaskHint,
-      copy.approvalsDescription,
-      copy.activityDescription,
-      copy.inboxDescription,
-      copy.runEventSource,
-      copy.runFilesDescription,
-      copy.runFooter,
-      copy.settingsStatusSourceDescription,
-    ].join("\n");
+  it("uses plain demo language in demo mode", () => {
+    const copy = taskRuntimePresentation("fixture");
+    const text = renderedCopy(copy);
 
-    expect(surfaces).toContain("configured API");
-    expect(surfaces).toMatch(/unknown|not inferred|not established/i);
-    expect(surfaces).not.toMatch(/runner|deterministic|embedded|local API/i);
-    expect(copy.settingsModeDescription).toContain(
-      "fixture selects a deterministic in-browser adapter",
+    expect(text).not.toMatch(SYSTEMS_JARGON);
+    expect(text).toMatch(/demo/i);
+    expect(copy.taskOriginLabel).toBe("Demo");
+  });
+
+  it("describes the task the same plain way regardless of mode", () => {
+    expect(taskRuntimePresentation("api").newTaskDescription).toBe(
+      taskRuntimePresentation("fixture").newTaskDescription,
+    );
+    expect(taskRuntimePresentation("api").approvalsDescription).toBe(
+      taskRuntimePresentation("fixture").approvalsDescription,
     );
   });
 });

@@ -8,7 +8,7 @@ export type ActivityFilter = (typeof ACTIVITY_FILTERS)[number];
 export const ACTIVITY_FILTER_LABELS: Record<ActivityFilter, string> = {
   all: "All events",
   plans: "Plans",
-  evidence: "Evidence",
+  evidence: "Sources",
   decisions: "Decisions",
   completions: "Completions",
 };
@@ -26,7 +26,7 @@ export const EVENT_LABELS: Record<TaskEventName, string> = {
   "content.delta": "Output streamed",
   "plan.proposed": "Plan proposed",
   "plan.updated": "Plan updated",
-  "evidence.recorded": "Evidence recorded",
+  "evidence.recorded": "Sources recorded",
   "interrupt.requested": "Approval requested",
   "decision.recorded": "Decision recorded",
   "run.completed": "Run completed",

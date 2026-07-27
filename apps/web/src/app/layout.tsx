@@ -13,7 +13,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Deep Work — an operations room for your agents",
   description:
-    "Delegate meaningful work, supervise execution live, approve what matters, and inspect the evidence behind every result.",
+    "Delegate meaningful work, supervise execution live, approve what matters, and see the work behind every result.",
 };
 
 export const viewport: Viewport = {

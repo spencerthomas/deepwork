@@ -395,6 +395,96 @@ def test_rubric_verification_attaches_a_passed_verdict_to_the_result() -> None:
     ]
 
 
+def test_memory_enabled_graph_reads_persisted_workspace_memory() -> None:
+    """Memory saved in the store (by a prior task) is injected into a later task."""
+    from langgraph.store.memory import InMemoryStore
+
+    from deepwork_agent.graph import _MEMORY_KEY, _MEMORY_NAMESPACE
+
+    # Seed durable workspace memory as if an earlier task had learned it.
+    store = InMemoryStore()
+    store.put(
+        _MEMORY_NAMESPACE,
+        _MEMORY_KEY,
+        {"content": "MEMORY_FACT_TEAL: the workspace's brand color is teal."},
+    )
+
+    model = RecordingFakeChatModel(
+        messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])
+    )
+    graph = create_graph(model=model, enable_memory=True, store=store)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "memory-run"}})
+
+    graph.invoke(initial_state("A task that should run with workspace memory."), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})), run_config
+    )
+
+    assert result["status"] == "completed"
+    # The persisted memory reaches the executor as long-term context.
+    assert any("MEMORY_FACT_TEAL" in call for call in model.calls), (
+        "persisted workspace memory was not injected into the executor"
+    )
+
+
+def test_memory_enabled_graph_saves_remembered_notes_and_strips_them() -> None:
+    """A <remember> block is persisted to the store and removed from the answer."""
+    from langgraph.store.memory import InMemoryStore
+
+    from deepwork_agent.graph import _MEMORY_KEY, _MEMORY_NAMESPACE, _read_workspace_memory
+
+    store = InMemoryStore()
+    model = RecordingFakeChatModel(
+        messages=iter(
+            [
+                AIMessage(content="- Do the work."),
+                AIMessage(
+                    content=(
+                        "Here is the result.\n"
+                        "<remember>The user prefers metric units.</remember>"
+                    )
+                ),
+            ]
+        )
+    )
+    graph = create_graph(model=model, enable_memory=True, store=store)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "memory-write"}})
+
+    graph.invoke(initial_state("A task that teaches a durable preference."), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})), run_config
+    )
+
+    # The note is saved to durable memory...
+    assert "The user prefers metric units." in _read_workspace_memory(store)
+    assert store.get(_MEMORY_NAMESPACE, _MEMORY_KEY) is not None
+    # ...and stripped from the answer shown to the user.
+    assert result["final_answer"] == "Here is the result."
+    assert "<remember>" not in result["final_answer"]
+
+
+def test_memory_enabled_without_a_store_is_a_safe_no_op() -> None:
+    """Memory needs a store; without one, tasks still run (just without memory)."""
+    model = RecordingFakeChatModel(
+        messages=iter(
+            [
+                AIMessage(content="- Do the work."),
+                AIMessage(content="Done. <remember>ignored</remember>"),
+            ]
+        )
+    )
+    graph = create_graph(model=model, enable_memory=True, store=None)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "no-store"}})
+
+    graph.invoke(initial_state("A task with memory requested but no store."), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})), run_config
+    )
+    assert result["status"] == "completed"
+    # Even without a store, a stray <remember> block is still stripped from the answer.
+    assert result["final_answer"] == "Done."
+
+
 def test_create_graph_rejects_an_uninitialized_verifier_model() -> None:
     from deepwork_agent import RubricCriterion, RubricSpec
 

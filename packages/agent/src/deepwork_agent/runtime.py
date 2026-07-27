@@ -144,12 +144,17 @@ def make_graph() -> LocalAgentGraph:
     if os.environ.get("DEEPWORK_SANDBOX") == "langsmith":
         sandbox_factory = _langsmith_sandbox_factory()
     rubric = _default_rubric() if os.environ.get("DEEPWORK_VERIFY") == "1" else None
+    enable_memory = os.environ.get("DEEPWORK_MEMORY") == "1"
+    # On a hosted Agent Server the runtime injects a persistent store into the
+    # graph at execution time, so workspace memory survives across tasks; leaving
+    # ``store`` unset here lets that server-provided store flow through.
     return create_graph(
         model=build_model(),
         config=AgentConfig(),
         system_prompt=system_prompt,
         sandbox_factory=sandbox_factory,
         rubric=rubric,
+        enable_memory=enable_memory,
     )
 
 

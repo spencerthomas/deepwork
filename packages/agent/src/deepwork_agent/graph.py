@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from deepagents import create_deep_agent
+from deepagents import RubricMiddleware, create_deep_agent
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
@@ -30,6 +30,12 @@ from deepwork_agent._planning import (
 )
 from deepwork_agent.config import AgentConfig
 from deepwork_agent.state import AgentInput, AgentOutput, AgentState
+from deepwork_agent.verification import (
+    RubricSpec,
+    VerificationRecord,
+    build_verification_record,
+    render_rubric,
+)
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -158,6 +164,8 @@ def create_graph(
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     system_prompt: str | None = None,
     sandbox_factory: Callable[[], Any] | None = None,
+    rubric: RubricSpec | None = None,
+    verifier_model: BaseChatModel | None = None,
 ) -> LocalAgentGraph:
     """Create the local plan-first graph around a public Deep Agents executor.
 
@@ -168,45 +176,88 @@ def create_graph(
         config: Local-only graph settings.
         checkpointer: Optional caller-owned checkpoint saver. The default is an
             ephemeral in-memory saver suitable for local pause/resume.
+        system_prompt: Optional executor persona; defaults to the bundled prompt.
+        sandbox_factory: Optional per-task sandbox backend factory.
+        rubric: Optional rubric. When supplied, each execution is verified (and
+            repaired within the rubric's bounded iteration cap) by the public
+            ``deepagents.RubricMiddleware``, and a ``verification`` record is
+            attached to the result. A passed verdict is rubric coverage, never
+            ground truth.
+        verifier_model: Optional separate grader model; the executor model
+            verifies its own work when omitted.
 
     Returns:
         A compiled LangGraph that plans, requests approval, and then executes.
 
     Raises:
-        TypeError: If ``model`` is not an initialized chat model.
+        TypeError: If ``model`` or ``verifier_model`` is not an initialized model.
 
     """
     if not isinstance(model, BaseChatModel):
         msg = "model must be an initialized BaseChatModel"
         raise TypeError(msg)
+    if verifier_model is not None and not isinstance(verifier_model, BaseChatModel):
+        msg = "verifier_model must be an initialized BaseChatModel"
+        raise TypeError(msg)
     settings = config or AgentConfig()
 
     base_system_prompt = system_prompt or DEEP_WORK_SYSTEM_PROMPT
+    grader_model = verifier_model or model
+    rubric_text = render_rubric(rubric) if rubric is not None else None
 
-    def build_executor(backend: Any | None, prompt: str | None = None) -> Any:
+    def build_executor(
+        backend: Any | None,
+        prompt: str | None = None,
+        on_evaluation: Callable[[Mapping[str, object]], None] | None = None,
+    ) -> Any:
         # The full Deep Agents executor: planning, virtual filesystem, and
         # subagents by default. When a sandbox backend is supplied, its
-        # filesystem and shell/execute run in that real sandbox instead.
+        # filesystem and shell/execute run in that real sandbox instead. When a
+        # rubric is configured, the public RubricMiddleware verifies and repairs
+        # the work within the rubric's bounded iteration cap.
+        middleware = None
+        if rubric is not None:
+            middleware = [
+                RubricMiddleware(
+                    model=grader_model,
+                    max_iterations=rubric.max_iterations,
+                    on_evaluation=on_evaluation,
+                )
+            ]
         return create_deep_agent(
             model=model,
             tools=list(tools),
             system_prompt=prompt or base_system_prompt,
             name="deep-work-executor",
             backend=backend,
+            middleware=middleware,  # ty: ignore[invalid-argument-type]  # RubricState extends AgentState
         )
 
-    # Build once when there is neither a per-task sandbox nor a per-run prompt
-    # override; otherwise build per task around a fresh sandbox and/or prompt.
-    default_executor = build_executor(None) if sandbox_factory is None else None
+    # Build once only when there is no per-task sandbox, no per-run prompt, and
+    # no rubric (a rubric needs a fresh per-task evaluations sink).
+    default_executor = build_executor(None) if (sandbox_factory is None and rubric is None) else None
 
-    def _invoke_executor(execution_request: str, prompt: str | None = None) -> dict[str, object]:
+    def _invoke_executor(
+        execution_request: str, prompt: str | None = None
+    ) -> tuple[dict[str, object], VerificationRecord | None]:
         message = HumanMessage(content=execution_request)
+        payload: dict[str, object] = {"messages": [message]}
+        if rubric_text is not None:
+            payload["rubric"] = rubric_text
+        evaluations: list[Mapping[str, object]] = []
+
+        def run(executor: Any) -> dict[str, object]:  # noqa: ANN401
+            return cast("dict[str, object]", executor.invoke(payload))
+
         if sandbox_factory is None:
-            executor = default_executor if prompt is None else build_executor(None, prompt)
-            return cast("dict[str, object]", executor.invoke({"messages": [message]}))
-        with sandbox_factory() as backend:
-            executor = build_executor(backend, prompt)
-            return cast("dict[str, object]", executor.invoke({"messages": [message]}))
+            prebuilt = default_executor is not None and prompt is None
+            executor = default_executor if prebuilt else build_executor(None, prompt, evaluations.append)
+            result = run(executor)
+        else:
+            with sandbox_factory() as backend:
+                result = run(build_executor(backend, prompt, evaluations.append))
+        verification = build_verification_record(rubric, evaluations) if rubric is not None else None
+        return result, verification
 
     def execute(state: AgentState, config: RunnableConfig) -> dict[str, object]:
         execution_request = numbered_plan_request(
@@ -217,7 +268,7 @@ def create_graph(
         # Prefer the prompt delivered in state (always reaches a hosted graph),
         # then the run config, then the graph default inside build_executor.
         prompt_override = _state_prompt_override(state) or _run_prompt_override(config)
-        result = _invoke_executor(execution_request, prompt_override)
+        result, verification = _invoke_executor(execution_request, prompt_override)
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),
@@ -226,11 +277,14 @@ def create_graph(
         if final_message is None:
             msg = "deep agent completed without a final AI message"
             raise ValueError(msg)
-        return {
+        update: dict[str, object] = {
             "status": "completed",
             "final_answer": message_text(final_message),
             "final_answer_trust": "untrusted",
         }
+        if verification is not None:
+            update["verification"] = verification
+        return update
 
     builder = StateGraph(
         AgentState,  # ty: ignore[invalid-argument-type]  # Runtime-valid TypedDict

@@ -4,6 +4,8 @@ from typing import Literal, NotRequired
 
 from typing_extensions import TypedDict
 
+from deepwork_agent.verification import VerificationRecord
+
 AgentStatus = Literal["planned", "approved", "completed", "rejected"]
 ApprovalDecision = Literal["approve", "reject", "respond"]
 ApprovalStatus = Literal["pending", "approve", "reject", "respond", "not-required"]
@@ -31,6 +33,7 @@ class AgentState(AgentInput, total=False):
     status: AgentStatus
     final_answer: str
     final_answer_trust: ContentTrust
+    verification: VerificationRecord
 
 
 class AgentOutput(TypedDict):
@@ -44,6 +47,7 @@ class AgentOutput(TypedDict):
     status: AgentStatus
     final_answer: str
     final_answer_trust: ContentTrust
+    verification: NotRequired[VerificationRecord]
 
 
 class ApprovalRequest(TypedDict):

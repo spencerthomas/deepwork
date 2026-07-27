@@ -333,6 +333,80 @@ def test_create_graph_requires_an_initialized_chat_model() -> None:
         create_graph(model="provider:model")  # type: ignore[arg-type]
 
 
+def _grader_call(call_id: str, result: str, criteria: list[dict[str, Any]]) -> AIMessage:
+    return AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "GraderResponse",
+                "args": {"result": result, "explanation": "Verdict.", "criteria": criteria},
+                "id": call_id,
+            }
+        ],
+    )
+
+
+def test_rubric_verification_attaches_a_passed_verdict_to_the_result() -> None:
+    """With a rubric, execution is graded and a verification record is returned."""
+    from deepwork_agent import RubricCriterion, RubricSpec
+
+    rubric = RubricSpec(
+        rubric_id="test-general",
+        version=1,
+        criteria=(
+            RubricCriterion(criterion_id="addresses-task", text="Addresses the task."),
+            RubricCriterion(criterion_id="no-fabrication", text="No fabricated claims."),
+        ),
+        max_iterations=2,
+    )
+    model = _model(
+        "- Do the work.",
+        "Plan-first agents separate intent from execution, which aids review.",
+    )
+    verifier = ToolBindingFakeChatModel(
+        messages=iter(
+            [
+                _grader_call(
+                    "g1",
+                    "satisfied",
+                    [
+                        {"name": "addresses-task", "passed": True},
+                        {"name": "no-fabrication", "passed": True},
+                    ],
+                )
+            ]
+        )
+    )
+    graph = create_graph(model=model, rubric=rubric, verifier_model=verifier)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "rubric-pass"}})
+
+    graph.invoke(initial_state("Explain plan-first agents."), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})), run_config
+    )
+
+    assert result["status"] == "completed"
+    verification = result["verification"]
+    assert verification["status"] == "passed"
+    assert verification["rubric_id"] == "test-general"
+    assert [entry["criterion_id"] for entry in verification["verdicts"][0]["results"]] == [
+        "addresses-task",
+        "no-fabrication",
+    ]
+
+
+def test_create_graph_rejects_an_uninitialized_verifier_model() -> None:
+    from deepwork_agent import RubricCriterion, RubricSpec
+
+    rubric = RubricSpec(
+        rubric_id="test-general",
+        version=1,
+        criteria=(RubricCriterion(criterion_id="addresses-task", text="Addresses the task."),),
+    )
+    with pytest.raises(TypeError, match="verifier_model must be an initialized"):
+        create_graph(model=_model("x"), rubric=rubric, verifier_model="nope")  # type: ignore[arg-type]
+
+
 class RecordingFakeChatModel(ToolBindingFakeChatModel):
     """Fake model that records the full text of every prompt it is called with."""
 

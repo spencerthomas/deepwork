@@ -143,11 +143,57 @@ def make_graph() -> LocalAgentGraph:
     sandbox_factory = None
     if os.environ.get("DEEPWORK_SANDBOX") == "langsmith":
         sandbox_factory = _langsmith_sandbox_factory()
+    rubric = _default_rubric() if os.environ.get("DEEPWORK_VERIFY") == "1" else None
     return create_graph(
         model=build_model(),
         config=AgentConfig(),
         system_prompt=system_prompt,
         sandbox_factory=sandbox_factory,
+        rubric=rubric,
+    )
+
+
+def _default_rubric() -> object:
+    """A general-purpose result rubric applied to every task when verification is on.
+
+    Enabled with ``DEEPWORK_VERIFY=1``. The public ``RubricMiddleware`` grades the
+    result against these criteria and repairs within a bounded iteration cap; a
+    passed verdict is rubric coverage, never ground truth. ``DEEPWORK_VERIFY_ITERS``
+    caps the grader loop (default 1: a single verify pass, no repair).
+    """
+    from deepwork_agent.verification import RubricCriterion, RubricSpec
+
+    try:
+        iters = int(os.environ.get("DEEPWORK_VERIFY_ITERS", "1"))
+    except ValueError:
+        iters = 1
+    iters = max(1, min(iters, 3))
+    return RubricSpec(
+        rubric_id="deepwork-general-default",
+        version=1,
+        criteria=(
+            RubricCriterion(
+                criterion_id="addresses-task",
+                text="The result directly and completely addresses what the task asked for.",
+            ),
+            RubricCriterion(
+                criterion_id="evidence-grounded",
+                text=(
+                    "Claims are grounded in the supplied inputs or the work actually "
+                    "performed, with inference distinguished from evidence."
+                ),
+            ),
+            RubricCriterion(
+                criterion_id="no-unsupported-claims",
+                text="The result makes no fabricated or unverifiable factual claims.",
+            ),
+            RubricCriterion(
+                criterion_id="clear-and-actionable",
+                text="The result is concise, clear, and actionable for the reader.",
+                required=False,
+            ),
+        ),
+        max_iterations=iters,
     )
 
 

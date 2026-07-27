@@ -204,16 +204,23 @@ but leveraged in code approximately nowhere.
 
 ## Execution log
 
+All executed work landed on `claude/deepwork-code-audit-igcla3` (PR #110).
+
 | Milestone | Status | Evidence |
 |---|---|---|
-| A2.1 Bound execution (reliability middleware + caps) | **executed** | `7489c35660a32a19ed69caea6de2ff0103a0b25c`; +13 agent unit tests (config bounds, middleware wiring, bounded-run integration); agent suite 90 passed, ruff/ty at baseline |
-| A2.2 Safe credential injection | **executed** | `473d7a7f6a4de6b6b8633fff3d701b92eea77944`; `build_git_credential_setup_command` + 3 injection-safety tests; ruff debt 19→16 in the touched file |
-| A2.3 GitHub App tokens | planned (next) | — |
-| all others | planned | — |
+| X0 Truth baseline — docs reconciliation | **executed** | SECURITY/RELIABILITY/PLANS/README now carry honest "implementation status" sections separating target from shipped |
+| X0 Truth baseline — `packages/agent` green | **executed** | package now passes its full gate (lock-check, ruff, ruff format, `ty`, pytest); `ty` went 5→0, ruff 19→0 — it was red on `main` |
+| A2.1 Bound execution (reliability middleware + caps) | **executed** | LangChain call-limit + retry middleware, `recursion_limit`, validated `AgentConfig` envelope; unit tests |
+| A2.2 Safe credential injection | **executed** | `build_git_credential_setup_command` (`shlex.quote`) + injection/lifecycle/no-leak tests; guaranteed sandbox teardown; secret-free failure |
+| A2.5 Runtime-native system prompt | **executed** | replaced the foreign Codex-CLI prompt; restored untrusted-content clause; test asserts no foreign-tool markers |
+| B1.1 Declare `langchain-openai` | **executed** | pinned `==1.4.0` + relocked so the OpenRouter path is not dead-on-arrival |
+| A2.3 GitHub App tokens (the C1 fix) | planned (next) | needs a real GitHub App (id/private key/installation) — implementable + unit-testable here, live-verifiable only with credentials |
+| A2.4, A1.x, B1.2, B2.x, B3.x | planned | see per-axis sections; several gated on the Node ≥24.14 toolchain and hosted platform accounts |
 
-> Verification note: `packages/agent` ran green under its own CI commands
-> (`ruff`, `ruff format --check`, `ty`, `pytest --disable-socket`) via a Python 3.12
-> venv. The pre-existing 16 `ruff` / 5 `ty` findings in `packages/agent` predate this
-> work and belong to milestone **X0** (fix `main`); the executed milestones add none.
-> `apps/api` and the web/TS suites were **not** run here (they need the repo's
-> Node ≥24.14 toolchain, unavailable in this environment).
+> Verification note: `packages/agent` ran fully green under its own CI commands
+> (`uv lock --check`, `ruff`, `ruff format --check`, `ty`, `pytest --disable-socket`)
+> via a Python 3.12 venv. `apps/api` and the web/TS suites were **not** run here
+> (they need the repo's Node ≥24.14 toolchain, unavailable in this environment), so
+> no unverified changes were made to those tiers. Milestones requiring external
+> infrastructure (GitHub App, LangSmith Platform) or the web toolchain are marked
+> planned, not executed — they are not claimed complete.

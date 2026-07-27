@@ -1,5 +1,6 @@
 """Pydantic wire contracts."""
 
+from deepwork_api.contracts.settings import SystemPromptResponse, SystemPromptUpdateRequest
 from deepwork_api.contracts.status import DemoStatusResponse, HealthResponse, WorkerStatusResponse
 from deepwork_api.contracts.tasks import (
     CancellationAcceptedResponse,
@@ -26,6 +27,8 @@ __all__ = [
     "PlanUpdateRequest",
     "PlanUpdateResponse",
     "ProblemResponse",
+    "SystemPromptResponse",
+    "SystemPromptUpdateRequest",
     "TaskAcceptedResponse",
     "TaskCreateRequest",
     "TaskDetailResponse",

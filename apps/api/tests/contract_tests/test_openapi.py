@@ -44,4 +44,5 @@ def test_openapi_documents_the_versioned_surface() -> None:
         "/api/v1/tasks/{task_id}/plan",
         "/api/v1/tasks/{task_id}/result",
         "/api/v1/tasks/{task_id}/trace",
+        "/api/v1/settings/prompt",
     }

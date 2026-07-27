@@ -20,6 +20,7 @@ from deepwork_api.domain import (
     StaleInterruptError,
     TaskSourceContractError,
     TaskSourceUnavailableError,
+    normalize_system_prompt,
 )
 
 DEFAULT_LOCAL_AGENT_SERVER_URL = "http://127.0.0.1:2024"
@@ -61,6 +62,7 @@ class _RunsClient(Protocol):
         assistant_id: str,
         *,
         input: Mapping[str, object] | None = None,
+        config: Mapping[str, object] | None = None,
         command: Mapping[str, object] | None = None,
         stream_mode: str | Sequence[str] = "values",
         stream_resumable: bool = False,
@@ -336,14 +338,20 @@ class LocalAgentServerSource:
             return LocalAgentServerStatus(available=False, code="unavailable")
         return LocalAgentServerStatus(available=True, code="ready")
 
-    async def start(self, objective: str) -> LocalRunReference:
-        """Create a thread and a resumable run for the integrated agent graph."""
+    async def start(self, objective: str, *, system_prompt: str | None = None) -> LocalRunReference:
+        """Create a thread and a resumable run for the integrated agent graph.
+
+        When ``system_prompt`` is supplied (the workspace's editable prompt), it
+        flows to the graph as ``configurable.system_prompt`` so execution uses
+        that persona for this run only, without redeploying the agent.
+        """
 
         normalized = _bounded_text(
             objective,
             field="task objective",
             maximum=MAX_TASK_OBJECTIVE_LENGTH,
         )
+        run_config = _run_config(system_prompt)
         try:
             thread = _as_mapping(
                 await self.client.threads.create(
@@ -355,6 +363,7 @@ class LocalAgentServerSource:
                 thread_id,
                 self.assistant_id,
                 input={"task": normalized},
+                config=run_config,
                 stream_mode=("values", "updates"),
                 stream_resumable=True,
                 multitask_strategy="reject",
@@ -601,6 +610,18 @@ def _bounded_text(value: object, *, field: str, maximum: int) -> str:
     return normalized
 
 
+def _run_config(system_prompt: str | None) -> dict[str, object] | None:
+    """Build the run config carrying an optional per-run system prompt.
+
+    Returns ``None`` when there is no override so the run uses the graph's
+    default persona and the request stays byte-for-byte the prior shape.
+    """
+    normalized = normalize_system_prompt(system_prompt)
+    if normalized is None:
+        return None
+    return {"configurable": {"system_prompt": normalized}}
+
+
 def _plan_revision(value: object, *, field: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= MAX_PLAN_REVISION:
         message = f"{field} is outside its supported bound"
@@ -812,11 +833,7 @@ def _stream_event(value: object) -> LocalStreamEvent:
         # node names and ignore the rest, rather than failing the whole stream on
         # what is only an informational progress event.
         nodes = tuple(
-            sorted(
-                key
-                for key in update
-                if isinstance(key, str) and _IDENTIFIER.fullmatch(key)
-            )
+            sorted(key for key in update if isinstance(key, str) and _IDENTIFIER.fullmatch(key))
         )
         return LocalStreamEvent(
             cursor=cursor,

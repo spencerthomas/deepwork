@@ -23,7 +23,7 @@ from deepwork_api.domain import (
     TaskSourceUnavailableError,
     TaskStatus,
 )
-from deepwork_api.ports import TaskRepository
+from deepwork_api.ports import PromptStore, TaskRepository
 
 _SOURCE_UNAVAILABLE_REASON = "The local agent source became unavailable."
 _SOURCE_CONTRACT_REASON = "The local agent source broke its supported contract."
@@ -73,7 +73,7 @@ class LocalState(Protocol):
 
 
 class LocalSource(Protocol):
-    async def start(self, objective: str) -> LocalRun: ...
+    async def start(self, objective: str, *, system_prompt: str | None = None) -> LocalRun: ...
     async def get_state(self, thread_id: str) -> LocalState: ...
     async def resume(
         self, thread_id: str, *, interrupt_id: str, decision: str, comment: str | None = None
@@ -90,6 +90,7 @@ class LocalAgentServerRunner:
 
     repository: TaskRepository
     source: LocalSource
+    prompt_store: PromptStore | None = None
     _threads: dict[str, str] = field(default_factory=dict, init=False)
     _tasks: dict[str, asyncio.Task[None]] = field(default_factory=dict, init=False)
     _review_comments: dict[tuple[str, str], str] = field(default_factory=dict, init=False)
@@ -101,8 +102,9 @@ class LocalAgentServerRunner:
     _closing: bool = field(default=False, init=False)
 
     async def create(self, *, title: str, objective: str) -> TaskSnapshot:
+        system_prompt = await self._current_system_prompt()
         try:
-            run = await self.source.start(objective)
+            run = await self.source.start(objective, system_prompt=system_prompt)
         except TaskSourceContractError:
             raise
         except Exception:
@@ -113,6 +115,20 @@ class LocalAgentServerRunner:
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)
         return task
+
+    async def _current_system_prompt(self) -> str | None:
+        """Read the workspace's editable prompt; never let it block task start.
+
+        A missing store means no override. A store that errors is treated as
+        "no override" rather than failing the task, so an editable-prompt
+        problem degrades to the deployment default instead of an outage.
+        """
+        if self.prompt_store is None:
+            return None
+        try:
+            return await self.prompt_store.get_system_prompt()
+        except Exception:
+            return None
 
     def start(self, task: TaskSnapshot, run: LocalRun) -> None:
         if self._closing or task.task_id in self._tasks:

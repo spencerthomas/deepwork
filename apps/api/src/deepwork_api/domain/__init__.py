@@ -7,6 +7,11 @@ from deepwork_api.domain.auth import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from deepwork_api.domain.prompt import (
+    MAX_SYSTEM_PROMPT_LENGTH,
+    SystemPromptTooLongError,
+    normalize_system_prompt,
+)
 from deepwork_api.domain.status import (
     Capability,
     CapabilityState,
@@ -52,17 +57,14 @@ from deepwork_api.domain.tasks import (
 )
 
 __all__ = [
-    "AuthError",
-    "InvalidCredentialError",
-    "Session",
-    "SessionExpiredError",
-    "SessionNotFoundError",
     "CANCELLATION_SAFE_REASON",
     "MAX_PLAN_REVISION",
     "MAX_PLAN_STEPS",
     "MAX_PLAN_STEP_LENGTH",
+    "MAX_SYSTEM_PROMPT_LENGTH",
     "MAX_TASK_OBJECTIVE_LENGTH",
     "MAX_TASK_RESULT_LENGTH",
+    "AuthError",
     "CancellationRecord",
     "Capability",
     "CapabilityState",
@@ -78,13 +80,18 @@ __all__ = [
     "EvidenceSource",
     "HealthStatus",
     "InterruptMismatchError",
+    "InvalidCredentialError",
     "InvalidEventCursorError",
     "PlanRevisionConflictError",
     "PlanUnavailableError",
     "PlanUpdateRecord",
     "ProcessState",
     "ProposedPlan",
+    "Session",
+    "SessionExpiredError",
+    "SessionNotFoundError",
     "StaleInterruptError",
+    "SystemPromptTooLongError",
     "TaskAlreadyResolvedError",
     "TaskCancellationUnsupportedError",
     "TaskEvent",
@@ -96,4 +103,5 @@ __all__ = [
     "TaskStatus",
     "WorkerDurability",
     "WorkerStatus",
+    "normalize_system_prompt",
 ]

@@ -179,6 +179,7 @@ class _FakeRuns:
         assistant_id: str,
         *,
         input: Mapping[str, object] | None = None,
+        config: Mapping[str, object] | None = None,
         command: Mapping[str, object] | None = None,
         stream_mode: str | Sequence[str] = "values",
         stream_resumable: bool = False,

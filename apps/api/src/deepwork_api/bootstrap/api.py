@@ -17,12 +17,13 @@ from fastapi.responses import JSONResponse
 from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
+from deepwork_api.adapters.prompt import InMemoryPromptStore, SQLitePromptStore
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
-from deepwork_api.adapters.trace import LangSmithTraceLocator
 from deepwork_api.adapters.sources.local import (
     LocalAgentServerSource,
     LocalSourceGatedError,
 )
+from deepwork_api.adapters.trace import LangSmithTraceLocator
 from deepwork_api.application import (
     AuthService,
     DeterministicFixtureRunner,
@@ -32,8 +33,14 @@ from deepwork_api.application import (
 )
 from deepwork_api.application.local_runner import LocalSource
 from deepwork_api.domain import TaskEventName, TaskStatus
-from deepwork_api.ports import Clock, TaskRepository, system_clock
-from deepwork_api.transport import build_auth_router, build_router, build_session_guard, build_task_router
+from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
+from deepwork_api.transport import (
+    build_auth_router,
+    build_router,
+    build_session_guard,
+    build_settings_router,
+    build_task_router,
+)
 
 _WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 _LOCAL_SOURCE_GATED_MESSAGE = (
@@ -82,6 +89,7 @@ def _build_trace_locator(*, api_key: str) -> LangSmithTraceLocator:
 def create_app(
     *,
     task_database_path: Path | None = None,
+    settings_database_path: Path | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
@@ -114,6 +122,14 @@ def create_app(
     else:
         sqlite_repository = SQLiteTaskRepository(task_database_path, clock=clock)
         task_repository = sqlite_repository
+    # The editable workspace system prompt is durable when a settings database is
+    # configured, otherwise process-local. It lives in its own small store rather
+    # than the versioned task schema.
+    prompt_store: PromptStore = (
+        SQLitePromptStore(settings_database_path)
+        if settings_database_path is not None
+        else InMemoryPromptStore()
+    )
     local_source: LocalAgentServerSource | None = None
     if classic_deployment_endpoint is not None:
         # Hosted classic LangSmith/LangGraph Deployment runtime. Mutually
@@ -137,6 +153,7 @@ def create_app(
         task_runner = LocalAgentServerRunner(
             repository=task_repository,
             source=cast("LocalSource", local_source),
+            prompt_store=prompt_store,
         )
     elif local_agent_server_endpoint is None:
         if local_agent_server_assistant is not None:
@@ -164,11 +181,10 @@ def create_app(
         task_runner = LocalAgentServerRunner(
             repository=task_repository,
             source=cast("LocalSource", local_source),
+            prompt_store=prompt_store,
         )
     task_service = TaskService(repository=task_repository, runner=task_runner)
-    trace_locator = (
-        _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
-    )
+    trace_locator = _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
 
     async def _reconcile_orphaned_tasks() -> None:
         """Fail-closed recovery for real-agent mode after a process restart.
@@ -206,6 +222,7 @@ def create_app(
             try:
                 await task_runner.close()
             finally:
+                await prompt_store.close()
                 if sqlite_repository is not None:
                     await sqlite_repository.close()
                 if local_source is not None:
@@ -225,14 +242,16 @@ def create_app(
     # read on the server and never returned; task routes are then guarded and the
     # /api/v1/auth routes are exposed. Without a key the API stays open (fixture
     # and local-development default).
-    auth_service = AuthService(store=InMemorySessionStore(), access_key=access_key) if access_key else None
+    auth_service = (
+        AuthService(store=InMemorySessionStore(), access_key=access_key) if access_key else None
+    )
     task_dependencies = [Depends(build_session_guard(auth_service))] if auth_service else None
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(web_origins or _WEB_ORIGINS),
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "OPTIONS"],
         allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
     )
 
@@ -265,6 +284,7 @@ def create_app(
             trace_locator=trace_locator,
         )
     )
+    app.include_router(build_settings_router(prompt_store, dependencies=task_dependencies))
     if auth_service is not None:
         app.include_router(build_auth_router(auth_service))
     app.state.task_repository = task_repository
@@ -287,6 +307,21 @@ def _parser() -> argparse.ArgumentParser:
             "Absolute path to a SQLite database for durable task persistence "
             "(fixture and real-agent modes). Defaults to the DEEPWORK_TASK_DB "
             "environment variable."
+        ),
+    )
+    parser.add_argument(
+        "--settings-database",
+        type=Path,
+        default=(
+            Path(os.environ["DEEPWORK_SETTINGS_DB"])
+            if os.environ.get("DEEPWORK_SETTINGS_DB")
+            else None
+        ),
+        help=(
+            "Absolute path to a small SQLite database for durable workspace "
+            "settings (the editable system prompt). Defaults to the "
+            "DEEPWORK_SETTINGS_DB environment variable, or a sibling of "
+            "--task-database when that is set."
         ),
     )
     parser.add_argument(
@@ -361,9 +396,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Local default stays loopback so nothing is exposed unless deliberately hosted.
     host = os.environ.get("DEEPWORK_HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", str(args.port)))
+    # Keep the durable setting alongside the task database unless overridden, so a
+    # single persistent volume covers both.
+    settings_database_path = args.settings_database
+    if settings_database_path is None and args.task_database is not None:
+        settings_database_path = args.task_database.with_name("settings.sqlite3")
     uvicorn.run(
         create_app(
             task_database_path=args.task_database,
+            settings_database_path=settings_database_path,
             local_agent_server_endpoint=args.local_agent_server_endpoint,
             local_agent_server_assistant=args.local_agent_server_assistant,
             allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,

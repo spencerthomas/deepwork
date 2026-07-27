@@ -427,6 +427,55 @@
         "title": "ProposedPlanResponse",
         "type": "object"
       },
+      "SystemPromptResponse": {
+        "additionalProperties": false,
+        "description": "The workspace's current system prompt and whether it overrides the default.",
+        "properties": {
+          "isDefault": {
+            "description": "True when no workspace override is set and the deployment default is used.",
+            "title": "Isdefault",
+            "type": "boolean"
+          },
+          "systemPrompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The stored workspace system prompt, or null when using the default.",
+            "title": "Systemprompt"
+          }
+        },
+        "required": [
+          "isDefault"
+        ],
+        "title": "SystemPromptResponse",
+        "type": "object"
+      },
+      "SystemPromptUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Set or clear the workspace system prompt.\n\nA null or blank prompt clears the override and reverts to the deployment\ndefault; a non-empty prompt is stored and governs subsequent runs.",
+        "properties": {
+          "systemPrompt": {
+            "anyOf": [
+              {
+                "maxLength": 100000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New system prompt, or null/blank to clear the override.",
+            "title": "Systemprompt"
+          }
+        },
+        "title": "SystemPromptUpdateRequest",
+        "type": "object"
+      },
       "TaskAcceptedResponse": {
         "additionalProperties": false,
         "description": "Queued task receipt returned before background work starts.",
@@ -765,6 +814,66 @@
           }
         },
         "summary": "Demo Status"
+      }
+    },
+    "/api/v1/settings/prompt": {
+      "get": {
+        "operationId": "get_prompt_api_v1_settings_prompt_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemPromptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Prompt",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "put_prompt_api_v1_settings_prompt_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemPromptUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemPromptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Prompt",
+        "tags": [
+          "settings"
+        ]
       }
     },
     "/api/v1/tasks": {

@@ -182,6 +182,7 @@ class FakeRuns:
         assistant_id: str,
         *,
         input: Mapping[str, object] | None = None,
+        config: Mapping[str, object] | None = None,
         command: Mapping[str, object] | None = None,
         stream_mode: str | Sequence[str] = "values",
         stream_resumable: bool = False,
@@ -197,6 +198,7 @@ class FakeRuns:
                 "thread_id": thread_id,
                 "assistant_id": assistant_id,
                 "input": input,
+                "config": config,
                 "command": command,
                 "stream_mode": stream_mode,
                 "stream_resumable": stream_resumable,
@@ -340,6 +342,7 @@ async def test_start_uses_official_thread_and_resumable_run_calls() -> None:
             "thread_id": "thread-official-1",
             "assistant_id": "deep-work-local-agent",
             "input": {"task": "Prepare a release brief"},
+            "config": None,
             "command": None,
             "stream_mode": ("values", "updates"),
             "stream_resumable": True,
@@ -347,6 +350,26 @@ async def test_start_uses_official_thread_and_resumable_run_calls() -> None:
             "durability": "sync",
         }
     ]
+
+
+async def test_start_forwards_system_prompt_as_run_config() -> None:
+    """A supplied workspace prompt reaches the run as configurable.system_prompt."""
+    source, client = _source()
+
+    await source.start("Prepare a release brief", system_prompt="  Always be terse.  ")
+
+    assert client.runs.create_calls[0]["config"] == {
+        "configurable": {"system_prompt": "Always be terse."}
+    }
+
+
+async def test_start_without_system_prompt_sends_no_run_config() -> None:
+    """No override keeps the request shape identical to before (config=None)."""
+    source, client = _source()
+
+    await source.start("Prepare a release brief")
+
+    assert client.runs.create_calls[0]["config"] is None
 
 
 async def test_close_releases_official_client_transport() -> None:

@@ -55,8 +55,10 @@ class _Source:
         self.events = events
         self.resume_comment: str | None = None
         self.state_reads = 0
+        self.start_system_prompts: list[str | None] = []
 
-    async def start(self, objective: str) -> _Run:
+    async def start(self, objective: str, *, system_prompt: str | None = None) -> _Run:
+        self.start_system_prompts.append(system_prompt)
         return _Run()
 
     async def get_state(self, thread_id: str) -> _State:
@@ -108,6 +110,36 @@ async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
 
 
 @pytest.mark.asyncio
+async def test_create_forwards_the_workspace_prompt_to_source_start() -> None:
+    # The editable workspace prompt must flow into the source's start call so the
+    # graph runs with that persona; no store means no override.
+    from deepwork_api.adapters.prompt import InMemoryPromptStore
+
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(
+        repository, source, prompt_store=InMemoryPromptStore("Always be terse.")
+    )
+    try:
+        await runner.create(title="t", objective="Do the thing")
+    finally:
+        await runner.close()
+
+    assert source.start_system_prompts == ["Always be terse."]
+
+
+async def test_create_without_a_prompt_store_sends_no_override() -> None:
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(repository, source)
+    try:
+        await runner.create(title="t", objective="Do the thing")
+    finally:
+        await runner.close()
+
+    assert source.start_system_prompts == [None]
+
+
 async def test_cancel_is_refused_without_a_source_cancel_capability() -> None:
     # The loopback Agent Server source exposes no cancel operation, so marking
     # the task terminal would leave the upstream run executing while reporting

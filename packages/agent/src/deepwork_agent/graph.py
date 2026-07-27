@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from deepagents import create_deep_agent
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -69,6 +70,30 @@ def _load_default_system_prompt() -> str:
 
 
 DEEP_WORK_SYSTEM_PROMPT = _load_default_system_prompt()
+
+# Upper bound on a per-run system-prompt override, so an editable in-app prompt
+# cannot grow without limit through the run config.
+_MAX_RUN_PROMPT_CHARS = 100_000
+
+
+def _run_prompt_override(config: RunnableConfig | None) -> str | None:
+    """Extract a per-run system-prompt override from the run config, if any.
+
+    The in-app prompt editor flows the workspace's current system prompt into a
+    run as ``configurable.system_prompt``. This reads it defensively: a missing,
+    non-string, empty, or over-long value falls back to the graph's baked-in
+    default rather than overriding it.
+    """
+    if not config:
+        return None
+    configurable = config.get("configurable") or {}
+    candidate = configurable.get("system_prompt")
+    if not isinstance(candidate, str):
+        return None
+    text = candidate.strip()
+    if not text:
+        return None
+    return text[:_MAX_RUN_PROMPT_CHARS]
 
 ToolLike = BaseTool | Callable[..., Any] | dict[str, Any]
 LocalAgentGraph = CompiledStateGraph[
@@ -140,37 +165,40 @@ def create_graph(
         raise TypeError(msg)
     settings = config or AgentConfig()
 
-    def build_executor(backend: Any | None) -> Any:
+    base_system_prompt = system_prompt or DEEP_WORK_SYSTEM_PROMPT
+
+    def build_executor(backend: Any | None, prompt: str | None = None) -> Any:
         # The full Deep Agents executor: planning, virtual filesystem, and
         # subagents by default. When a sandbox backend is supplied, its
         # filesystem and shell/execute run in that real sandbox instead.
         return create_deep_agent(
             model=model,
             tools=list(tools),
-            system_prompt=system_prompt or DEEP_WORK_SYSTEM_PROMPT,
+            system_prompt=prompt or base_system_prompt,
             name="deep-work-executor",
             backend=backend,
         )
 
-    # Build once when there is no per-task sandbox; otherwise build per task
-    # around a fresh sandbox from the injected factory.
+    # Build once when there is neither a per-task sandbox nor a per-run prompt
+    # override; otherwise build per task around a fresh sandbox and/or prompt.
     default_executor = build_executor(None) if sandbox_factory is None else None
 
-    def _invoke_executor(execution_request: str) -> dict[str, object]:
+    def _invoke_executor(execution_request: str, prompt: str | None = None) -> dict[str, object]:
         message = HumanMessage(content=execution_request)
         if sandbox_factory is None:
-            return cast("dict[str, object]", default_executor.invoke({"messages": [message]}))
+            executor = default_executor if prompt is None else build_executor(None, prompt)
+            return cast("dict[str, object]", executor.invoke({"messages": [message]}))
         with sandbox_factory() as backend:
-            executor = build_executor(backend)
+            executor = build_executor(backend, prompt)
             return cast("dict[str, object]", executor.invoke({"messages": [message]}))
 
-    def execute(state: AgentState) -> dict[str, object]:
+    def execute(state: AgentState, config: RunnableConfig) -> dict[str, object]:
         execution_request = numbered_plan_request(
             state["task"],
             list(state["plan"]),
             closing="Execute the approved plan and provide the final answer.",
         )
-        result = _invoke_executor(execution_request)
+        result = _invoke_executor(execution_request, _run_prompt_override(config))
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),

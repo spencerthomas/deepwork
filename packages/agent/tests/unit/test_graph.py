@@ -331,3 +331,87 @@ def test_create_graph_requires_an_initialized_chat_model() -> None:
     """Provider strings cannot make the package select credentials implicitly."""
     with pytest.raises(TypeError, match="initialized BaseChatModel"):
         create_graph(model="provider:model")  # type: ignore[arg-type]
+
+
+class RecordingFakeChatModel(ToolBindingFakeChatModel):
+    """Fake model that records the full text of every prompt it is called with."""
+
+    calls: list[str] = Field(default_factory=list)
+
+    def _generate(
+        self,
+        messages: Sequence[Any],
+        stop: list[str] | None = None,
+        run_manager: Any = None,  # noqa: ANN401
+        **kwargs: Any,  # noqa: ANN401
+    ) -> Any:  # noqa: ANN401
+        self.calls.append("\n".join(message.text for message in messages))
+        return super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+
+@pytest.mark.parametrize(
+    ("config", "expected"),
+    [
+        (None, None),
+        ({}, None),
+        ({"configurable": {}}, None),
+        ({"configurable": {"system_prompt": None}}, None),
+        ({"configurable": {"system_prompt": ""}}, None),
+        ({"configurable": {"system_prompt": "   "}}, None),
+        ({"configurable": {"system_prompt": 123}}, None),
+        ({"configurable": {"system_prompt": "  Be terse.  "}}, "Be terse."),
+    ],
+)
+def test_run_prompt_override_reads_defensively(config: object, expected: str | None) -> None:
+    """A missing, blank, or non-string override falls back to the baked-in default."""
+    from deepwork_agent.graph import _run_prompt_override
+
+    assert _run_prompt_override(cast("Any", config)) == expected
+
+
+def test_run_prompt_override_is_length_bounded() -> None:
+    """An over-long in-app prompt is truncated, never passed through unbounded."""
+    from deepwork_agent.graph import _MAX_RUN_PROMPT_CHARS, _run_prompt_override
+
+    huge = "x" * (_MAX_RUN_PROMPT_CHARS + 5_000)
+    result = _run_prompt_override({"configurable": {"system_prompt": huge}})
+    assert result is not None
+    assert len(result) == _MAX_RUN_PROMPT_CHARS
+
+
+def test_per_run_system_prompt_override_reaches_the_executor() -> None:
+    """The in-app prompt flows into execution via configurable.system_prompt."""
+    marker = "DEEPWORK_OVERRIDE_MARKER_9f3a"
+    model = RecordingFakeChatModel(
+        messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])
+    )
+    graph = create_graph(model=model)
+    run_config = cast(
+        "RunnableConfig",
+        {"configurable": {"thread_id": "override-run", "system_prompt": marker}},
+    )
+
+    graph.invoke(initial_state("A task the workspace prompt should govern."), run_config)
+    graph.invoke(Command(resume=validate_approval_response({"decision": "approve"})), run_config)
+
+    # The planning call never carries the persona prompt; the execution call must.
+    assert any(marker in call for call in model.calls), (
+        "per-run system_prompt override did not reach the deep-agent executor"
+    )
+
+
+def test_without_override_the_default_system_prompt_governs_execution() -> None:
+    """With no override, the baked-in Deep Work prompt still reaches execution."""
+    from deepwork_agent.graph import DEEP_WORK_SYSTEM_PROMPT
+
+    probe = DEEP_WORK_SYSTEM_PROMPT[:40]
+    model = RecordingFakeChatModel(
+        messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])
+    )
+    graph = create_graph(model=model)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "default-run"}})
+
+    graph.invoke(initial_state("A task governed by the default prompt."), run_config)
+    graph.invoke(Command(resume=validate_approval_response({"decision": "approve"})), run_config)
+
+    assert any(probe in call for call in model.calls)

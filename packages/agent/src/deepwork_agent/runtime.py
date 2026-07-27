@@ -162,6 +162,8 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
     if not api_key:
         return None
 
+    github_token = os.environ.get("DEEPWORK_GITHUB_TOKEN")
+
     @contextmanager
     def factory() -> Iterator[object]:
         from deepagents.backends import LangSmithSandbox
@@ -169,6 +171,8 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
 
         client = SandboxClient(api_key=api_key, timeout=30.0)
         sandbox = client.create_sandbox(name="deepwork-task", timeout=120)
+        if github_token:
+            _configure_sandbox_github(sandbox, github_token)
         try:
             yield LangSmithSandbox(sandbox)
         finally:
@@ -182,3 +186,25 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
                 pass
 
     return factory
+
+
+def _configure_sandbox_github(sandbox: object, token: str) -> None:
+    """Give the sandbox a scoped GitHub credential for push/PR, server-side only.
+
+    Writes a git credential helper and identity inside the sandbox so the agent
+    can push and open PRs. The token is passed straight to the sandbox and never
+    logged or returned; it is a short-lived, repo-scoped token supplied by the
+    application, not a reusable secret placed in agent-visible task content.
+    """
+    setup = (
+        "git config --global credential.helper store && "
+        f"printf 'https://x-access-token:%s@github.com\\n' '{token}' > ~/.git-credentials && "
+        "chmod 600 ~/.git-credentials && "
+        "git config --global user.name 'Deep Work' && "
+        "git config --global user.email 'agent@deepwork.local' && "
+        "git config --global url.'https://github.com/'.insteadOf 'git@github.com:'"
+    )
+    try:
+        sandbox.run(setup)  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - a failed setup must not crash task execution
+        pass

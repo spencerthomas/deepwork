@@ -24,6 +24,7 @@ from deepwork_api.application import (
     TaskSourceUnavailableError,
     TaskStatus,
 )
+from deepwork_api.ports.trace import TraceLocator
 from deepwork_api.contracts import (
     CancellationAcceptedResponse,
     DecisionAcceptedResponse,
@@ -48,6 +49,7 @@ def build_task_router(
     service: TaskService,
     *,
     dependencies: list | None = None,
+    trace_locator: TraceLocator | None = None,
 ) -> APIRouter:
     """Build the shared internal task API around an injected service.
 
@@ -107,6 +109,24 @@ def build_task_router(
                 "Task does not have a completed result.",
             )
         return TaskResultResponse.from_domain(task)
+
+    @router.get("/{task_id}/trace")
+    async def get_task_trace(task_id: TaskPath) -> JSONResponse:
+        """Return the run's trace link, or an honest unavailable state."""
+        try:
+            task = await service.get_task(task_id)
+        except TaskNotFoundError:
+            return _problem(404, "task_not_found", "Task was not found.")
+        trace_url = None
+        if trace_locator is not None and task.run_id:
+            trace_url = await trace_locator.locate(task.run_id)
+        return JSONResponse(
+            content={
+                "taskId": task.task_id,
+                "traceUrl": trace_url,
+                "state": "available" if trace_url else "unavailable",
+            }
+        )
 
     @router.get("/{task_id}/events", response_model=None)
     async def task_events(

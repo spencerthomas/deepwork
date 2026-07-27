@@ -18,6 +18,7 @@ from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
+from deepwork_api.adapters.trace import LangSmithTraceLocator
 from deepwork_api.adapters.sources.local import (
     LocalAgentServerSource,
     LocalSourceGatedError,
@@ -72,6 +73,12 @@ def _build_classic_deployment_source(
     )
 
 
+def _build_trace_locator(*, api_key: str) -> LangSmithTraceLocator:
+    """Build the LangSmith trace locator; test seam."""
+
+    return LangSmithTraceLocator(api_key=api_key)
+
+
 def create_app(
     *,
     task_database_path: Path | None = None,
@@ -83,6 +90,7 @@ def create_app(
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
     web_origins: tuple[str, ...] | None = None,
+    trace_api_key: str | None = None,
     clock: Clock = system_clock,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
@@ -158,6 +166,9 @@ def create_app(
             source=cast("LocalSource", local_source),
         )
     task_service = TaskService(repository=task_repository, runner=task_runner)
+    trace_locator = (
+        _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
+    )
 
     async def _reconcile_orphaned_tasks() -> None:
         """Fail-closed recovery for real-agent mode after a process restart.
@@ -199,6 +210,8 @@ def create_app(
                     await sqlite_repository.close()
                 if local_source is not None:
                     await local_source.close()
+                if trace_locator is not None:
+                    await trace_locator.close()
 
     app = FastAPI(
         title="Deep Work API fixture scaffold",
@@ -245,7 +258,13 @@ def create_app(
         return cast("JSONResponse", await http_exception_handler(request, error))
 
     app.include_router(build_router(status_service))
-    app.include_router(build_task_router(task_service, dependencies=task_dependencies))
+    app.include_router(
+        build_task_router(
+            task_service,
+            dependencies=task_dependencies,
+            trace_locator=trace_locator,
+        )
+    )
     if auth_service is not None:
         app.include_router(build_auth_router(auth_service))
     app.state.task_repository = task_repository
@@ -331,6 +350,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "LANGSMITH_API_KEY"
     )
     access_key = os.environ.get("DEEPWORK_ACCESS_KEY")
+    trace_api_key = os.environ.get("LANGSMITH_API_KEY")
     raw_origins = os.environ.get("DEEPWORK_WEB_ORIGINS")
     web_origins = (
         tuple(origin.strip() for origin in raw_origins.split(",") if origin.strip())
@@ -352,6 +372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             classic_deployment_credential=classic_credential,
             access_key=access_key,
             web_origins=web_origins,
+            trace_api_key=trace_api_key,
         ),
         host=host,
         port=port,

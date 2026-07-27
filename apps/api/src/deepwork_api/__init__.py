@@ -25,6 +25,7 @@ def create_app(
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
     web_origins: tuple[str, ...] | None = None,
+    trace_api_key: str | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> FastAPI:
     """Load and create the local application only when explicitly called.
@@ -52,6 +53,7 @@ def create_app(
         "classic_deployment_credential": classic_deployment_credential,
         "access_key": access_key,
         "web_origins": web_origins,
+        "trace_api_key": trace_api_key,
     }
     # Forward an explicit clock only when supplied; otherwise the bootstrap
     # default (system_clock) applies, so this facade never imports it directly.

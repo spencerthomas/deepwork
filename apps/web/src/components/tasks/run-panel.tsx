@@ -85,6 +85,30 @@ export function RunPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
   const [streamFilter, setStreamFilter] = useState<ActivityFilter>("all");
+  const [trace, setTrace] = useState<{ state: "loading" | "available" | "unavailable"; url?: string }>({
+    state: "loading",
+  });
+  useEffect(() => {
+    if (tab !== "trace") return;
+    let cancelled = false;
+    setTrace({ state: "loading" });
+    fetch(`/api/v1/tasks/${encodeURIComponent(selected.taskId)}/trace`)
+      .then(async (response) => {
+        if (cancelled) return;
+        const body = response.ok ? await response.json() : null;
+        if (body?.state === "available" && typeof body.traceUrl === "string") {
+          setTrace({ state: "available", url: body.traceUrl });
+        } else {
+          setTrace({ state: "unavailable" });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTrace({ state: "unavailable" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, selected.taskId]);
   const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
   const runtimeCopy = taskRuntimePresentation(mode);
 
@@ -371,10 +395,28 @@ export function RunPanel({
             body="Branches, commits, and draft PRs appear here when a coding task runs against a connected repository."
           />
         )}
-        {tab === "trace" && (
+        {tab === "trace" && trace.state === "available" && trace.url && (
+          <div className="flex flex-col items-start gap-2 p-4">
+            <p className="text-sm text-muted-foreground">
+              Every step this task took — model calls, tools, and timings — was recorded.
+            </p>
+            <a
+              href={trace.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-brand-foreground"
+            >
+              See exactly what the agent did
+            </a>
+          </div>
+        )}
+        {tab === "trace" && trace.state === "loading" && (
+          <p className="p-4 text-sm text-muted-foreground">Looking up this task's trace…</p>
+        )}
+        {tab === "trace" && trace.state === "unavailable" && (
           <UnavailableTab
-            title="No trace backend"
-            body="Run traces link out to your observability platform when an external source executes the task."
+            title="No trace for this task"
+            body="A full step-by-step trace appears here when the task ran with tracing turned on."
           />
         )}
       </div>

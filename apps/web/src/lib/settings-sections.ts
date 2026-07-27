@@ -3,7 +3,7 @@
  * Only sections that really work in the local product are listed.
  */
 
-export const SETTINGS_SECTION_IDS = ["appearance", "runtime", "about"] as const;
+export const SETTINGS_SECTION_IDS = ["appearance", "prompt", "runtime", "about"] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
@@ -20,6 +20,26 @@ export interface SettingsGroup {
 }
 
 export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
+  {
+    label: "Agent",
+    items: [
+      {
+        id: "prompt",
+        label: "System prompt",
+        keywords: [
+          "prompt",
+          "instructions",
+          "persona",
+          "behavior",
+          "behaviour",
+          "system",
+          "guidance",
+          "rules",
+          "tone",
+        ],
+      },
+    ],
+  },
   {
     label: "Workspace",
     items: [

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Cpu, Info, Palette, Search } from "lucide-react";
+import { ArrowLeft, Cpu, Info, MessageSquareText, Palette, Search } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -14,16 +14,19 @@ import { cn } from "@/lib/utils";
 
 import { AboutSection } from "./about-section";
 import { AppearanceSection } from "./appearance-section";
+import { PromptSection } from "./prompt-section";
 import { RuntimeSection } from "./runtime-section";
 
 const sectionIcons: Record<SettingsSectionId, ComponentType<{ className?: string }>> = {
   appearance: Palette,
+  prompt: MessageSquareText,
   runtime: Cpu,
   about: Info,
 };
 
 const sectionBodies: Record<SettingsSectionId, () => ReactNode> = {
   appearance: () => <AppearanceSection />,
+  prompt: () => <PromptSection />,
   runtime: () => <RuntimeSection />,
   about: () => <AboutSection />,
 };

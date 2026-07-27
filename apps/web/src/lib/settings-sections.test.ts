@@ -15,6 +15,7 @@ describe("resolveSettingsSection", () => {
 
   it("resolves every known section id", () => {
     expect(resolveSettingsSection(["appearance"])).toBe("appearance");
+    expect(resolveSettingsSection(["prompt"])).toBe("prompt");
     expect(resolveSettingsSection(["runtime"])).toBe("runtime");
     expect(resolveSettingsSection(["about"])).toBe("about");
   });
@@ -31,9 +32,10 @@ describe("resolveSettingsSection", () => {
 });
 
 describe("settings catalog", () => {
-  it("exposes only real sections under the Workspace group", () => {
-    expect(SETTINGS_GROUPS.map((group) => group.label)).toEqual(["Workspace"]);
+  it("exposes the Agent and Workspace groups and their real sections", () => {
+    expect(SETTINGS_GROUPS.map((group) => group.label)).toEqual(["Agent", "Workspace"]);
     expect(ALL_SETTINGS_SECTIONS.map((section) => section.id)).toEqual([
+      "prompt",
       "appearance",
       "runtime",
       "about",
@@ -44,7 +46,7 @@ describe("settings catalog", () => {
     expect(
       filterSettingsGroups("RUN").flatMap((group) => group.items.map((item) => item.id)),
     ).toEqual(["runtime"]);
-    expect(filterSettingsGroups("  ")).toHaveLength(1);
+    expect(filterSettingsGroups("  ")).toHaveLength(2);
     expect(filterSettingsGroups("nothing-matches")).toEqual([]);
   });
 
@@ -56,6 +58,8 @@ describe("settings catalog", () => {
     expect(idsFor("diagnostics")).toEqual(["runtime"]);
     expect(idsFor("version")).toEqual(["about"]);
     expect(idsFor("license")).toEqual(["about"]);
+    expect(idsFor("persona")).toEqual(["prompt"]);
+    expect(idsFor("instructions")).toEqual(["prompt"]);
   });
 
   it("gives every section at least one keyword", () => {

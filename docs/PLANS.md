@@ -28,9 +28,20 @@ review_boundary: canonical
 This is the canonical program-level plan. Wave 0 installed the repository knowledge
 system, accepted the 43 product/architecture decisions with recorded amendments,
 preserved 39 stable feature IDs and their release assignments, and retained 179
-feature scenarios plus 12 v1 program scenarios. No product runtime was implemented.
+feature scenarios plus 12 v1 program scenarios.
 
-The next authorized unit is the reviewed repository-scaffold ExecPlan at
+> **Status update (2026-07-27):** the "no product runtime" baseline below is
+> superseded. A credential-free local product runs the full task lifecycle, and a
+> hosted validation slice (login, real LangGraph agent, sandbox execution) is
+> deployed. See [`QUALITY_SCORE.md`](QUALITY_SCORE.md) for evidence-backed current
+> scores and [`CODE_REVIEW-2026-07-27.md`](CODE_REVIEW-2026-07-27.md) /
+> [`VISION_ALIGNMENT-2026-07-27.md`](VISION_ALIGNMENT-2026-07-27.md) for the audit
+> and roadmap. This §1 narrative predates that work and has not been rewritten; the
+> quality score and roadmap are authoritative for current runtime state. Note also
+> that no ExecPlan yet covers the real-agent/hosted/auth/persistence/sandbox work —
+> creating those is an open X0 task.
+
+The originally-authorized next unit was the reviewed repository-scaffold ExecPlan at
 [`docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md`](exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md).
 Its scope is the credential-free monorepo and validation skeleton only. External
 capabilities remain unavailable until their named spike passes or their documented

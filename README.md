@@ -106,9 +106,11 @@ DEEPWORK_AGENT_FAKE=1 python tools/smoke/agent_roundtrip.py
 ```
 
 The smoke gate drives the real graph through plan → interrupt → decision →
-terminal state and passes only when the engine actually turns. Real-agent mode is
-in-memory (no durable task recovery yet) and requires the same supported Node.js
-and Python versions as the fixture launcher.
+terminal state and passes only when the engine actually turns. Real-agent mode
+supports optional durable task persistence and honest restart recovery via
+`DEEPWORK_TASK_DB` (a single-file SQLite store); without it, task state is
+in-memory and a restart clears it. It requires the same supported Node.js and
+Python versions as the fixture launcher.
 
 ## Run against a hosted deployment (classic LangSmith/LangGraph)
 

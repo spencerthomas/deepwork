@@ -22,8 +22,9 @@ Model resolution, in order:
 from __future__ import annotations
 
 import os
+import shlex
 from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -33,7 +34,21 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from deepwork_agent.config import AgentConfig
 from deepwork_agent.graph import LocalAgentGraph, create_graph
 
-__all__ = ["DeterministicLocalModel", "build_model", "make_graph"]
+__all__ = [
+    "DeterministicLocalModel",
+    "build_git_credential_setup_command",
+    "build_model",
+    "make_graph",
+]
+
+
+class SandboxCredentialError(RuntimeError):
+    """Raised when the sandbox GitHub credential could not be configured.
+
+    The message is deliberately non-specific and never contains the token, so it
+    is safe to surface as a task failure reason.
+    """
+
 
 _MODEL_ENV = "DEEPWORK_AGENT_MODEL"
 _FAKE_ENV = "DEEPWORK_AGENT_FAKE"
@@ -176,35 +191,54 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
         try:
             yield LangSmithSandbox(sandbox)
         finally:
-            try:
+            # Cleanup must never mask the task result, but it must not vanish
+            # silently either: a leaked sandbox still holds the credential.
+            with suppress(Exception):
                 client.delete_sandbox(sandbox.id)
-            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
-                pass
-            try:
+            with suppress(Exception):
                 client.close()
-            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
-                pass
 
     return factory
 
 
-def _configure_sandbox_github(sandbox: object, token: str) -> None:
-    """Give the sandbox a scoped GitHub credential for push/PR, server-side only.
+def build_git_credential_setup_command(token: str) -> str:
+    """Build the shell command that installs the GitHub credential in a sandbox.
 
-    Writes a git credential helper and identity inside the sandbox so the agent
-    can push and open PRs. The token is passed straight to the sandbox and never
-    logged or returned; it is a short-lived, repo-scoped token supplied by the
-    application, not a reusable secret placed in agent-visible task content.
+    The token is passed through :func:`shlex.quote` so a value containing quotes,
+    ``;``, ``$(...)``, or backticks cannot break out of the command and execute in
+    the sandbox shell. Extracted as a pure function so this quoting is unit-tested
+    without a live sandbox.
     """
-    setup = (
+    quoted_token = shlex.quote(token)
+    return (
         "git config --global credential.helper store && "
-        f"printf 'https://x-access-token:%s@github.com\\n' '{token}' > ~/.git-credentials && "
+        f"printf 'https://x-access-token:%s@github.com\\n' {quoted_token} > ~/.git-credentials && "
         "chmod 600 ~/.git-credentials && "
         "git config --global user.name 'Deep Work' && "
         "git config --global user.email 'agent@deepwork.local' && "
         "git config --global url.'https://github.com/'.insteadOf 'git@github.com:'"
     )
+
+
+def _configure_sandbox_github(sandbox: object, token: str) -> None:
+    """Give the sandbox a GitHub credential for push/PR, server-side only.
+
+    Trust model, stated honestly: this writes a credential into the sandbox
+    filesystem (``~/.git-credentials``) so ``git`` can push. The sandbox is where
+    the model-driven agent executes, so the token is within the agent's reach for
+    the sandbox's lifetime. The durable mitigation (roadmap A2.3) is to supply a
+    per-task, single-repo, short-lived GitHub App installation token minted and
+    revoked outside the sandbox; ``DEEPWORK_GITHUB_TOKEN`` is the interim static
+    fallback. The value is never logged or returned, and the setup command quotes
+    it so it cannot be interpreted as shell.
+
+    Raises:
+        SandboxCredentialError: If the credential could not be installed, so the
+            run fails clearly instead of silently pushing without credentials.
+
+    """
     try:
-        sandbox.run(setup)  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001 - a failed setup must not crash task execution
-        pass
+        sandbox.run(build_git_credential_setup_command(token))  # type: ignore[attr-defined]
+    except Exception as error:  # noqa: BLE001 - normalized to a non-secret failure
+        msg = "failed to configure the sandbox GitHub credential"
+        raise SandboxCredentialError(msg) from error

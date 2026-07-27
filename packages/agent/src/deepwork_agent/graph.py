@@ -76,6 +76,22 @@ DEEP_WORK_SYSTEM_PROMPT = _load_default_system_prompt()
 _MAX_RUN_PROMPT_CHARS = 100_000
 
 
+def _state_prompt_override(state: AgentState) -> str | None:
+    """Extract a per-run system-prompt override delivered in the graph input.
+
+    Read defensively and length-bounded, mirroring the run-config path: a
+    missing, non-string, empty, or over-long value yields ``None`` so the graph
+    falls back to the config override or its baked-in default.
+    """
+    candidate = state.get("system_prompt")
+    if not isinstance(candidate, str):
+        return None
+    text = candidate.strip()
+    if not text:
+        return None
+    return text[:_MAX_RUN_PROMPT_CHARS]
+
+
 def _run_prompt_override(config: RunnableConfig | None) -> str | None:
     """Extract a per-run system-prompt override from the run config, if any.
 
@@ -198,7 +214,10 @@ def create_graph(
             list(state["plan"]),
             closing="Execute the approved plan and provide the final answer.",
         )
-        result = _invoke_executor(execution_request, _run_prompt_override(config))
+        # Prefer the prompt delivered in state (always reaches a hosted graph),
+        # then the run config, then the graph default inside build_executor.
+        prompt_override = _state_prompt_override(state) or _run_prompt_override(config)
+        result = _invoke_executor(execution_request, prompt_override)
         messages = result.get("messages", [])
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),

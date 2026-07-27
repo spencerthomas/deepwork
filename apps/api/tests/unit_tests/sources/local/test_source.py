@@ -358,9 +358,10 @@ async def test_start_forwards_system_prompt_as_run_config() -> None:
 
     await source.start("Prepare a release brief", system_prompt="  Always be terse.  ")
 
-    assert client.runs.create_calls[0]["config"] == {
-        "configurable": {"system_prompt": "Always be terse."}
-    }
+    call = client.runs.create_calls[0]
+    # Delivered in the input (reaches a hosted graph) and the config (local runs).
+    assert call["input"] == {"task": "Prepare a release brief", "system_prompt": "Always be terse."}
+    assert call["config"] == {"configurable": {"system_prompt": "Always be terse."}}
 
 
 async def test_start_without_system_prompt_sends_no_run_config() -> None:

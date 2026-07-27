@@ -351,6 +351,12 @@ class LocalAgentServerSource:
             field="task objective",
             maximum=MAX_TASK_OBJECTIVE_LENGTH,
         )
+        prompt_override = normalize_system_prompt(system_prompt)
+        run_input: dict[str, object] = {"task": normalized}
+        if prompt_override is not None:
+            # Deliver the editable prompt in the input (always reaches a hosted
+            # graph) and in the config (belt-and-suspenders for local runs).
+            run_input["system_prompt"] = prompt_override
         run_config = _run_config(system_prompt)
         try:
             thread = _as_mapping(
@@ -362,7 +368,7 @@ class LocalAgentServerSource:
             run = await self.client.runs.create(
                 thread_id,
                 self.assistant_id,
-                input={"task": normalized},
+                input=run_input,
                 config=run_config,
                 stream_mode=("values", "updates"),
                 stream_resumable=True,

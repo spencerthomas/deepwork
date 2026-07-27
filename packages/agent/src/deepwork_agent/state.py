@@ -14,6 +14,10 @@ class AgentInput(TypedDict):
     """Input accepted by the local graph."""
 
     task: str
+    # Optional per-run system-prompt override (the workspace's editable prompt).
+    # Delivered in the input so a hosted Agent Server always passes it to the
+    # graph; falls back to the run config, then the graph's baked-in default.
+    system_prompt: NotRequired[str]
 
 
 class AgentState(AgentInput, total=False):

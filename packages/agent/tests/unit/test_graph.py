@@ -400,6 +400,24 @@ def test_per_run_system_prompt_override_reaches_the_executor() -> None:
     )
 
 
+def test_per_run_system_prompt_override_reaches_the_executor_via_input() -> None:
+    """The prompt delivered in the graph input governs execution (hosted path)."""
+    marker = "DEEPWORK_INPUT_MARKER_ab12"
+    model = RecordingFakeChatModel(
+        messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])
+    )
+    graph = create_graph(model=model)
+    run_config = cast("RunnableConfig", {"configurable": {"thread_id": "input-override-run"}})
+
+    state = initial_state("A task the workspace prompt should govern.")
+    graph.invoke({**state, "system_prompt": marker}, run_config)
+    graph.invoke(Command(resume=validate_approval_response({"decision": "approve"})), run_config)
+
+    assert any(marker in call for call in model.calls), (
+        "system_prompt delivered in the input did not reach the deep-agent executor"
+    )
+
+
 def test_without_override_the_default_system_prompt_governs_execution() -> None:
     """With no override, the baked-in Deep Work prompt still reaches execution."""
     from deepwork_agent.graph import DEEP_WORK_SYSTEM_PROMPT

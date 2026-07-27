@@ -1,7 +1,11 @@
 """Application use cases."""
 
 from deepwork_api.application.auth import AuthService
-from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalAgentSummary
+from deepwork_api.application.local_runner import (
+    LocalAgentServerRunner,
+    LocalAgentSummary,
+    LocalScheduleSummary,
+)
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
@@ -13,6 +17,7 @@ from deepwork_api.domain import (
     InvalidEventCursorError,
     PlanRevisionConflictError,
     PlanUnavailableError,
+    ScheduleRegistryUnavailableError,
     StaleInterruptError,
     TaskAlreadyResolvedError,
     TaskCancellationUnsupportedError,
@@ -34,8 +39,10 @@ __all__ = [
     "InvalidEventCursorError",
     "LocalAgentServerRunner",
     "LocalAgentSummary",
+    "LocalScheduleSummary",
     "PlanRevisionConflictError",
     "PlanUnavailableError",
+    "ScheduleRegistryUnavailableError",
     "StaleInterruptError",
     "StatusService",
     "TaskAlreadyResolvedError",

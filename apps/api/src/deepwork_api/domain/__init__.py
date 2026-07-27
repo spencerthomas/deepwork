@@ -19,6 +19,7 @@ from deepwork_api.domain.prompt import (
     SystemPromptTooLongError,
     normalize_system_prompt,
 )
+from deepwork_api.domain.schedules import ScheduleDomainError, ScheduleRegistryUnavailableError
 from deepwork_api.domain.status import (
     Capability,
     CapabilityState,
@@ -99,6 +100,8 @@ __all__ = [
     "PlanUpdateRecord",
     "ProcessState",
     "ProposedPlan",
+    "ScheduleDomainError",
+    "ScheduleRegistryUnavailableError",
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",

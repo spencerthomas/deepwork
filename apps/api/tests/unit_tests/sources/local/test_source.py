@@ -20,6 +20,7 @@ from deepwork_api.adapters.sources.local import (
     LocalSourceDefaultAgentImmutableError,
     LocalSourceStaleInterruptError,
     LocalSourceUnavailableError,
+    ScheduleSummary,
     create_official_client,
     validate_loopback_url,
 )
@@ -328,10 +329,26 @@ class FakeAssistants:
 
 
 @dataclass
+class FakeCrons:
+    search_response: object = field(default_factory=list)
+    search_calls: list[dict[str, object]] = field(default_factory=list)
+    search_error: Exception | None = None
+
+    async def search(
+        self, *, assistant_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        if self.search_error is not None:
+            raise self.search_error
+        self.search_calls.append({"assistant_id": assistant_id, "limit": limit, "offset": offset})
+        return self.search_response
+
+
+@dataclass
 class FakeClient:
     threads: FakeThreads = field(default_factory=FakeThreads)
     runs: FakeRuns = field(default_factory=FakeRuns)
     assistants: FakeAssistants = field(default_factory=FakeAssistants)
+    crons: FakeCrons = field(default_factory=FakeCrons)
     closed: bool = False
 
     async def aclose(self) -> None:
@@ -652,6 +669,65 @@ async def test_agent_registry_calls_wrap_upstream_failures() -> None:
     failing, _ = _source(FakeClient(assistants=FakeAssistants(delete_error=RuntimeError("boom"))))
     with pytest.raises(LocalSourceUnavailableError):
         await failing.delete_agent("assistant-3")
+
+
+async def test_list_schedules_filters_to_our_graphs_agents() -> None:
+    assistants = FakeAssistants(
+        search_response=[
+            {
+                "assistant_id": "deep-work-local-agent",
+                "name": "deep-work-local-agent",
+                "description": None,
+                "config": {},
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
+        ]
+    )
+    crons = FakeCrons(
+        search_response=[
+            {
+                "cron_id": "cron-1",
+                "assistant_id": "deep-work-local-agent",
+                "schedule": "0 9 * * *",
+                "timezone": "America/New_York",
+                "end_time": None,
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            },
+            {
+                "cron_id": "cron-2",
+                "assistant_id": "unrelated-graph-assistant",
+                "schedule": "0 10 * * *",
+                "timezone": None,
+                "end_time": None,
+                "created_at": "2026-01-02T00:00:00Z",
+                "updated_at": "2026-01-02T00:00:00Z",
+            },
+        ]
+    )
+    source, client = _source(FakeClient(assistants=assistants, crons=crons))
+
+    schedules = await source.list_schedules()
+
+    assert client.crons.search_calls == [{"assistant_id": None, "limit": 100, "offset": 0}]
+    assert schedules == (
+        ScheduleSummary(
+            schedule_id="cron-1",
+            agent_id="deep-work-local-agent",
+            cron_expression="0 9 * * *",
+            timezone="America/New_York",
+            end_time=None,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        ),
+    )
+
+
+async def test_list_schedules_wraps_upstream_failure() -> None:
+    failing, _ = _source(FakeClient(crons=FakeCrons(search_error=RuntimeError("boom"))))
+    with pytest.raises(LocalSourceUnavailableError):
+        await failing.list_schedules()
 
 
 async def test_state_uses_official_interrupt_id_and_omits_private_fields() -> None:

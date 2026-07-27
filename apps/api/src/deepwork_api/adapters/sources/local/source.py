@@ -33,6 +33,7 @@ StreamEventKind = Literal["run", "state", "progress", "error"]
 _MAX_REVIEW_COMMENT_LENGTH = 1_000
 _MAX_IDENTIFIER_LENGTH = 256
 _MAX_AGENT_LIST = 100
+_MAX_SCHEDULE_LIST = 100
 _LOCAL_SDK_TIMEOUT = (5.0, 300.0, 30.0, 5.0)
 _PLAN_UPDATE_CONFIRM_TIMEOUT_SECONDS = 30.0
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$")
@@ -120,6 +121,16 @@ class _AssistantsClient(Protocol):
     async def delete(self, assistant_id: str) -> None: ...
 
 
+class _CronsClient(Protocol):
+    async def search(
+        self,
+        *,
+        assistant_id: str | None = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> object: ...
+
+
 class _AgentServerClient(Protocol):
     @property
     def threads(self) -> _ThreadsClient: ...
@@ -129,6 +140,9 @@ class _AgentServerClient(Protocol):
 
     @property
     def assistants(self) -> _AssistantsClient: ...
+
+    @property
+    def crons(self) -> _CronsClient: ...
 
     async def aclose(self) -> None: ...
 
@@ -250,6 +264,27 @@ class AgentSummary:
     description: str | None
     system_prompt: str | None
     is_default: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleSummary:
+    """Sanitized projection of one Cron (recurring run) on our deployed graph.
+
+    Deep Work owns none of this: it is read from the configured task
+    source's official Crons API, never stored locally. Read-only: a
+    schedule-triggered run starts a fresh thread on the source directly, so
+    it does not yet appear in this application's task repository or event
+    stream. Creating schedules from here is deferred until that
+    reconciliation exists, so this type carries no mutation affordance.
+    """
+
+    schedule_id: str
+    agent_id: str
+    cron_expression: str
+    timezone: str | None
+    end_time: str | None
     created_at: str
     updated_at: str
 
@@ -757,6 +792,53 @@ class LocalAgentServerSource:
             description=description,
             system_prompt=_config_system_prompt(mapping.get("config")),
             is_default=agent_id == self.assistant_id,
+            created_at=_agent_timestamp(mapping.get("created_at")),
+            updated_at=_agent_timestamp(mapping.get("updated_at")),
+        )
+
+    async def list_schedules(self) -> tuple[ScheduleSummary, ...]:
+        """List recurring runs (crons) scoped to our deployed graph's assistants.
+
+        Crons are a licensed LangGraph Platform capability: an unsupported
+        deployment answers with an error here, which callers map to an
+        honest unavailable state rather than a fabricated empty list.
+        """
+
+        # Crons search has no graph_id filter, only assistant_id/thread_id, so
+        # one unfiltered call is cross-referenced against our graph's own
+        # assistants (already graph-scoped by list_agents) rather than trusting
+        # every cron the deployment returns — a cron pointed at an unrelated
+        # graph on a multi-graph deployment must never be surfaced as ours.
+        agents = await self.list_agents()
+        known_agents = {agent.agent_id for agent in agents}
+        try:
+            raw = await self.client.crons.search(limit=_MAX_SCHEDULE_LIST)
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server schedule list failed"
+            raise LocalSourceUnavailableError(message) from None
+        if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+            message = "local Agent Server schedule list shape is unsupported"
+            raise LocalSourceContractError(message)
+        schedules = tuple(self._schedule_summary(_as_mapping(item)) for item in raw)
+        return tuple(schedule for schedule in schedules if schedule.agent_id in known_agents)
+
+    def _schedule_summary(self, mapping: Mapping[str, object]) -> ScheduleSummary:
+        schedule_id = _required_identifier(mapping, "cron_id")
+        agent_id = _required_identifier(mapping, "assistant_id")
+        raw_schedule = mapping.get("schedule")
+        if not isinstance(raw_schedule, str) or not raw_schedule.strip():
+            message = "local Agent Server schedule cron expression is missing"
+            raise LocalSourceContractError(message)
+        return ScheduleSummary(
+            schedule_id=schedule_id,
+            agent_id=agent_id,
+            cron_expression=raw_schedule,
+            timezone=_optional_bounded_text(
+                mapping.get("timezone"), field="schedule timezone", maximum=64
+            ),
+            end_time=_agent_timestamp(mapping.get("end_time")) or None,
             created_at=_agent_timestamp(mapping.get("created_at")),
             updated_at=_agent_timestamp(mapping.get("updated_at")),
         )

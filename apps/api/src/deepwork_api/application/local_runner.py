@@ -69,6 +69,25 @@ class LocalAgentSummary(Protocol):
     def updated_at(self) -> str: ...
 
 
+class LocalScheduleSummary(Protocol):
+    """One recurring run (cron) on our deployed graph, sanitized by the source."""
+
+    @property
+    def schedule_id(self) -> str: ...
+    @property
+    def agent_id(self) -> str: ...
+    @property
+    def cron_expression(self) -> str: ...
+    @property
+    def timezone(self) -> str | None: ...
+    @property
+    def end_time(self) -> str | None: ...
+    @property
+    def created_at(self) -> str: ...
+    @property
+    def updated_at(self) -> str: ...
+
+
 class LocalInterruptValue(Protocol):
     @property
     def interrupt_id(self) -> str: ...
@@ -120,6 +139,7 @@ class LocalSource(Protocol):
         system_prompt: str | None,
     ) -> LocalAgentSummary: ...
     async def delete_agent(self, agent_id: str) -> None: ...
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]: ...
 
 
 @dataclass(slots=True)
@@ -182,6 +202,9 @@ class LocalAgentServerRunner:
 
     async def delete_agent(self, agent_id: str) -> None:
         await self.source.delete_agent(agent_id)
+
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
+        return await self.source.list_schedules()
 
     async def _current_system_prompt(self) -> str | None:
         """Read the workspace's editable prompt; never let it block task start.

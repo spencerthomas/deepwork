@@ -19,6 +19,7 @@ from deepwork_api.adapters.sources.local.source import (
     LocalSourceUnavailableError,
     LocalStateSnapshot,
     LocalStreamEvent,
+    ScheduleSummary,
     create_official_client,
     validate_loopback_url,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "LocalSourceUnavailableError",
     "LocalStateSnapshot",
     "LocalStreamEvent",
+    "ScheduleSummary",
     "create_official_client",
     "validate_loopback_url",
 ]

@@ -65,6 +65,7 @@ class ScriptedAgentServer:
         self.threads = _FakeThreads(self)
         self.runs = _FakeRuns(self)
         self.assistants = _FakeAssistants(self)
+        self.crons = _FakeCrons(self)
 
     async def aclose(self) -> None:
         self.closed = True
@@ -308,6 +309,16 @@ class _FakeAssistants:
 
     async def delete(self, assistant_id: str) -> None:
         raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+
+@dataclass(slots=True)
+class _FakeCrons:
+    server: ScriptedAgentServer
+
+    async def search(
+        self, *, assistant_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        raise NotImplementedError("schedule registry is exercised in test_schedules.py")
 
 
 @dataclass(slots=True)

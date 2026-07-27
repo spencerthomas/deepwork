@@ -10,7 +10,11 @@ from types import SimpleNamespace
 import pytest
 
 from deepwork_api.adapters.fixture.tasks import InMemoryTaskRepository
-from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalRun
+from deepwork_api.application.local_runner import (
+    LocalAgentServerRunner,
+    LocalRun,
+    LocalScheduleSummary,
+)
 from deepwork_api.application.tasks import TaskService
 from deepwork_api.domain import (
     DecisionValue,
@@ -128,6 +132,9 @@ class _Source:
 
     async def delete_agent(self, agent_id: str) -> None:
         return None
+
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
+        return ()
 
 
 async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:

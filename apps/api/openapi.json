@@ -596,6 +596,94 @@
         "title": "ProposedPlanResponse",
         "type": "object"
       },
+      "ScheduleListResponse": {
+        "additionalProperties": false,
+        "description": "Schedule registry listing with an honest availability flag.\n\n``available`` is false whenever no real task source is configured\n(fixture mode), so an empty list is never confused with \"zero schedules\".",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "items"
+        ],
+        "title": "ScheduleListResponse",
+        "type": "object"
+      },
+      "ScheduleSummaryResponse": {
+        "additionalProperties": false,
+        "description": "One recurring run registered on the configured task source.",
+        "properties": {
+          "agentId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Agentid",
+            "type": "string"
+          },
+          "createdAt": {
+            "maxLength": 64,
+            "title": "Createdat",
+            "type": "string"
+          },
+          "cronExpression": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Cronexpression",
+            "type": "string"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          },
+          "scheduleId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Scheduleid",
+            "type": "string"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduleId",
+          "agentId",
+          "cronExpression",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ScheduleSummaryResponse",
+        "type": "object"
+      },
       "SystemPromptResponse": {
         "additionalProperties": false,
         "description": "The workspace's current system prompt and whether it overrides the default.",
@@ -1143,6 +1231,27 @@
           }
         },
         "summary": "Demo Status"
+      }
+    },
+    "/api/v1/schedules": {
+      "get": {
+        "operationId": "list_schedules_api_v1_schedules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Schedules",
+        "tags": [
+          "schedules"
+        ]
       }
     },
     "/api/v1/settings/prompt": {

@@ -8,7 +8,11 @@ import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
-from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalAgentSummary
+from deepwork_api.application.local_runner import (
+    LocalAgentServerRunner,
+    LocalAgentSummary,
+    LocalScheduleSummary,
+)
 from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     AgentRegistryUnavailableError,
@@ -20,6 +24,7 @@ from deepwork_api.domain import (
     EvidenceSource,
     PlanUpdateRecord,
     ProposedPlan,
+    ScheduleRegistryUnavailableError,
     TaskCancellationUnsupportedError,
     TaskEvent,
     TaskEventName,
@@ -394,6 +399,17 @@ class TaskService:
         if not isinstance(self.runner, LocalAgentServerRunner):
             raise AgentRegistryUnavailableError
         await self.runner.delete_agent(agent_id)
+
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
+        """List recurring runs registered on the configured real task source.
+
+        Fixture mode owns no schedule registry, so this reports an honest
+        unavailable state instead of a fabricated empty list.
+        """
+
+        if not isinstance(self.runner, LocalAgentServerRunner):
+            raise ScheduleRegistryUnavailableError
+        return await self.runner.list_schedules()
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List local task summaries."""

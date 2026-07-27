@@ -130,5 +130,10 @@ def make_graph() -> LocalAgentGraph:
     the model (and its credential) is resolved when the server builds the graph,
     not at module import — a deployment can import this module without the model
     environment being present yet.
+
+    The system prompt comes from ``DEEPWORK_AGENT_SYSTEM_PROMPT`` when set (the
+    deployment-level edit point), otherwise the bundled default in
+    ``system_prompt.txt``.
     """
-    return create_graph(model=build_model(), config=AgentConfig())
+    system_prompt = os.environ.get("DEEPWORK_AGENT_SYSTEM_PROMPT") or None
+    return create_graph(model=build_model(), config=AgentConfig(), system_prompt=system_prompt)

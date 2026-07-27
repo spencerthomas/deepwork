@@ -208,8 +208,6 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
     if not api_key:
         return None
 
-    github_token = os.environ.get("DEEPWORK_GITHUB_TOKEN")
-
     @contextmanager
     def factory() -> Iterator[object]:
         from deepagents.backends import LangSmithSandbox
@@ -217,8 +215,9 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
 
         client = SandboxClient(api_key=api_key, timeout=30.0)
         sandbox = client.create_sandbox(name="deepwork-task", timeout=120)
-        if github_token:
-            _configure_sandbox_github(sandbox, github_token)
+        token = _resolve_github_token()
+        if token:
+            _configure_sandbox_github(sandbox, token)
         try:
             yield LangSmithSandbox(sandbox)
         finally:
@@ -232,6 +231,43 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
                 pass
 
     return factory
+
+
+def _resolve_github_token() -> str | None:
+    """Resolve a GitHub credential for the sandbox, preferring the GitHub App.
+
+    Order:
+    1. ``DEEPWORK_GITHUB_APP_ID`` + ``DEEPWORK_GITHUB_APP_PRIVATE_KEY`` -> mint a
+       fresh ~1-hour installation token (the recommended model; short-lived and
+       scoped to the app's installation). Optional ``DEEPWORK_GITHUB_APP_INSTALLATION_ID``.
+    2. ``DEEPWORK_GITHUB_TOKEN`` -> a supplied PAT (simpler fallback).
+    3. Otherwise ``None`` -> the sandbox gets no git credential (push disabled).
+
+    A minting failure falls back to the PAT (if any) rather than crashing the
+    task; the App private key is read only here and never enters task content.
+    """
+    app_id = os.environ.get("DEEPWORK_GITHUB_APP_ID")
+    app_key = os.environ.get("DEEPWORK_GITHUB_APP_PRIVATE_KEY")
+    if app_id and app_key:
+        from deepwork_agent.github_app import (
+            GitHubAppError,
+            mint_installation_token,
+            normalize_private_key,
+        )
+
+        raw_installation = os.environ.get("DEEPWORK_GITHUB_APP_INSTALLATION_ID")
+        installation_id = None
+        if raw_installation and raw_installation.strip().isdigit():
+            installation_id = int(raw_installation.strip())
+        try:
+            return mint_installation_token(
+                app_id=app_id,
+                private_key_pem=normalize_private_key(app_key),
+                installation_id=installation_id,
+            )
+        except GitHubAppError:
+            pass  # fall through to the PAT fallback below
+    return os.environ.get("DEEPWORK_GITHUB_TOKEN")
 
 
 def _configure_sandbox_github(sandbox: object, token: str) -> None:

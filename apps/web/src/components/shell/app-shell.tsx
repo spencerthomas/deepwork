@@ -6,7 +6,6 @@ import {
   Bot,
   Calendar,
   CheckCheck,
-  ChevronDown,
   Inbox,
   Plus,
   Search,
@@ -23,6 +22,7 @@ import { taskClient } from "@/lib/task-client";
 import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
+import { AccountMenu } from "./account-menu";
 import { CommandBar } from "./command-bar";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { approvalsNavLabel, formatPendingCount } from "./nav-badge";
@@ -65,13 +65,18 @@ function Logo() {
   );
 }
 
-function WorkspaceSelector() {
+/**
+ * Connection identity, not a selector: there is exactly one workspace this
+ * client can reach, so this renders as a plain badge rather than a dropdown
+ * that would open onto nothing. The runtime banner below carries the same
+ * real mode/target information in full; this is the compact header echo.
+ */
+function WorkspaceBadge() {
   const workspace = shellRuntimePresentation(taskClient.mode);
   return (
-    <button
-      type="button"
+    <span
       aria-label={`Workspace: ${workspace.workspaceLabel} — ${workspace.workspaceSubtitle}`}
-      className="flex items-center gap-2 rounded-[13.6px] border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:bg-accent"
+      className="flex items-center gap-2 rounded-[13.6px] border border-border bg-card px-2.5 py-1.5"
     >
       <span
         aria-hidden
@@ -85,8 +90,7 @@ function WorkspaceSelector() {
           {workspace.workspaceSubtitle}
         </span>
       </span>
-      <ChevronDown aria-hidden className="size-3.5 text-muted-foreground" />
-    </button>
+    </span>
   );
 }
 
@@ -168,7 +172,7 @@ export function AppShell({
           <span aria-hidden className="hidden text-border sm:inline">
             /
           </span>
-          <WorkspaceSelector />
+          <WorkspaceBadge />
 
           <button
             type="button"
@@ -184,7 +188,7 @@ export function AppShell({
           </button>
 
           <a
-            href="https://docs.langchain.com"
+            href="https://github.com/spencerthomas/deepwork#readme"
             target="_blank"
             rel="noreferrer"
             className="hidden items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
@@ -203,6 +207,7 @@ export function AppShell({
           >
             <Settings className="size-4" />
           </Link>
+          <AccountMenu />
           <Link
             href="/tasks/new"
             aria-label="New task"

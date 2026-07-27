@@ -3,20 +3,26 @@ title: Deep Work code audit and enterprise-readiness review
 status: review-artifact
 kind: code-review
 last_reviewed: 2026-07-27
-reviewed_commit: d852bee
+reviewed_commit: d852bee1f036c20e7f019320cbf39f1fa27c0f47
 owners: [review]
 canonical: false
 ---
 
 > **This is a point-in-time CODE REVIEW, not a canonical specification.** It records an
-> external audit of the repository at commit `d852bee` and does not define product,
+> external audit of the repository at commit `d852bee1f036c20e7f019320cbf39f1fa27c0f47` and does not define product,
 > architecture, or security policy. Where it disagrees with the canonical docs, it is
 > reporting a gap to be resolved — it is not itself authoritative. Do not cite it as a
 > source of truth; supersede it with dated follow-up reviews rather than editing it in place.
+>
+> **Findings are as-of that commit and are deliberately not edited when later fixed** — this
+> is a snapshot, not a live tracker. For what has since been remediated (e.g. C2 shell
+> injection, H3 execution bounds, and the X0 doc reconciliation) and what remains open (e.g.
+> C1 GitHub-App tokens), see the execution log in
+> [`VISION_ALIGNMENT-2026-07-27.md`](VISION_ALIGNMENT-2026-07-27.md) and PR #110.
 
 # Deep Work — Code Audit & Enterprise-Readiness Review
 
-**Date:** 2026-07-27 · **Commit:** `d852bee` (main) · Scope: full monorepo (apps/api, apps/web, packages/{domain,sdk,ui,agent}, tooling, CI, docs)
+**Date:** 2026-07-27 · **Commit:** `d852bee1f036c20e7f019320cbf39f1fa27c0f47` (main) · Scope: full monorepo (apps/api, apps/web, packages/{domain,sdk,ui,agent}, tooling, CI, docs)
 
 ---
 
@@ -141,4 +147,4 @@ Related web issues: origin/auth config is likely broken in production — the ta
 
 ---
 
-*Method: five parallel deep-read audits (security, API backend, frontend/TS, agent runtime, tests/CI+docs), each citing file:line evidence; the load-bearing cross-cutting findings were re-verified directly against the source at commit `d852bee`.*
+*Method: five parallel deep-read audits (security, API backend, frontend/TS, agent runtime, tests/CI+docs), each citing file:line evidence; the load-bearing cross-cutting findings were re-verified directly against the source at commit `d852bee1f036c20e7f019320cbf39f1fa27c0f47`.*

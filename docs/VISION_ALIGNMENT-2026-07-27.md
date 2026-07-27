@@ -3,13 +3,13 @@ title: Deep Work vision-alignment roadmap
 status: review-artifact
 kind: roadmap
 last_reviewed: 2026-07-27
-reviewed_commit: d852bee
+reviewed_commit: d852bee1f036c20e7f019320cbf39f1fa27c0f47
 owners: [product, architecture]
 canonical: false
 ---
 
 > **This is a point-in-time ROADMAP, not a canonical specification.** It grades the
-> repository against the stated vision at commit `d852bee` and proposes milestones to
+> repository against the stated vision at commit `d852bee1f036c20e7f019320cbf39f1fa27c0f47` and proposes milestones to
 > raise each grade. It does not supersede `docs/PLANS.md`; where the two disagree, PLANS.md
 > should be reconciled to reality (that reconciliation is itself milestone **X0** below).
 
@@ -27,7 +27,7 @@ Deep Work should be **two things at once**:
    agent builder, Crons) and the *OSS* stack (langchain-core, langgraph, deepagents) and its
    *spin-offs* (Open SWE, open-deep-research, the open-agent-platform lineage / open-wiki).
 
-## Baseline grades (commit `d852bee`)
+## Baseline grades (commit `d852bee1f036c20e7f019320cbf39f1fa27c0f47`)
 
 | # | Axis | Grade | Gap to A+ |
 |---|---|---|---|
@@ -206,8 +206,8 @@ but leveraged in code approximately nowhere.
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| A2.1 Bound execution (reliability middleware + caps) | **executed** | `7489c35`; +13 agent unit tests (config bounds, middleware wiring, bounded-run integration); agent suite 90 passed, ruff/ty at baseline |
-| A2.2 Safe credential injection | **executed** | `473d7a7`; `build_git_credential_setup_command` + 3 injection-safety tests; ruff debt 19→16 in the touched file |
+| A2.1 Bound execution (reliability middleware + caps) | **executed** | `7489c35660a32a19ed69caea6de2ff0103a0b25c`; +13 agent unit tests (config bounds, middleware wiring, bounded-run integration); agent suite 90 passed, ruff/ty at baseline |
+| A2.2 Safe credential injection | **executed** | `473d7a7f6a4de6b6b8633fff3d701b92eea77944`; `build_git_credential_setup_command` + 3 injection-safety tests; ruff debt 19→16 in the touched file |
 | A2.3 GitHub App tokens | planned (next) | — |
 | all others | planned | — |
 

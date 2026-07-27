@@ -15,16 +15,19 @@ import {
   ShieldQuestion,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
 import { StatusChip } from "@/components/shell/status-chip";
+import { moveInboxFocus } from "@/components/tasks/task-inbox-navigation";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import type { TaskEventName } from "@/lib/task-types";
 import { useTasksStore } from "@/lib/tasks-store";
+import { cn } from "@/lib/utils";
 
 import type { ActivityEntry, ActivityFilter } from "./activity-model";
 import {
@@ -35,6 +38,8 @@ import {
   EVENT_LABELS,
   filterActivityFeed,
 } from "./activity-model";
+import { activityEntryHref } from "./activity-links";
+import { activityFilterToQuery, readActivityFilter } from "./activity-url";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -58,6 +63,23 @@ const FILTER_ICONS: Record<ActivityFilter, IconComponent> = {
   completions: CheckCircle2,
 };
 
+const INTERACTIVE_TARGET_SELECTOR =
+  'a[href], button, input, textarea, select, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [contenteditable="true"]';
+
+/**
+ * Yield the shortcut keys whenever focus is on a control the user is operating —
+ * the Refresh button, a sidebar filter, or a row's task link. Otherwise a
+ * window-level Enter would hijack the control's own activation (and typing would
+ * move the highlight). Mirrors the task inbox's guard so the keyboard-navigable
+ * lists behave identically. The highlighted row itself is not matched by the
+ * selector, so resting focus on it keeps j/k/Enter working.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return target.closest(INTERACTIVE_TARGET_SELECTOR) !== null;
+}
+
 function TimelineSkeleton() {
   return (
     <ol aria-hidden className="relative ml-2 animate-pulse border-l border-border">
@@ -72,11 +94,19 @@ function TimelineSkeleton() {
   );
 }
 
-function FeedRow({ entry }: { entry: ActivityEntry }) {
+function FeedRow({ entry, focused }: { entry: ActivityEntry; focused: boolean }) {
   const Icon = entry.kind === "status" ? Activity : EVENT_ICONS[entry.eventName];
   return (
-    <li className="relative mb-5 pl-6">
-      <span className="absolute -left-[13px] top-0 flex size-6 items-center justify-center rounded-full border border-border bg-card">
+    <li
+      id={`activity-row-${entry.key}`}
+      tabIndex={focused ? 0 : -1}
+      aria-current={focused ? "true" : undefined}
+      className={cn(
+        "relative mb-5 rounded-lg py-1 pl-6 pr-3 outline-none transition-colors",
+        focused ? "bg-accent/50 ring-1 ring-brand/40" : "",
+      )}
+    >
+      <span className="absolute -left-[13px] top-1 flex size-6 items-center justify-center rounded-full border border-border bg-card">
         <Icon className="size-3 text-muted-foreground" />
       </span>
 
@@ -104,7 +134,7 @@ function FeedRow({ entry }: { entry: ActivityEntry }) {
       )}
 
       <Link
-        href={`/tasks/${entry.taskId}`}
+        href={activityEntryHref(entry)}
         className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-brand-accent hover:underline"
       >
         tasks/{entry.taskId} <ArrowUpRight className="size-3" />
@@ -116,11 +146,79 @@ function FeedRow({ entry }: { entry: ActivityEntry }) {
 export function ActivityFeed() {
   const { tasks, loadingTasks, listError, refreshList, eventsByTask, mode } = useTasksStore();
   const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const runtimeCopy = taskRuntimePresentation(mode);
+  const router = useRouter();
+
+  // Mirror the active filter in the URL so a filtered feed is shareable, and
+  // restore it on first load and on browser back/forward — the same contract
+  // the task inbox uses. Each discrete filter change pushes a history entry so
+  // back/forward step through prior views.
+  const selectFilter = useCallback((next: ActivityFilter) => {
+    setFilter((current) => {
+      if (current === next) return current;
+      const query = activityFilterToQuery(next);
+      const { pathname } = window.location;
+      const url = query ? `${pathname}?${query}` : pathname;
+      window.history.pushState(window.history.state, "", url);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () =>
+      setFilter(readActivityFilter(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
 
   const entries = useMemo(() => buildActivityFeed(tasks, eventsByTask), [tasks, eventsByTask]);
   const counts = useMemo(() => activityFilterCounts(entries), [entries]);
   const visibleEntries = useMemo(() => filterActivityFeed(entries, filter), [entries, filter]);
+  const orderedKeys = useMemo(() => visibleEntries.map((entry) => entry.key), [visibleEntries]);
+
+  // Roving keyboard navigation over the timeline (mirrors the task inbox and the
+  // approvals queue): j/k or arrows move the highlight, Enter opens the focused
+  // entry's task. Keys are ignored while typing so they never hijack a field.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isInteractiveTarget(event.target)) return;
+      if (orderedKeys.length === 0) return;
+      if (event.key === "j" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setFocusedKey((current) => moveInboxFocus(current, orderedKeys, 1));
+        return;
+      }
+      if (event.key === "k" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setFocusedKey((current) => moveInboxFocus(current, orderedKeys, -1));
+        return;
+      }
+      if (event.key === "Enter" && focusedKey !== null) {
+        const entry = visibleEntries.find((candidate) => candidate.key === focusedKey);
+        if (entry === undefined) return;
+        event.preventDefault();
+        // Match the row's visible link: deep-link to the relevant run-panel tab.
+        router.push(activityEntryHref(entry));
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [orderedKeys, focusedKey, visibleEntries, router]);
+
+  // Release a highlight that filtering or a refreshed feed removed from view.
+  useEffect(() => {
+    if (focusedKey !== null && !orderedKeys.includes(focusedKey)) setFocusedKey(null);
+  }, [orderedKeys, focusedKey]);
+
+  // Move real DOM focus to the highlighted row (roving tabindex) so keyboard and
+  // assistive-technology users land on the exact entry Enter will open.
+  useEffect(() => {
+    if (focusedKey === null) return;
+    document.getElementById(`activity-row-${focusedKey}`)?.focus();
+  }, [focusedKey]);
 
   const sidebar = (
     <nav className="flex flex-col gap-1">
@@ -132,7 +230,7 @@ export function ActivityFeed() {
           label={ACTIVITY_FILTER_LABELS[candidate]}
           count={counts[candidate]}
           active={filter === candidate}
-          onClick={() => setFilter(candidate)}
+          onClick={() => selectFilter(candidate)}
         />
       ))}
     </nav>
@@ -206,18 +304,24 @@ export function ActivityFeed() {
           </p>
           <button
             type="button"
-            onClick={() => setFilter("all")}
+            onClick={() => selectFilter("all")}
             className="mt-3 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-accent"
           >
             Show all events
           </button>
         </div>
       ) : (
-        <ol aria-label="Activity timeline" className="relative ml-2 border-l border-border">
-          {visibleEntries.map((entry) => (
-            <FeedRow key={entry.key} entry={entry} />
-          ))}
-        </ol>
+        <>
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            Keyboard: <span className="font-medium text-foreground/80">j / k</span> move ·{" "}
+            <span className="font-medium text-foreground/80">Enter</span> open task
+          </p>
+          <ol aria-label="Activity timeline" className="relative ml-2 border-l border-border">
+            {visibleEntries.map((entry) => (
+              <FeedRow key={entry.key} entry={entry} focused={entry.key === focusedKey} />
+            ))}
+          </ol>
+        </>
       )}
     </AppShell>
   );

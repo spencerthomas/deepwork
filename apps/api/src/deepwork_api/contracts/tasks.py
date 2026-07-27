@@ -162,6 +162,9 @@ class TaskSummaryResponse(_TaskWireModel):
 
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
+    # Null only for tasks migrated from a pre-timestamp schema; the field stays
+    # present on the wire so clients can distinguish "unknown" from a real time.
+    created_at: str | None = Field(alias="createdAt", min_length=1, max_length=64)
     title: str = Field(min_length=1, max_length=80)
     objective: str = Field(min_length=1, max_length=MAX_TASK_OBJECTIVE_LENGTH)
     status: TaskWireStatus
@@ -172,6 +175,7 @@ class TaskSummaryResponse(_TaskWireModel):
         return cls(
             task_id=task.task_id,
             run_id=task.run_id,
+            created_at=task.created_at,
             title=task.title,
             objective=task.objective,
             status=_wire_status(task.status),
@@ -206,6 +210,7 @@ class TaskDetailResponse(TaskSummaryResponse):
         return cls(
             task_id=task.task_id,
             run_id=task.run_id,
+            created_at=task.created_at,
             title=task.title,
             objective=task.objective,
             status=_wire_status(task.status),

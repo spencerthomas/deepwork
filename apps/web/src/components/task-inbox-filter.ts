@@ -28,10 +28,34 @@ export const TASK_STATUS_FILTER_OPTIONS = [
 
 export type TaskStatusFilter = "all" | TaskStatus;
 
+/** Rolling "created within" windows for the inbox date filter. */
+export type TaskDateWindow = "24h" | "7d" | "30d";
+
+export const TASK_DATE_WINDOW_OPTIONS = ["24h", "7d", "30d"] as const satisfies readonly [
+  TaskDateWindow,
+  ...TaskDateWindow[],
+];
+
+export const TASK_DATE_WINDOW_LABELS: Record<TaskDateWindow, string> = {
+  "24h": "Last 24 hours",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const TASK_DATE_WINDOW_MS: Record<TaskDateWindow, number> = {
+  "24h": DAY_MS,
+  "7d": 7 * DAY_MS,
+  "30d": 30 * DAY_MS,
+};
+
 export interface TaskInboxFilter {
   attentionOnly: boolean;
   query: string;
   status: TaskStatusFilter;
+  /** When set, keep only tasks created within this rolling window. */
+  createdWithin?: TaskDateWindow;
 }
 
 export const EMPTY_TASK_INBOX_FILTER: TaskInboxFilter = {
@@ -66,11 +90,34 @@ export function visibleTaskText(task: TaskSummary): string {
   return [task.title, taskIdentifierLabel(task), TASK_STATUS_LABELS[task.status]].join("\n");
 }
 
-export function matchesTaskFilter(task: TaskSummary, filter: TaskInboxFilter): boolean {
+/**
+ * True when the task's real creation instant falls inside the rolling window.
+ * A task whose creation time is unknown or unparseable fails closed (excluded)
+ * rather than being assumed recent — the filter never fabricates a date.
+ */
+function isWithinDateWindow(task: TaskSummary, window: TaskDateWindow, now: number): boolean {
+  if (task.createdAt === undefined) {
+    return false;
+  }
+  const created = Date.parse(task.createdAt);
+  if (Number.isNaN(created)) {
+    return false;
+  }
+  return created <= now && now - created <= TASK_DATE_WINDOW_MS[window];
+}
+
+export function matchesTaskFilter(
+  task: TaskSummary,
+  filter: TaskInboxFilter,
+  now: number = Date.now(),
+): boolean {
   if (filter.status !== "all" && task.status !== filter.status) {
     return false;
   }
   if (filter.attentionOnly && !requiresAttention(task)) {
+    return false;
+  }
+  if (filter.createdWithin !== undefined && !isWithinDateWindow(task, filter.createdWithin, now)) {
     return false;
   }
   const query = normalizeTaskQuery(filter.query).trim().toLocaleLowerCase();
@@ -81,7 +128,9 @@ export function matchesTaskFilter(task: TaskSummary, filter: TaskInboxFilter): b
 }
 
 export function filterTasks(tasks: readonly TaskSummary[], filter: TaskInboxFilter): TaskSummary[] {
-  return tasks.filter((task) => matchesTaskFilter(task, filter));
+  // Evaluate every task against one "now" so a window boundary can't shift mid-filter.
+  const now = Date.now();
+  return tasks.filter((task) => matchesTaskFilter(task, filter, now));
 }
 
 export interface TaskInboxCounts {
@@ -105,7 +154,12 @@ export function countTasks(tasks: readonly TaskSummary[]): TaskInboxCounts {
 }
 
 export function hasActiveTaskFilter(filter: TaskInboxFilter): boolean {
-  return filter.query.trim() !== "" || filter.status !== "all" || filter.attentionOnly;
+  return (
+    filter.query.trim() !== "" ||
+    filter.status !== "all" ||
+    filter.attentionOnly ||
+    filter.createdWithin !== undefined
+  );
 }
 
 /**
@@ -124,6 +178,11 @@ export function describeTaskFilter(filter: TaskInboxFilter): string {
   if (filter.attentionOnly) {
     criteria.push("need attention");
   }
+  if (filter.createdWithin !== undefined) {
+    criteria.push(
+      `were created in the ${TASK_DATE_WINDOW_LABELS[filter.createdWithin].toLowerCase()}`,
+    );
+  }
   if (criteria.length === 0) {
     return "No loaded tasks match the current filters.";
   }
@@ -132,6 +191,6 @@ export function describeTaskFilter(filter: TaskInboxFilter): string {
       ? criteria[0]
       : criteria.length === 2
         ? `${criteria[0]} and ${criteria[1]}`
-        : `${criteria[0]}, ${criteria[1]}, and ${criteria[2]}`;
+        : `${criteria.slice(0, -1).join(", ")}, and ${criteria[criteria.length - 1]}`;
   return `No loaded tasks ${joined}.`;
 }

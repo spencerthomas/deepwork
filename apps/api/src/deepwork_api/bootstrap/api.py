@@ -30,7 +30,7 @@ from deepwork_api.application import (
     TaskService,
 )
 from deepwork_api.application.local_runner import LocalSource
-from deepwork_api.ports import TaskRepository
+from deepwork_api.ports import Clock, TaskRepository, system_clock
 from deepwork_api.transport import build_auth_router, build_router, build_session_guard, build_task_router
 
 _WEB_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
@@ -82,6 +82,7 @@ def create_app(
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
     web_origins: tuple[str, ...] | None = None,
+    clock: Clock = system_clock,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
 
@@ -99,10 +100,10 @@ def create_app(
     task_runner: DeterministicFixtureRunner | LocalAgentServerRunner
     sqlite_repository: SQLiteTaskRepository | None
     if task_database_path is None:
-        task_repository = InMemoryTaskRepository()
+        task_repository = InMemoryTaskRepository(clock=clock)
         sqlite_repository = None
     else:
-        sqlite_repository = SQLiteTaskRepository(task_database_path)
+        sqlite_repository = SQLiteTaskRepository(task_database_path, clock=clock)
         task_repository = sqlite_repository
     local_source: LocalAgentServerSource | None = None
     if classic_deployment_endpoint is not None:

@@ -127,6 +127,9 @@ export interface TaskSummary {
   readonly taskId: TaskId;
   readonly sourceThread: SourceThreadKey;
   readonly run: SourceRunKey;
+  // Present when the summary comes from an API snapshot; the event-sourced
+  // reducer does not observe creation time, so it stays absent there.
+  readonly createdAt?: string;
   readonly title: DisplayText;
   readonly objective: ObjectiveText;
   readonly facts: TaskStateFacts;
@@ -508,6 +511,49 @@ export function pendingInterrupt(input: {
   });
 }
 
+const ISO_8601_INSTANT_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** Days in a (1-indexed) month, honoring leap years, via the day-0 rollover. */
+function daysInUtcMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
+ * Accept a task creation timestamp: a bounded ISO-8601 instant with an explicit
+ * offset (as produced by the API's `datetime.isoformat()`). The value is a real
+ * recorded instant, never fabricated, so an unparseable or unbounded string is
+ * rejected rather than coerced.
+ */
+export function createdAtTimestamp(value: string): string {
+  const trimmed = value.trim();
+  const match = ISO_8601_INSTANT_PATTERN.exec(trimmed);
+  if (trimmed.length > 64 || match === null) {
+    throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
+  }
+  // The pattern fixes the shape and offset; validate the calendar/clock fields
+  // explicitly so overflow values it allows are rejected rather than silently
+  // normalized (Date.parse turns "2026-02-31" into March 3 instead of failing).
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInUtcMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    throw new TypeError("Task creation timestamp is not a valid ISO-8601 instant.");
+  }
+  return trimmed;
+}
+
 export function taskSummary(
   input: Omit<TaskSummary, "status" | "title" | "objective"> & {
     readonly title: string;
@@ -535,6 +581,7 @@ export function taskSummary(
     taskId: acceptedTaskId,
     sourceThread: acceptedSourceThread,
     run: acceptedRun,
+    ...(input.createdAt === undefined ? {} : { createdAt: createdAtTimestamp(input.createdAt) }),
     title: displayText(input.title, "Task title", 80),
     objective: objectiveText(input.objective),
     facts,
@@ -614,6 +661,7 @@ export function taskDetail(
     taskId: summary.taskId,
     sourceThread: summary.sourceThread,
     run: summary.run,
+    ...(summary.createdAt === undefined ? {} : { createdAt: summary.createdAt }),
     title: summary.title,
     objective: summary.objective,
     facts: summary.facts,

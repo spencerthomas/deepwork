@@ -336,11 +336,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     setCreating(true);
     setCreateError(undefined);
     try {
+      // Stamp the dispatch instant *before* awaiting the create call, so the
+      // optimistic createdAt reflects when this task was dispatched rather than
+      // when the response happened to arrive — concurrent creates then keep
+      // dispatch order in the newest-first "Recent" view. It is the client's
+      // firsthand time of its own action, not a guessed value, and is replaced by
+      // the server's authoritative createdAt on the next list refresh.
+      const dispatchedAt = new Date().toISOString();
       const created = await taskClient.createTask(prompt);
       const optimisticTask: TaskSummary = {
         ...created,
         title: prompt,
         prompt,
+        createdAt: dispatchedAt,
       };
       setDetailsByTask((current) => ({
         ...current,

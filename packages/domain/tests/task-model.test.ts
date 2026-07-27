@@ -1,5 +1,6 @@
 import {
   applicationEventId,
+  createdAtTimestamp,
   deriveTaskStatus,
   evidenceId,
   evidenceRecord,
@@ -32,6 +33,39 @@ const task = taskId("task_00000001");
 const thread = threadId("thread-1");
 const run = runId("run_00000001");
 const interrupt = sourceInterruptKey(source, task, thread, run, interruptId("interrupt_00000001"));
+
+describe("createdAtTimestamp", () => {
+  it("accepts bounded ISO-8601 instants with an explicit offset", () => {
+    expect(createdAtTimestamp("2026-01-01T00:00:00+00:00")).toBe("2026-01-01T00:00:00+00:00");
+    expect(createdAtTimestamp("2026-07-24T07:30:00.123456+00:00")).toBe(
+      "2026-07-24T07:30:00.123456+00:00",
+    );
+    expect(createdAtTimestamp("  2026-01-01T00:00:00Z  ")).toBe("2026-01-01T00:00:00Z");
+    // A real leap day is accepted.
+    expect(createdAtTimestamp("2024-02-29T00:00:00Z")).toBe("2024-02-29T00:00:00Z");
+  });
+
+  it("rejects timestamps without an offset, malformed strings, and unbounded input", () => {
+    expect(() => createdAtTimestamp("2026-01-01T00:00:00")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("not-a-date")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("")).toThrow(TypeError);
+    expect(() => createdAtTimestamp(`2026-01-01T00:00:00+00:00${" ".repeat(64)}z`)).toThrow(
+      TypeError,
+    );
+  });
+
+  it("rejects shape-valid but impossible calendar/clock values", () => {
+    expect(() => createdAtTimestamp("2026-99-99T99:99:99Z")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("2026-13-01T00:00:00+00:00")).toThrow(TypeError);
+    // Overflow days that Date.parse silently normalizes rather than rejecting.
+    expect(() => createdAtTimestamp("2026-02-31T00:00:00Z")).toThrow(TypeError);
+    expect(() => createdAtTimestamp("2026-04-31T00:00:00+00:00")).toThrow(TypeError);
+    // Feb 29 in a non-leap year.
+    expect(() => createdAtTimestamp("2026-02-29T00:00:00Z")).toThrow(TypeError);
+    // Out-of-range time field.
+    expect(() => createdAtTimestamp("2026-01-01T24:00:00Z")).toThrow(TypeError);
+  });
+});
 
 describe("client-safe task values", () => {
   it("uses canonical presentation precedence over orthogonal facts", () => {

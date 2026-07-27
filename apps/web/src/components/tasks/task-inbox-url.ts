@@ -1,7 +1,9 @@
 import {
   EMPTY_TASK_INBOX_FILTER,
   normalizeTaskQuery,
+  TASK_DATE_WINDOW_OPTIONS,
   TASK_STATUS_FILTER_OPTIONS,
+  type TaskDateWindow,
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "../task-inbox-filter";
@@ -15,9 +17,11 @@ export interface InboxView {
 const STATUS_PARAM = "status";
 const QUERY_PARAM = "q";
 const VIEW_PARAM = "view";
+const CREATED_PARAM = "created";
 const RECENT_VIEW = "recent";
 
 const KNOWN_STATUS = new Set<string>(["all", ...TASK_STATUS_FILTER_OPTIONS]);
+const KNOWN_WINDOW = new Set<string>(TASK_DATE_WINDOW_OPTIONS);
 
 interface ReadonlyParams {
   get(name: string): string | null;
@@ -33,8 +37,18 @@ export function readInboxView(params: ReadonlyParams): InboxView {
     rawStatus !== null && KNOWN_STATUS.has(rawStatus) ? (rawStatus as TaskStatusFilter) : "all";
   const query = normalizeTaskQuery(params.get(QUERY_PARAM) ?? "");
   const grouped = params.get(VIEW_PARAM) !== RECENT_VIEW;
+  const rawCreated = params.get(CREATED_PARAM);
+  const createdWithin =
+    rawCreated !== null && KNOWN_WINDOW.has(rawCreated)
+      ? (rawCreated as TaskDateWindow)
+      : undefined;
   return {
-    filter: { ...EMPTY_TASK_INBOX_FILTER, status, query },
+    filter: {
+      ...EMPTY_TASK_INBOX_FILTER,
+      status,
+      query,
+      ...(createdWithin === undefined ? {} : { createdWithin }),
+    },
     grouped,
   };
 }
@@ -50,6 +64,9 @@ export function inboxViewToQuery(view: InboxView): string {
   }
   if (view.filter.query.trim() !== "") {
     params.set(QUERY_PARAM, view.filter.query);
+  }
+  if (view.filter.createdWithin !== undefined) {
+    params.set(CREATED_PARAM, view.filter.createdWithin);
   }
   if (!view.grouped) {
     params.set(VIEW_PARAM, RECENT_VIEW);

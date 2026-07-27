@@ -29,12 +29,14 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskStatus,
 )
+from deepwork_api.ports import Clock, system_clock
 
 
 @dataclass(slots=True)
 class _StoredTask:
     task_id: str
     run_id: str
+    created_at: str
     title: str
     objective: str
     status: TaskStatus
@@ -49,6 +51,7 @@ class _StoredTask:
         return TaskSnapshot(
             task_id=self.task_id,
             run_id=self.run_id,
+            created_at=self.created_at,
             title=self.title,
             objective=self.objective,
             status=self.status,
@@ -63,11 +66,12 @@ class _StoredTask:
 class InMemoryTaskRepository:
     """Store bounded local task state and notify stream/runner waiters."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, clock: Clock = system_clock) -> None:
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
         self._tasks: dict[str, _StoredTask] = {}
         self._next_task_number = 1
+        self._clock = clock
 
     async def create_task(
         self, *, title: str, objective: str, run_id: str | None = None
@@ -81,6 +85,7 @@ class InMemoryTaskRepository:
             task = _StoredTask(
                 task_id=f"task_{suffix}",
                 run_id=run_id or f"run_{suffix}",
+                created_at=self._clock().isoformat(),
                 title=title,
                 objective=objective,
                 status=TaskStatus.QUEUED,

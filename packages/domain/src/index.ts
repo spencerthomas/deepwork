@@ -56,6 +56,7 @@ export {
 } from "./identity.js";
 
 export {
+  createdAtTimestamp,
   decisionComment,
   decisionInput,
   deriveTaskStatus,

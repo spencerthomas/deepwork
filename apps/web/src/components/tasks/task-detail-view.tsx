@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
@@ -25,6 +25,7 @@ import { RunPanel } from "@/components/tasks/run-panel";
 import { TaskResultActions } from "@/components/tasks/task-result-actions";
 import { buildThread } from "@/components/tasks/task-thread-model";
 import { setEditRerunPrompt } from "@/lib/edit-rerun-handoff";
+import { loadRunPanelOpen, saveRunPanelOpen } from "@/lib/run-panel-preference";
 import {
   getActiveInterrupt,
   getEvidenceRecords,
@@ -137,7 +138,18 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     createError,
   } = store;
   const router = useRouter();
+  // The run panel defaults open; the persisted device-local choice is read after
+  // mount (not in the initializer) so the server and first client render agree.
   const [panelOpen, setPanelOpen] = useState(true);
+  useEffect(() => {
+    setPanelOpen(loadRunPanelOpen());
+  }, []);
+  // Set + persist together so every entry point (header toggle, panel close)
+  // remembers the choice across navigation.
+  const changePanelOpen = useCallback((next: boolean) => {
+    setPanelOpen(next);
+    saveRunPanelOpen(next);
+  }, []);
   const [rerunAttempted, setRerunAttempted] = useState(false);
 
   const selected = tasks.find((task) => task.taskId === taskId);
@@ -253,7 +265,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             )}
             <button
               type="button"
-              onClick={() => setPanelOpen((open) => !open)}
+              onClick={() => changePanelOpen(!panelOpen)}
               aria-pressed={panelOpen}
               title="Toggle run panel"
               className={cn(
@@ -476,7 +488,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                 plan={plan}
                 connectionState={connectionState}
                 mode={mode}
-                onClose={() => setPanelOpen(false)}
+                onClose={() => changePanelOpen(false)}
               />
             </aside>
           )}

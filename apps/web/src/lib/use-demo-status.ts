@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { type DemoStatus, fetchDemoStatus, fixtureDemoStatus } from "./demo-status";
 import { useTasksStore } from "./tasks-store";
@@ -9,6 +9,13 @@ export interface DemoStatusResult {
   /** Undefined while loading or after a failed/malformed fetch (fail closed). */
   status: DemoStatus | undefined;
   loading: boolean;
+  /**
+   * Re-fetch the status. In api mode this retries the network request (so a
+   * status that was momentarily unreachable can recover without a full page
+   * reload); in fixture mode the status is synthesized locally, so this is a
+   * no-op.
+   */
+  refetch: () => void;
 }
 
 /**
@@ -23,6 +30,9 @@ export function useDemoStatus(): DemoStatusResult {
     fixture ? fixtureDemoStatus() : undefined,
   );
   const [loading, setLoading] = useState(!fixture);
+  // Bumped by refetch() to re-run the fetch effect.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const refetch = useCallback(() => setReloadNonce((nonce) => nonce + 1), []);
 
   useEffect(() => {
     if (fixture) {
@@ -37,7 +47,7 @@ export function useDemoStatus(): DemoStatusResult {
       }
     });
     return () => controller.abort();
-  }, [fixture, apiBaseUrl]);
+  }, [fixture, apiBaseUrl, reloadNonce]);
 
-  return { status, loading };
+  return { status, loading, refetch };
 }

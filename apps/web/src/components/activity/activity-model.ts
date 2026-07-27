@@ -20,6 +20,16 @@ const FILTER_EVENT_NAMES: Record<Exclude<ActivityFilter, "all">, readonly TaskEv
   completions: ["run.completed"],
 };
 
+/**
+ * Whether a raw event name belongs to an activity filter group. "all" matches
+ * every event; a named group matches only the event names it covers. Shared so
+ * the run panel's Stream tab can filter its event list with the exact same
+ * vocabulary the Activity feed uses.
+ */
+export function eventMatchesActivityFilter(name: TaskEventName, filter: ActivityFilter): boolean {
+  return filter === "all" || FILTER_EVENT_NAMES[filter].includes(name);
+}
+
 export const EVENT_LABELS: Record<TaskEventName, string> = {
   "task.created": "Task created",
   "run.started": "Run started",

@@ -476,6 +476,19 @@
         "additionalProperties": false,
         "description": "Task summary plus the currently actionable interrupt.",
         "properties": {
+          "createdAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
           "evidence": {
             "items": {
               "$ref": "#/components/schemas/EvidenceResponse"
@@ -549,6 +562,7 @@
         "required": [
           "taskId",
           "runId",
+          "createdAt",
           "title",
           "objective",
           "status",
@@ -617,6 +631,19 @@
         "additionalProperties": false,
         "description": "Safe task summary containing only the sanitized objective.",
         "properties": {
+          "createdAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
           "lastEventId": {
             "minimum": 1.0,
             "title": "Lasteventid",
@@ -651,6 +678,7 @@
         "required": [
           "taskId",
           "runId",
+          "createdAt",
           "title",
           "objective",
           "status",

@@ -27,7 +27,10 @@ import {
   filterTasks,
   hasActiveTaskFilter,
   normalizeTaskQuery,
+  TASK_DATE_WINDOW_LABELS,
+  TASK_DATE_WINDOW_OPTIONS,
   TASK_SEARCH_MAX_LENGTH,
+  type TaskDateWindow,
   type TaskInboxFilter,
   type TaskStatusFilter,
 } from "@/components/task-inbox-filter";
@@ -35,9 +38,11 @@ import {
   INBOX_GROUP_ORDER,
   moveInboxFocus,
   orderedInboxIds,
+  sortTasksByRecency,
 } from "@/components/tasks/task-inbox-navigation";
 import { inboxViewToQuery, type InboxView, readInboxView } from "@/components/tasks/task-inbox-url";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
+import { formatTaskAge } from "@/lib/task-time";
 import { useTasksStore } from "@/lib/tasks-store";
 import type { ClientMode, TaskStatus, TaskSummary } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
@@ -90,6 +95,7 @@ function TaskRow({
 }) {
   const runtimeCopy = taskRuntimePresentation(mode);
   const ref = useRef<HTMLAnchorElement>(null);
+  const age = formatTaskAge(task.createdAt);
 
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: "nearest" });
@@ -116,6 +122,14 @@ function TaskRow({
           <span className="truncate font-mono text-xs">
             {task.runId ? `Run ${task.runId.slice(0, 10)}` : `Task ${task.taskId.slice(0, 10)}`}
           </span>
+          {age !== undefined && (
+            <>
+              <span className="text-border">·</span>
+              <span className="shrink-0 whitespace-nowrap" title={task.createdAt}>
+                {age}
+              </span>
+            </>
+          )}
         </div>
       </div>
       <StatusChip status={task.status} />
@@ -173,12 +187,13 @@ export function TaskInbox() {
     const groupedSame = prev.grouped === next.grouped;
     const attentionSame = prev.filter.attentionOnly === next.filter.attentionOnly;
     const querySame = prev.filter.query === next.filter.query;
-    if (statusSame && groupedSame && attentionSame && querySame) return;
+    const createdSame = prev.filter.createdWithin === next.filter.createdWithin;
+    if (statusSame && groupedSame && attentionSame && querySame && createdSame) return;
     setView(next);
     const query = inboxViewToQuery(next);
     const { pathname } = window.location;
     const url = query ? `${pathname}?${query}` : pathname;
-    const onlyQueryChanged = statusSame && groupedSame && attentionSame;
+    const onlyQueryChanged = statusSame && groupedSame && attentionSame && createdSame;
     if (onlyQueryChanged) {
       window.history.replaceState(window.history.state, "", url);
     } else {
@@ -206,14 +221,45 @@ export function TaskInbox() {
     [commitView],
   );
 
+  const setCreatedWithin = useCallback(
+    (window: TaskDateWindow | undefined) =>
+      setFilter((current) => {
+        if (window === undefined) {
+          const next = { ...current };
+          delete next.createdWithin;
+          return next;
+        }
+        return { ...current, createdWithin: window };
+      }),
+    [setFilter],
+  );
+
+  // Re-render on a slow cadence so an open inbox's relative creation ages
+  // ("just now" → "1m ago") keep advancing without a task update or manual
+  // refresh. The interval is client-only, so no rows exist to hydrate against.
+  const [, advanceAgeClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => advanceAgeClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const counts = countTasks(tasks);
   const visible = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
   const filterActive = hasActiveTaskFilter(filter);
   const needsYou = counts.byStatus["waiting-approval"];
 
+  // The ungrouped "Recent" view sorts newest-created first so its label is
+  // honest; the grouped view keeps the server order within each status section.
+  // Render and keyboard navigation both read this one ordered list, so they can
+  // never drift.
+  const ordered = useMemo(
+    () => (grouped ? visible : sortTasksByRecency(visible)),
+    [visible, grouped],
+  );
+
   const orderedIds = useMemo(
-    () => orderedInboxIds(visible, grouped, filter.status),
-    [visible, grouped, filter.status],
+    () => orderedInboxIds(ordered, grouped, filter.status),
+    [ordered, grouped, filter.status],
   );
 
   // Release a highlight that filtering, grouping, or a refresh removed from view.
@@ -382,6 +428,47 @@ export function TaskInbox() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span id="created-filter-label" className="text-[12px] font-medium text-muted-foreground">
+          Created
+        </span>
+        <div
+          role="group"
+          aria-labelledby="created-filter-label"
+          className="inline-flex items-center gap-0.5 rounded-xl border border-border bg-card p-0.5"
+        >
+          <button
+            type="button"
+            aria-pressed={filter.createdWithin === undefined}
+            onClick={() => setCreatedWithin(undefined)}
+            className={cn(
+              "rounded-[9px] px-2.5 py-1 text-[12px] font-medium transition-colors",
+              filter.createdWithin === undefined
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Any time
+          </button>
+          {TASK_DATE_WINDOW_OPTIONS.map((window) => (
+            <button
+              key={window}
+              type="button"
+              aria-pressed={filter.createdWithin === window}
+              onClick={() => setCreatedWithin(window)}
+              className={cn(
+                "rounded-[9px] px-2.5 py-1 text-[12px] font-medium transition-colors",
+                filter.createdWithin === window
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {TASK_DATE_WINDOW_LABELS[window]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {listError && (
         <div
           className="mb-4 flex items-center gap-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
@@ -459,7 +546,7 @@ export function TaskInbox() {
           })
         ) : (
           <div className="divide-y divide-border">
-            {visible.map((task) => (
+            {ordered.map((task) => (
               <TaskRow
                 key={task.taskId}
                 mode={mode}

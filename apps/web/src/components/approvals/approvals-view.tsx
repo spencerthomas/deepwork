@@ -32,6 +32,7 @@ import {
   filterRowsByCapability,
   waitingTaskIdsNeedingDetail,
 } from "./approvals-model";
+import { approvalFilterToQuery, readApprovalFilter } from "./approvals-url";
 
 const VERB_FILTER_LABELS: Record<DecisionVerb, string> = {
   approve: "Approve",
@@ -129,6 +130,29 @@ export function ApprovalsView() {
   const [filter, setFilter] = useState<ApprovalCapabilityFilter>("all");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [keyboardError, setKeyboardError] = useState<string>();
+
+  // Mirror the active capability filter in the URL so a filtered queue is
+  // shareable, and restore it on first load and on browser back/forward — the
+  // same contract the task inbox and activity feed use.
+  const selectFilter = useCallback((next: ApprovalCapabilityFilter) => {
+    setFilter((current) => {
+      if (current === next) return current;
+      const query = approvalFilterToQuery(next);
+      const { pathname } = window.location;
+      const url = query ? `${pathname}?${query}` : pathname;
+      window.history.pushState(window.history.state, "", url);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () =>
+      setFilter(readApprovalFilter(new URLSearchParams(window.location.search)));
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   const [resolvedInterruptIds, setResolvedInterruptIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -267,7 +291,7 @@ export function ApprovalsView() {
         label="All pending"
         count={rows.length}
         active={filter === "all"}
-        onClick={() => setFilter("all")}
+        onClick={() => selectFilter("all")}
       />
       <div className="my-3 h-px bg-border" />
       <SidebarLabel>By capability</SidebarLabel>
@@ -276,21 +300,21 @@ export function ApprovalsView() {
         label="Approve"
         count={counts.approve}
         active={filter === "approve"}
-        onClick={() => setFilter("approve")}
+        onClick={() => selectFilter("approve")}
       />
       <SidebarItem
         icon={X}
         label="Reject"
         count={counts.reject}
         active={filter === "reject"}
-        onClick={() => setFilter("reject")}
+        onClick={() => selectFilter("reject")}
       />
       <SidebarItem
         icon={MessageSquare}
         label="Respond"
         count={counts.respond}
         active={filter === "respond"}
-        onClick={() => setFilter("respond")}
+        onClick={() => selectFilter("respond")}
       />
     </nav>
   );
@@ -430,7 +454,7 @@ export function ApprovalsView() {
             </p>
             <button
               type="button"
-              onClick={() => setFilter("all")}
+              onClick={() => selectFilter("all")}
               className="mt-3 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-accent"
             >
               Show all pending

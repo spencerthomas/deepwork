@@ -156,6 +156,37 @@ def test_research_writing_task_plans_pauses_and_completes_after_approval() -> No
     assert restored.next == ()
 
 
+def test_graph_executes_under_a_custom_reliability_envelope() -> None:
+    """A graph built with tightened caps still completes the approve/execute path.
+
+    This proves the reliability config (call limits, retries, and the LangGraph
+    ``recursion_limit`` applied at invoke) is plumbed through ``create_graph``
+    without breaking a legitimate run.
+    """
+    model = _model(
+        "- Inspect the supplied inputs.\n- Produce a concise result.",
+        "Bounded execution completed the approved plan.",
+    )
+    config = AgentConfig(
+        max_model_calls=3,
+        max_tool_calls=3,
+        model_max_retries=0,
+        tool_max_retries=0,
+        recursion_limit=8,
+    )
+    graph = create_graph(model=model, config=config)
+    run_config = _run_config("bounded-reliability")
+
+    graph.invoke(initial_state("Summarize the supplied inputs."), run_config)
+    result = graph.invoke(
+        Command(resume=validate_approval_response({"decision": "approve"})),
+        run_config,
+    )
+
+    assert result["status"] == "completed"
+    assert result["final_answer"] == "Bounded execution completed the approved plan."
+
+
 def test_rejection_ends_without_executing_the_deep_agent() -> None:
     """A rejected plan returns a trusted local message without another model call."""
     model = _model("1. Inspect the evidence.\n2. Write the answer.")

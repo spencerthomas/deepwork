@@ -35,6 +35,7 @@ EXPECTED_EXPORTS = {
     "RuntimeCapabilities",
     "VerificationRecord",
     "VerificationVerdict",
+    "build_reliability_middleware",
     "create_graph",
     "create_journey_graph",
     "initial_state",

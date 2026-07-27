@@ -8,6 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from deepagents import create_deep_agent
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelCallLimitMiddleware,
+    ModelRetryMiddleware,
+    ToolCallLimitMiddleware,
+    ToolRetryMiddleware,
+)
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import BaseTool
@@ -38,6 +45,7 @@ __all__ = [
     "PROTECTED_ACTION",
     "RUNTIME_MODE",
     "RuntimeCapabilities",
+    "build_reliability_middleware",
     "create_graph",
     "runtime_capabilities",
     "validate_approval_response",
@@ -45,6 +53,36 @@ __all__ = [
 ]
 
 RUNTIME_MODE = "local-runtime"
+
+
+def build_reliability_middleware(settings: AgentConfig) -> list[AgentMiddleware]:
+    """Return the maintained LangChain reliability middleware for the executor.
+
+    These bound a single execution run so an approved plan cannot loop forever or
+    spend unboundedly, and recover from transient provider/tool errors. We reuse
+    the maintained middleware rather than writing a custom budget engine:
+
+    * ``ModelCallLimitMiddleware`` / ``ToolCallLimitMiddleware`` cap model and tool
+      calls per run and end the run cleanly (``exit_behavior="end"``) when reached,
+      so the agent returns what it has instead of erroring.
+    * ``ModelRetryMiddleware`` / ``ToolRetryMiddleware`` retry transient failures
+      with bounded exponential backoff, then continue rather than crash the run.
+
+    A LangGraph ``recursion_limit`` (applied at invoke) is the outer backstop.
+    """
+    # The concrete middleware are AgentMiddleware subclasses; ty treats their
+    # specialized generic parameters as distinct, so the list is annotated to the
+    # base type with a scoped ignore, matching this module's TypedDict handling.
+    middleware: list[AgentMiddleware] = [  # ty: ignore[invalid-assignment]  # subclass generics
+        ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="end"),
+        ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="end"),
+    ]
+    if settings.model_max_retries > 0:
+        middleware.append(ModelRetryMiddleware(max_retries=settings.model_max_retries))
+    if settings.tool_max_retries > 0:
+        middleware.append(ToolRetryMiddleware(max_retries=settings.tool_max_retries))
+    return middleware
+
 
 # Concise fallback used only if the bundled prompt file cannot be read.
 _FALLBACK_SYSTEM_PROMPT = (
@@ -139,30 +177,42 @@ def create_graph(
         msg = "model must be an initialized BaseChatModel"
         raise TypeError(msg)
     settings = config or AgentConfig()
+    reliability_middleware = build_reliability_middleware(settings)
 
     def build_executor(backend: Any | None) -> Any:
         # The full Deep Agents executor: planning, virtual filesystem, and
         # subagents by default. When a sandbox backend is supplied, its
-        # filesystem and shell/execute run in that real sandbox instead.
+        # filesystem and shell/execute run in that real sandbox instead. The
+        # reliability middleware bounds runaway loops and cost and recovers from
+        # transient provider/tool errors.
         return create_deep_agent(
             model=model,
             tools=list(tools),
             system_prompt=system_prompt or DEEP_WORK_SYSTEM_PROMPT,
             name="deep-work-executor",
             backend=backend,
+            middleware=reliability_middleware,
         )
 
     # Build once when there is no per-task sandbox; otherwise build per task
     # around a fresh sandbox from the injected factory.
     default_executor = build_executor(None) if sandbox_factory is None else None
 
+    invoke_config = {"recursion_limit": settings.recursion_limit}
+
     def _invoke_executor(execution_request: str) -> dict[str, object]:
         message = HumanMessage(content=execution_request)
         if sandbox_factory is None:
-            return cast("dict[str, object]", default_executor.invoke({"messages": [message]}))
+            return cast(
+                "dict[str, object]",
+                default_executor.invoke({"messages": [message]}, config=invoke_config),
+            )
         with sandbox_factory() as backend:
             executor = build_executor(backend)
-            return cast("dict[str, object]", executor.invoke({"messages": [message]}))
+            return cast(
+                "dict[str, object]",
+                executor.invoke({"messages": [message]}, config=invoke_config),
+            )
 
     def execute(state: AgentState) -> dict[str, object]:
         execution_request = numbered_plan_request(

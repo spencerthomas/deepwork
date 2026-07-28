@@ -25,8 +25,16 @@ describe("middleware", () => {
   it("allows every destination in the credential-free fixture shell", () => {
     runtimeConfig.demoMode = "fixture";
 
-    expect(middleware(request("/tasks")).status).toBe(200);
-    expect(middleware(request("/approvals")).status).toBe(200);
+    for (const pathname of [
+      "/tasks",
+      "/approvals",
+      "/agents",
+      "/schedules",
+      "/activity",
+      "/settings",
+    ]) {
+      expect(middleware(request(pathname)).status).toBe(200);
+    }
   });
 
   it("keeps fixture users away from the API login screen", () => {

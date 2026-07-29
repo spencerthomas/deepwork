@@ -61,9 +61,16 @@ export function isRecoverableDecisionProblem(error: unknown): boolean {
   );
 }
 
+// Distinguish "unset" (no NEXT_PUBLIC_API_BASE_URL configured, e.g. local dev
+// against a bare backend) from an explicit empty string, which opts into
+// same-origin requests through the Next.js `/api/*` proxy in next.config.ts —
+// the only way the HttpOnly session cookie reaches both REST calls and the
+// SSE stream when the API is hosted on a different domain than the web app.
 function normalizeBaseUrl(value: string | undefined): string {
-  const candidate = value?.trim() || DEFAULT_API_BASE_URL;
-  return candidate.replace(/\/+$/, "");
+  if (value === undefined) {
+    return DEFAULT_API_BASE_URL;
+  }
+  return value.trim().replace(/\/+$/, "");
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {

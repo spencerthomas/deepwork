@@ -27,7 +27,7 @@ function MonoValue({ children }: { children: string }) {
 export function RuntimeSection() {
   const { mode, apiBaseUrl } = useTasksStore();
   const { status, loading, refetch } = useDemoStatus();
-  const runtimeCopy = taskRuntimePresentation(mode, apiBaseUrl);
+  const runtimeCopy = taskRuntimePresentation(mode, apiBaseUrl || undefined);
 
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);

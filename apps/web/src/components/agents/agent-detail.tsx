@@ -318,7 +318,7 @@ export function AgentDetail() {
 
           <div className="border-t border-border px-4 py-2.5">
             <span className="font-mono text-[11px] text-muted-foreground">
-              reported by {mode === "fixture" ? "the demo" : apiBaseUrl}
+              reported by {mode === "fixture" ? "the demo" : apiBaseUrl || "your workspace"}
             </span>
           </div>
         </div>

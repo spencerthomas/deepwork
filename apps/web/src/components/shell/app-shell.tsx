@@ -104,7 +104,7 @@ function RuntimeBanner() {
       <span className="font-medium">{runtimeDisclosure(taskClient.mode)}</span>
       <span
         className="hidden rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-[11px] sm:inline"
-        title={taskClient.apiBaseUrl}
+        title={taskClient.apiBaseUrl || "your workspace"}
       >
         {shellRuntimePresentation(taskClient.mode).workspaceLabel}
       </span>

@@ -13,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from deepwork_api.contracts._text import reject_unsafe_controls
 from deepwork_api.domain import (
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
@@ -41,6 +42,7 @@ TaskId = Annotated[str, StringConstraints(pattern=r"^task_[0-9]{8}$")]
 _SOURCE_SAFE_IDENTIFIER = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
 RunId = Annotated[str, StringConstraints(pattern=_SOURCE_SAFE_IDENTIFIER)]
 InterruptId = Annotated[str, StringConstraints(pattern=_SOURCE_SAFE_IDENTIFIER)]
+AgentId = Annotated[str, StringConstraints(pattern=_SOURCE_SAFE_IDENTIFIER)]
 EvidenceId = Annotated[
     str,
     StringConstraints(pattern=r"^evidence_[0-9]{8}(?:_[0-9]{2})?$"),
@@ -57,19 +59,6 @@ type TaskWireStatus = Literal[
 type TaskEvidenceClass = Literal["fixture", "local-source"]
 
 
-def _reject_unsafe_controls(value: str) -> str:
-    # Reject C0 (< 0x20), DEL (0x7F), and C1 (0x80-0x9F) control characters,
-    # keeping only tab/newline/carriage-return. This matches the endpoint
-    # validator in adapters/sources/classic/source.py, which already rejects
-    # DEL, so task input cannot carry control bytes the source layer forbids.
-    if any(
-        (ord(character) < 32 or 0x7F <= ord(character) <= 0x9F) and character not in "\t\n\r"
-        for character in value
-    ):
-        raise ValueError("control characters are not allowed")
-    return value
-
-
 class _TaskWireModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -78,13 +67,22 @@ class TaskCreateRequest(_TaskWireModel):
     """Bounded local task creation request."""
 
     prompt: str = Field(min_length=1, max_length=MAX_TASK_OBJECTIVE_LENGTH)
+    agent_id: AgentId | None = Field(
+        default=None,
+        alias="agentId",
+        description=(
+            "Optional identifier of a registered agent to run this task with. "
+            "Omit to use the deployment's default assistant and the workspace "
+            "system prompt."
+        ),
+    )
 
     @field_validator("prompt")
     @classmethod
     def validate_prompt(cls, value: str) -> str:
         """Reject blank or control-bearing prompt input."""
 
-        _reject_unsafe_controls(value)
+        reject_unsafe_controls(value)
         if not value.strip():
             raise ValueError("prompt must contain visible text")
         return value
@@ -239,7 +237,7 @@ class DecisionRequest(_TaskWireModel):
         """Reject unsafe controls without emitting comment content."""
 
         if value is not None:
-            _reject_unsafe_controls(value)
+            reject_unsafe_controls(value)
         return value
 
     @model_validator(mode="after")
@@ -307,7 +305,7 @@ class PlanUpdateRequest(_TaskWireModel):
     @classmethod
     def validate_steps(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         for step in value:
-            _reject_unsafe_controls(step)
+            reject_unsafe_controls(step)
             if not step.strip():
                 raise ValueError("plan steps must contain visible text")
             if len(step) > MAX_PLAN_STEP_LENGTH:

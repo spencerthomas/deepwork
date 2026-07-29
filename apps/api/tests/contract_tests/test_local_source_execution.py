@@ -65,6 +65,7 @@ class ScriptedAgentServer:
         self.threads = _FakeThreads(self)
         self.runs = _FakeRuns(self)
         self.assistants = _FakeAssistants(self)
+        self.crons = _FakeCrons(self)
 
     async def aclose(self) -> None:
         self.closed = True
@@ -277,6 +278,47 @@ class _FakeAssistants:
     async def get(self, assistant_id: str) -> object:
         self.server.fail("assistants.get")
         return {"assistant_id": assistant_id}
+
+    async def search(
+        self, *, graph_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def create(
+        self,
+        graph_id: str | None,
+        config: Mapping[str, object] | None = None,
+        *,
+        metadata: Mapping[str, object] | None = None,
+        assistant_id: str | None = None,
+        if_exists: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def update(
+        self,
+        assistant_id: str,
+        *,
+        config: Mapping[str, object] | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+    async def delete(self, assistant_id: str) -> None:
+        raise NotImplementedError("agent registry is exercised in test_agents.py")
+
+
+@dataclass(slots=True)
+class _FakeCrons:
+    server: ScriptedAgentServer
+
+    async def search(
+        self, *, assistant_id: str | None = None, limit: int = 10, offset: int = 0
+    ) -> object:
+        raise NotImplementedError("schedule registry is exercised in test_schedules.py")
 
 
 @dataclass(slots=True)

@@ -19,6 +19,7 @@ import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { PROMPT_MAX_LENGTH } from "@/lib/task-types";
+import { useAgents } from "@/lib/use-agents";
 import { cn } from "@/lib/utils";
 
 const templates = [
@@ -31,7 +32,9 @@ const templates = [
 export function NewTask() {
   const router = useRouter();
   const { creating, createError, createTask, mode } = useTasksStore();
+  const { available: agentsAvailable, agents } = useAgents();
   const [prompt, setPrompt] = useState("");
+  const [agentId, setAgentId] = useState<string>("");
   const [validationError, setValidationError] = useState<string>();
   const [restoredAge, setRestoredAge] = useState<string>();
   const runtimeCopy = taskRuntimePresentation(mode);
@@ -91,7 +94,7 @@ export function NewTask() {
     setValidationError(undefined);
     // The fields are disabled while `creating`, so `prompt` cannot change under
     // the in-flight request — the value dispatched is the value cleared.
-    const created = await createTask(prompt);
+    const created = await createTask(prompt, agentId || undefined);
     if (created) {
       // The work is now a real task; drop the local draft so a later visit
       // starts clean.
@@ -153,19 +156,43 @@ export function NewTask() {
               </span>
             </span>
           </button>
-          <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-3 text-left">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-              <Bot className="size-4" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-muted-foreground">
-                External agent sources
+          {agentsAvailable && agents.length > 0 ? (
+            <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 text-left">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                <Bot className="size-4" />
               </span>
-              <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                {runtimeCopy.sourceSelectionDescription}
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-crisp">Agent</span>
+                <select
+                  value={agentId}
+                  disabled={creating}
+                  onChange={(event) => setAgentId(event.target.value)}
+                  className="mt-1 w-full truncate rounded-lg border border-border bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground outline-none disabled:opacity-60"
+                >
+                  {agents.map((agent) => (
+                    <option key={agent.agentId} value={agent.isDefault ? "" : agent.agentId}>
+                      {agent.name}
+                      {agent.isDefault ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
               </span>
-            </span>
-          </div>
+            </label>
+          ) : (
+            <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-3 text-left">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                <Bot className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-muted-foreground">
+                  External agent sources
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {runtimeCopy.sourceSelectionDescription}
+                </span>
+              </span>
+            </div>
+          )}
         </div>
 
         <label

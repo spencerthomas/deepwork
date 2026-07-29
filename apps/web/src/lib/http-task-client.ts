@@ -160,14 +160,21 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
       return normalizeTaskDetail(body);
     },
 
-    async createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult> {
+    async createTask(
+      prompt: string,
+      agentId?: string,
+      signal?: AbortSignal,
+    ): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
       const body = await request(
         taskUrl,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ prompt: normalizedPrompt }),
+          body: JSON.stringify({
+            prompt: normalizedPrompt,
+            ...(agentId ? { agentId } : {}),
+          }),
           signal,
         },
         202,

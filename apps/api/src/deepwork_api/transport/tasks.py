@@ -66,7 +66,7 @@ def build_task_router(
     @router.post("", response_model=TaskAcceptedResponse, status_code=202)
     async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse | JSONResponse:
         try:
-            task = await service.create_task(request.prompt)
+            task = await service.create_task(request.prompt, agent_id=request.agent_id)
         except TaskSourceContractError:
             return _problem(
                 502,

@@ -161,7 +161,7 @@ export function createFixtureTaskClient(): TaskClient {
       return publicTask(task);
     },
 
-    async createTask(prompt: string): Promise<CreateTaskResult> {
+    async createTask(prompt: string, _agentId?: string): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
       const sequence = nextTaskNumber++;
       const taskId = `fixture-task-${sequence}`;

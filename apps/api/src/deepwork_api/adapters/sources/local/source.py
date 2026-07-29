@@ -12,11 +12,14 @@ from typing import Literal, Protocol, cast
 from urllib.parse import urlsplit
 
 from deepwork_api.domain import (
+    MAX_AGENT_DESCRIPTION_LENGTH,
+    MAX_AGENT_NAME_LENGTH,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
+    DefaultAgentImmutableError,
     StaleInterruptError,
     TaskSourceContractError,
     TaskSourceUnavailableError,
@@ -29,6 +32,8 @@ Decision = Literal["approve", "reject", "respond"]
 StreamEventKind = Literal["run", "state", "progress", "error"]
 _MAX_REVIEW_COMMENT_LENGTH = 1_000
 _MAX_IDENTIFIER_LENGTH = 256
+_MAX_AGENT_LIST = 100
+_MAX_SCHEDULE_LIST = 100
 _LOCAL_SDK_TIMEOUT = (5.0, 300.0, 30.0, 5.0)
 _PLAN_UPDATE_CONFIRM_TIMEOUT_SECONDS = 30.0
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$")
@@ -84,6 +89,47 @@ class _RunsClient(Protocol):
 class _AssistantsClient(Protocol):
     async def get(self, assistant_id: str) -> object: ...
 
+    async def search(
+        self,
+        *,
+        graph_id: str | None = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> object: ...
+
+    async def create(
+        self,
+        graph_id: str | None,
+        config: Mapping[str, object] | None = None,
+        *,
+        metadata: Mapping[str, object] | None = None,
+        assistant_id: str | None = None,
+        if_exists: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object: ...
+
+    async def update(
+        self,
+        assistant_id: str,
+        *,
+        config: Mapping[str, object] | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> object: ...
+
+    async def delete(self, assistant_id: str) -> None: ...
+
+
+class _CronsClient(Protocol):
+    async def search(
+        self,
+        *,
+        assistant_id: str | None = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> object: ...
+
 
 class _AgentServerClient(Protocol):
     @property
@@ -94,6 +140,9 @@ class _AgentServerClient(Protocol):
 
     @property
     def assistants(self) -> _AssistantsClient: ...
+
+    @property
+    def crons(self) -> _CronsClient: ...
 
     async def aclose(self) -> None: ...
 
@@ -138,6 +187,14 @@ class LocalSourceStaleInterruptError(LocalSourceError, StaleInterruptError):
 
     Also a domain ``StaleInterruptError`` so transport maps it to the same
     conflict contract as every other stale interrupt.
+    """
+
+
+class LocalSourceDefaultAgentImmutableError(LocalSourceError, DefaultAgentImmutableError):
+    """The default agent bound to the deployed graph cannot be edited or deleted.
+
+    Also a domain ``DefaultAgentImmutableError`` so the application layer can
+    classify it without importing adapter modules.
     """
 
 
@@ -192,6 +249,44 @@ class LocalStateSnapshot:
     final_answer: str | None
     interrupt: LocalInterrupt | None
     next_nodes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AgentSummary:
+    """Sanitized projection of one Assistant sharing our deployed graph.
+
+    Deep Work owns none of this: it is read from (and written back to) the
+    configured task source's official Assistants API, never stored locally.
+    """
+
+    agent_id: str
+    name: str
+    description: str | None
+    system_prompt: str | None
+    is_default: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleSummary:
+    """Sanitized projection of one Cron (recurring run) on our deployed graph.
+
+    Deep Work owns none of this: it is read from the configured task
+    source's official Crons API, never stored locally. Read-only: a
+    schedule-triggered run starts a fresh thread on the source directly, so
+    it does not yet appear in this application's task repository or event
+    stream. Creating schedules from here is deferred until that
+    reconciliation exists, so this type carries no mutation affordance.
+    """
+
+    schedule_id: str
+    agent_id: str
+    cron_expression: str
+    timezone: str | None
+    end_time: str | None
+    created_at: str
+    updated_at: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -290,6 +385,15 @@ class LocalAgentServerSource:
         repr=False,
         compare=False,
     )
+    # Threads are bound to whichever assistant started them; resume and plan
+    # updates must keep replaying that exact assistant, not silently fall
+    # back to the source's configured default.
+    _thread_assistants: dict[str, str] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "endpoint", validate_loopback_url(self.endpoint))
@@ -338,12 +442,22 @@ class LocalAgentServerSource:
             return LocalAgentServerStatus(available=False, code="unavailable")
         return LocalAgentServerStatus(available=True, code="ready")
 
-    async def start(self, objective: str, *, system_prompt: str | None = None) -> LocalRunReference:
+    async def start(
+        self,
+        objective: str,
+        *,
+        system_prompt: str | None = None,
+        agent_id: str | None = None,
+    ) -> LocalRunReference:
         """Create a thread and a resumable run for the integrated agent graph.
 
-        When ``system_prompt`` is supplied (the workspace's editable prompt), it
-        flows to the graph as ``configurable.system_prompt`` so execution uses
-        that persona for this run only, without redeploying the agent.
+        ``agent_id`` selects a specific assistant sharing our deployed graph,
+        falling back to the source's configured default assistant when
+        omitted. When ``system_prompt`` is supplied (the workspace's editable
+        prompt) it flows to the graph as ``configurable.system_prompt``, but
+        only applies to the default assistant: a selected named agent's own
+        registered config governs its persona instead, so the two overrides
+        never fight each other.
         """
 
         normalized = _bounded_text(
@@ -351,13 +465,17 @@ class LocalAgentServerSource:
             field="task objective",
             maximum=MAX_TASK_OBJECTIVE_LENGTH,
         )
-        prompt_override = normalize_system_prompt(system_prompt)
+        resolved_assistant = (
+            _validate_assistant_identifier(agent_id) if agent_id is not None else self.assistant_id
+        )
+        effective_prompt = system_prompt if agent_id is None else None
+        prompt_override = normalize_system_prompt(effective_prompt)
         run_input: dict[str, object] = {"task": normalized}
         if prompt_override is not None:
             # Deliver the editable prompt in the input (always reaches a hosted
             # graph) and in the config (belt-and-suspenders for local runs).
             run_input["system_prompt"] = prompt_override
-        run_config = _run_config(system_prompt)
+        run_config = _run_config(effective_prompt)
         try:
             thread = _as_mapping(
                 await self.client.threads.create(
@@ -367,7 +485,7 @@ class LocalAgentServerSource:
             thread_id = _required_identifier(thread, "thread_id")
             run = await self.client.runs.create(
                 thread_id,
-                self.assistant_id,
+                resolved_assistant,
                 input=run_input,
                 config=run_config,
                 stream_mode=("values", "updates"),
@@ -381,6 +499,7 @@ class LocalAgentServerSource:
         except Exception:
             message = "local Agent Server start failed"
             raise LocalSourceUnavailableError(message) from None
+        self._thread_assistants[thread_id] = resolved_assistant
         return LocalRunReference(thread_id=thread_id, run_id=run_id)
 
     async def get_state(self, thread_id: str) -> LocalStateSnapshot:
@@ -451,7 +570,7 @@ class LocalAgentServerSource:
             try:
                 run = await self.client.runs.create(
                     safe_thread_id,
-                    self.assistant_id,
+                    self._thread_assistants.get(safe_thread_id, self.assistant_id),
                     command={"resume": {safe_interrupt_id: response}},
                     stream_mode=("values", "updates"),
                     stream_resumable=True,
@@ -508,7 +627,7 @@ class LocalAgentServerSource:
                 )
                 run = await self.client.runs.create(
                     safe_thread_id,
-                    self.assistant_id,
+                    self._thread_assistants.get(safe_thread_id, self.assistant_id),
                     stream_mode=("values", "updates"),
                     stream_resumable=True,
                     multitask_strategy="reject",
@@ -539,6 +658,189 @@ class LocalAgentServerSource:
             run_id=run_id,
             plan_revision=next_revision,
             interrupt_id=new_interrupt.interrupt_id,
+        )
+
+    async def _resolve_graph_id(self) -> str:
+        """Read the graph identifier of the configured default assistant.
+
+        Every agent this source lists, creates, updates, or deletes is scoped
+        to this graph_id: it is the only compiled graph contract this
+        adapter's state and stream parsing supports.
+        """
+
+        try:
+            default = _as_mapping(await self.client.assistants.get(self.assistant_id))
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server default assistant lookup failed"
+            raise LocalSourceUnavailableError(message) from None
+        return _required_identifier(default, "graph_id")
+
+    async def list_agents(self) -> tuple[AgentSummary, ...]:
+        """List assistants sharing our deployed graph, sanitized for the app boundary."""
+
+        graph_id = await self._resolve_graph_id()
+        try:
+            raw = await self.client.assistants.search(graph_id=graph_id, limit=_MAX_AGENT_LIST)
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server agent list failed"
+            raise LocalSourceUnavailableError(message) from None
+        if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+            message = "local Agent Server agent list shape is unsupported"
+            raise LocalSourceContractError(message)
+        return tuple(self._agent_summary(_as_mapping(item)) for item in raw)
+
+    async def create_agent(
+        self,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> AgentSummary:
+        """Create a new assistant on our deployed graph with its own config."""
+
+        graph_id = await self._resolve_graph_id()
+        safe_name = _bounded_text(name, field="agent name", maximum=MAX_AGENT_NAME_LENGTH)
+        safe_description = _optional_bounded_text(
+            description, field="agent description", maximum=MAX_AGENT_DESCRIPTION_LENGTH
+        )
+        try:
+            created = await self.client.assistants.create(
+                graph_id,
+                _agent_config(system_prompt),
+                name=safe_name,
+                description=safe_description,
+                if_exists="raise",
+            )
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server agent create failed"
+            raise LocalSourceUnavailableError(message) from None
+        return self._agent_summary(_as_mapping(created))
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> AgentSummary:
+        """Replace the editable fields of one non-default assistant.
+
+        This always sends a full ``config`` (an explicit ``{}`` when
+        ``system_prompt`` is unset) so a cleared prompt genuinely clears the
+        stored override rather than leaving the prior value untouched.
+        """
+
+        safe_id = _validate_assistant_identifier(agent_id)
+        if safe_id == self.assistant_id:
+            raise LocalSourceDefaultAgentImmutableError
+        safe_name = _bounded_text(name, field="agent name", maximum=MAX_AGENT_NAME_LENGTH)
+        safe_description = _optional_bounded_text(
+            description, field="agent description", maximum=MAX_AGENT_DESCRIPTION_LENGTH
+        )
+        config = _agent_config(system_prompt)
+        try:
+            updated = await self.client.assistants.update(
+                safe_id,
+                config=config if config is not None else {},
+                name=safe_name,
+                description=safe_description,
+            )
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server agent update failed"
+            raise LocalSourceUnavailableError(message) from None
+        return self._agent_summary(_as_mapping(updated))
+
+    async def delete_agent(self, agent_id: str) -> None:
+        """Delete one non-default assistant."""
+
+        safe_id = _validate_assistant_identifier(agent_id)
+        if safe_id == self.assistant_id:
+            raise LocalSourceDefaultAgentImmutableError
+        try:
+            await self.client.assistants.delete(safe_id)
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server agent delete failed"
+            raise LocalSourceUnavailableError(message) from None
+
+    def _agent_summary(self, mapping: Mapping[str, object]) -> AgentSummary:
+        agent_id = _required_identifier(mapping, "assistant_id")
+        raw_name = mapping.get("name")
+        name = _bounded_text(
+            raw_name if isinstance(raw_name, str) and raw_name.strip() else "Untitled",
+            field="agent name",
+            maximum=MAX_AGENT_NAME_LENGTH,
+        )
+        description = _optional_bounded_text(
+            mapping.get("description"),
+            field="agent description",
+            maximum=MAX_AGENT_DESCRIPTION_LENGTH,
+        )
+        return AgentSummary(
+            agent_id=agent_id,
+            name=name,
+            description=description,
+            system_prompt=_config_system_prompt(mapping.get("config")),
+            is_default=agent_id == self.assistant_id,
+            created_at=_agent_timestamp(mapping.get("created_at")),
+            updated_at=_agent_timestamp(mapping.get("updated_at")),
+        )
+
+    async def list_schedules(self) -> tuple[ScheduleSummary, ...]:
+        """List recurring runs (crons) scoped to our deployed graph's assistants.
+
+        Crons are a licensed LangGraph Platform capability: an unsupported
+        deployment answers with an error here, which callers map to an
+        honest unavailable state rather than a fabricated empty list.
+        """
+
+        # Crons search has no graph_id filter, only assistant_id/thread_id, so
+        # one unfiltered call is cross-referenced against our graph's own
+        # assistants (already graph-scoped by list_agents) rather than trusting
+        # every cron the deployment returns — a cron pointed at an unrelated
+        # graph on a multi-graph deployment must never be surfaced as ours.
+        agents = await self.list_agents()
+        known_agents = {agent.agent_id for agent in agents}
+        try:
+            raw = await self.client.crons.search(limit=_MAX_SCHEDULE_LIST)
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server schedule list failed"
+            raise LocalSourceUnavailableError(message) from None
+        if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+            message = "local Agent Server schedule list shape is unsupported"
+            raise LocalSourceContractError(message)
+        schedules = tuple(self._schedule_summary(_as_mapping(item)) for item in raw)
+        return tuple(schedule for schedule in schedules if schedule.agent_id in known_agents)
+
+    def _schedule_summary(self, mapping: Mapping[str, object]) -> ScheduleSummary:
+        schedule_id = _required_identifier(mapping, "cron_id")
+        agent_id = _required_identifier(mapping, "assistant_id")
+        raw_schedule = mapping.get("schedule")
+        if not isinstance(raw_schedule, str) or not raw_schedule.strip():
+            message = "local Agent Server schedule cron expression is missing"
+            raise LocalSourceContractError(message)
+        return ScheduleSummary(
+            schedule_id=schedule_id,
+            agent_id=agent_id,
+            cron_expression=raw_schedule,
+            timezone=_optional_bounded_text(
+                mapping.get("timezone"), field="schedule timezone", maximum=64
+            ),
+            end_time=_agent_timestamp(mapping.get("end_time")) or None,
+            created_at=_agent_timestamp(mapping.get("created_at")),
+            updated_at=_agent_timestamp(mapping.get("updated_at")),
         )
 
     @asynccontextmanager
@@ -591,6 +893,52 @@ def _required_identifier(value: Mapping[str, object], key: str) -> str:
         message = "local Agent Server response identifier is missing"
         raise LocalSourceContractError(message)
     return _validate_identifier(raw, field="source identifier")
+
+
+def _validate_assistant_identifier(value: str) -> str:
+    if not isinstance(value, str) or not _ASSISTANT_IDENTIFIER.fullmatch(value):
+        message = "agent identifier is invalid"
+        raise LocalSourceContractError(message)
+    return value
+
+
+def _optional_bounded_text(value: object, *, field: str, maximum: int) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        message = f"{field} must be text"
+        raise LocalSourceContractError(message)
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if len(normalized) > maximum:
+        message = f"{field} is outside its supported bound"
+        raise LocalSourceContractError(message)
+    return normalized
+
+
+def _agent_config(system_prompt: str | None) -> dict[str, object] | None:
+    """Build the assistant config carrying an optional bound system prompt."""
+    normalized = normalize_system_prompt(system_prompt)
+    if normalized is None:
+        return None
+    return {"configurable": {"system_prompt": normalized}}
+
+
+def _config_system_prompt(value: object) -> str | None:
+    if not isinstance(value, Mapping):
+        return None
+    configurable = value.get("configurable")
+    if not isinstance(configurable, Mapping):
+        return None
+    prompt = configurable.get("system_prompt")
+    if not isinstance(prompt, str):
+        return None
+    return normalize_system_prompt(prompt)
+
+
+def _agent_timestamp(value: object) -> str:
+    return value if isinstance(value, str) and value else ""
 
 
 def _validate_cursor(value: object) -> str:

@@ -50,6 +50,44 @@ class LocalPlanUpdate(LocalRun, Protocol):
     def plan_revision(self) -> int: ...
 
 
+class LocalAgentSummary(Protocol):
+    """One assistant sharing the deployed graph, sanitized by the source."""
+
+    @property
+    def agent_id(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def description(self) -> str | None: ...
+    @property
+    def system_prompt(self) -> str | None: ...
+    @property
+    def is_default(self) -> bool: ...
+    @property
+    def created_at(self) -> str: ...
+    @property
+    def updated_at(self) -> str: ...
+
+
+class LocalScheduleSummary(Protocol):
+    """One recurring run (cron) on our deployed graph, sanitized by the source."""
+
+    @property
+    def schedule_id(self) -> str: ...
+    @property
+    def agent_id(self) -> str: ...
+    @property
+    def cron_expression(self) -> str: ...
+    @property
+    def timezone(self) -> str | None: ...
+    @property
+    def end_time(self) -> str | None: ...
+    @property
+    def created_at(self) -> str: ...
+    @property
+    def updated_at(self) -> str: ...
+
+
 class LocalInterruptValue(Protocol):
     @property
     def interrupt_id(self) -> str: ...
@@ -73,7 +111,13 @@ class LocalState(Protocol):
 
 
 class LocalSource(Protocol):
-    async def start(self, objective: str, *, system_prompt: str | None = None) -> LocalRun: ...
+    async def start(
+        self,
+        objective: str,
+        *,
+        system_prompt: str | None = None,
+        agent_id: str | None = None,
+    ) -> LocalRun: ...
     async def get_state(self, thread_id: str) -> LocalState: ...
     async def resume(
         self, thread_id: str, *, interrupt_id: str, decision: str, comment: str | None = None
@@ -82,6 +126,20 @@ class LocalSource(Protocol):
         self, thread_id: str, *, interrupt_id: str, expected_revision: int, steps: Sequence[str]
     ) -> LocalPlanUpdate: ...
     def stream(self, run: LocalRun) -> AsyncIterator[object]: ...
+    async def list_agents(self) -> tuple[LocalAgentSummary, ...]: ...
+    async def create_agent(
+        self, *, name: str, description: str | None, system_prompt: str | None
+    ) -> LocalAgentSummary: ...
+    async def update_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> LocalAgentSummary: ...
+    async def delete_agent(self, agent_id: str) -> None: ...
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]: ...
 
 
 @dataclass(slots=True)
@@ -101,10 +159,14 @@ class LocalAgentServerRunner:
     _resumes_in_flight: set[tuple[str, str]] = field(default_factory=set, init=False)
     _closing: bool = field(default=False, init=False)
 
-    async def create(self, *, title: str, objective: str) -> TaskSnapshot:
-        system_prompt = await self._current_system_prompt()
+    async def create(
+        self, *, title: str, objective: str, agent_id: str | None = None
+    ) -> TaskSnapshot:
+        # The workspace prompt override only governs the default assistant; a
+        # selected named agent's own registered config governs its persona.
+        system_prompt = await self._current_system_prompt() if agent_id is None else None
         try:
-            run = await self.source.start(objective, system_prompt=system_prompt)
+            run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
         except TaskSourceContractError:
             raise
         except Exception:
@@ -115,6 +177,34 @@ class LocalAgentServerRunner:
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)
         return task
+
+    async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
+        return await self.source.list_agents()
+
+    async def create_agent(
+        self, *, name: str, description: str | None, system_prompt: str | None
+    ) -> LocalAgentSummary:
+        return await self.source.create_agent(
+            name=name, description=description, system_prompt=system_prompt
+        )
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> LocalAgentSummary:
+        return await self.source.update_agent(
+            agent_id, name=name, description=description, system_prompt=system_prompt
+        )
+
+    async def delete_agent(self, agent_id: str) -> None:
+        await self.source.delete_agent(agent_id)
+
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
+        return await self.source.list_schedules()
 
     async def _current_system_prompt(self) -> str | None:
         """Read the workspace's editable prompt; never let it block task start.

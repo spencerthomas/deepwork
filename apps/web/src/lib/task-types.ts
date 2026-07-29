@@ -105,7 +105,7 @@ export interface TaskClient {
   readonly mode: ClientMode;
   readonly apiBaseUrl: string;
   cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult>;
-  createTask(prompt: string, signal?: AbortSignal): Promise<CreateTaskResult>;
+  createTask(prompt: string, agentId?: string, signal?: AbortSignal): Promise<CreateTaskResult>;
   decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<DecisionResult>;
   getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail>;
   listTasks(signal?: AbortSignal): Promise<TaskSummary[]>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Cpu, Info, MessageSquareText, Palette, Search } from "lucide-react";
+import { ArrowLeft, Bot, Cpu, Info, MessageSquareText, Palette, Search } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { AboutSection } from "./about-section";
+import { AgentsSection } from "./agents-section";
 import { AppearanceSection } from "./appearance-section";
 import { PromptSection } from "./prompt-section";
 import { RuntimeSection } from "./runtime-section";
@@ -20,6 +21,7 @@ import { RuntimeSection } from "./runtime-section";
 const sectionIcons: Record<SettingsSectionId, ComponentType<{ className?: string }>> = {
   appearance: Palette,
   prompt: MessageSquareText,
+  agents: Bot,
   runtime: Cpu,
   about: Info,
 };
@@ -27,6 +29,7 @@ const sectionIcons: Record<SettingsSectionId, ComponentType<{ className?: string
 const sectionBodies: Record<SettingsSectionId, () => ReactNode> = {
   appearance: () => <AppearanceSection />,
   prompt: () => <PromptSection />,
+  agents: () => <AgentsSection />,
   runtime: () => <RuntimeSection />,
   about: () => <AboutSection />,
 };

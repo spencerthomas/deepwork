@@ -1,5 +1,12 @@
 """Pure application-service domain values."""
 
+from deepwork_api.domain.agents import (
+    MAX_AGENT_DESCRIPTION_LENGTH,
+    MAX_AGENT_NAME_LENGTH,
+    AgentDomainError,
+    AgentRegistryUnavailableError,
+    DefaultAgentImmutableError,
+)
 from deepwork_api.domain.auth import (
     AuthError,
     InvalidCredentialError,
@@ -12,6 +19,7 @@ from deepwork_api.domain.prompt import (
     SystemPromptTooLongError,
     normalize_system_prompt,
 )
+from deepwork_api.domain.schedules import ScheduleDomainError, ScheduleRegistryUnavailableError
 from deepwork_api.domain.status import (
     Capability,
     CapabilityState,
@@ -58,12 +66,16 @@ from deepwork_api.domain.tasks import (
 
 __all__ = [
     "CANCELLATION_SAFE_REASON",
+    "MAX_AGENT_DESCRIPTION_LENGTH",
+    "MAX_AGENT_NAME_LENGTH",
     "MAX_PLAN_REVISION",
     "MAX_PLAN_STEPS",
     "MAX_PLAN_STEP_LENGTH",
     "MAX_SYSTEM_PROMPT_LENGTH",
     "MAX_TASK_OBJECTIVE_LENGTH",
     "MAX_TASK_RESULT_LENGTH",
+    "AgentDomainError",
+    "AgentRegistryUnavailableError",
     "AuthError",
     "CancellationRecord",
     "Capability",
@@ -71,6 +83,7 @@ __all__ = [
     "DecisionConflictError",
     "DecisionRecord",
     "DecisionValue",
+    "DefaultAgentImmutableError",
     "DemoStatus",
     "EventData",
     "EventDataValue",
@@ -87,6 +100,8 @@ __all__ = [
     "PlanUpdateRecord",
     "ProcessState",
     "ProposedPlan",
+    "ScheduleDomainError",
+    "ScheduleRegistryUnavailableError",
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",

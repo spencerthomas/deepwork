@@ -10,7 +10,11 @@ from types import SimpleNamespace
 import pytest
 
 from deepwork_api.adapters.fixture.tasks import InMemoryTaskRepository
-from deepwork_api.application.local_runner import LocalAgentServerRunner, LocalRun
+from deepwork_api.application.local_runner import (
+    LocalAgentServerRunner,
+    LocalRun,
+    LocalScheduleSummary,
+)
 from deepwork_api.application.tasks import TaskService
 from deepwork_api.domain import (
     DecisionValue,
@@ -35,6 +39,17 @@ class _PlanUpdate(_Run):
 
 
 @dataclass(frozen=True)
+class _AgentSummary:
+    agent_id: str = "assistant-2"
+    name: str = "Reviewer"
+    description: str | None = None
+    system_prompt: str | None = None
+    is_default: bool = False
+    created_at: str = "2026-01-01T00:00:00Z"
+    updated_at: str = "2026-01-01T00:00:00Z"
+
+
+@dataclass(frozen=True)
 class _Interrupt:
     interrupt_id: str = "interrupt_1"
     plan: tuple[str, ...] = ("First step",)
@@ -56,9 +71,13 @@ class _Source:
         self.resume_comment: str | None = None
         self.state_reads = 0
         self.start_system_prompts: list[str | None] = []
+        self.start_agent_ids: list[str | None] = []
 
-    async def start(self, objective: str, *, system_prompt: str | None = None) -> _Run:
+    async def start(
+        self, objective: str, *, system_prompt: str | None = None, agent_id: str | None = None
+    ) -> _Run:
         self.start_system_prompts.append(system_prompt)
+        self.start_agent_ids.append(agent_id)
         return _Run()
 
     async def get_state(self, thread_id: str) -> _State:
@@ -90,6 +109,32 @@ class _Source:
     async def stream(self, run: LocalRun) -> AsyncIterator[object]:
         for event in self.events:
             yield event
+
+    async def list_agents(self) -> tuple[_AgentSummary, ...]:
+        return (_AgentSummary(),)
+
+    async def create_agent(
+        self, *, name: str, description: str | None, system_prompt: str | None
+    ) -> _AgentSummary:
+        return _AgentSummary(name=name, description=description, system_prompt=system_prompt)
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str,
+        description: str | None,
+        system_prompt: str | None,
+    ) -> _AgentSummary:
+        return _AgentSummary(
+            agent_id=agent_id, name=name, description=description, system_prompt=system_prompt
+        )
+
+    async def delete_agent(self, agent_id: str) -> None:
+        return None
+
+    async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
+        return ()
 
 
 async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
@@ -138,6 +183,45 @@ async def test_create_without_a_prompt_store_sends_no_override() -> None:
         await runner.close()
 
     assert source.start_system_prompts == [None]
+
+
+async def test_create_with_an_agent_id_skips_the_workspace_prompt_override() -> None:
+    """A selected named agent's own config governs it; the two never fight."""
+    from deepwork_api.adapters.prompt import InMemoryPromptStore
+
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(
+        repository, source, prompt_store=InMemoryPromptStore("Always be terse.")
+    )
+    try:
+        await runner.create(title="t", objective="Do the thing", agent_id="assistant-2")
+    finally:
+        await runner.close()
+
+    assert source.start_system_prompts == [None]
+    assert source.start_agent_ids == ["assistant-2"]
+
+
+async def test_runner_agent_registry_methods_delegate_to_the_source() -> None:
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(repository, source)
+    try:
+        listed = await runner.list_agents()
+        created = await runner.create_agent(
+            name="Reviewer", description="Reviews things.", system_prompt="Be terse."
+        )
+        updated = await runner.update_agent(
+            "assistant-2", name="Renamed", description=None, system_prompt=None
+        )
+        await runner.delete_agent("assistant-2")
+    finally:
+        await runner.close()
+
+    assert listed == (_AgentSummary(),)
+    assert created.name == "Reviewer"
+    assert updated.name == "Renamed"
 
 
 async def test_cancel_is_refused_without_a_source_cancel_capability() -> None:

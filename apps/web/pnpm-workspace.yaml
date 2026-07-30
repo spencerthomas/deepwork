@@ -1,0 +1,8 @@
+packages:
+  - "."
+
+overrides:
+  "@napi-rs/wasm-runtime": "1.1.6"
+  "baseline-browser-mapping": "2.11.0"
+  "enhanced-resolve": "5.24.3"
+  "vite": "8.1.5"

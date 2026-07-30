@@ -22,8 +22,9 @@ For web-only development against an already running API:
 pnpm dev:web
 ```
 
-The API defaults to `http://127.0.0.1:8000`. Set
-`NEXT_PUBLIC_API_BASE_URL` to use another API origin.
+In local development the API defaults to `http://127.0.0.1:8000`. Production
+defaults to the same-origin `/api/*` proxy so the session cookie reaches the
+Railway API. Set `NEXT_PUBLIC_API_BASE_URL` to use another explicit API origin.
 
 `pnpm demo:web` is a browser-only fixture harness. It keeps a visible
 fixture-mode banner and uses the same typed client interface as the API

@@ -26,8 +26,8 @@ build.
 
 Evidence snapshot: recovery branch `product/golden-journey-recovery`, base
 `c7e0ea6`, product journey through `b726909`, blocking browser gates through
-`48e2102`, plus the independent-review hardening set, reviewed
-2026-08-03 PDT.
+`48e2102`, security fail-closed hardening through `36dad6d`, and contributor-gate
+repairs through `9fd1fc1`, reviewed 2026-08-03 PDT.
 
 | Program scenario | Implemented | Browser-proven | Hosted-proven | Release-accepted | Current evidence and exact gap |
 |---|---|---|---|---|---|
@@ -41,7 +41,7 @@ Evidence snapshot: recovery branch `product/golden-journey-recovery`, base
 | `E2E-V1-08-RESPONSIVE-ACCESS` | Partial | Partial | No | No | Blocking 1440x1000 and 390x844 screenshots cover all 12 designed route references and the golden journey; a separate 320px overflow check covers the primary shell routes, and the existing accessibility suite remains green. The 200% zoom, screen-reader, switch, touch, high-contrast and reduced-motion matrix is not retained. |
 | `E2E-V1-09-SECURITY-RECOVERY` | Partial | No | No | No | Narrow credential, endpoint-shape, loopback, CORS, stale-mutation and SQLite recovery tests cover individual boundaries. There is no tenant-aware implementation or accepted tenant/SSRF/redirect/webhook/object/sandbox/updater abuse pack, restore comparison, or zero-unauthorized-effect proof. |
 | `E2E-V1-10-PERFORMANCE` | No | No | No | No | No accepted 1,000-task dataset, reference device/load profile, latency, frame, memory or assistive-navigation proof exists. |
-| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | Stable bootstrap/check/browser commands and fixture levels exist. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
+| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | The supported root `make check` is green: architecture enforcement, formatting, lint, type checks, 74 domain tests, 60 SDK tests, 32 UI tests, 279 web tests, 310 API tests plus 77 API contract tests, 100 agent tests and reproducible package builds all pass. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
 | `E2E-V1-12-OPERATIONAL-RELEASE` | Partial | No | No | No | The product renders retained event trace plus an explicit external-trace unavailable state, and the hosted journey is fail-closed. Staged promotion, migration/restore, failure injection, alert/runbook proof and rollback have not run. |
 
 ## Golden-journey recovery slice

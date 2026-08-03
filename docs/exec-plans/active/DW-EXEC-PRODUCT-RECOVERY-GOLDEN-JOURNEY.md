@@ -201,11 +201,10 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
   configured Claude CLI was not authenticated. Local correctness, security,
   contract, reliability, race, testing, standards, maintainability and agent-native
   reviewers still completed; the missing cross-model corroboration is explicit.
-- 2026-08-03 — Broad checks still expose base-branch debt outside this recovery:
-  14 pre-existing mypy findings in five files, four ruff-format findings in
-  untouched files, and ten architecture findings. The recovery adds no mypy or
-  ruff-format failure; `run-panel.tsx` is listed by architecture for a pre-existing
-  trace fetch.
+- 2026-08-03 — Broad checks initially exposed base-branch debt outside the visual
+  recovery: 14 mypy findings, four ruff-format findings and ten architecture
+  findings. The follow-on contributor-gate repair removed those findings without
+  changing product behavior; the supported root `make check` now passes.
 
 ## Decision Log
 

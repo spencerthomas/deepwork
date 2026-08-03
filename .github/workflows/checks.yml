@@ -62,6 +62,9 @@ jobs:
       - name: Run workspace checks
         run: make check
 
+      - name: Install pinned Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 

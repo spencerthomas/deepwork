@@ -20,6 +20,7 @@
     "test:security-boundary": "DEEPWORK_SECURITY_CANARY=deepwork-security-canary-4f3c7d91 playwright test --config playwright.security.config.ts && python3 tools/security/check_secret_boundary.py",
     "test:visual": "playwright test --config playwright.visual.config.ts",
     "test:hosted": "playwright test --config playwright.hosted.config.ts",
+    "test:performance": "playwright test --config playwright.performance.config.ts",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

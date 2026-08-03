@@ -65,6 +65,9 @@ jobs:
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 
+      - name: Enforce the 1,000-task browser performance budget
+        run: make test-performance
+
       - name: Prove local completed-task restart recovery
         run: make test-recovery
 
@@ -81,6 +84,15 @@ jobs:
           path: |
             output/playwright/test-results/**/test-failed-*.png
             output/playwright/recovery-results/**/test-failed-*.png
+            output/playwright/performance-results/**/test-failed-*.png
+          if-no-files-found: ignore
+
+      - name: Upload synthetic performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inbox-performance-report
+          path: output/playwright/performance-report/*.json
           if-no-files-found: ignore
 
   visual-acceptance:

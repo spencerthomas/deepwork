@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   INBOX_GROUP_ORDER,
   moveInboxFocus,
-  orderedInboxIds,
+  orderInboxTasks,
   sortTasksByRecency,
 } from "./task-inbox-navigation";
 import type { TaskStatus, TaskSummary } from "../../lib/task-types";
@@ -28,30 +28,32 @@ const mixed: TaskSummary[] = [
   task("t_done2", "completed"),
 ];
 
-describe("orderedInboxIds", () => {
-  it("walks the group order in grouped-all view, not the raw list order", () => {
-    expect(orderedInboxIds(mixed, true, "all")).toEqual(["t_review", "t_run", "t_done", "t_done2"]);
+describe("inbox ordering", () => {
+  it("covers every task status so grouping never silently drops a row", () => {
+    expect([...INBOX_GROUP_ORDER].sort()).toEqual([...new Set(INBOX_GROUP_ORDER)].sort());
+    expect(INBOX_GROUP_ORDER).toContain("unknown");
   });
 
-  it("keeps the filtered order for the recent (ungrouped) view", () => {
-    expect(orderedInboxIds(mixed, false, "all")).toEqual([
-      "t_done",
+  it("groups tasks in display order with one stable pass through each status", () => {
+    expect(orderInboxTasks(mixed, true, "all").map((item) => item.taskId)).toEqual([
       "t_review",
       "t_run",
+      "t_done",
       "t_done2",
     ]);
   });
 
-  it("keeps list order when a single status is selected even if grouped is on", () => {
-    // The inbox passes an already status-filtered list here, so grouping must
-    // not re-sort it — the rows show in the order the caller provides.
-    const completed = mixed.filter((t) => t.status === "completed");
-    expect(orderedInboxIds(completed, true, "completed")).toEqual(["t_done", "t_done2"]);
+  it("keeps list order and identity when a single status is selected", () => {
+    const completed = mixed.filter((task) => task.status === "completed");
+    expect(orderInboxTasks(completed, true, "completed")).toBe(completed);
   });
 
-  it("covers every task status so grouping never silently drops a row", () => {
-    expect([...INBOX_GROUP_ORDER].sort()).toEqual([...new Set(INBOX_GROUP_ORDER)].sort());
-    expect(INBOX_GROUP_ORDER).toContain("unknown");
+  it("sorts the recent view newest first", () => {
+    const items = [
+      createdTask("old", "2026-07-20T08:00:00Z"),
+      createdTask("new", "2026-07-24T08:00:00Z"),
+    ];
+    expect(orderInboxTasks(items, false, "all").map((item) => item.taskId)).toEqual(["new", "old"]);
   });
 });
 

@@ -6,7 +6,8 @@ SHELL := /bin/sh
 # rather than inventing a passing substitute.
 
 .PHONY: help doctor bootstrap dev-demo check check-architecture check-docs \
-	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted
+	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted \
+	test-performance
 
 help:
 	@echo "Deep Work command contract:"
@@ -23,6 +24,7 @@ help:
 	@echo "  make test-security-boundary Prove reusable credentials stay outside client/sandbox artifacts"
 	@echo "  make test-visual        Run blocking desktop/phone screenshot comparisons"
 	@echo "  make test-hosted        Run the fail-closed hosted golden journey"
+	@echo "  make test-performance   Run the 1,000-task desktop/phone browser budget"
 
 doctor:
 	@echo "== API toolchain =="
@@ -76,3 +78,6 @@ test-visual:
 
 test-hosted:
 	pnpm test:hosted
+
+test-performance:
+	pnpm test:performance

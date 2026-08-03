@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { inboxViewToQuery, readInboxView, type InboxView } from "./task-inbox-url";
 import { EMPTY_TASK_INBOX_FILTER } from "../task-inbox-filter";
 
-const DEFAULT_VIEW: InboxView = { filter: EMPTY_TASK_INBOX_FILTER, grouped: true };
+const DEFAULT_VIEW: InboxView = { filter: EMPTY_TASK_INBOX_FILTER, grouped: true, page: 1 };
 
-function view(over: Partial<InboxView["filter"]>, grouped = true): InboxView {
-  return { filter: { ...EMPTY_TASK_INBOX_FILTER, ...over }, grouped };
+function view(over: Partial<InboxView["filter"]>, grouped = true, page = 1): InboxView {
+  return { filter: { ...EMPTY_TASK_INBOX_FILTER, ...over }, grouped, page };
 }
 
 describe("readInboxView", () => {
@@ -34,6 +34,12 @@ describe("readInboxView", () => {
     ).toBeUndefined();
   });
 
+  it("reads a positive page and fails closed for malformed values", () => {
+    expect(readInboxView(new URLSearchParams("page=12")).page).toBe(12);
+    expect(readInboxView(new URLSearchParams("page=-1")).page).toBe(1);
+    expect(readInboxView(new URLSearchParams("page=9999999")).page).toBe(1);
+  });
+
   it("caps an over-long query the same way the search field does", () => {
     const long = "x".repeat(5_000);
     expect(readInboxView(new URLSearchParams(`q=${long}`)).filter.query).toHaveLength(200);
@@ -49,6 +55,7 @@ describe("inboxViewToQuery", () => {
     expect(inboxViewToQuery(view({ status: "waiting-approval" }))).toBe("status=waiting-approval");
     expect(inboxViewToQuery(view({}, false))).toBe("view=recent");
     expect(inboxViewToQuery(view({ query: "hello world" }))).toBe("q=hello+world");
+    expect(inboxViewToQuery(view({}, true, 2))).toBe("page=2");
   });
 
   it("omits a whitespace-only query", () => {
@@ -60,7 +67,7 @@ describe("inboxViewToQuery", () => {
   });
 
   it("round-trips a fully specified view", () => {
-    const original = view({ status: "failed", query: "retry", createdWithin: "7d" }, false);
+    const original = view({ status: "failed", query: "retry", createdWithin: "7d" }, false, 3);
     const restored = readInboxView(new URLSearchParams(inboxViewToQuery(original)));
     expect(restored).toEqual(original);
   });

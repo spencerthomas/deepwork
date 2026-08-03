@@ -1,8 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 import localConfig from "./playwright.config";
-
-const node = JSON.stringify(process.env.DEEPWORK_NODE || process.execPath);
+import { localProductionWebServer } from "./tests/playwright/local-production-web-server";
 
 export default defineConfig({
   ...localConfig,
@@ -20,12 +19,5 @@ export default defineConfig({
     channel: undefined,
     storageState: undefined,
   },
-  webServer: {
-    command:
-      `NEXT_PUBLIC_API_BASE_URL= DEEPWORK_API_ORIGIN=http://127.0.0.1:8000 ${node} apps/web/node_modules/next/dist/bin/next build apps/web --webpack && ` +
-      `DEEPWORK_NODE=${node} DEEPWORK_ACCESS_KEY=deepwork-local-browser-acceptance DEEPWORK_WEB_PRODUCTION=1 ./dev`,
-    url: "http://127.0.0.1:3000/tasks/new",
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  webServer: localProductionWebServer("/tasks/new"),
 });

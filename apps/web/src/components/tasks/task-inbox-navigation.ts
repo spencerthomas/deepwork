@@ -17,27 +17,25 @@ export const INBOX_GROUP_ORDER: readonly TaskStatus[] = [
   "unknown",
 ];
 
-/**
- * The task ids in the order the inbox paints them. Grouped-by-status view walks
- * {@link INBOX_GROUP_ORDER} (matching the rendered sections); every other view
- * keeps the already-filtered order. `visible` is expected to be the same list
- * the inbox renders, so navigation and display can never drift.
- */
-export function orderedInboxIds(
+/** Return tasks in the exact order the grouped/recent inbox paints them. */
+export function orderInboxTasks(
   visible: readonly TaskSummary[],
   grouped: boolean,
   statusFilter: TaskStatusFilter,
-): string[] {
-  if (grouped && statusFilter === "all") {
-    const ids: string[] = [];
-    for (const status of INBOX_GROUP_ORDER) {
-      for (const task of visible) {
-        if (task.status === status) ids.push(task.taskId);
-      }
-    }
-    return ids;
+): readonly TaskSummary[] {
+  if (!grouped) {
+    return sortTasksByRecency(visible);
   }
-  return visible.map((task) => task.taskId);
+  if (statusFilter !== "all") {
+    return visible;
+  }
+  const buckets = new Map<TaskStatus, TaskSummary[]>(
+    INBOX_GROUP_ORDER.map((status) => [status, []]),
+  );
+  for (const task of visible) {
+    buckets.get(task.status)?.push(task);
+  }
+  return INBOX_GROUP_ORDER.flatMap((status) => buckets.get(status) ?? []);
 }
 
 function recencyKey(task: TaskSummary): number {

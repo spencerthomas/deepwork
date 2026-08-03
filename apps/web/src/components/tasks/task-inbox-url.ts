@@ -12,16 +12,19 @@ import {
 export interface InboxView {
   filter: TaskInboxFilter;
   grouped: boolean;
+  page: number;
 }
 
 const STATUS_PARAM = "status";
 const QUERY_PARAM = "q";
 const VIEW_PARAM = "view";
 const CREATED_PARAM = "created";
+const PAGE_PARAM = "page";
 const RECENT_VIEW = "recent";
 
 const KNOWN_STATUS = new Set<string>(["all", ...TASK_STATUS_FILTER_OPTIONS]);
 const KNOWN_WINDOW = new Set<string>(TASK_DATE_WINDOW_OPTIONS);
+const VALID_PAGE = /^[1-9]\d{0,5}$/;
 
 interface ReadonlyParams {
   get(name: string): string | null;
@@ -42,6 +45,8 @@ export function readInboxView(params: ReadonlyParams): InboxView {
     rawCreated !== null && KNOWN_WINDOW.has(rawCreated)
       ? (rawCreated as TaskDateWindow)
       : undefined;
+  const rawPage = params.get(PAGE_PARAM);
+  const page = rawPage !== null && VALID_PAGE.test(rawPage) ? Number(rawPage) : 1;
   return {
     filter: {
       ...EMPTY_TASK_INBOX_FILTER,
@@ -50,6 +55,7 @@ export function readInboxView(params: ReadonlyParams): InboxView {
       ...(createdWithin === undefined ? {} : { createdWithin }),
     },
     grouped,
+    page,
   };
 }
 
@@ -70,6 +76,9 @@ export function inboxViewToQuery(view: InboxView): string {
   }
   if (!view.grouped) {
     params.set(VIEW_PARAM, RECENT_VIEW);
+  }
+  if (view.page > 1) {
+    params.set(PAGE_PARAM, String(view.page));
   }
   return params.toString();
 }

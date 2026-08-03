@@ -1,0 +1,34 @@
+{
+  "profileId": "local-chromium-inbox-1000-v1",
+  "evidenceClass": "synthetic-api-contract",
+  "dataset": {
+    "id": "inbox-1000-v1",
+    "taskCount": 1000,
+    "statuses": [
+      "waiting-approval",
+      "running",
+      "queued",
+      "failed",
+      "rejected",
+      "cancelled",
+      "completed",
+      "unknown"
+    ]
+  },
+  "network": {
+    "taskListDelayMs": 40
+  },
+  "viewports": {
+    "desktop": { "width": 1440, "height": 1000 },
+    "phone": { "width": 390, "height": 844 }
+  },
+  "budgets": {
+    "interactionP75Ms": 200,
+    "maximumMountedTaskRows": 50
+  },
+  "qualification": {
+    "referenceDeviceAccepted": false,
+    "manualAssistiveTechnologyAccepted": false,
+    "hostedLoadAccepted": false
+  }
+}

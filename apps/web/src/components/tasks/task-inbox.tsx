@@ -37,9 +37,9 @@ import {
 import {
   INBOX_GROUP_ORDER,
   moveInboxFocus,
-  orderedInboxIds,
-  sortTasksByRecency,
+  orderInboxTasks,
 } from "@/components/tasks/task-inbox-navigation";
+import { paginateInbox } from "@/components/tasks/task-inbox-pagination";
 import { inboxViewToQuery, type InboxView, readInboxView } from "@/components/tasks/task-inbox-url";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { formatTaskAge } from "@/lib/task-time";
@@ -167,6 +167,7 @@ export function TaskInbox() {
   const [view, setView] = useState<InboxView>(() => ({
     filter: EMPTY_TASK_INBOX_FILTER,
     grouped: true,
+    page: 1,
   }));
   const filter = view.filter;
   const grouped = view.grouped;
@@ -188,13 +189,14 @@ export function TaskInbox() {
     const attentionSame = prev.filter.attentionOnly === next.filter.attentionOnly;
     const querySame = prev.filter.query === next.filter.query;
     const createdSame = prev.filter.createdWithin === next.filter.createdWithin;
-    if (statusSame && groupedSame && attentionSame && querySame && createdSame) return;
+    const pageSame = prev.page === next.page;
+    const nonQueryViewSame = statusSame && groupedSame && attentionSame && createdSame && pageSame;
+    if (nonQueryViewSame && querySame) return;
     setView(next);
     const query = inboxViewToQuery(next);
     const { pathname } = window.location;
     const url = query ? `${pathname}?${query}` : pathname;
-    const onlyQueryChanged = statusSame && groupedSame && attentionSame && createdSame;
-    if (onlyQueryChanged) {
+    if (nonQueryViewSame) {
       window.history.replaceState(window.history.state, "", url);
     } else {
       window.history.pushState(window.history.state, "", url);
@@ -211,13 +213,18 @@ export function TaskInbox() {
   const setFilter = useCallback(
     (update: TaskInboxFilter | ((current: TaskInboxFilter) => TaskInboxFilter)) => {
       const nextFilter = typeof update === "function" ? update(viewRef.current.filter) : update;
-      commitView({ filter: nextFilter, grouped: viewRef.current.grouped });
+      commitView({ filter: nextFilter, grouped: viewRef.current.grouped, page: 1 });
     },
     [commitView],
   );
 
   const setGrouped = useCallback(
-    (next: boolean) => commitView({ filter: viewRef.current.filter, grouped: next }),
+    (next: boolean) => commitView({ filter: viewRef.current.filter, grouped: next, page: 1 }),
+    [commitView],
+  );
+
+  const setPage = useCallback(
+    (page: number) => commitView({ ...viewRef.current, page }),
     [commitView],
   );
 
@@ -253,13 +260,15 @@ export function TaskInbox() {
   // Render and keyboard navigation both read this one ordered list, so they can
   // never drift.
   const ordered = useMemo(
-    () => (grouped ? visible : sortTasksByRecency(visible)),
-    [visible, grouped],
+    () => orderInboxTasks(visible, grouped, filter.status),
+    [visible, grouped, filter.status],
   );
-
-  const orderedIds = useMemo(
-    () => orderedInboxIds(ordered, grouped, filter.status),
-    [ordered, grouped, filter.status],
+  const inboxPage = useMemo(() => paginateInbox(ordered, view.page), [ordered, view.page]);
+  const pagedTasks = inboxPage.items;
+  const orderedIds = useMemo(() => pagedTasks.map((task) => task.taskId), [pagedTasks]);
+  const visibleCounts = useMemo(
+    () => (grouped && filter.status === "all" ? countTasks(visible).byStatus : undefined),
+    [visible, grouped, filter.status],
   );
 
   // Release a highlight that filtering, grouping, or a refresh removed from view.
@@ -519,7 +528,7 @@ export function TaskInbox() {
           </div>
         ) : grouped && filter.status === "all" ? (
           groupOrder.map((status) => {
-            const group = visible.filter((task) => task.status === status);
+            const group = pagedTasks.filter((task) => task.status === status);
             if (group.length === 0) return null;
             return (
               <div key={status} className="border-b border-border last:border-b-0">
@@ -528,7 +537,7 @@ export function TaskInbox() {
                     {statusChipLabel(status)}
                   </span>
                   <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {group.length}
+                    {visibleCounts?.[status] ?? group.length}
                   </span>
                 </div>
                 <div className="divide-y divide-border">
@@ -546,7 +555,7 @@ export function TaskInbox() {
           })
         ) : (
           <div className="divide-y divide-border">
-            {ordered.map((task) => (
+            {pagedTasks.map((task) => (
               <TaskRow
                 key={task.taskId}
                 mode={mode}
@@ -557,6 +566,41 @@ export function TaskInbox() {
           </div>
         )}
       </div>
+
+      {inboxPage.pageCount > 1 && (
+        <nav
+          aria-label="Task pages"
+          className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
+        >
+          <p className="text-[12px] tabular-nums text-muted-foreground" aria-live="polite">
+            {inboxPage.start.toLocaleString()}–{inboxPage.end.toLocaleString()} of{" "}
+            {inboxPage.total.toLocaleString()} tasks
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={inboxPage.page === 1}
+              onClick={() => setPage(inboxPage.page - 1)}
+              className="rounded-lg border border-border px-3 py-1.5 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="text-[12px] tabular-nums text-muted-foreground">
+              Page {inboxPage.page.toLocaleString()} of {inboxPage.pageCount.toLocaleString()}
+            </span>
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={inboxPage.page === inboxPage.pageCount}
+              onClick={() => setPage(inboxPage.page + 1)}
+              className="rounded-lg border border-border px-3 py-1.5 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </nav>
+      )}
 
       {tasks.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">

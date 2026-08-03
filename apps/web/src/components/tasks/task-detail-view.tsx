@@ -184,7 +184,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     () => getEvidenceRecords(detail?.evidence, events),
     [detail?.evidence, events],
   );
-  const thread = useMemo(() => buildBoundedThread(detail, events), [detail, events]);
+  const thread = useMemo(() => buildBoundedThread(detail, events, plan), [detail, events, plan]);
 
   const status = detail?.status ?? selected?.status ?? "unknown";
   const terminal = isTerminalStatus(status);
@@ -392,7 +392,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               {thread.hiddenEventCount > 0 && (
                 <div className="ml-10 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-[13px] text-muted-foreground">
                   {thread.hiddenEventCount.toLocaleString()} earlier events are available in Stream.
-                  The latest {TASK_THREAD_RENDER_LIMIT.toLocaleString()} remain here.
+                  Up to {TASK_THREAD_RENDER_LIMIT.toLocaleString()} recent and active review items
+                  remain here.
                 </div>
               )}
 

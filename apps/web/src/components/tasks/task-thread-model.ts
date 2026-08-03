@@ -1,5 +1,5 @@
 import { getEventText } from "@/lib/task-normalizers";
-import type { TaskDetail, TaskEvent } from "@/lib/task-types";
+import type { ProposedPlan, TaskDetail, TaskEvent } from "@/lib/task-types";
 
 export type ThreadItem =
   | { kind: "narration"; id: string; label: string; text: string }
@@ -27,11 +27,12 @@ export interface BoundedThread {
 export function buildBoundedThread(
   detail: TaskDetail | undefined,
   events: readonly TaskEvent[],
+  currentPlan: ProposedPlan | undefined,
   maximumItems = TASK_THREAD_RENDER_LIMIT,
 ): BoundedThread {
   const limit = Math.max(1, Math.floor(maximumItems));
   const pendingInterruptId = detail?.pendingInterrupt?.interruptId;
-  const currentPlanRevision = detail?.proposedPlan?.revision;
+  const currentPlanRevision = currentPlan?.revision;
   let currentPlanEventId: string | undefined;
 
   if (currentPlanRevision !== undefined) {
@@ -62,9 +63,39 @@ export function buildBoundedThread(
     if (item !== undefined) items.push(item);
   }
 
+  const visibleItems = items.reverse();
+  const hasActiveInterrupt = visibleItems.some(
+    (item) => item.kind === "interrupt" && item.interruptId === pendingInterruptId,
+  );
+  const hasCurrentPlan = visibleItems.some(
+    (item) => item.kind === "plan" && item.revision === currentPlanRevision,
+  );
+  let displacedEventCount = 0;
+
+  // A long narration tail can push the current plan outside the fixed window
+  // while its approval remains visible. Keep that checkpoint together by
+  // replacing the oldest passive item with the authoritative current plan.
+  if (hasActiveInterrupt && currentPlanRevision !== undefined && !hasCurrentPlan) {
+    if (visibleItems.length >= limit) {
+      const removableIndex = visibleItems.findIndex((item) => item.kind !== "interrupt");
+      if (removableIndex >= 0) {
+        visibleItems.splice(removableIndex, 1);
+        if (currentPlanEventId === undefined) displacedEventCount = 1;
+      }
+    }
+    const interruptIndex = visibleItems.findIndex(
+      (item) => item.kind === "interrupt" && item.interruptId === pendingInterruptId,
+    );
+    visibleItems.splice(interruptIndex, 0, {
+      kind: "plan",
+      id: currentPlanEventId ?? `current-plan:${String(currentPlanRevision)}`,
+      revision: currentPlanRevision,
+    });
+  }
+
   return {
-    hiddenEventCount: index + 1,
-    items: items.reverse(),
+    hiddenEventCount: index + 1 + displacedEventCount,
+    items: visibleItems,
   };
 }
 

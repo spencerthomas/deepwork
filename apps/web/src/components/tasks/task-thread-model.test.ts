@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { buildBoundedThread, buildThread } from "./task-thread-model";
-import type { TaskDetail, TaskEvent } from "../../lib/task-types";
+import { getLatestPlan } from "../../lib/task-normalizers";
+import type { ProposedPlan, TaskDetail, TaskEvent } from "../../lib/task-types";
 
 function event(id: string, name: TaskEvent["name"], data: Record<string, unknown> = {}): TaskEvent {
   return { id, name, data };
@@ -19,6 +20,13 @@ const detailWaiting: TaskDetail = {
     decisions: ["approve", "reject", "respond"],
     planRevision: 1,
   },
+};
+
+const eventPlan: ProposedPlan = {
+  revision: 2,
+  title: "Review the bounded plan",
+  steps: ["Inspect the retained history", "Approve the current plan"],
+  evidenceRefs: ["event-stream"],
 };
 
 describe("buildThread", () => {
@@ -93,10 +101,53 @@ describe("buildThread", () => {
       event(String(index + 1), "content.delta", { text: `Update ${String(index + 1)}` }),
     );
 
-    const bounded = buildBoundedThread(undefined, events, 10);
+    const bounded = buildBoundedThread(undefined, events, undefined, 10);
     expect(bounded.hiddenEventCount).toBe(95);
     expect(bounded.items).toHaveLength(10);
     expect(bounded.items[0]).toMatchObject({ id: "96", kind: "narration" });
     expect(bounded.items[9]).toMatchObject({ id: "105", kind: "narration" });
+  });
+
+  it("uses the event-derived current plan revision", () => {
+    const detail = {
+      ...detailWaiting,
+      pendingInterrupt: { ...detailWaiting.pendingInterrupt!, planRevision: eventPlan.revision },
+    };
+    const events = [
+      event("1", "plan.proposed", { ...eventPlan }),
+      event("2", "interrupt.requested", { interruptId: "interrupt_00000001" }),
+    ];
+    const currentPlan = getLatestPlan(detail.proposedPlan, events);
+
+    const bounded = buildBoundedThread(detail, events, currentPlan);
+
+    expect(bounded.items).toEqual([
+      { id: "1", kind: "plan", revision: 2 },
+      { id: "2", kind: "interrupt", interruptId: "interrupt_00000001" },
+    ]);
+  });
+
+  it("keeps the current plan beside approval when over 100 later events hide its event", () => {
+    const detail = {
+      ...detailWaiting,
+      pendingInterrupt: { ...detailWaiting.pendingInterrupt!, planRevision: eventPlan.revision },
+    };
+    const events = [
+      event("1", "plan.proposed", { ...eventPlan }),
+      ...Array.from({ length: 105 }, (_, index) =>
+        event(String(index + 2), "content.delta", { text: `Later update ${String(index + 1)}` }),
+      ),
+      event("107", "interrupt.requested", { interruptId: "interrupt_00000001" }),
+    ];
+    const currentPlan = getLatestPlan(detail.proposedPlan, events);
+
+    const bounded = buildBoundedThread(detail, events, currentPlan, 100);
+    const planIndex = bounded.items.findIndex((item) => item.kind === "plan");
+    const interruptIndex = bounded.items.findIndex((item) => item.kind === "interrupt");
+
+    expect(bounded.items).toHaveLength(100);
+    expect(bounded.hiddenEventCount).toBe(7);
+    expect(bounded.items[planIndex]).toMatchObject({ id: "1", kind: "plan", revision: 2 });
+    expect(interruptIndex).toBe(planIndex + 1);
   });
 });

@@ -1,3 +1,5 @@
+import { isRecord } from "./task-normalizers";
+
 export type LoginResult = { ok: true } | { ok: false; reason: "rejected" | "failed" };
 
 export interface Session {
@@ -6,11 +8,11 @@ export interface Session {
 }
 
 function toSession(value: unknown): Session {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     throw new Error("The API returned a malformed session.");
   }
-  const actorId = Reflect.get(value, "actorId");
-  const expiresAt = Reflect.get(value, "expiresAt");
+  const actorId = value["actorId"];
+  const expiresAt = value["expiresAt"];
   if (typeof actorId !== "string" || typeof expiresAt !== "number") {
     throw new Error("The API returned a malformed session.");
   }

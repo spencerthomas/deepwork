@@ -1,4 +1,5 @@
 import { taskClient } from "./task-client";
+import { isRecord } from "./task-normalizers";
 
 export interface PromptState {
   value: string;
@@ -11,11 +12,11 @@ export interface PromptClient {
 }
 
 function toPromptState(value: unknown): PromptState {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     throw new Error("The API returned a malformed system prompt.");
   }
-  const systemPrompt = Reflect.get(value, "systemPrompt");
-  const isDefault = Reflect.get(value, "isDefault");
+  const systemPrompt = value["systemPrompt"];
+  const isDefault = value["isDefault"];
   if (
     (typeof systemPrompt !== "string" && systemPrompt !== null) ||
     typeof isDefault !== "boolean"

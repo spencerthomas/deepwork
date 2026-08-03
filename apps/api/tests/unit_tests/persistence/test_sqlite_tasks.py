@@ -65,6 +65,43 @@ async def test_selected_agent_identity_survives_repository_reopen(tmp_path: Path
         await reopened.close()
 
 
+async def test_list_tasks_batches_task_and_creation_event_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
+    for index in range(3):
+        await repository.create_task(
+            title=f"Task {index}",
+            objective=f"Inspect task {index}",
+            agent_id=f"assistant-{index}",
+        )
+
+    statements: list[str] = []
+    original_connect = SQLiteTaskRepository._connect
+
+    def traced_connect(self: SQLiteTaskRepository) -> sqlite3.Connection:
+        connection = original_connect(self)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(SQLiteTaskRepository, "_connect", traced_connect)
+    listed = await repository.list_tasks()
+
+    assert [task.agent_id for task in listed] == [
+        "assistant-0",
+        "assistant-1",
+        "assistant-2",
+    ]
+    assert sum("FROM tasks ORDER BY task_number ASC" in statement for statement in statements) == 1
+    assert sum("FROM events WHERE event_id = 1" in statement for statement in statements) == 1
+    assert not any(
+        "FROM events WHERE task_id =" in statement and "event_id = 1" in statement
+        for statement in statements
+    )
+    await repository.close()
+
+
 async def _waiting_task(
     repository: SQLiteTaskRepository,
     *,

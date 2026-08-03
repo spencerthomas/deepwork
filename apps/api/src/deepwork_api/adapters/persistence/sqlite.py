@@ -786,11 +786,22 @@ class SQLiteTaskRepository:
         connection = self._connect()
         try:
             connection.execute("BEGIN")
-            task_ids = tuple(
-                cast(str, row["task_id"])
-                for row in connection.execute("SELECT task_id FROM tasks ORDER BY task_number ASC")
+            tasks = tuple(connection.execute("SELECT * FROM tasks ORDER BY task_number ASC"))
+            creation_events = {
+                cast(str, row["task_id"]): row
+                for row in connection.execute(
+                    "SELECT task_id, event_id, name, data FROM events WHERE event_id = 1"
+                )
+            }
+            snapshots = tuple(
+                self._snapshot_sync(
+                    connection,
+                    cast(str, task["task_id"]),
+                    task=task,
+                    created_event_row=creation_events.get(cast(str, task["task_id"])),
+                )
+                for task in tasks
             )
-            snapshots = tuple(self._snapshot_sync(connection, task_id) for task_id in task_ids)
             connection.commit()
             return snapshots
         except Exception:
@@ -1214,8 +1225,12 @@ class SQLiteTaskRepository:
         self,
         connection: sqlite3.Connection,
         task_id: str,
+        *,
+        task: sqlite3.Row | None = None,
+        created_event_row: sqlite3.Row | None = None,
     ) -> TaskSnapshot:
-        task = self._task_row_sync(connection, task_id)
+        if task is None:
+            task = self._task_row_sync(connection, task_id)
         event_count = self._event_count_for_existing_task_sync(connection, task_id)
         evidence = tuple(
             self._evidence_from_row(row)
@@ -1263,10 +1278,11 @@ class SQLiteTaskRepository:
                 maximum=64,
             )
         )
-        created_event_row = connection.execute(
-            "SELECT event_id, name, data FROM events WHERE task_id = ? AND event_id = 1",
-            (task_id,),
-        ).fetchone()
+        if created_event_row is None:
+            created_event_row = connection.execute(
+                "SELECT event_id, name, data FROM events WHERE task_id = ? AND event_id = 1",
+                (task_id,),
+            ).fetchone()
         if created_event_row is None:
             raise SQLiteTaskRepositoryDataError("stored task is missing its creation event")
         created_event = self._event_from_row(created_event_row)

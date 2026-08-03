@@ -26,27 +26,29 @@ MAX_FILE_BYTES = 64 * 1024 * 1024
 
 def _files(paths: Iterable[Path]) -> Iterable[Path]:
     for path in paths:
-        if not path.exists():
+        try:
+            if path.is_file():
+                yield path
+                continue
+            for candidate in sorted(path.rglob("*")):
+                if candidate.is_file() and not candidate.is_symlink():
+                    yield candidate
+        except OSError:
             continue
-        if path.is_file():
-            yield path
-            continue
-        for candidate in sorted(path.rglob("*")):
-            if candidate.is_file() and not candidate.is_symlink():
-                yield candidate
-
-
-def _contains(path: Path, marker: bytes) -> bool:
-    if path.stat().st_size > MAX_FILE_BYTES:
-        return False
-    return marker in path.read_bytes()
 
 
 def _scan(paths: Iterable[Path], markers: Iterable[bytes]) -> list[str]:
     findings: list[str] = []
+    marker_set = tuple(markers)
     for path in _files(paths):
-        for marker in markers:
-            if _contains(path, marker):
+        try:
+            if path.stat().st_size > MAX_FILE_BYTES:
+                continue
+            content = path.read_bytes()
+        except OSError:
+            continue
+        for marker in marker_set:
+            if marker in content:
                 findings.append(
                     f"{path}: retained forbidden marker {marker.decode('ascii')!r}"
                 )

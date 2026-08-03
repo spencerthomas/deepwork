@@ -1,4 +1,5 @@
 import { taskClient } from "./task-client";
+import { isRecord } from "./task-normalizers";
 
 export type TaskTrace = { state: "available"; url: string } | { state: "unavailable" };
 
@@ -7,11 +8,11 @@ export interface TaskTraceClient {
 }
 
 function normalizeTrace(value: unknown): TaskTrace {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return { state: "unavailable" };
   }
-  const state = Reflect.get(value, "state");
-  const traceUrl = Reflect.get(value, "traceUrl");
+  const state = value["state"];
+  const traceUrl = value["traceUrl"];
   return state === "available" && typeof traceUrl === "string"
     ? { state: "available", url: traceUrl }
     : { state: "unavailable" };

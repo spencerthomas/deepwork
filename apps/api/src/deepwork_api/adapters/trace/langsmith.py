@@ -9,11 +9,13 @@ human-viewable trace URL through the LangSmith API. Failures of any kind map to
 from __future__ import annotations
 
 import re
+from collections import OrderedDict
 
 import httpx
 
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$")
 _MAX_APP_PATH_LENGTH = 2_048
+_MAX_CACHE_ENTRIES = 256
 
 
 class LangSmithTraceLocator:
@@ -34,7 +36,7 @@ class LangSmithTraceLocator:
             headers={"x-api-key": api_key},
             timeout=10.0,
         )
-        self._cache: dict[str, str] = {}
+        self._cache: OrderedDict[str, str] = OrderedDict()
 
     async def locate(self, run_id: str) -> str | None:
         """Return the trace URL for ``run_id`` or ``None`` when unavailable."""
@@ -42,6 +44,7 @@ class LangSmithTraceLocator:
             return None
         cached = self._cache.get(run_id)
         if cached is not None:
+            self._cache.move_to_end(run_id)
             return cached
         try:
             response = await self._client.get(f"/api/v1/runs/{run_id}")
@@ -59,6 +62,9 @@ class LangSmithTraceLocator:
             return None
         url = f"{self._app_base_url}{app_path}"
         self._cache[run_id] = url
+        self._cache.move_to_end(run_id)
+        if len(self._cache) > _MAX_CACHE_ENTRIES:
+            self._cache.popitem(last=False)
         return url
 
     async def close(self) -> None:

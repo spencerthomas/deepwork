@@ -219,7 +219,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     // reopening a retained result does not steal the user's initial focus.
     const frame = window.requestAnimationFrame(() => {
       lifecycle.resultFocusPending = false;
-      resultRegionRef.current?.focus();
+      resultRegionRef.current?.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [hasResultItem, status, taskId]);

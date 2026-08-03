@@ -3,7 +3,7 @@ program_id: DW-V1-PROGRAM-2026-07
 title: Deep Work consolidated product, architecture, and delivery plan
 status: canonical
 decision_status: accepted-with-open-gates
-implementation_readiness: wave-1-scaffold-ready
+implementation_readiness: golden-journey-local-browser-proven
 created: 2026-07-23
 owners: [product, architecture, platform, developer-experience]
 source_refs:
@@ -25,16 +25,19 @@ review_boundary: canonical
 
 ## 1. Program status
 
-This is the canonical program-level plan. Wave 0 installed the repository knowledge
-system, accepted the 43 product/architecture decisions with recorded amendments,
-preserved 39 stable feature IDs and their release assignments, and retained 179
-feature scenarios plus 12 v1 program scenarios. No product runtime was implemented.
+This is the canonical program-level plan. The repository now contains a working
+credential-free product runtime and one locally browser-proven golden journey:
+branded sign-in, agent choice, compose, plan review, ordered approval, visible
+progress, useful result, evidence/files/trace inspection, inbox return and reopen.
+The accepted frontend is bound as desktop and phone reference evidence and the
+reviewed canonical screenshots are blocking in CI.
 
-The next authorized unit is the reviewed repository-scaffold ExecPlan at
-[`docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md`](exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md).
-Its scope is the credential-free monorepo and validation skeleton only. External
-capabilities remain unavailable until their named spike passes or their documented
-fallback is deliberately shipped.
+That delivered slice is not the same as v1 release readiness. The live
+[v1 release scorecard](RELEASE_SCORECARD.md) owns current status for all twelve
+program scenarios and records implementation, local browser proof, hosted proof
+and release acceptance independently. No scenario is currently hosted-proven or
+release-accepted. External capabilities remain unavailable until their named spike
+passes or their documented fallback is deliberately shipped.
 
 Symphony remains gated by `SPIKE-SYMPHONY-001`. There is no executable root
 `WORKFLOW.md`; manual one-agent-per-worktree dispatch is the current method.

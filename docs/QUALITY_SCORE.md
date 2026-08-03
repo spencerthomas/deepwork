@@ -1,7 +1,7 @@
 ---
 title: Deep Work quality score
 status: active
-last_reviewed: 2026-07-24
+last_reviewed: 2026-08-03
 owners: [quality, developer-experience]
 ---
 
@@ -18,12 +18,12 @@ evidence.
 | Dimension | Wave 0 | Current | Evidence for current score | Next gate |
 |---|---:|---:|---|---|
 | Canonical knowledge and navigation | 4/4 | 4/4 | Root map, topical docs, indexes, 39 stable specs; `tools/docs/check.py` green and CI-enforced | Keep docs checks green |
-| Product scope and acceptance | 4/4 | 4/4 | 179 feature scenarios and 12 v1 program scenarios | Keep coverage in sync with delivery |
+| Product scope and acceptance | 4/4 | 4/4 | 179 feature scenarios and 12 v1 program scenarios; the live [`RELEASE_SCORECARD.md`](RELEASE_SCORECARD.md) tracks four independent evidence states | Complete and accept each scenario proof packet |
 | Architecture boundaries | 3/4 | 3/4 | Executable import checker `tools/architecture/check.py` runs in `pnpm check-architecture` and CI with negative fixtures that must fail | Broaden coverage; promote remaining report-mode rules to blocking |
 | External runtime contracts | 1/4 | 1/4 | Pinned evidence and deterministic fallbacks; named live-contract spikes still open | Complete named live-contract spikes |
-| Fixture/demo proof | 0/4 | 4/4 | Credential-free product runs the full task lifecycle end-to-end (create → editable plan → ordered approval → prompt-specific result → replayable stream); `make test-e2e-demo` proves the API-backed journey with loopback-only browser traffic at tested commit `7edd55f5390e8fdd4616364deb686d664dc6ed4f`, Playwright 1.61.1, Google Chrome 150.0.7871.182, 2026-07-24 AEST, credential-free local fixture tier with no provider account, Australia/Melbourne, evidence class `executed-local-browser-acceptance`; product-demo fixture corpus validates | Keep the browser journey and fixture parity gates green |
-| Application implementation | 0/4 | 3/4 | `apps/api` (tasks, HITL, SSE, results, optional SQLite) and `apps/web` (five destinations) build and test green; `packages/{domain,sdk,ui,agent}` build and test green in CI | Durable core (auth, outbox/jobs), then live-source integration |
-| Accessibility/security/reliability proof | 1/4 | 3/4 | a11y (skip links, landmarks, reduced-motion) merged; an executable axe-core WCAG 2.2 A/AA harness (`tests/e2e/accessibility.spec.ts`) audits every destination plus the pending-approval and completed task states in light and dark themes and runs inside `make test-e2e-demo`; SSRF/tenant/credential-boundary/CORS and SSE replay/reconnect + SQLite-recovery covered by tests | Add a load/resilience harness; broaden the assistive-technology and viewport matrix |
+| Fixture/demo proof | 0/4 | 4/4 | `make test-e2e-demo` proves branded sign-in → agent choice → compose → plan review → approve → progress → useful result → evidence/files/trace → reopen through the real application API contract at product commit `b726909` | Keep the browser journey and API fixture parity gates green |
+| Application implementation | 0/4 | 3/4 | The API-backed task lifecycle and designed web shell are implemented; `make test-visual` binds the prototype reference and reviewed desktop/phone screenshots at gate commit `48e2102` | Complete the partial and absent release scenarios named in the live scorecard |
+| Accessibility/security/reliability proof | 1/4 | 3/4 | The axe-core journey, responsive shell, reduced-motion behavior, tenant/SSRF/credential/CORS tests, SSE replay/reconnect and SQLite recovery are mechanically checked. This is not the full assistive-technology, abuse, resilience or 320px matrix. | Complete `E2E-V1-08` and `E2E-V1-09` retained proof |
 | Orchestration | 2/4 | 2/4 | Manual worktree process accepted; Symphony gated | Keep Symphony gated by SPIKE-SYMPHONY-001 |
 
 Scale: 0 absent, 1 specified, 2 reviewed, 3 mechanically checked, 4 executable and
@@ -31,6 +31,7 @@ reproducibly proven. Scores require linked evidence and decrease when evidence
 drifts.
 
 Release readiness is not yet demonstrated. The credential-free local product
-lifecycle is delivered and executed, but release-blocking gates — authentication,
-durable jobs and recovery, and proven live-provider contracts — remain open, so a
-full v1 release must not be inferred from the current local-product result.
+lifecycle and blocking visual contract are delivered and executed. The hosted
+acceptance job is installed but has not run in this recovery, and no canonical v1
+scenario is release-accepted. [`RELEASE_SCORECARD.md`](RELEASE_SCORECARD.md) is the
+source of truth for the remaining behavior and proof gaps.

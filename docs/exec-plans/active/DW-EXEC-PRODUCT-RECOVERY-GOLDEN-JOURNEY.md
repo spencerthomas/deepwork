@@ -12,7 +12,7 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-03
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
+last_verified_commit: 48e21024a0bf9691c2d8a9531be7f210e4547b45
 risk: high
 governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, tests/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: []
@@ -170,11 +170,12 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 
 - [x] 2026-08-03 00:00 PDT — Product-owner recovery directive accepted and clean
   worktree created from exact base `c7e0ea6`.
-- [ ] Binding visual baseline complete.
-- [ ] Designed shell and entry complete.
-- [ ] Golden task journey complete.
-- [ ] Blocking browser gates complete.
-- [ ] Live release scorecard complete.
+- [x] 2026-08-03 — Binding visual baseline complete at `5752de3`.
+- [x] 2026-08-03 — Designed shell and entry complete at `990a956`.
+- [x] 2026-08-03 — Golden task journey complete at `b726909`.
+- [x] 2026-08-03 — Blocking browser gates complete at `48e2102`.
+- [x] 2026-08-03 — Live release scorecard complete; hosted and release columns
+  remain explicitly unproven.
 - [ ] Required checks, independent review, and delivery handoff complete.
 
 ## Surprises & Discoveries
@@ -182,6 +183,12 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 - 2026-08-03 — The base checkout is 56 commits behind `origin/main` in the protected
   dirty tree, so recovery is pinned to the user-requested commit and cannot borrow
   unreviewed local changes.
+- 2026-08-03 — The formal v1 stories are intentionally much broader than the
+  golden journey. The recovery materially advances six scenarios but completes no
+  entire program story, so every hosted and release-accepted cell remains `No`.
+- 2026-08-03 — Development-mode Fast Refresh made screenshot output unstable when
+  Playwright wrote artifacts. The visual gate builds once and serves the production
+  bundle, which makes the comparison deterministic without changing API behavior.
 
 ## Decision Log
 
@@ -214,8 +221,8 @@ make check
 make test-unit
 make test-contract
 make test-e2e-demo
-make test-e2e-visual
-make test-e2e-hosted
+make test-visual
+make test-hosted
 ```
 
 Retain screenshots, traces, console/network summaries, and scorecard evidence under

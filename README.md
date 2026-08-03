@@ -3,16 +3,18 @@
 Deep Work is an open-source control surface for delegating, supervising,
 approving, and verifying long-running agent work across desktop and phone.
 
-> **Status:** A credential-free local product is runnable today. It creates a
-> text task, proposes an editable plan, pauses for approval, streams honest
-> progress and evidence, lets you stop a running task at any time, returns a
-> prompt-specific result, and reopens completed work during the same API process.
+> **Status:** One credential-free golden journey is locally browser-proven:
+> branded sign-in, agent choice, compose, plan review, approval, progress, useful
+> result, evidence/files/trace inspection and reopen. This is not a v1 release
+> claim; the four independent evidence states for all twelve release stories live
+> in the [release scorecard](docs/RELEASE_SCORECARD.md).
 
-## Live validation deployment
+## Hosted validation deployment
 
-A full hosted instance is running for validation: a signed-in user creates a
-task, a real LangGraph agent proposes a plan, the user approves, and the agent
-executes it against a real model — end to end, on real infrastructure.
+The documented web and API endpoints were publicly reachable on 2026-08-03. That
+reachability is not authenticated acceptance. The protected `make test-hosted`
+gate must still complete the signed-in golden journey without fixture fallback
+before any scenario is marked hosted-proven in the release scorecard.
 
 | Component | URL | Notes |
 | --------- | --- | ----- |
@@ -137,9 +139,9 @@ is set with a credential and assistant.
 | Agent instructions               | [AGENTS.md](AGENTS.md)                                                               |
 | System and dependency boundaries | [ARCHITECTURE.md](ARCHITECTURE.md)                                                   |
 | Product outcome and judgment     | [docs/PRODUCT_SENSE.md](docs/PRODUCT_SENSE.md)                                       |
-| Program roadmap and acceptance   | [docs/PLANS.md](docs/PLANS.md)                                                       |
+| Program roadmap and acceptance   | [docs/PLANS.md](docs/PLANS.md) and [release scorecard](docs/RELEASE_SCORECARD.md)    |
 | Stable feature specifications    | [docs/product-specs/index.md](docs/product-specs/index.md)                           |
-| Active implementation handoff    | [Wave 1 scaffold ExecPlan](docs/exec-plans/active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md) |
+| Active implementation handoff    | [Golden journey recovery ExecPlan](docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md) |
 | Security and reliability         | [docs/SECURITY.md](docs/SECURITY.md), [docs/RELIABILITY.md](docs/RELIABILITY.md)     |
 | Evidence and source pins         | [docs/references/source-ledger.md](docs/references/source-ledger.md)                 |
 

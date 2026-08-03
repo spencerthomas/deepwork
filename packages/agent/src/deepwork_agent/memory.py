@@ -59,12 +59,15 @@ class InMemoryWorkspaceMemory:
     """Process-local memory for tests and keyless local runs."""
 
     def __init__(self, initial: str = "") -> None:
+        """Initialize the backend with optional existing memory text."""
         self._text = initial
 
     def read(self) -> str:
+        """Return the current process-local memory text."""
         return self._text
 
     def save(self, additions: list[str]) -> None:
+        """Append bounded, non-duplicate notes to process-local memory."""
         if additions:
             self._text = _merge(self._text, additions)
 
@@ -88,6 +91,7 @@ class SupabaseWorkspaceMemory:
         key: str = "default",
         timeout: float = 15.0,
     ) -> None:
+        """Initialize the server-held PostgREST connection settings."""
         self._rest = f"{base_url.rstrip('/')}/rest/v1/{table}"
         self._key = key
         self._service_key = service_key
@@ -102,6 +106,7 @@ class SupabaseWorkspaceMemory:
         }
 
     def read(self) -> str:
+        """Read workspace memory, failing open when the remote store is unavailable."""
         query = urllib.parse.urlencode({"key": f"eq.{self._key}", "select": "content"})
         request = urllib.request.Request(f"{self._rest}?{query}")  # noqa: S310 - fixed https host
         for header, value in self._headers().items():
@@ -117,6 +122,7 @@ class SupabaseWorkspaceMemory:
         return content if isinstance(content, str) else ""
 
     def save(self, additions: list[str]) -> None:
+        """Upsert bounded workspace memory, failing open on transport errors."""
         if not additions:
             return
         combined = _merge(self.read(), additions)

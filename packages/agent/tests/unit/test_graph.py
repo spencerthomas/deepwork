@@ -13,14 +13,19 @@ from langgraph.types import Command
 from pydantic import Field
 
 from deepwork_agent import (
+    DEEP_WORK_SYSTEM_PROMPT,
     PROTECTED_ACTION,
     AgentConfig,
+    RubricCriterion,
+    RubricSpec,
     create_graph,
     initial_state,
     runtime_capabilities,
     validate_approval_response,
     validate_plan_edit,
 )
+from deepwork_agent.graph import _MAX_RUN_PROMPT_CHARS, _run_prompt_override
+from deepwork_agent.memory import InMemoryWorkspaceMemory
 
 if TYPE_CHECKING:
     from langchain_core.language_models import LanguageModelInput
@@ -349,8 +354,6 @@ def _grader_call(call_id: str, result: str, criteria: list[dict[str, Any]]) -> A
 
 def test_rubric_verification_attaches_a_passed_verdict_to_the_result() -> None:
     """With a rubric, execution is graded and a verification record is returned."""
-    from deepwork_agent import RubricCriterion, RubricSpec
-
     rubric = RubricSpec(
         rubric_id="test-general",
         version=1,
@@ -398,8 +401,6 @@ def test_rubric_verification_attaches_a_passed_verdict_to_the_result() -> None:
 
 def test_memory_backend_injects_persisted_memory_as_context() -> None:
     """Memory saved by a prior task is injected as context into a later task."""
-    from deepwork_agent.memory import InMemoryWorkspaceMemory
-
     memory = InMemoryWorkspaceMemory("MEMORY_FACT_TEAL: the workspace's brand color is teal.")
     model = RecordingFakeChatModel(
         messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])
@@ -420,8 +421,6 @@ def test_memory_backend_injects_persisted_memory_as_context() -> None:
 
 def test_memory_backend_saves_remembered_notes_and_strips_them() -> None:
     """A <remember> block is persisted to memory and removed from the answer."""
-    from deepwork_agent.memory import InMemoryWorkspaceMemory
-
     memory = InMemoryWorkspaceMemory()
     model = RecordingFakeChatModel(
         messages=iter(
@@ -473,8 +472,7 @@ def test_no_memory_backend_still_strips_stray_remember_blocks() -> None:
 
 
 def test_create_graph_rejects_an_uninitialized_verifier_model() -> None:
-    from deepwork_agent import RubricCriterion, RubricSpec
-
+    """Verifier injection rejects provider strings before graph construction."""
     rubric = RubricSpec(
         rubric_id="test-general",
         version=1,
@@ -515,15 +513,11 @@ class RecordingFakeChatModel(ToolBindingFakeChatModel):
 )
 def test_run_prompt_override_reads_defensively(config: object, expected: str | None) -> None:
     """A missing, blank, or non-string override falls back to the baked-in default."""
-    from deepwork_agent.graph import _run_prompt_override
-
     assert _run_prompt_override(cast("Any", config)) == expected
 
 
 def test_run_prompt_override_is_length_bounded() -> None:
     """An over-long in-app prompt is truncated, never passed through unbounded."""
-    from deepwork_agent.graph import _MAX_RUN_PROMPT_CHARS, _run_prompt_override
-
     huge = "x" * (_MAX_RUN_PROMPT_CHARS + 5_000)
     result = _run_prompt_override({"configurable": {"system_prompt": huge}})
     assert result is not None
@@ -571,8 +565,6 @@ def test_per_run_system_prompt_override_reaches_the_executor_via_input() -> None
 
 def test_without_override_the_default_system_prompt_governs_execution() -> None:
     """With no override, the baked-in Deep Work prompt still reaches execution."""
-    from deepwork_agent.graph import DEEP_WORK_SYSTEM_PROMPT
-
     probe = DEEP_WORK_SYSTEM_PROMPT[:40]
     model = RecordingFakeChatModel(
         messages=iter([AIMessage(content="- Do the work."), AIMessage(content="Done.")])

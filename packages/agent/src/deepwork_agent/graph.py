@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from deepagents import RubricMiddleware, create_deep_agent
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -30,7 +29,6 @@ from deepwork_agent._planning import (
     validate_plan_edit,
 )
 from deepwork_agent.config import AgentConfig
-from deepwork_agent.memory import WorkspaceMemory
 from deepwork_agent.state import AgentInput, AgentOutput, AgentState
 from deepwork_agent.verification import (
     RubricSpec,
@@ -40,7 +38,10 @@ from deepwork_agent.verification import (
 )
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
     from langgraph.checkpoint.base import BaseCheckpointSaver
+
+    from deepwork_agent.memory import WorkspaceMemory
 
 __all__ = [
     "DEEP_WORK_SYSTEM_PROMPT",
@@ -172,7 +173,7 @@ def runtime_capabilities() -> RuntimeCapabilities:
     )
 
 
-def create_graph(
+def create_graph(  # noqa: C901, PLR0913, PLR0915
     *,
     model: BaseChatModel,
     tools: Sequence[ToolLike] = (),
@@ -228,10 +229,10 @@ def create_graph(
     rubric_text = render_rubric(rubric) if rubric is not None else None
 
     def build_executor(
-        backend: Any | None,
+        backend: Any | None,  # noqa: ANN401
         prompt: str | None = None,
         on_evaluation: Callable[[Mapping[str, object]], None] | None = None,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
         # The full Deep Agents executor: planning, virtual filesystem, and
         # subagents by default. When a sandbox backend is supplied, its
         # filesystem and shell/execute run in that real sandbox instead. When a
@@ -313,7 +314,7 @@ def create_graph(
         # then the run config, then the graph default inside build_executor.
         prompt_override = _state_prompt_override(state) or _run_prompt_override(config)
         result, verification = _invoke_executor(execution_request, prompt_override)
-        messages = result.get("messages", [])
+        messages = cast("list[BaseMessage]", result.get("messages", []))
         final_message = next(
             (message for message in reversed(messages) if isinstance(message, AIMessage)),
             None,

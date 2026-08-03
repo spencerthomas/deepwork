@@ -21,22 +21,23 @@ Model resolution, in order:
 
 from __future__ import annotations
 
-import os
-from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
-from typing import Any
+from contextlib import contextmanager, suppress
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
-from deepwork_agent.config import AgentConfig
+from deepwork_agent.config import AgentConfig, ServingConfig
 from deepwork_agent.graph import LocalAgentGraph, create_graph
+from deepwork_agent.memory import InMemoryWorkspaceMemory, SupabaseWorkspaceMemory, WorkspaceMemory
+from deepwork_agent.verification import RubricCriterion, RubricSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
 
 __all__ = ["DeterministicLocalModel", "build_model", "make_graph"]
 
-_MODEL_ENV = "DEEPWORK_AGENT_MODEL"
-_FAKE_ENV = "DEEPWORK_AGENT_FAKE"
 _OPENROUTER_PREFIX = "openrouter:"
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -54,6 +55,7 @@ class DeterministicLocalModel(BaseChatModel):
         return "deepwork-deterministic-local"
 
     def bind_tools(self, tools: Any, **kwargs: Any) -> DeterministicLocalModel:  # noqa: ANN401, ARG002
+        """Accept tool binding while deliberately never requesting a tool."""
         # The stand-in never requests tools; expose the interface so tool-using
         # executors (deepagents) accept it as their model.
         return self
@@ -76,11 +78,12 @@ class DeterministicLocalModel(BaseChatModel):
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
 
 
-def build_model() -> BaseChatModel:
-    """Resolve the chat model for serving from the server environment."""
-    if os.environ.get(_FAKE_ENV) == "1":
+def build_model(settings: ServingConfig | None = None) -> BaseChatModel:
+    """Resolve the chat model from typed server-side serving settings."""
+    serving = settings or ServingConfig.from_environment()
+    if serving.use_fake_model:
         return DeterministicLocalModel()
-    identifier = os.environ.get(_MODEL_ENV)
+    identifier = serving.model_identifier
     if not identifier:
         msg = (
             "no model configured: set DEEPWORK_AGENT_MODEL (for example "
@@ -90,9 +93,12 @@ def build_model() -> BaseChatModel:
         )
         raise RuntimeError(msg)
     if identifier.startswith(_OPENROUTER_PREFIX):
-        return _openrouter_model(identifier[len(_OPENROUTER_PREFIX) :])
+        return _openrouter_model(
+            identifier[len(_OPENROUTER_PREFIX) :],
+            api_key=serving.openrouter_api_key,
+        )
     try:
-        from langchain.chat_models import init_chat_model
+        from langchain.chat_models import init_chat_model  # noqa: PLC0415
     except ImportError as error:  # pragma: no cover - depends on optional provider extra
         msg = (
             "DEEPWORK_AGENT_MODEL is set but 'langchain' with a provider integration "
@@ -103,13 +109,12 @@ def build_model() -> BaseChatModel:
     return init_chat_model(identifier)
 
 
-def _openrouter_model(model_name: str) -> BaseChatModel:
+def _openrouter_model(model_name: str, *, api_key: str | None) -> BaseChatModel:
     """Build a chat model backed by OpenRouter's OpenAI-compatible gateway.
 
     OpenRouter serves leading provider models (``anthropic/...``, ``openai/...``,
     ``google/...``) behind one account and one ``OPENROUTER_API_KEY``.
     """
-    api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key or not api_key.strip():
         msg = "OPENROUTER_API_KEY is required for an 'openrouter:' model"
         raise RuntimeError(msg)
@@ -117,7 +122,7 @@ def _openrouter_model(model_name: str) -> BaseChatModel:
         msg = "openrouter model id is empty (use for example 'openrouter:openai/gpt-4o-mini')"
         raise RuntimeError(msg)
     try:
-        from langchain_openai import ChatOpenAI
+        from langchain_openai import ChatOpenAI  # ty: ignore[unresolved-import]  # noqa: PLC0415
     except ImportError as error:  # pragma: no cover - optional provider extra
         msg = "install 'langchain-openai' to use OpenRouter models"
         raise RuntimeError(msg) from error
@@ -139,59 +144,49 @@ def make_graph() -> LocalAgentGraph:
     backend — full filesystem plus shell/code execution — instead of the
     in-memory virtual filesystem.
     """
-    system_prompt = os.environ.get("DEEPWORK_AGENT_SYSTEM_PROMPT") or None
+    settings = ServingConfig.from_environment()
     sandbox_factory = None
-    if os.environ.get("DEEPWORK_SANDBOX") == "langsmith":
-        sandbox_factory = _langsmith_sandbox_factory()
-    rubric = _default_rubric() if os.environ.get("DEEPWORK_VERIFY") == "1" else None
-    memory_backend = _memory_backend()
+    if settings.sandbox_backend == "langsmith":
+        sandbox_factory = _langsmith_sandbox_factory(settings.langsmith_api_key)
+    rubric = (
+        _default_rubric(settings.verification_iterations) if settings.verification_enabled else None
+    )
+    memory_backend = _memory_backend(settings)
     return create_graph(
-        model=build_model(),
+        model=build_model(settings),
         config=AgentConfig(),
-        system_prompt=system_prompt,
+        system_prompt=settings.system_prompt,
         sandbox_factory=sandbox_factory,
         rubric=rubric,
         memory_backend=memory_backend,
     )
 
 
-def _memory_backend() -> object | None:
-    """Resolve the durable workspace-memory backend from the server environment.
+def _memory_backend(settings: ServingConfig) -> WorkspaceMemory | None:
+    """Resolve the durable workspace-memory backend from serving settings.
 
     ``DEEPWORK_SUPABASE_URL`` + ``DEEPWORK_SUPABASE_SERVICE_KEY`` -> Supabase
     Postgres over PostgREST (durable across redeploys). Otherwise, when
     ``DEEPWORK_MEMORY=1`` is set without Supabase, a process-local stand-in that
     remembers within the running deployment. Memory is off by default.
     """
-    url = os.environ.get("DEEPWORK_SUPABASE_URL")
-    key = os.environ.get("DEEPWORK_SUPABASE_SERVICE_KEY")
+    url = settings.supabase_url
+    key = settings.supabase_service_key
     if url and key:
-        from deepwork_agent.memory import SupabaseWorkspaceMemory
-
-        table = os.environ.get("DEEPWORK_MEMORY_TABLE", "workspace_memory")
-        return SupabaseWorkspaceMemory(url, key, table=table)
-    if os.environ.get("DEEPWORK_MEMORY") == "1":
-        from deepwork_agent.memory import InMemoryWorkspaceMemory
-
+        return SupabaseWorkspaceMemory(url, key, table=settings.memory_table)
+    if settings.memory_enabled:
         return InMemoryWorkspaceMemory()
     return None
 
 
-def _default_rubric() -> object:
-    """A general-purpose result rubric applied to every task when verification is on.
+def _default_rubric(iterations: int) -> RubricSpec:
+    """Build the general-purpose result rubric used when verification is on.
 
     Enabled with ``DEEPWORK_VERIFY=1``. The public ``RubricMiddleware`` grades the
     result against these criteria and repairs within a bounded iteration cap; a
     passed verdict is rubric coverage, never ground truth. ``DEEPWORK_VERIFY_ITERS``
     caps the grader loop (default 1: a single verify pass, no repair).
     """
-    from deepwork_agent.verification import RubricCriterion, RubricSpec
-
-    try:
-        iters = int(os.environ.get("DEEPWORK_VERIFY_ITERS", "1"))
-    except ValueError:
-        iters = 1
-    iters = max(1, min(iters, 3))
     return RubricSpec(
         rubric_id="deepwork-general-default",
         version=1,
@@ -217,12 +212,12 @@ def _default_rubric() -> object:
                 required=False,
             ),
         ),
-        max_iterations=iters,
+        max_iterations=iterations,
     )
 
 
-def _langsmith_sandbox_factory() -> Callable[[], object] | None:
-    """A context-manager factory yielding a fresh per-task LangSmith sandbox backend.
+def _langsmith_sandbox_factory(api_key: str | None) -> Callable[[], object] | None:
+    """Build a context-manager factory for a fresh per-task LangSmith sandbox.
 
     Returns ``None`` when no LangSmith credential is configured, so the graph
     falls back to the in-memory virtual filesystem. The credential is read only
@@ -230,27 +225,23 @@ def _langsmith_sandbox_factory() -> Callable[[], object] | None:
     remain unavailable until the reviewed sandbox auth-proxy contract exists. No
     GitHub token is minted, injected, written, or passed to sandbox commands.
     """
-    api_key = os.environ.get("LANGSMITH_API_KEY")
     if not api_key:
         return None
 
     @contextmanager
     def factory() -> Iterator[object]:
-        from deepagents.backends import LangSmithSandbox
-        from langsmith.sandbox import SandboxClient
+        from deepagents.backends import LangSmithSandbox  # noqa: PLC0415
+        from langsmith.sandbox import SandboxClient  # noqa: PLC0415
 
         client = SandboxClient(api_key=api_key, timeout=30.0)
         sandbox = client.create_sandbox(name="deepwork-task", timeout=120)
         try:
             yield LangSmithSandbox(sandbox)
         finally:
-            try:
-                client.delete_sandbox(sandbox.id)
-            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
-                pass
-            try:
+            if sandbox.id is not None:
+                with suppress(Exception):
+                    client.delete_sandbox(sandbox.id)
+            with suppress(Exception):
                 client.close()
-            except Exception:  # noqa: BLE001 - cleanup must never mask the task result
-                pass
 
     return factory

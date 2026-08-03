@@ -119,7 +119,11 @@ def main() -> int:
             child_env.get("PATH", ""),
         ]
     )
-    child_env["NEXT_PUBLIC_API_BASE_URL"] = "http://127.0.0.1:8000"
+    # REST, SSE, and auth all use the same-origin /api contract. The explicit
+    # empty public base selects that proxy; the server-only origin routes it to
+    # the exact local API instead of the hosted production default.
+    child_env["NEXT_PUBLIC_API_BASE_URL"] = ""
+    child_env["DEEPWORK_API_ORIGIN"] = "http://127.0.0.1:8000"
     child_env.pop("NEXT_PUBLIC_DEMO_MODE", None)
 
     # Two real-agent paths, both opt-in. Classic points the API at a hosted

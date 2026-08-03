@@ -71,6 +71,7 @@ describe("fixture task client", () => {
     const decisionEvent = events.find((event) => event.name === "decision.recorded");
     expect(decisionEvent?.data).toMatchObject({ commentProvided: true });
     expect(decisionEvent?.data).not.toHaveProperty("comment");
+    expect((await client.getTask(created.taskId)).status).toBe("running");
     await vi.advanceTimersByTimeAsync(420);
 
     const completed = await client.getTask(created.taskId);

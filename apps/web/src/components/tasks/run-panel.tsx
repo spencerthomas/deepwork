@@ -1,6 +1,16 @@
 "use client";
 
-import { Activity, ListChecks, ShieldCheck, X } from "lucide-react";
+import {
+  Activity,
+  Download,
+  ExternalLink,
+  FileJson,
+  FileText,
+  ListChecks,
+  Route,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { StatusChip } from "@/components/shell/status-chip";
@@ -13,6 +23,7 @@ import {
 } from "@/components/activity/activity-model";
 import { nextPanelTab, PANEL_TABS, type PanelTab } from "@/components/tasks/run-panel-tabs";
 import { panelTabToQuery, readPanelTab } from "@/components/tasks/run-panel-url";
+import { artifactDownloadHref, buildTaskArtifacts } from "@/components/tasks/task-artifacts";
 import type {
   ClientMode,
   ConnectionState,
@@ -122,6 +133,7 @@ export function RunPanel({
     () => events.filter((event) => eventMatchesActivityFilter(event.name, streamFilter)),
     [events, streamFilter],
   );
+  const artifacts = useMemo(() => buildTaskArtifacts(detail, evidence), [detail, evidence]);
 
   // Reflect the active tab in the URL so a task's Evidence, Stream, or Trace
   // view is deep-linkable and survives a refresh or reopening the panel — the
@@ -390,7 +402,53 @@ export function RunPanel({
         )}
 
         {tab === "files" && (
-          <UnavailableTab title="No file workspace" body={runtimeCopy.runFilesDescription} />
+          <div className="space-y-3 px-4 py-4">
+            <div>
+              <p className="text-sm font-medium">Retained task files</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                Portable files derived from the result and evidence records returned by this task’s
+                API. This is not a claim of access to the runner’s filesystem.
+              </p>
+            </div>
+            {artifacts.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center">
+                <p className="text-[13px] text-muted-foreground">
+                  {runtimeCopy.runFilesDescription}
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {artifacts.map((artifact) => {
+                  const Icon = artifact.kind === "result" ? FileText : FileJson;
+                  return (
+                    <li key={artifact.id} className="rounded-xl border border-border p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                          <Icon className="size-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[12px] font-medium">
+                            {artifact.name}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
+                            {artifact.description}
+                          </p>
+                        </div>
+                        <a
+                          href={artifactDownloadHref(artifact)}
+                          download={artifact.name}
+                          aria-label={`Download ${artifact.name}`}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                          <Download className="size-3.5" />
+                        </a>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         )}
         {tab === "git" && (
           <UnavailableTab
@@ -398,29 +456,54 @@ export function RunPanel({
             body="Branches, commits, and draft PRs appear here when a coding task runs against a connected repository."
           />
         )}
-        {tab === "trace" && trace.state === "available" && trace.url && (
-          <div className="flex flex-col items-start gap-2 p-4">
-            <p className="text-sm text-muted-foreground">
-              Every step this task took — model calls, tools, and timings — was recorded.
-            </p>
-            <a
-              href={trace.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-brand-foreground"
-            >
-              See exactly what the agent did
-            </a>
+        {tab === "trace" && trace.state !== "loading" && (
+          <div className="space-y-4 px-4 py-4">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <Route className="size-4 text-brand-accent" /> Execution trace
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                The task’s retained event trail is available here. An external provider trace is
+                linked only when the API resolves one for this exact run.
+              </p>
+            </div>
+            <dl className="space-y-2 rounded-xl border border-border p-3 text-[12px]">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Task</dt>
+                <dd className="truncate font-mono">{selected.taskId}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Run</dt>
+                <dd className="truncate font-mono">{selected.runId ?? "Not reported"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Retained events</dt>
+                <dd className="tabular-nums">{events.length}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Provider trace</dt>
+                <dd>{trace.state === "available" ? "Available" : "Not available"}</dd>
+              </div>
+            </dl>
+            {trace.state === "available" && trace.url ? (
+              <a
+                href={trace.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-[13px] font-medium text-brand-foreground"
+              >
+                Open provider trace <ExternalLink className="size-3.5" />
+              </a>
+            ) : (
+              <p className="rounded-xl bg-secondary/60 px-3 py-2 text-[12px] text-muted-foreground">
+                No external trace was resolved. Activity and evidence above remain the local,
+                inspectable execution record.
+              </p>
+            )}
           </div>
         )}
         {tab === "trace" && trace.state === "loading" && (
           <p className="p-4 text-sm text-muted-foreground">Looking up this task's trace…</p>
-        )}
-        {tab === "trace" && trace.state === "unavailable" && (
-          <UnavailableTab
-            title="No trace for this task"
-            body="A full step-by-step trace appears here when the task ran with tracing turned on."
-          />
         )}
       </div>
 

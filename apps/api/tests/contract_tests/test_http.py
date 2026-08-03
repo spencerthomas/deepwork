@@ -107,13 +107,13 @@ async def _wait_for_status(
     task_id: str,
     expected: set[str],
 ) -> dict[str, Any]:
-    for _ in range(100):
+    for _ in range(200):
         response = await client.get(f"/api/v1/tasks/{task_id}")
         assert response.status_code == 200
         payload = response.json()
         if payload["status"] in expected:
             return cast(dict[str, Any], payload)
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
     raise AssertionError(f"task did not reach one of {sorted(expected)}")
 
 
@@ -220,6 +220,10 @@ async def test_approve_completes_and_sse_replays_after_cursor() -> None:
             "status": "accepted",
             "duplicate": False,
         }
+
+        resumed = await client.get(f"/api/v1/tasks/{created['taskId']}")
+        assert resumed.json()["status"] == "running"
+        assert resumed.json()["pendingInterrupt"] is None
 
         completed = await _wait_for_status(client, created["taskId"], {"completed"})
         assert completed["pendingInterrupt"] is None

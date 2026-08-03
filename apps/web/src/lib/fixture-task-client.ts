@@ -245,6 +245,12 @@ export function createFixtureTaskClient(): TaskClient {
         };
       }
 
+      if (input.decision === "approve") {
+        // Match the API contract: accepting the plan resumes the run before
+        // the deterministic completion arrives, so live progress is visible.
+        updateStatus(task, "running");
+      }
+
       globalThis.setTimeout(() => {
         if (isTerminalFixtureStatus(task.status)) return;
         const status = input.decision === "approve" ? "completed" : "rejected";

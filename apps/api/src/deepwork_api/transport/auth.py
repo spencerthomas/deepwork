@@ -58,7 +58,7 @@ def build_auth_router(auth: AuthService) -> APIRouter:
     router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
     @router.post("/login")
-    async def login(body: LoginRequest, response: Response) -> JSONResponse:
+    async def login(body: LoginRequest, response: Response, request: Request) -> JSONResponse:
         try:
             session = await auth.login(body.accessKey)
         except InvalidCredentialError:
@@ -71,7 +71,9 @@ def build_auth_router(auth: AuthService) -> APIRouter:
             session.token,
             httponly=True,
             samesite="lax",
-            secure=True,
+            # HTTPS deployments retain Secure; loopback HTTP development must
+            # be able to return the cookie to its own middleware and API.
+            secure=request.url.scheme == "https",
             max_age=max(1, int(session.expires_at - session.issued_at)),
         )
         return result

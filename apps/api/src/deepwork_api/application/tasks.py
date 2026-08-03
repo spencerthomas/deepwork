@@ -280,6 +280,10 @@ class DeterministicFixtureRunner:
             )
 
     async def _complete_approved(self, task: TaskSnapshot, plan: ProposedPlan) -> None:
+        # Keep the real post-approval running state observable long enough for
+        # clients to render live progress before the deterministic result lands.
+        # This is a bounded fixture delay, not simulated provider latency.
+        await asyncio.sleep(1.25)
         result = _build_task_brief(task.objective, plan)
         await self.repository.append_event(
             task.task_id,

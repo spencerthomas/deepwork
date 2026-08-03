@@ -88,8 +88,22 @@ test("creates, approves, and completes one API-backed task", async ({
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
+  await context.clearCookies();
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { name: "Connect to Deep Work" })).toBeVisible();
+  await page.getByLabel("Workspace access key").fill("deepwork-local-browser-acceptance");
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url() === "http://127.0.0.1:3000/api/v1/auth/login",
+  );
+  await page.getByRole("button", { name: "Connect workspace" }).click();
+  expect((await loginResponse).status()).toBe(200);
+  await expect(page).toHaveURL(/\/tasks$/);
+
   await page.goto("/tasks/new");
   await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+  await expect(page.getByRole("radio", { checked: true })).toBeVisible();
 
   await page.evaluate(async (host) => {
     const webSocketProbe = new Promise<void>((resolve) => {
@@ -112,7 +126,7 @@ test("creates, approves, and completes one API-backed task", async ({
   const createResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      response.url() === "http://127.0.0.1:8000/api/v1/tasks",
+      response.url() === "http://127.0.0.1:3000/api/v1/tasks",
   );
   await page.getByRole("button", { name: "Dispatch" }).click();
   expect((await createResponse).status()).toBe(202);
@@ -120,6 +134,7 @@ test("creates, approves, and completes one API-backed task", async ({
   await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
   const taskHeader = page.getByRole("heading", { level: 1 }).locator("..");
   await expect(taskHeader.getByText("Needs review", { exact: true })).toBeVisible();
+  await expect(page.getByText("Safe local fixture plan", { exact: true })).toBeVisible();
 
   const decisionResponse = page.waitForResponse(
     (response) =>
@@ -129,6 +144,8 @@ test("creates, approves, and completes one API-backed task", async ({
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   expect((await decisionResponse).status()).toBe(202);
 
+  await expect(taskHeader.getByText("Running", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Agent is working/)).toBeVisible();
   await expect(taskHeader.getByText("Done", { exact: true })).toBeVisible();
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: prompt, exact: true })).toBeVisible();
@@ -152,19 +169,42 @@ test("creates, approves, and completes one API-backed task", async ({
   // dispatch; it ships alongside the one-click "Run again".
   await expect(page.getByRole("button", { name: "Edit & re-run" })).toBeVisible();
 
+  // Inspection is part of the outcome, not a decorative panel. Sources,
+  // portable task files, and the exact local/external trace state all remain
+  // attached to the same completed task.
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await expect(page.getByText("local-runner", { exact: false })).toBeVisible();
+  await page.getByRole("tab", { name: "Files" }).click();
+  await expect(page.getByText("result.md", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Download evidence-/ }).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Details" }).click();
+  await expect(page.getByText("Execution trace", { exact: true })).toBeVisible();
+  await expect(page.getByText("Retained events", { exact: true })).toBeVisible();
+
+  // Return to the inbox and reopen this exact retained task before exercising
+  // re-dispatch. The result and inspection views must survive route changes.
+  const completedUrl = new URL(page.url());
+  await page.getByRole("link", { name: "All tasks" }).click();
+  await expect(page).toHaveURL(/\/tasks$/);
+  await page.locator(`a[href="${completedUrl.pathname}"]`).first().click();
+  await expect(page).toHaveURL(new RegExp(`${completedUrl.pathname}$`));
+  await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Files" }).click();
+  await expect(page.getByText("result.md", { exact: true })).toBeVisible();
+
   // Re-dispatch: "Run again" creates a fresh task from the same prompt and
   // navigates to it. Wait for the POST and for the URL to change to a
   // *different* task id (the completed task already matches the id pattern).
-  const completedUrl = page.url();
+  const reopenedUrl = page.url();
   const rerunResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      response.url() === "http://127.0.0.1:8000/api/v1/tasks",
+      response.url() === "http://127.0.0.1:3000/api/v1/tasks",
   );
   await page.getByRole("button", { name: "Run again" }).click();
   expect((await rerunResponse).status()).toBe(202);
   await page.waitForURL(
-    (url) => /\/tasks\/task_[0-9]{8}$/.test(url.pathname) && url.href !== completedUrl,
+    (url) => /\/tasks\/task_[0-9]{8}$/.test(url.pathname) && url.href !== reopenedUrl,
   );
   await expect(taskHeader.getByText("Needs review", { exact: true })).toBeVisible();
 

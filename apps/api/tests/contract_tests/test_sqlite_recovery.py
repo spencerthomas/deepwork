@@ -17,13 +17,13 @@ async def _wait_for_status(
     task_id: str,
     expected: str,
 ) -> dict[str, Any]:
-    for _ in range(100):
+    for _ in range(200):
         response = await client.get(f"/api/v1/tasks/{task_id}")
         assert response.status_code == 200
         payload = cast(dict[str, Any], response.json())
         if payload["status"] == expected:
             return payload
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
     raise AssertionError(f"task did not reach {expected}")
 
 

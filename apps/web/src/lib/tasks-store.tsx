@@ -401,6 +401,21 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           "The decision receipt did not match the selected task, run, and interrupt.",
         );
       }
+      // A matching 202 receipt means the authoritative API accepted this
+      // interrupt and resumed the task. Reflect that running state immediately
+      // while SSE carries the same decision event and eventual completion.
+      setDetailsByTask((current) => {
+        const task = current[taskId];
+        return task
+          ? {
+              ...current,
+              [taskId]: { ...task, status: "running", pendingInterrupt: undefined },
+            }
+          : current;
+      });
+      setTasks((current) =>
+        replaceTask(current, taskId, (task) => ({ ...task, status: "running" })),
+      );
       if (
         pendingDecisionRef.current?.requestId === requestId &&
         activeTaskIdRef.current === taskId

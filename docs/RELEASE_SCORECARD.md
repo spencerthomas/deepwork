@@ -33,7 +33,9 @@ through `9fd1fc143fee769954869d36f0642975b29f564e`. Adversarial-review fixes are
 pinned at `265da2a1f2cfb53a9ce0ad02c1f3169881801b01`. Durable completed-task
 restart/reopen proof is pinned at `8b4b8c9ca404e9e08369440bce4a88fed24d964d`,
 and blocking assistive-interaction proof is pinned at
-`16d79c2268132e9a6f737b1b543e33d29b46e806`, reviewed 2026-08-03 PDT.
+`16d79c2268132e9a6f737b1b543e33d29b46e806`. The bounded 1,000-task browser
+performance slice is pinned at `261a5c69cfa9ede0c1426cfb8377ba522a77782b`,
+reviewed 2026-08-03 PDT.
 
 | Program scenario | Implemented | Browser-proven | Hosted-proven | Release-accepted | Current evidence and exact gap |
 |---|---|---|---|---|---|
@@ -46,8 +48,8 @@ and blocking assistive-interaction proof is pinned at
 | `E2E-V1-07-CODING-DRAFT-PR` | No | No | No | No | Repository authorization, sandbox provenance, exact-SHA review, draft PR retry, authoritative CI and phone merge review are outside the delivered recovery slice. |
 | `E2E-V1-08-RESPONSIVE-ACCESS` | Partial | Partial | No | No | Blocking 1440x1000 and 390x844 screenshots cover all 12 designed route references and the golden journey. `tests/e2e/assistive-access.spec.ts` now completes the API-backed review journey by keyboard; proves truthful lifecycle announcements and completion focus; exercises Run-panel arrow tabs and More focus entry/trap/Escape/restore/replacement-modal focus; retains computed reduced-motion and forced-colors checks; and completes compose, approve, Files inspection and reopen in a fresh 320x800 touch context with no horizontal overflow and measured 24px targets. The full seven-test browser gate and light/dark WCAG 2.2 A/AA scans pass. Actual 200% browser zoom, VoiceOver/NVDA/JAWS, Switch Control, a real phone and Windows High Contrast remain unaccepted, so this scenario stays Partial. |
 | `E2E-V1-09-SECURITY-RECOVERY` | Partial | No | No | No | Narrow credential, endpoint-shape, loopback, CORS, stale-mutation and SQLite recovery tests cover individual boundaries. There is no tenant-aware implementation or accepted tenant/SSRF/redirect/webhook/object/sandbox/updater abuse pack, restore comparison, or zero-unauthorized-effect proof. |
-| `E2E-V1-10-PERFORMANCE` | No | No | No | No | No accepted 1,000-task dataset, reference device/load profile, latency, frame, memory or assistive-navigation proof exists. |
-| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | The supported root `make check` is green: architecture enforcement, formatting, lint, type checks, 74 domain tests, 60 SDK tests, 32 UI tests, 289 web tests, 314 API tests plus 77 API contract tests, 100 agent tests and reproducible package builds all pass. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
+| `E2E-V1-10-PERFORMANCE` | Partial | Partial | No | No | `make test-performance` now runs a versioned synthetic 1,000-task API-contract dataset and provisional local Chromium profile against the production web bundle at 1440x1000 and 390x844. URL-restorable pagination caps the observed DOM at 50 task rows while full-dataset search, page controls and `j`/Enter keyboard navigation remain usable. The latest local report measured search p75 at 15.25 ms desktop and 10.24 ms phone against the provisional 200 ms budget. This proves only the inbox slice: the profile explicitly records that no reference device, manual assistive-technology, hosted load, frame/memory budget, multi-source aggregation, long stream, large activity/subagent/file/diff view or reconnect performance has been accepted. |
+| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | The supported root `make check` is green: architecture enforcement, formatting, lint, type checks, 74 domain tests, 60 SDK tests, 32 UI tests, 293 web tests, 314 API tests plus 77 API contract tests, 100 agent tests and reproducible package builds all pass. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
 | `E2E-V1-12-OPERATIONAL-RELEASE` | Partial | No | No | No | The product renders retained event trace plus an explicit external-trace unavailable state, and the hosted journey is fail-closed. Staged promotion, migration/restore, failure injection, alert/runbook proof and rollback have not run. |
 
 ## Golden-journey recovery slice
@@ -89,6 +91,7 @@ platform job.
 | Durable completed-task reopen | `make test-recovery` | Passing locally and required by the main CI verification job | Real API stop/restart against test-owned SQLite, honest outage behavior, fresh-browser reopen, and exact persisted task/result/evidence/trace/event/file equality; not Postgres worker/replica or hosted recovery |
 | Credential boundary | `make test-security-boundary` | Passing locally and required before hosted acceptance | Synthetic access-key canary absence from browser/public/retained artifacts plus fail-closed private-GitHub source policy |
 | Route and journey visuals | `make test-visual` | Passing locally and required by the separate `visual-acceptance` CI job | Immutable prototype source, complete route mapping, desktop/phone screenshot contract, 320px reflow and golden-journey states |
+| Large-inbox performance | `make test-performance` | Passing locally at desktop and phone widths and required by the main CI verification job | Versioned synthetic 1,000-task profile, maximum 50 mounted rows, URL paging, full-set search, keyboard opening and provisional p75 interaction budget; not accepted-device, frame, memory, long-stream, hosted-load or manual-AT proof |
 | Hosted golden journey | `make test-hosted` | Installed, fail-closed, not executed in this recovery | Real registry choice, non-fixture source, retained result and reopen only when `DEEPWORK_HOSTED_URL` and `DEEPWORK_E2E_ACCESS_KEY` are supplied by the protected `hosted-acceptance` environment |
 
 The hosted column remains `No` until that protected job completes and its safe

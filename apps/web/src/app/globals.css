@@ -435,13 +435,36 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .animate-fade-up,
-    .beam-flow,
-    .breathe,
-    .animate-ping,
-    .animate-spin,
-    .animate-pulse {
-      animation: none;
+    html:focus-within {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      scroll-behavior: auto !important;
+      transition-delay: 0s !important;
+      transition-duration: 0s !important;
+    }
+  }
+
+  /* Windows High Contrast and other forced-color modes must retain a visible
+     keyboard focus affordance and a system-owned selected/current treatment.
+     Avoid fixed brand colors here: system colors track the user's contrast
+     palette and remain legible when authored backgrounds are suppressed. */
+  @media (forced-colors: active) {
+    :where(a[href], button, input, select, textarea, summary, [tabindex]):focus-visible {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+
+    :where([aria-current="page"], [aria-selected="true"], [aria-pressed="true"]) {
+      border-color: Highlight;
+      color: Highlight;
+      forced-color-adjust: auto;
+      outline: 1px solid Highlight;
+      outline-offset: -2px;
     }
   }
 }

@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { countTasks } from "@/components/task-inbox-filter";
 import { runtimeDisclosure, shellRuntimePresentation } from "@/lib/runtime-disclosure";
@@ -134,6 +134,8 @@ export function AppShell({
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreDialogRef = useRef<HTMLElement>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
 
   const changeCommandOpen = (open: boolean) => {
     setCmdOpen(open);
@@ -174,14 +176,69 @@ export function AppShell({
         setCmdOpen(false);
         setMoreOpen(false);
         setHelpOpen(true);
-      } else if (event.key === "n" && !cmdOpen && !helpOpen) {
+      } else if (event.key === "n" && !cmdOpen && !helpOpen && !moreOpen) {
         event.preventDefault();
         router.push("/tasks/new");
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cmdOpen, helpOpen, router]);
+  }, [cmdOpen, helpOpen, moreOpen, router]);
+
+  // The phone More surface is a modal dialog, not a visual-only sheet. Move
+  // focus inside on open, contain keyboard navigation, and return focus to the
+  // control that opened it when the dialog closes.
+  useEffect(() => {
+    if (!moreOpen) return;
+
+    const dialog = moreDialogRef.current;
+    if (!dialog) return;
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusable = () =>
+      Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) =>
+          !element.hasAttribute("hidden") && element.getAttribute("aria-hidden") !== "true",
+      );
+
+    const frame = window.requestAnimationFrame(() => {
+      (focusable()[0] ?? dialog).focus();
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMoreOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const items = focusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items.at(-1);
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      dialog.removeEventListener("keydown", onKeyDown);
+      const replacementDialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+      if (!replacementDialog || replacementDialog === dialog) moreTriggerRef.current?.focus();
+    };
+  }, [moreOpen]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -318,13 +375,17 @@ export function AppShell({
           <button
             type="button"
             aria-label="Close More menu"
+            tabIndex={-1}
             className="absolute inset-0 bg-black/30"
             onClick={() => changeMoreOpen(false)}
           />
           <section
+            ref={moreDialogRef}
+            id="mobile-more-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-more-title"
+            tabIndex={-1}
             className="absolute inset-x-3 bottom-[calc(4.75rem_+_env(safe-area-inset-bottom))] rounded-2xl border border-border bg-card p-4 shadow-xl"
           >
             <div className="flex items-center justify-between gap-3">
@@ -406,8 +467,11 @@ export function AppShell({
           );
         })}
         <button
+          ref={moreTriggerRef}
           type="button"
           aria-label="More destinations"
+          aria-haspopup="dialog"
+          aria-controls={moreOpen ? "mobile-more-dialog" : undefined}
           aria-expanded={moreOpen}
           onClick={() => changeMoreOpen(!moreOpen)}
           className={cn(

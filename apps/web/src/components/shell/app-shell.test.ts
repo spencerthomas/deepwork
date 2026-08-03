@@ -76,7 +76,9 @@ describe("AppShell accessibility landmarks", () => {
     const markup = renderShell("Tasks");
 
     expect(markup).toContain('aria-label="More destinations"');
-    expect(markup).toContain('aria-label="More destinations" aria-expanded="false"');
+    expect(markup).toContain(
+      'aria-label="More destinations" aria-haspopup="dialog" aria-expanded="false"',
+    );
     expect(markup).toContain("More</button>");
   });
 });

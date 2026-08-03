@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { SidebarItem, SidebarLabel } from "@/components/shell/sidebar-nav";
@@ -50,6 +50,21 @@ function statusDot(status: TaskStatus): string {
   if (status === "failed" || status === "rejected") return "bg-status-failed";
   if (status === "completed") return "bg-status-done";
   return "bg-status-neutral";
+}
+
+export function taskLifecycleAnnouncement(status: TaskStatus): string {
+  if (status === "waiting-approval") return "Needs review";
+  if (status === "queued") return "Queued";
+  if (status === "running") return "Running";
+  if (status === "completed") return "Done";
+  if (status === "failed") return "Failed";
+  if (status === "rejected") return "Rejected";
+  if (status === "cancelled") return "Cancelled";
+  return "Status unavailable";
+}
+
+function isActiveLifecycleStatus(status: TaskStatus): boolean {
+  return status === "queued" || status === "running" || status === "waiting-approval";
 }
 
 export function TaskThreadMarker({ label, detail }: { label: string; detail?: string }) {
@@ -151,6 +166,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     saveRunPanelOpen(next);
   }, []);
   const [rerunAttempted, setRerunAttempted] = useState(false);
+  const resultRegionRef = useRef<HTMLDivElement>(null);
 
   const selected = tasks.find((task) => task.taskId === taskId);
   const detail = detailsByTask[taskId];
@@ -172,6 +188,41 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
 
   const status = detail?.status ?? selected?.status ?? "unknown";
   const terminal = isTerminalStatus(status);
+  const hasResultItem = thread.some((item) => item.kind === "result");
+  const lifecycleRef = useRef({
+    taskId,
+    status,
+    activeSeen: isActiveLifecycleStatus(status),
+    resultFocusPending: false,
+  });
+  useEffect(() => {
+    const lifecycle = lifecycleRef.current;
+    if (lifecycle.taskId !== taskId) {
+      lifecycle.taskId = taskId;
+      lifecycle.status = status;
+      lifecycle.activeSeen = isActiveLifecycleStatus(status);
+      lifecycle.resultFocusPending = false;
+      return;
+    }
+
+    if (status === "completed" && lifecycle.status !== "completed" && lifecycle.activeSeen) {
+      lifecycle.resultFocusPending = true;
+    } else if (status !== "completed") {
+      lifecycle.resultFocusPending = false;
+    }
+    if (isActiveLifecycleStatus(status)) lifecycle.activeSeen = true;
+    lifecycle.status = status;
+    if (!lifecycle.resultFocusPending || !hasResultItem) return;
+
+    // Wait until the completion event's result region is committed. A task
+    // opened after it already completed never sets activeSeen, so loading or
+    // reopening a retained result does not steal the user's initial focus.
+    const frame = window.requestAnimationFrame(() => {
+      lifecycle.resultFocusPending = false;
+      resultRegionRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hasResultItem, status, taskId]);
   const hasInterruptItem = thread.some((item) => item.kind === "interrupt");
   const hasPlanItem = thread.some((item) => item.kind === "plan");
   const title = detail?.title ?? selected?.title ?? taskId;
@@ -289,6 +340,15 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </button>
           </div>
         </div>
+        <p
+          data-testid="task-lifecycle-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        >
+          {taskLifecycleAnnouncement(status)}
+        </p>
 
         {(detailError ?? streamError) && (selected || detail) && (
           <div
@@ -381,8 +441,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                   return (
                     <div
                       key={item.id}
+                      ref={resultRegionRef}
+                      role="region"
+                      aria-label="Task result"
+                      tabIndex={-1}
                       className={cn(
-                        "ml-10 rounded-2xl border p-4",
+                        "ml-10 rounded-2xl border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         success
                           ? "border-status-done/30 bg-status-done-bg"
                           : "border-border bg-card",

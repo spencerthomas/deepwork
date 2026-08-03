@@ -2,7 +2,22 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { TaskThreadMarker } from "./task-detail-view";
+import { taskLifecycleAnnouncement, TaskThreadMarker } from "./task-detail-view";
+
+describe("taskLifecycleAnnouncement", () => {
+  it.each([
+    ["waiting-approval", "Needs review"],
+    ["queued", "Queued"],
+    ["running", "Running"],
+    ["completed", "Done"],
+    ["failed", "Failed"],
+    ["rejected", "Rejected"],
+    ["cancelled", "Cancelled"],
+    ["unknown", "Status unavailable"],
+  ] as const)("announces %s truthfully", (status, announcement) => {
+    expect(taskLifecycleAnnouncement(status)).toBe(announcement);
+  });
+});
 
 describe("TaskThreadMarker", () => {
   it("stacks marker detail on phones and restores the inline desktop layout", () => {

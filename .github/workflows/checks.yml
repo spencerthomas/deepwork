@@ -65,6 +65,9 @@ jobs:
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 
+      - name: Prove local completed-task restart recovery
+        run: make test-recovery
+
       - name: Prove credential boundaries
         run: make test-security-boundary
 
@@ -75,7 +78,9 @@ jobs:
           name: playwright-failure-artifacts
           # Password controls are masked. Do not retain traces, auth state, or
           # reports from a journey that enters an access key.
-          path: output/playwright/test-results/**/test-failed-*.png
+          path: |
+            output/playwright/test-results/**/test-failed-*.png
+            output/playwright/recovery-results/**/test-failed-*.png
           if-no-files-found: ignore
 
   visual-acceptance:

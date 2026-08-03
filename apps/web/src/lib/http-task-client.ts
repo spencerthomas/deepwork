@@ -131,7 +131,7 @@ function errorCode(body: unknown): string | undefined {
 async function request(url: string, init: RequestInit, expectedStatus: number): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, credentials: "include" });
   } catch {
     throw new Error(
       "Deep Work could not reach the API. Check that it is running and allows this browser origin.",

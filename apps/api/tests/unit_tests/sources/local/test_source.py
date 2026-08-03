@@ -517,6 +517,24 @@ async def test_start_with_agent_id_ignores_the_workspace_prompt_override() -> No
     assert call["config"] is None
 
 
+async def test_start_with_explicit_default_agent_keeps_workspace_prompt_override() -> None:
+    source, client = _source()
+
+    await source.start(
+        "Prepare a release brief",
+        system_prompt="Always be terse.",
+        agent_id="deep-work-local-agent",
+    )
+
+    call = client.runs.create_calls[0]
+    assert call["assistant_id"] == "deep-work-local-agent"
+    assert call["input"] == {
+        "task": "Prepare a release brief",
+        "system_prompt": "Always be terse.",
+    }
+    assert call["config"] == {"configurable": {"system_prompt": "Always be terse."}}
+
+
 async def test_resume_and_update_plan_replay_the_thread_bound_assistant() -> None:
     """A thread started with a non-default agent keeps using that exact agent."""
     source, client = _source()

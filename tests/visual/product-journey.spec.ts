@@ -32,6 +32,13 @@ async function open(page: Page, path: string) {
   await expect(page.getByRole("heading").first()).toBeVisible();
 }
 
+async function signIn(page: Page) {
+  await page.goto("/login");
+  await page.getByLabel("Workspace access key").fill("deepwork-local-browser-acceptance");
+  await page.getByRole("button", { name: "Connect workspace" }).click();
+  await expect(page).toHaveURL(/\/tasks$/);
+}
+
 test("designed routes and supervised journey match their accepted screenshots", async ({
   context,
   page,
@@ -112,13 +119,34 @@ test("designed routes and supervised journey match their accepted screenshots", 
 
 test("the golden journey shell reflows at 320 CSS pixels", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto("/tasks");
-  await expect(page.getByRole("heading").first()).toBeVisible();
+  await signIn(page);
 
   for (const path of ["/tasks", "/tasks/new", "/approvals", "/agents", "/settings"]) {
     await open(page, path);
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
       .toBeLessThanOrEqual(320);
   }
+});
+
+test("phone More opens, closes, and reaches secondary destinations", async ({ page }) => {
+  await page.setViewportSize(viewports.phone);
+  await signIn(page);
+
+  const moreButton = page.getByRole("button", { name: "More destinations" });
+  await moreButton.click();
+  const dialog = page.getByRole("dialog", { name: "More" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Schedules" })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Activity" })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Settings" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Close More menu" }).click();
+  await expect(dialog).toBeHidden();
+
+  await moreButton.click();
+  await dialog.getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(dialog).toBeHidden();
 });

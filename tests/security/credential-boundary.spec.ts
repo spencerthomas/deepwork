@@ -12,7 +12,19 @@ test("reusable access key is absent from browser and public application state", 
   await context.clearCookies();
   await page.goto("/login");
   await page.getByLabel("Workspace access key").fill(canary);
+  let loginBody: string | undefined;
+  await page.route("**/api/v1/auth/login", async (route) => {
+    const response = await route.fetch();
+    loginBody = await response.text();
+    await route.fulfill({ response, body: loginBody });
+  });
   await page.getByRole("button", { name: "Connect workspace" }).click();
+  await expect.poll(() => loginBody).toBeDefined();
+  if (loginBody === undefined) {
+    throw new Error("The login response body was not captured.");
+  }
+  const parsedLoginBody = JSON.parse(loginBody) as Record<string, unknown>;
+  expect(parsedLoginBody).not.toHaveProperty("token");
   await expect(page).toHaveURL(/\/tasks$/);
 
   const browserState = await page.evaluate(async () => {
@@ -89,10 +101,16 @@ test("reusable access key is absent from browser and public application state", 
   const retained = JSON.stringify({
     browserState,
     cookies: await context.cookies(),
+    loginBody,
     apiBodies,
     schemaBody,
   });
   expect(retained).not.toContain(canary);
+  for (const cookie of await context.cookies()) {
+    if (cookie.name === "deepwork_session") {
+      expect(loginBody).not.toContain(cookie.value);
+    }
+  }
   for (const forbidden of ["authRef", "credentialRef", "providerToken", "refreshToken"]) {
     expect(schemaBody).not.toContain(forbidden);
   }

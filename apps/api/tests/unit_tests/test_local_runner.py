@@ -66,12 +66,18 @@ class _State:
 
 
 class _Source:
-    def __init__(self, *, events: tuple[object, ...] = ()) -> None:
+    def __init__(
+        self, *, events: tuple[object, ...] = (), default_agent_id: str = "assistant-default"
+    ) -> None:
         self.events = events
+        self.default_agent_id = default_agent_id
         self.resume_comment: str | None = None
         self.state_reads = 0
         self.start_system_prompts: list[str | None] = []
         self.start_agent_ids: list[str | None] = []
+
+    def is_default_agent(self, agent_id: str) -> bool:
+        return agent_id == self.default_agent_id
 
     async def start(
         self, objective: str, *, system_prompt: str | None = None, agent_id: str | None = None
@@ -204,6 +210,27 @@ async def test_create_with_an_agent_id_skips_the_workspace_prompt_override() -> 
     assert task.agent_id == "assistant-2"
     created_event = (await repository.events_after(task.task_id, 0))[0]
     assert dict(created_event.data)["agentId"] == "assistant-2"
+
+
+async def test_create_with_explicit_default_agent_keeps_workspace_prompt_and_identity() -> None:
+    """The chooser may name the default; its workspace prompt still applies."""
+    from deepwork_api.adapters.prompt import InMemoryPromptStore
+
+    repository = InMemoryTaskRepository()
+    source = _Source(default_agent_id="assistant-default")
+    runner = LocalAgentServerRunner(
+        repository, source, prompt_store=InMemoryPromptStore("Always be terse.")
+    )
+    try:
+        task = await runner.create(
+            title="t", objective="Do the thing", agent_id="assistant-default"
+        )
+    finally:
+        await runner.close()
+
+    assert source.start_system_prompts == ["Always be terse."]
+    assert source.start_agent_ids == ["assistant-default"]
+    assert task.agent_id == "assistant-default"
 
 
 async def test_runner_agent_registry_methods_delegate_to_the_source() -> None:

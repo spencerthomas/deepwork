@@ -25,9 +25,11 @@ build.
 ## Current scorecard
 
 Evidence snapshot: recovery branch `product/golden-journey-recovery`, base
-`c7e0ea6`, product journey through `b726909`, blocking browser gates through
-`48e2102`, security fail-closed hardening through `36dad6d`, and contributor-gate
-repairs through `9fd1fc1`, reviewed 2026-08-03 PDT.
+`c7e0ea6cd2fce6187d96f0da06957320641c4a4e`, product journey through
+`b7269091b1f1881b42235d634379a6916e349ede`, blocking browser gates through
+`48e21024a0bf9691c2d8a9531be7f210e4547b45`, security fail-closed hardening
+through `36dad6d0833c479df808c0a69b7ab8022be5d5ed`, and contributor-gate repairs
+through `9fd1fc143fee769954869d36f0642975b29f564e`, reviewed 2026-08-03 PDT.
 
 | Program scenario | Implemented | Browser-proven | Hosted-proven | Release-accepted | Current evidence and exact gap |
 |---|---|---|---|---|---|

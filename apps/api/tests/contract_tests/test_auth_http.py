@@ -37,7 +37,7 @@ async def test_tasks_require_a_session_when_auth_enabled() -> None:
         assert unauth.json() == {"code": "unauthorized", "message": "Authentication required."}
 
 
-async def test_login_then_access_tasks_with_bearer_and_cookie() -> None:
+async def test_login_returns_only_session_projection_and_supports_cookie_auth() -> None:
     async with _app(access_key=ACCESS_KEY) as client:
         bad = await client.post("/api/v1/auth/login", json={"accessKey": "wrong"})
         assert bad.status_code == 401
@@ -46,39 +46,26 @@ async def test_login_then_access_tasks_with_bearer_and_cookie() -> None:
         ok = await client.post("/api/v1/auth/login", json={"accessKey": ACCESS_KEY})
         assert ok.status_code == 200
         body = ok.json()
-        token = body["token"]
-        assert body["actorId"] == "operator"
+        assert body == {"actorId": "operator", "expiresAt": body["expiresAt"]}
+        assert "token" not in body
         assert "deepwork_session" in ok.headers.get("set-cookie", "")
-
-        # Bearer token works.
-        with_bearer = await client.get(
-            "/api/v1/tasks", headers={"Authorization": f"Bearer {token}"}
-        )
-        assert with_bearer.status_code == 200
 
         # The cookie set by login also authorizes (httpx keeps it on the client).
         with_cookie = await client.get("/api/v1/tasks")
         assert with_cookie.status_code == 200
 
         # /session reports the current actor.
-        session = await client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {token}"})
-        assert session.status_code == 200
-        whoami = await client.get(
-            "/api/v1/auth/session", headers={"Authorization": f"Bearer {token}"}
-        )
+        whoami = await client.get("/api/v1/auth/session")
         assert whoami.status_code == 200
         assert whoami.json()["actorId"] == "operator"
 
 
 async def test_logout_revokes_the_session() -> None:
     async with _app(access_key=ACCESS_KEY) as client:
-        token = (await client.post("/api/v1/auth/login", json={"accessKey": ACCESS_KEY})).json()[
-            "token"
-        ]
-        auth_header = {"Authorization": f"Bearer {token}"}
-        assert (await client.get("/api/v1/tasks", headers=auth_header)).status_code == 200
-        assert (await client.post("/api/v1/auth/logout", headers=auth_header)).status_code == 200
-        assert (await client.get("/api/v1/tasks", headers=auth_header)).status_code == 401
+        await client.post("/api/v1/auth/login", json={"accessKey": ACCESS_KEY})
+        assert (await client.get("/api/v1/tasks")).status_code == 200
+        assert (await client.post("/api/v1/auth/logout")).status_code == 200
+        assert (await client.get("/api/v1/tasks")).status_code == 401
 
 
 async def test_access_key_never_appears_in_the_schema() -> None:

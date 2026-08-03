@@ -14,6 +14,8 @@ import {
   normalizeTaskDetail,
   normalizeTaskStatus,
   reduceEventsIntoDetail,
+  summaryAfterAuthoritativeReload,
+  taskEventCursor,
   terminalEventNeedsDetail,
   validateDecisionComment,
   validateDecisionInput,
@@ -21,7 +23,7 @@ import {
   validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
-import type { TaskDetail, TaskEvent } from "./task-types";
+import type { TaskDetail, TaskEvent, TaskSummary } from "./task-types";
 
 describe("task response normalization", () => {
   it("normalizes API status aliases without treating unknown values as success", () => {
@@ -368,6 +370,27 @@ describe("terminal result handling", () => {
       pendingInterrupt: { ...revised.pendingInterrupt!, interruptId: "interrupt-1" },
     };
     expect(detailAfterAuthoritativeReload(revised, stale)).toBe(revised);
+  });
+
+  it("keeps a newer nonterminal summary when a duplicate reload resolves late", () => {
+    const streamed: TaskSummary = {
+      taskId: "task-1",
+      title: "Ship it",
+      status: "waiting-approval",
+      lastEventId: 10,
+    };
+    const stale: TaskSummary = {
+      ...streamed,
+      status: "running",
+      lastEventId: 8,
+    };
+
+    expect(summaryAfterAuthoritativeReload(streamed, stale)).toBe(streamed);
+    expect(summaryAfterAuthoritativeReload(streamed, { ...stale, lastEventId: undefined })).toBe(
+      streamed,
+    );
+    expect(taskEventCursor("11")).toBe(11);
+    expect(taskEventCursor("event-11")).toBeUndefined();
   });
 
   it("reads structured completion output and requests detail when absent", () => {

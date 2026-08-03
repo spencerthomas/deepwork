@@ -1,8 +1,8 @@
 """FastAPI authentication routes and the session guard dependency.
 
-Login exchanges the server-held access key for an opaque session token. The
-token is returned for bearer clients and also set as an HttpOnly cookie. Task
-routes are protected by :func:`build_session_guard` when auth is enabled.
+Login exchanges the server-held access key for an opaque session token held in
+an HttpOnly cookie. The browser receives only the non-secret session projection.
+Task routes are protected by :func:`build_session_guard` when auth is enabled.
 """
 
 from __future__ import annotations
@@ -63,9 +63,7 @@ def build_auth_router(auth: AuthService) -> APIRouter:
             session = await auth.login(body.accessKey)
         except InvalidCredentialError:
             return _unauthorized("Invalid access key.")
-        payload = SessionResponse.from_domain(session).model_dump()
-        payload["token"] = session.token
-        result = JSONResponse(content=payload)
+        result = JSONResponse(content=SessionResponse.from_domain(session).model_dump())
         result.set_cookie(
             _COOKIE_NAME,
             session.token,

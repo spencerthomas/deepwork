@@ -25,6 +25,8 @@ import {
   isTerminalStatus,
   reduceEventsIntoDetail,
   statusAfterEvent,
+  summaryAfterAuthoritativeReload,
+  taskEventCursor,
 } from "./task-normalizers";
 import type {
   ConnectionState,
@@ -217,6 +219,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       },
       onError: setStreamError,
       onEvent: (event) => {
+        const streamedCursor = taskEventCursor(event.id);
         const eventsBeforeEvent = eventsByTaskRef.current[activeTaskId] ?? [];
         const activeBeforeEvent = getActiveInterrupt(eventsBeforeEvent);
         setEventsByTask((current) => {
@@ -244,6 +247,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
               pendingInterrupt: interruptAfterEvent(task.pendingInterrupt, event),
               status: statusAfterEvent(task.status, event, task.pendingInterrupt),
               result: eventResult ?? task.result,
+              lastEventId: streamedCursor ?? task.lastEventId,
             },
           };
         });
@@ -251,6 +255,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           replaceTask(current, activeTaskId, (task) => ({
             ...task,
             status: statusAfterEvent(task.status, event, activeBeforeEvent),
+            lastEventId: streamedCursor ?? task.lastEventId,
           })),
         );
         if (event.name === "decision.recorded") {
@@ -424,9 +429,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         });
         setTasks((current) =>
           replaceTask(current, taskId, (streamed) =>
-            isTerminalStatus(streamed.status) && !isTerminalStatus(currentTask.status)
-              ? streamed
-              : currentTask,
+            summaryAfterAuthoritativeReload(streamed, currentTask),
           ),
         );
       } else {

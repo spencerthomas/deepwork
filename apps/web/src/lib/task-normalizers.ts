@@ -582,6 +582,29 @@ export function isTerminalStatus(status: TaskStatus): boolean {
   );
 }
 
+/** Convert an SSE id into the monotonic cursor carried by task projections. */
+export function taskEventCursor(eventId: string): number | undefined {
+  const cursor = Number(eventId);
+  return Number.isSafeInteger(cursor) && cursor >= 1 ? cursor : undefined;
+}
+
+/** Preserve a newer streamed list projection when an awaited reload resolves late. */
+export function summaryAfterAuthoritativeReload(
+  current: TaskSummary,
+  incoming: TaskSummary,
+): TaskSummary {
+  if (isTerminalStatus(current.status) && !isTerminalStatus(incoming.status)) {
+    return current;
+  }
+  if (
+    current.lastEventId !== undefined &&
+    (incoming.lastEventId === undefined || incoming.lastEventId < current.lastEventId)
+  ) {
+    return current;
+  }
+  return incoming;
+}
+
 /**
  * Apply a newly accepted decision only while the UI is still showing the exact
  * interrupt that receipt acknowledged. A later stream event or detail reload
@@ -600,14 +623,7 @@ export function detailAfterAuthoritativeReload(
   current: TaskDetail,
   incoming: TaskDetail,
 ): TaskDetail {
-  if (isTerminalStatus(current.status) && !isTerminalStatus(incoming.status)) {
-    return current;
-  }
-  if (
-    current.lastEventId !== undefined &&
-    incoming.lastEventId !== undefined &&
-    incoming.lastEventId < current.lastEventId
-  ) {
+  if (summaryAfterAuthoritativeReload(current, incoming) === current) {
     return current;
   }
   if (

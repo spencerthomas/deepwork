@@ -97,9 +97,10 @@ fixture evidence; it never simulates provider success.
 
 - Product and design: `docs/PRODUCT_SENSE.md`, `docs/DESIGN.md`, and
   `docs/FRONTEND.md`.
-- Visual evidence: sibling `deep-work-frontend` at exact commit `26c698b`.
+- Visual evidence: sibling `deep-work-frontend` at exact commit
+  `26c698b30ff08d5122cfaeedbd4a95296a7884f4`.
 - Behavior: existing `/api/v1` task, decision, stream, trace, agent, schedule, and
-  session contracts at base `c7e0ea6`.
+  session contracts at base `c7e0ea6cd2fce6187d96f0da06957320641c4a4e`.
 - Acceptance: the six linked program scenarios and their stable feature scenarios.
 
 ## Interfaces and invariants
@@ -169,19 +170,24 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 ## Progress
 
 - [x] 2026-08-03 00:00 PDT — Product-owner recovery directive accepted and clean
-  worktree created from exact base `c7e0ea6`.
-- [x] 2026-08-03 — Binding visual baseline complete at `5752de3`.
-- [x] 2026-08-03 — Designed shell and entry complete at `990a956`.
-- [x] 2026-08-03 — Golden task journey complete at `b726909`.
-- [x] 2026-08-03 — Blocking browser gates complete at `48e2102`.
+  worktree created from exact base `c7e0ea6cd2fce6187d96f0da06957320641c4a4e`.
+- [x] 2026-08-03 — Binding visual baseline complete at
+  `5752de32bb04433f2def4b815cc444b52a47bfab`.
+- [x] 2026-08-03 — Designed shell and entry complete at
+  `990a9561faff0472132a9dbf4550cf52f6c023f3`.
+- [x] 2026-08-03 — Golden task journey complete at
+  `b7269091b1f1881b42235d634379a6916e349ede`.
+- [x] 2026-08-03 — Blocking browser gates complete at
+  `48e21024a0bf9691c2d8a9531be7f210e4547b45`.
 - [x] 2026-08-03 — Live release scorecard complete; hosted and release columns
   remain explicitly unproven.
 - [x] 2026-08-03 — Independent local review complete. Review fixes bind the
   prototype pixels, harden hosted credential handling, retain selected agent
   identity, guard decision races and fail orphaned SQLite fixture runs closed.
-- [x] 2026-08-03 — Final verification and delivery handoff complete. API, web,
-  documentation, local browser and visual acceptance pass; existing base
-  architecture, API typing and API formatting debt remains explicitly recorded.
+- [x] 2026-08-03 — Recovery-slice verification checkpoint complete. API, web,
+  documentation, local browser and visual acceptance pass for the implemented
+  slice; this ExecPlan stays active while the twelve-scenario scorecard retains
+  unimplemented, hosted-unproven and release-unaccepted work.
 
 ## Surprises & Discoveries
 

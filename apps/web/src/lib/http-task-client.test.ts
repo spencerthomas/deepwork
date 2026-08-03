@@ -42,6 +42,7 @@ describe("Outcome 2 HTTP client", () => {
       "http://api.test/api/v1/tasks/task-1/plan",
       expect.objectContaining({
         method: "PATCH",
+        credentials: "include",
         body: JSON.stringify({
           interruptId: "interrupt-1",
           expectedRevision: 2,

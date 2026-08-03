@@ -111,6 +111,7 @@ class LocalState(Protocol):
 
 
 class LocalSource(Protocol):
+    def is_default_agent(self, agent_id: str) -> bool: ...
     async def start(
         self,
         objective: str,
@@ -162,9 +163,11 @@ class LocalAgentServerRunner:
     async def create(
         self, *, title: str, objective: str, agent_id: str | None = None
     ) -> TaskSnapshot:
-        # The workspace prompt override only governs the default assistant; a
-        # selected named agent's own registered config governs its persona.
-        system_prompt = await self._current_system_prompt() if agent_id is None else None
+        # The workspace prompt override governs the default assistant whether
+        # it was implicit or explicitly selected. A different named agent's
+        # registered config governs its persona.
+        uses_default_agent = agent_id is None or self.source.is_default_agent(agent_id)
+        system_prompt = await self._current_system_prompt() if uses_default_agent else None
         try:
             run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
         except TaskSourceContractError:

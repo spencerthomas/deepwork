@@ -40,9 +40,11 @@ API-only smoke test (replace the placeholder with the real access key):
 
 ```bash
 API=https://deepwork-api-production.up.railway.app
-TOKEN=$(curl -s -X POST "$API/api/v1/auth/login" -H 'content-type: application/json' \
-  -d '{"accessKey":"<DEEPWORK_ACCESS_KEY>"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
-curl -s "$API/api/v1/tasks" -H "Authorization: Bearer $TOKEN"
+COOKIE_JAR=$(mktemp)
+trap 'rm -f "$COOKIE_JAR"' EXIT
+curl -s -c "$COOKIE_JAR" -X POST "$API/api/v1/auth/login" \
+  -H 'content-type: application/json' -d '{"accessKey":"<DEEPWORK_ACCESS_KEY>"}'
+curl -s -b "$COOKIE_JAR" "$API/api/v1/tasks"
 ```
 
 ### Model and configuration

@@ -455,9 +455,9 @@ class LocalAgentServerSource:
         falling back to the source's configured default assistant when
         omitted. When ``system_prompt`` is supplied (the workspace's editable
         prompt) it flows to the graph as ``configurable.system_prompt``, but
-        only applies to the default assistant: a selected named agent's own
-        registered config governs its persona instead, so the two overrides
-        never fight each other.
+        only applies to the default assistant, including when the caller names
+        that assistant explicitly. A different named agent's own registered
+        config governs its persona instead, so the two overrides never fight.
         """
 
         normalized = _bounded_text(
@@ -468,7 +468,9 @@ class LocalAgentServerSource:
         resolved_assistant = (
             _validate_assistant_identifier(agent_id) if agent_id is not None else self.assistant_id
         )
-        effective_prompt = system_prompt if agent_id is None else None
+        effective_prompt = (
+            system_prompt if agent_id is None or self.is_default_agent(resolved_assistant) else None
+        )
         prompt_override = normalize_system_prompt(effective_prompt)
         run_input: dict[str, object] = {"task": normalized}
         if prompt_override is not None:
@@ -501,6 +503,11 @@ class LocalAgentServerSource:
             raise LocalSourceUnavailableError(message) from None
         self._thread_assistants[thread_id] = resolved_assistant
         return LocalRunReference(thread_id=thread_id, run_id=run_id)
+
+    def is_default_agent(self, agent_id: str) -> bool:
+        """Return whether an explicit registry choice names this source's default."""
+
+        return agent_id == self.assistant_id
 
     async def get_state(self, thread_id: str) -> LocalStateSnapshot:
         """Read and sanitize source-authoritative thread state."""

@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { decodeTaskEvent, isTaskEventName } from "./sse";
+import { decodeTaskEvent, isTaskEventName, subscribeToTaskEvents } from "./sse";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("decodeTaskEvent", () => {
   it("decodes a named JSON object event", () => {
@@ -37,5 +41,31 @@ describe("decodeTaskEvent", () => {
         '{"interruptId":"interrupt-1","decision":"respond","responseProvided":true}',
       ),
     ).toMatchObject({ data: { decision: "respond" } });
+  });
+
+  it("keeps session cookies on explicitly cross-origin event streams", () => {
+    const source = {
+      onopen: null,
+      onerror: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      close: vi.fn(),
+    };
+    const EventSourceMock = vi.fn(function EventSourceStub(_url: string, _init?: EventSourceInit) {
+      return source;
+    });
+    vi.stubGlobal("EventSource", EventSourceMock);
+
+    const close = subscribeToTaskEvents("http://api.test/api/v1/tasks/task-1/events", {
+      onConnectionChange: vi.fn(),
+      onError: vi.fn(),
+      onEvent: vi.fn(),
+    });
+
+    expect(EventSourceMock).toHaveBeenCalledWith("http://api.test/api/v1/tasks/task-1/events", {
+      withCredentials: true,
+    });
+    close();
+    expect(source.close).toHaveBeenCalledOnce();
   });
 });

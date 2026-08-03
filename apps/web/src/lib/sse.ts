@@ -54,7 +54,7 @@ export function decodeTaskEvent(name: string, id: string, rawData: string): Task
 
 export function subscribeToTaskEvents(url: string, handlers: TaskEventHandlers): () => void {
   handlers.onConnectionChange("connecting");
-  const source = new EventSource(url);
+  const source = new EventSource(url, { withCredentials: true });
 
   source.onopen = () => {
     handlers.onConnectionChange("connected");

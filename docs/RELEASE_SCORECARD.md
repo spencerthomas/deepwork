@@ -32,7 +32,8 @@ through `36dad6d0833c479df808c0a69b7ab8022be5d5ed`, and contributor-gate repairs
 through `9fd1fc143fee769954869d36f0642975b29f564e`. Adversarial-review fixes are
 pinned at `265da2a1f2cfb53a9ce0ad02c1f3169881801b01`. Durable completed-task
 restart/reopen proof is pinned at `8b4b8c9ca404e9e08369440bce4a88fed24d964d`,
-reviewed 2026-08-03 PDT.
+and blocking assistive-interaction proof is pinned at
+`c0fe7c9a076d7e8877f142975e292529b2118e9c`, reviewed 2026-08-03 PDT.
 
 | Program scenario | Implemented | Browser-proven | Hosted-proven | Release-accepted | Current evidence and exact gap |
 |---|---|---|---|---|---|
@@ -43,10 +44,10 @@ reviewed 2026-08-03 PDT.
 | `E2E-V1-05-RECONNECT` | Partial | Partial | No | No | `make test-recovery` proves a completed task remains visible during an intentional API outage, a re-run fails without changing the original task, and the same persisted task reopens after API restart and fresh sign-in. SSE replay, hydration and reconnect contracts also have API coverage. The named active-task disconnect, replica loss, replay expiry and worker restart sequence remains unproven. |
 | `E2E-V1-06-ORDERED-APPROVAL` | Partial | Partial | No | No | One real ordered plan decision passes at desktop and phone widths in the golden journey. Repeated-name multi-action editing, two-device racing, stale rejection and retained accessibility/audit proof remain open. |
 | `E2E-V1-07-CODING-DRAFT-PR` | No | No | No | No | Repository authorization, sandbox provenance, exact-SHA review, draft PR retry, authoritative CI and phone merge review are outside the delivered recovery slice. |
-| `E2E-V1-08-RESPONSIVE-ACCESS` | Partial | Partial | No | No | Blocking 1440x1000 and 390x844 screenshots cover all 12 designed route references and the golden journey; an authenticated 320px overflow check covers the primary shell routes, an interactive phone check proves More navigation, and the existing accessibility suite remains green. The 200% zoom, screen-reader, switch, touch, high-contrast and reduced-motion matrix is not retained. |
+| `E2E-V1-08-RESPONSIVE-ACCESS` | Partial | Partial | No | No | Blocking 1440x1000 and 390x844 screenshots cover all 12 designed route references and the golden journey. `tests/e2e/assistive-access.spec.ts` now completes the API-backed review journey by keyboard; proves truthful lifecycle announcements and completion focus; exercises Run-panel arrow tabs and More focus entry/trap/Escape/restore/replacement-modal focus; retains computed reduced-motion and forced-colors checks; and completes compose, approve, Files inspection and reopen in a fresh 320x800 touch context with no horizontal overflow and measured 24px targets. The full seven-test browser gate and light/dark WCAG 2.2 A/AA scans pass. Actual 200% browser zoom, VoiceOver/NVDA/JAWS, Switch Control, a real phone and Windows High Contrast remain unaccepted, so this scenario stays Partial. |
 | `E2E-V1-09-SECURITY-RECOVERY` | Partial | No | No | No | Narrow credential, endpoint-shape, loopback, CORS, stale-mutation and SQLite recovery tests cover individual boundaries. There is no tenant-aware implementation or accepted tenant/SSRF/redirect/webhook/object/sandbox/updater abuse pack, restore comparison, or zero-unauthorized-effect proof. |
 | `E2E-V1-10-PERFORMANCE` | No | No | No | No | No accepted 1,000-task dataset, reference device/load profile, latency, frame, memory or assistive-navigation proof exists. |
-| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | The supported root `make check` is green: architecture enforcement, formatting, lint, type checks, 74 domain tests, 60 SDK tests, 32 UI tests, 281 web tests, 314 API tests plus 77 API contract tests, 100 agent tests and reproducible package builds all pass. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
+| `E2E-V1-11-CONTRIBUTOR` | Partial | No | No | No | The supported root `make check` is green: architecture enforcement, formatting, lint, type checks, 74 domain tests, 60 SDK tests, 32 UI tests, 289 web tests, 314 API tests plus 77 API contract tests, 100 agent tests and reproducible package builds all pass. Two independent clean-machine contributor runs, intentional drift repair and license/trademark proof remain open. |
 | `E2E-V1-12-OPERATIONAL-RELEASE` | Partial | No | No | No | The product renders retained event trace plus an explicit external-trace unavailable state, and the hosted journey is fail-closed. Staged promotion, migration/restore, failure injection, alert/runbook proof and rollback have not run. |
 
 ## Golden-journey recovery slice
@@ -68,7 +69,8 @@ real source, while the real-source choice and execution remain hosted-unproven:
 9. return to the inbox and reopen the same completed task.
 
 The proof owners are `tests/e2e/demo-task-journey.spec.ts`,
-`tests/recovery/durable-reopen.spec.ts`, and `tests/visual/product-journey.spec.ts`.
+`tests/e2e/assistive-access.spec.ts`, `tests/recovery/durable-reopen.spec.ts`, and
+`tests/visual/product-journey.spec.ts`.
 The recovery suite owns a generated access key and absolute temporary SQLite
 database, strips ambient source/provider configuration from the API child, stops
 and restarts that real process, and uses a fresh browser context for reopen. The
@@ -83,7 +85,7 @@ platform job.
 
 | Gate | Command | Current state | What it can prove |
 |---|---|---|---|
-| Technical fixture journey | `make test-e2e-demo` | Passing locally | API-backed local product behavior, accessibility and loopback network contract |
+| Technical fixture journey | `make test-e2e-demo` | Passing locally: 7 browser tests | API-backed local product behavior, light/dark WCAG scans, keyboard and 320px touch completion, lifecycle/focus behavior, reduced motion, forced colors and the loopback network contract |
 | Durable completed-task reopen | `make test-recovery` | Passing locally and required by the main CI verification job | Real API stop/restart against test-owned SQLite, honest outage behavior, fresh-browser reopen, and exact persisted task/result/evidence/trace/event/file equality; not Postgres worker/replica or hosted recovery |
 | Credential boundary | `make test-security-boundary` | Passing locally and required before hosted acceptance | Synthetic access-key canary absence from browser/public/retained artifacts plus fail-closed private-GitHub source policy |
 | Route and journey visuals | `make test-visual` | Passing locally and required by the separate `visual-acceptance` CI job | Immutable prototype source, complete route mapping, desktop/phone screenshot contract, 320px reflow and golden-journey states |

@@ -6,7 +6,7 @@ SHELL := /bin/sh
 # rather than inventing a passing substitute.
 
 .PHONY: help doctor bootstrap dev-demo check check-architecture check-docs \
-	test-unit test-contract test-e2e-demo
+	test-unit test-contract test-e2e-demo test-visual test-hosted
 
 help:
 	@echo "Deep Work command contract:"
@@ -19,6 +19,8 @@ help:
 	@echo "  make test-unit          Run TypeScript and Python unit suites"
 	@echo "  make test-contract      Run the API contract suite"
 	@echo "  make test-e2e-demo      Run the credential-free browser task journey"
+	@echo "  make test-visual        Run blocking desktop/phone screenshot comparisons"
+	@echo "  make test-hosted        Run the fail-closed hosted golden journey"
 
 doctor:
 	@echo "== API toolchain =="
@@ -60,3 +62,9 @@ test-contract:
 
 test-e2e-demo:
 	pnpm test:e2e-demo
+
+test-visual:
+	pnpm test:visual
+
+test-hosted:
+	pnpm test:hosted

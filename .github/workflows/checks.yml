@@ -65,10 +65,54 @@ jobs:
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 
+      - name: Compare desktop and phone screenshots
+        run: make test-visual
+
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-failure-artifacts
+          path: output/playwright/
+          if-no-files-found: ignore
+
+  hosted-acceptance:
+    name: hosted golden journey
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: hosted-acceptance
+    env:
+      DEEPWORK_HOSTED_URL: ${{ secrets.DEEPWORK_HOSTED_URL }}
+      DEEPWORK_E2E_ACCESS_KEY: ${{ secrets.DEEPWORK_E2E_ACCESS_KEY }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Enable pnpm via corepack
+        run: corepack enable
+
+      - name: Install pinned web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Require hosted acceptance configuration
+        run: |
+          test -n "$DEEPWORK_HOSTED_URL"
+          test -n "$DEEPWORK_E2E_ACCESS_KEY"
+
+      - name: Run hosted golden journey
+        run: make test-hosted
+
+      - name: Upload hosted browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-acceptance-failure-artifacts
           path: output/playwright/
           if-no-files-found: ignore

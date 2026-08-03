@@ -2,10 +2,6 @@
   "name": "deepwork",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@11.9.0",
-  "engines": {
-    "node": ">=24.14.0 <25"
-  },
   "scripts": {
     "build": "turbo run build",
     "check": "pnpm check-architecture && turbo run format-check lint typecheck test build",
@@ -20,6 +16,8 @@
     "package-check": "turbo run package-check",
     "test": "turbo run test",
     "test:e2e-demo": "playwright test",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "test:hosted": "playwright test --config playwright.hosted.config.ts",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
@@ -30,5 +28,9 @@
     "oxlint": "1.75.0",
     "turbo": "2.10.6",
     "typescript": "7.0.2"
-  }
+  },
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "packageManager": "pnpm@11.9.0"
 }

@@ -14,7 +14,9 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parent
 API_EXECUTABLE = ROOT / "apps" / "api" / ".venv" / "bin" / "deepwork-api"
-NEXT_EXECUTABLE = ROOT / "apps" / "web" / "node_modules" / "next" / "dist" / "bin" / "next"
+NEXT_EXECUTABLE = (
+    ROOT / "apps" / "web" / "node_modules" / "next" / "dist" / "bin" / "next"
+)
 LANGGRAPH_EXECUTABLE = ROOT / "packages" / "agent" / ".venv" / "bin" / "langgraph"
 LOCAL_AGENT_ENDPOINT = "http://127.0.0.1:2024"
 LOCAL_AGENT_ASSISTANT = "deep-work-local-agent"
@@ -73,7 +75,9 @@ def _wait_for(url: str, process: subprocess.Popen[bytes], timeout: float) -> Non
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if process.poll() is not None:
-            raise RuntimeError(f"service exited with status {process.returncode}: {url}")
+            raise RuntimeError(
+                f"service exited with status {process.returncode}: {url}"
+            )
         try:
             with urlopen(url, timeout=2) as response:  # noqa: S310 - fixed loopback URL
                 if response.status < 500:
@@ -133,7 +137,8 @@ def main() -> int:
     real_agent = os.environ.get("DEEPWORK_REAL_AGENT") == "1"
     if classic_endpoint:
         if not (
-            os.environ.get("LANGSMITH_API_KEY") or os.environ.get("DEEPWORK_CLASSIC_CREDENTIAL")
+            os.environ.get("LANGSMITH_API_KEY")
+            or os.environ.get("DEEPWORK_CLASSIC_CREDENTIAL")
         ):
             print(
                 "Classic deployment mode needs a credential: set LANGSMITH_API_KEY "
@@ -158,7 +163,10 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 2
-        if not (os.environ.get("DEEPWORK_AGENT_MODEL") or os.environ.get("DEEPWORK_AGENT_FAKE")):
+        if not (
+            os.environ.get("DEEPWORK_AGENT_MODEL")
+            or os.environ.get("DEEPWORK_AGENT_FAKE")
+        ):
             print(
                 "Real-agent mode needs a model: set DEEPWORK_AGENT_MODEL (with the "
                 "provider credential) or DEEPWORK_AGENT_FAKE=1 for the keyless "
@@ -184,8 +192,15 @@ def main() -> int:
         if real_agent:
             print(f"Starting local LangGraph Agent Server on {LOCAL_AGENT_ENDPOINT}")
             agent_server = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
-                [str(LANGGRAPH_EXECUTABLE), "dev", "--host", "127.0.0.1", "--port", "2024",
-                 "--no-browser"],
+                [
+                    str(LANGGRAPH_EXECUTABLE),
+                    "dev",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "2024",
+                    "--no-browser",
+                ],
                 cwd=ROOT,
                 env=child_env,
             )
@@ -207,18 +222,19 @@ def main() -> int:
         processes.append(api)
         _wait_for("http://127.0.0.1:8000/health", api, 15)
 
-        print("Starting Deep Work web on http://127.0.0.1:3000")
+        production_web = os.environ.get("DEEPWORK_WEB_PRODUCTION") == "1"
+        web_mode = "production" if production_web else "development"
+        print(f"Starting Deep Work web ({web_mode}) on http://127.0.0.1:3000")
+        web_args = [
+            str(node),
+            str(NEXT_EXECUTABLE),
+            "start" if production_web else "dev",
+        ]
+        if not production_web:
+            web_args.append("--webpack")
+        web_args.extend(["--hostname", "127.0.0.1", "--port", "3000"])
         web = subprocess.Popen(  # noqa: S603 - fixed reviewed package command
-            [
-                str(node),
-                str(NEXT_EXECUTABLE),
-                "dev",
-                "--webpack",
-                "--hostname",
-                "127.0.0.1",
-                "--port",
-                "3000",
-            ],
+            web_args,
             cwd=ROOT / "apps" / "web",
             env=child_env,
         )
@@ -246,8 +262,12 @@ def main() -> int:
         while not stopping and all(process.poll() is None for process in processes):
             time.sleep(0.2)
         if not stopping:
-            failed = next(process for process in processes if process.poll() is not None)
-            raise RuntimeError(f"a Deep Work service exited with status {failed.returncode}")
+            failed = next(
+                process for process in processes if process.poll() is not None
+            )
+            raise RuntimeError(
+                f"a Deep Work service exited with status {failed.returncode}"
+            )
     except (KeyboardInterrupt, RuntimeError) as exc:
         if not isinstance(exc, KeyboardInterrupt):
             print(f"Deep Work stopped: {exc}", file=sys.stderr)

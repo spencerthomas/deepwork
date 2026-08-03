@@ -181,9 +181,10 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
   `48e21024a0bf9691c2d8a9531be7f210e4547b45`.
 - [x] 2026-08-03 — Live release scorecard complete; hosted and release columns
   remain explicitly unproven.
-- [x] 2026-08-03 — Independent local review complete. Review fixes bind the
-  prototype pixels, harden hosted credential handling, retain selected agent
-  identity, guard decision races and fail orphaned SQLite fixture runs closed.
+- [x] 2026-08-03 — Independent local review complete at
+  `265da2a1f2cfb53a9ce0ad02c1f3169881801b01`. Review fixes bind the prototype
+  pixels, harden hosted credential handling, retain selected agent identity,
+  preserve default-agent prompt semantics, and guard decision races.
 - [x] 2026-08-03 — Recovery-slice verification checkpoint complete. API, web,
   documentation, local browser and visual acceptance pass for the implemented
   slice; this ExecPlan stays active while the twelve-scenario scorecard retains

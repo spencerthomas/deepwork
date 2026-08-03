@@ -1,9 +1,10 @@
 {
-  "profileId": "local-chromium-inbox-1000-v1",
+  "profileId": "local-chromium-performance-v2",
   "evidenceClass": "synthetic-api-contract",
   "dataset": {
     "id": "inbox-1000-v1",
     "taskCount": 1000,
+    "streamEventCount": 1000,
     "statuses": [
       "waiting-approval",
       "running",
@@ -24,7 +25,10 @@
   },
   "budgets": {
     "interactionP75Ms": 200,
-    "maximumMountedTaskRows": 50
+    "maximumMountedTaskRows": 50,
+    "maximumMountedThreadUpdates": 100,
+    "maximumMountedStreamRows": 100,
+    "longStreamReadyMs": 4000
   },
   "qualification": {
     "referenceDeviceAccepted": false,

@@ -22,6 +22,7 @@ import {
   type ActivityFilter,
 } from "@/components/activity/activity-model";
 import { nextPanelTab, PANEL_TABS, type PanelTab } from "@/components/tasks/run-panel-tabs";
+import { STREAM_EVENT_PAGE_SIZE, streamEventWindow } from "@/components/tasks/run-panel-events";
 import { panelTabToQuery, readPanelTab } from "@/components/tasks/run-panel-url";
 import { artifactDownloadHref, buildTaskArtifacts } from "@/components/tasks/task-artifacts";
 import type {
@@ -48,6 +49,8 @@ const eventLabels: Record<string, string> = {
   "decision.recorded": "Decision recorded",
   "run.completed": "Run completed",
 };
+
+const NO_STREAM_EVENTS: readonly TaskEvent[] = [];
 
 function connectionLabel(state: ConnectionState): string {
   switch (state) {
@@ -97,6 +100,7 @@ export function RunPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
   const [streamFilter, setStreamFilter] = useState<ActivityFilter>("all");
+  const [streamPage, setStreamPage] = useState(1);
   const [trace, setTrace] = useState<TaskTrace | { state: "loading" }>({
     state: "loading",
   });
@@ -123,9 +127,19 @@ export function RunPanel({
   // the same filter vocabulary as the Activity feed. Session-local; the full,
   // unfiltered event history is always one click ("All") away.
   const visibleStreamEvents = useMemo(
-    () => events.filter((event) => eventMatchesActivityFilter(event.name, streamFilter)),
-    [events, streamFilter],
+    () =>
+      tab !== "stream"
+        ? NO_STREAM_EVENTS
+        : streamFilter === "all"
+          ? events
+          : events.filter((event) => eventMatchesActivityFilter(event.name, streamFilter)),
+    [events, streamFilter, tab],
   );
+  const streamWindow = useMemo(
+    () => streamEventWindow(visibleStreamEvents, streamPage),
+    [streamPage, visibleStreamEvents],
+  );
+  useEffect(() => setStreamPage(1), [selected.taskId]);
   const artifacts = useMemo(
     () =>
       tab === "files"
@@ -312,7 +326,10 @@ export function RunPanel({
                       key={option}
                       type="button"
                       aria-pressed={active}
-                      onClick={() => setStreamFilter(option)}
+                      onClick={() => {
+                        setStreamFilter(option);
+                        setStreamPage(1);
+                      }}
                       className={cn(
                         "rounded-full px-2.5 py-1 text-[12px] transition-colors",
                         active
@@ -336,7 +353,7 @@ export function RunPanel({
               </p>
             ) : (
               <ol className="space-y-0.5">
-                {visibleStreamEvents.map((event) => {
+                {streamWindow.items.map((event) => {
                   const detail = eventDetailText(event);
                   return (
                     <li key={event.id} className="rounded-lg px-2 py-1.5 hover:bg-accent/40">
@@ -361,10 +378,40 @@ export function RunPanel({
                 })}
               </ol>
             )}
+            {visibleStreamEvents.length > STREAM_EVENT_PAGE_SIZE && (
+              <div
+                className="flex items-center justify-between gap-2 border-t border-border px-2 py-2"
+                aria-label="Stream event pages"
+              >
+                <button
+                  type="button"
+                  disabled={!streamWindow.hasEarlier}
+                  onClick={() => setStreamPage(streamWindow.page + 1)}
+                  className="rounded-lg border border-border px-2.5 py-1 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+                >
+                  Earlier events
+                </button>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {streamWindow.start.toLocaleString()}–{streamWindow.end.toLocaleString()}
+                </span>
+                <button
+                  type="button"
+                  disabled={!streamWindow.hasNewer}
+                  onClick={() => setStreamPage(streamWindow.page - 1)}
+                  className="rounded-lg border border-border px-2.5 py-1 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+                >
+                  Newer events
+                </button>
+              </div>
+            )}
             <p className="border-t border-border px-2 py-2 text-[11px] text-muted-foreground">
               {streamFilter === "all"
-                ? `${events.length} events · ${runtimeCopy.runEventSource}`
-                : `Showing ${visibleStreamEvents.length} of ${events.length} events · ${runtimeCopy.runEventSource}`}
+                ? events.length > STREAM_EVENT_PAGE_SIZE
+                  ? `Showing ${streamWindow.items.length} of ${events.length} events · ${runtimeCopy.runEventSource}`
+                  : `${events.length} events · ${runtimeCopy.runEventSource}`
+                : visibleStreamEvents.length > STREAM_EVENT_PAGE_SIZE
+                  ? `Showing ${streamWindow.items.length} of ${visibleStreamEvents.length} matching events · ${events.length} total · ${runtimeCopy.runEventSource}`
+                  : `Showing ${visibleStreamEvents.length} of ${events.length} events · ${runtimeCopy.runEventSource}`}
             </p>
           </div>
         )}

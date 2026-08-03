@@ -23,7 +23,7 @@ import { ApprovalCard } from "@/components/tasks/approval-card";
 import { PlanCard } from "@/components/tasks/plan-card";
 import { RunPanel } from "@/components/tasks/run-panel";
 import { TaskResultActions } from "@/components/tasks/task-result-actions";
-import { buildThread } from "@/components/tasks/task-thread-model";
+import { buildBoundedThread, TASK_THREAD_RENDER_LIMIT } from "@/components/tasks/task-thread-model";
 import { setEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import { loadRunPanelOpen, saveRunPanelOpen } from "@/lib/run-panel-preference";
 import {
@@ -184,11 +184,11 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     () => getEvidenceRecords(detail?.evidence, events),
     [detail?.evidence, events],
   );
-  const thread = useMemo(() => buildThread(detail, events), [detail, events]);
+  const thread = useMemo(() => buildBoundedThread(detail, events), [detail, events]);
 
   const status = detail?.status ?? selected?.status ?? "unknown";
   const terminal = isTerminalStatus(status);
-  const hasResultItem = thread.some((item) => item.kind === "result");
+  const hasResultItem = thread.items.some((item) => item.kind === "result");
   const lifecycleRef = useRef({
     taskId,
     status,
@@ -223,8 +223,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [hasResultItem, status, taskId]);
-  const hasInterruptItem = thread.some((item) => item.kind === "interrupt");
-  const hasPlanItem = thread.some((item) => item.kind === "plan");
+  const hasInterruptItem = thread.items.some((item) => item.kind === "interrupt");
+  const hasPlanItem = thread.items.some((item) => item.kind === "plan");
   const title = detail?.title ?? selected?.title ?? taskId;
   // Re-dispatch the original request (the full prompt, not the truncated title)
   // as a brand-new task and follow it.
@@ -380,7 +380,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                 <p className="text-[15px] leading-relaxed text-muted-foreground">{detail.prompt}</p>
               )}
 
-              {thread.length === 0 && (
+              {thread.items.length === 0 && (
                 <div className="flex gap-3">
                   <AgentAvatar />
                   <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">
@@ -389,7 +389,14 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                 </div>
               )}
 
-              {thread.map((item) => {
+              {thread.hiddenEventCount > 0 && (
+                <div className="ml-10 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-[13px] text-muted-foreground">
+                  {thread.hiddenEventCount.toLocaleString()} earlier events are available in Stream.
+                  The latest {TASK_THREAD_RENDER_LIMIT.toLocaleString()} remain here.
+                </div>
+              )}
+
+              {thread.items.map((item) => {
                 if (item.kind === "narration") {
                   return (
                     <div key={item.id} className="flex gap-3">

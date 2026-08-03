@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildThread } from "./task-thread-model";
+import { buildBoundedThread, buildThread } from "./task-thread-model";
 import type { TaskDetail, TaskEvent } from "../../lib/task-types";
 
 function event(id: string, name: TaskEvent["name"], data: Record<string, unknown> = {}): TaskEvent {
@@ -86,5 +86,17 @@ describe("buildThread", () => {
   it("drops blank narration instead of rendering empty cards", () => {
     const items = buildThread(undefined, [event("1", "content.delta", { text: "   " })]);
     expect(items).toHaveLength(0);
+  });
+
+  it("keeps the latest thread window and reports how much history is hidden", () => {
+    const events = Array.from({ length: 105 }, (_, index) =>
+      event(String(index + 1), "content.delta", { text: `Update ${String(index + 1)}` }),
+    );
+
+    const bounded = buildBoundedThread(undefined, events, 10);
+    expect(bounded.hiddenEventCount).toBe(95);
+    expect(bounded.items).toHaveLength(10);
+    expect(bounded.items[0]).toMatchObject({ id: "96", kind: "narration" });
+    expect(bounded.items[9]).toMatchObject({ id: "105", kind: "narration" });
   });
 });

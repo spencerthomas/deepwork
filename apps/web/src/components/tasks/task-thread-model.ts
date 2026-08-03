@@ -12,12 +12,145 @@ export type ThreadItem =
       status: "completed" | "rejected" | "failed" | "cancelled" | "unknown";
     };
 
+export const TASK_THREAD_RENDER_LIMIT = 100;
+
+export interface BoundedThread {
+  hiddenEventCount: number;
+  items: readonly ThreadItem[];
+}
+
+/**
+ * Keep the latest lifecycle items mounted while retaining the complete event
+ * transcript in the store and Stream panel. The result and current approval
+ * live at the tail of the ordered thread, so they remain immediately usable.
+ */
+export function buildBoundedThread(
+  detail: TaskDetail | undefined,
+  events: readonly TaskEvent[],
+  maximumItems = TASK_THREAD_RENDER_LIMIT,
+): BoundedThread {
+  const limit = Math.max(1, Math.floor(maximumItems));
+  const pendingInterruptId = detail?.pendingInterrupt?.interruptId;
+  const currentPlanRevision = detail?.proposedPlan?.revision;
+  let currentPlanEventId: string | undefined;
+
+  if (currentPlanRevision !== undefined) {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (
+        event !== undefined &&
+        (event.name === "plan.proposed" || event.name === "plan.updated") &&
+        eventPlanRevision(event) === currentPlanRevision
+      ) {
+        currentPlanEventId = event.id;
+        break;
+      }
+    }
+  }
+
+  const items: ThreadItem[] = [];
+  let index = events.length - 1;
+  for (; index >= 0 && items.length < limit; index -= 1) {
+    const event = events[index];
+    if (event === undefined) continue;
+    const item = threadItem(
+      event,
+      pendingInterruptId,
+      currentPlanEventId,
+      currentPlanRevision ?? 0,
+    );
+    if (item !== undefined) items.push(item);
+  }
+
+  return {
+    hiddenEventCount: index + 1,
+    items: items.reverse(),
+  };
+}
+
 function decisionLabel(event: TaskEvent): string {
   const decision = event.data.decision;
   if (decision === "approve") return "Plan approved — the agent continued.";
   if (decision === "reject") return "Plan rejected — the run stopped.";
   if (decision === "respond") return "Response sent — the agent revised its plan.";
   return "Decision recorded.";
+}
+
+function eventPlanRevision(event: TaskEvent): number | undefined {
+  if (typeof event.data.revision === "number") return event.data.revision;
+  const plan = event.data.plan;
+  return plan !== null &&
+    typeof plan === "object" &&
+    "revision" in plan &&
+    typeof (plan as { revision: unknown }).revision === "number"
+    ? (plan as { revision: number }).revision
+    : undefined;
+}
+
+function threadItem(
+  event: TaskEvent,
+  pendingInterruptId: string | undefined,
+  latestPlanEventId: string | undefined,
+  latestPlanRevision: number,
+): ThreadItem | undefined {
+  switch (event.name) {
+    case "task.created":
+      return { kind: "marker", id: event.id, label: "Task created" };
+    case "run.started":
+      return { kind: "marker", id: event.id, label: "Run started" };
+    case "content.delta": {
+      const text = getEventText(event) ?? "";
+      return text.trim() === ""
+        ? undefined
+        : { kind: "narration", id: event.id, label: "Task update", text };
+    }
+    case "plan.proposed":
+    case "plan.updated":
+      return event.id === latestPlanEventId
+        ? { kind: "plan", id: event.id, revision: latestPlanRevision }
+        : {
+            kind: "marker",
+            id: event.id,
+            label: event.name === "plan.proposed" ? "Plan proposed" : "Plan updated",
+            detail: "Superseded by a newer revision.",
+          };
+    case "evidence.recorded":
+      return {
+        kind: "marker",
+        id: event.id,
+        label: "Sources recorded",
+        detail: typeof event.data.summary === "string" ? event.data.summary : undefined,
+      };
+    case "interrupt.requested": {
+      const interruptId = typeof event.data.interruptId === "string" ? event.data.interruptId : "";
+      return interruptId !== "" && interruptId === pendingInterruptId
+        ? { kind: "interrupt", id: event.id, interruptId }
+        : {
+            kind: "marker",
+            id: event.id,
+            label: "Approval requested",
+            detail: "Resolved below.",
+          };
+    }
+    case "decision.recorded":
+      return { kind: "marker", id: event.id, label: decisionLabel(event) };
+    case "run.completed": {
+      const status = typeof event.data.status === "string" ? event.data.status : "unknown";
+      return {
+        kind: "result",
+        id: event.id,
+        status:
+          status === "completed" ||
+          status === "rejected" ||
+          status === "failed" ||
+          status === "cancelled"
+            ? status
+            : "unknown",
+      };
+    }
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -37,16 +170,7 @@ export function buildThread(
 
   for (const event of events) {
     if (event.name === "plan.proposed" || event.name === "plan.updated") {
-      const revision = typeof event.data.revision === "number" ? event.data.revision : undefined;
-      const planData = event.data.plan;
-      const nestedRevision =
-        planData !== null &&
-        typeof planData === "object" &&
-        "revision" in planData &&
-        typeof (planData as { revision: unknown }).revision === "number"
-          ? (planData as { revision: number }).revision
-          : undefined;
-      const effective = revision ?? nestedRevision ?? latestPlanRevision + 1;
+      const effective = eventPlanRevision(event) ?? latestPlanRevision + 1;
       if (effective >= latestPlanRevision) {
         latestPlanRevision = effective;
         latestPlanEventId = event.id;
@@ -55,77 +179,8 @@ export function buildThread(
   }
 
   for (const event of events) {
-    switch (event.name) {
-      case "task.created":
-        items.push({ kind: "marker", id: event.id, label: "Task created" });
-        break;
-      case "run.started":
-        items.push({ kind: "marker", id: event.id, label: "Run started" });
-        break;
-      case "content.delta": {
-        const text = getEventText(event) ?? "";
-        if (text.trim() !== "") {
-          items.push({ kind: "narration", id: event.id, label: "Task update", text });
-        }
-        break;
-      }
-      case "plan.proposed":
-      case "plan.updated":
-        if (event.id === latestPlanEventId) {
-          items.push({ kind: "plan", id: event.id, revision: latestPlanRevision });
-        } else {
-          items.push({
-            kind: "marker",
-            id: event.id,
-            label: event.name === "plan.proposed" ? "Plan proposed" : "Plan updated",
-            detail: "Superseded by a newer revision.",
-          });
-        }
-        break;
-      case "evidence.recorded":
-        items.push({
-          kind: "marker",
-          id: event.id,
-          label: "Sources recorded",
-          detail: typeof event.data.summary === "string" ? event.data.summary : undefined,
-        });
-        break;
-      case "interrupt.requested": {
-        const interruptId =
-          typeof event.data.interruptId === "string" ? event.data.interruptId : "";
-        if (interruptId !== "" && interruptId === pendingInterruptId) {
-          items.push({ kind: "interrupt", id: event.id, interruptId });
-        } else {
-          items.push({
-            kind: "marker",
-            id: event.id,
-            label: "Approval requested",
-            detail: "Resolved below.",
-          });
-        }
-        break;
-      }
-      case "decision.recorded":
-        items.push({ kind: "marker", id: event.id, label: decisionLabel(event) });
-        break;
-      case "run.completed": {
-        const status = typeof event.data.status === "string" ? event.data.status : "unknown";
-        items.push({
-          kind: "result",
-          id: event.id,
-          status:
-            status === "completed" ||
-            status === "rejected" ||
-            status === "failed" ||
-            status === "cancelled"
-              ? status
-              : "unknown",
-        });
-        break;
-      }
-      default:
-        break;
-    }
+    const item = threadItem(event, pendingInterruptId, latestPlanEventId, latestPlanRevision);
+    if (item !== undefined) items.push(item);
   }
 
   return items;

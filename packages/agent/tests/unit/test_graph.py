@@ -94,6 +94,7 @@ def test_runtime_capabilities_are_truthful_and_local_only() -> None:
     assert capabilities.checkpointing == "in-memory-only"
     assert capabilities.hosted_deployment is False
     assert capabilities.provider_credentials_managed is False
+    assert capabilities.github_private_operations == "proxy-unavailable"
 
 
 def test_research_writing_task_plans_pauses_and_completes_after_approval() -> None:
@@ -428,8 +429,7 @@ def test_memory_backend_saves_remembered_notes_and_strips_them() -> None:
                 AIMessage(content="- Do the work."),
                 AIMessage(
                     content=(
-                        "Here is the result.\n"
-                        "<remember>The user prefers metric units.</remember>"
+                        "Here is the result.\n<remember>The user prefers metric units.</remember>"
                     )
                 ),
             ]

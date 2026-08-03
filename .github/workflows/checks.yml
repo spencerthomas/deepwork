@@ -65,12 +65,17 @@ jobs:
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 
+      - name: Prove credential boundaries
+        run: make test-security-boundary
+
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-failure-artifacts
-          path: output/playwright/
+          # Password controls are masked. Do not retain traces, auth state, or
+          # reports from a journey that enters an access key.
+          path: output/playwright/test-results/**/test-failed-*.png
           if-no-files-found: ignore
 
   visual-acceptance:

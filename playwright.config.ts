@@ -20,7 +20,9 @@ export default defineConfig({
     storageState: "output/playwright/auth.json",
     screenshot: "only-on-failure",
     serviceWorkers: "block",
-    trace: "retain-on-failure",
+    // This journey enters an access key. Retain masked screenshots only; a
+    // Playwright trace can serialize form values and request bodies.
+    trace: "off",
   },
   webServer: {
     command: "DEEPWORK_ACCESS_KEY=deepwork-local-browser-acceptance ./dev",

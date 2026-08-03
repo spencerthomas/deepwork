@@ -130,6 +130,7 @@ def _run_prompt_override(config: RunnableConfig | None) -> str | None:
         return None
     return text[:_MAX_RUN_PROMPT_CHARS]
 
+
 ToolLike = BaseTool | Callable[..., Any] | dict[str, Any]
 LocalAgentGraph = CompiledStateGraph[
     AgentState,  # ty: ignore[invalid-type-arguments]  # TypedDict protocol checker limitation
@@ -152,6 +153,7 @@ class RuntimeCapabilities:
     checkpointing: Literal["in-memory-only"]
     hosted_deployment: Literal[False]
     provider_credentials_managed: Literal[False]
+    github_private_operations: Literal["proxy-unavailable"]
 
 
 def runtime_capabilities() -> RuntimeCapabilities:
@@ -166,6 +168,7 @@ def runtime_capabilities() -> RuntimeCapabilities:
         checkpointing="in-memory-only",
         hosted_deployment=False,
         provider_credentials_managed=False,
+        github_private_operations="proxy-unavailable",
     )
 
 
@@ -255,9 +258,7 @@ def create_graph(
     # Build once only when there is no per-task sandbox, no per-run prompt, and
     # no rubric (each of those needs per-task construction).
     default_executor = (
-        build_executor(None)
-        if (sandbox_factory is None and rubric is None)
-        else None
+        build_executor(None) if (sandbox_factory is None and rubric is None) else None
     )
 
     def _invoke_executor(
@@ -274,12 +275,16 @@ def create_graph(
 
         if sandbox_factory is None:
             prebuilt = default_executor is not None and prompt is None
-            executor = default_executor if prebuilt else build_executor(None, prompt, evaluations.append)
+            executor = (
+                default_executor if prebuilt else build_executor(None, prompt, evaluations.append)
+            )
             result = run(executor)
         else:
             with sandbox_factory() as backend:
                 result = run(build_executor(backend, prompt, evaluations.append))
-        verification = build_verification_record(rubric, evaluations) if rubric is not None else None
+        verification = (
+            build_verification_record(rubric, evaluations) if rubric is not None else None
+        )
         return result, verification
 
     def execute(state: AgentState, config: RunnableConfig) -> dict[str, object]:

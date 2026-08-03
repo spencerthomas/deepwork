@@ -195,12 +195,15 @@ async def test_create_with_an_agent_id_skips_the_workspace_prompt_override() -> 
         repository, source, prompt_store=InMemoryPromptStore("Always be terse.")
     )
     try:
-        await runner.create(title="t", objective="Do the thing", agent_id="assistant-2")
+        task = await runner.create(title="t", objective="Do the thing", agent_id="assistant-2")
     finally:
         await runner.close()
 
     assert source.start_system_prompts == [None]
     assert source.start_agent_ids == ["assistant-2"]
+    assert task.agent_id == "assistant-2"
+    created_event = (await repository.events_after(task.task_id, 0))[0]
+    assert dict(created_event.data)["agentId"] == "assistant-2"
 
 
 async def test_runner_agent_registry_methods_delegate_to_the_source() -> None:

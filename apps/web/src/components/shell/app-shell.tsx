@@ -135,6 +135,28 @@ export function AppShell({
   const [helpOpen, setHelpOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const changeCommandOpen = (open: boolean) => {
+    setCmdOpen(open);
+    if (open) {
+      setHelpOpen(false);
+      setMoreOpen(false);
+    }
+  };
+  const changeHelpOpen = (open: boolean) => {
+    setHelpOpen(open);
+    if (open) {
+      setCmdOpen(false);
+      setMoreOpen(false);
+    }
+  };
+  const changeMoreOpen = (open: boolean) => {
+    setMoreOpen(open);
+    if (open) {
+      setCmdOpen(false);
+      setHelpOpen(false);
+    }
+  };
+
   // Surface how many loaded tasks are waiting on a human decision so the count
   // is visible from every destination, not only the Approvals page itself.
   const { tasks } = useTasksStore();
@@ -149,6 +171,8 @@ export function AppShell({
       if (isTypingTarget(event.target)) return;
       if (event.key === "?") {
         event.preventDefault();
+        setCmdOpen(false);
+        setMoreOpen(false);
         setHelpOpen(true);
       } else if (event.key === "n" && !cmdOpen && !helpOpen) {
         event.preventDefault();
@@ -161,8 +185,8 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
-      <KeyboardShortcuts open={helpOpen} onOpenChange={setHelpOpen} />
+      <CommandBar open={cmdOpen} onOpenChange={changeCommandOpen} />
+      <KeyboardShortcuts open={helpOpen} onOpenChange={changeHelpOpen} />
 
       <a
         href="#main-content"
@@ -185,7 +209,7 @@ export function AppShell({
           <button
             type="button"
             aria-label="Search or run a command"
-            onClick={() => setCmdOpen(true)}
+            onClick={() => changeCommandOpen(true)}
             className="ml-auto flex size-9 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-foreground/[0.03] px-0 text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] sm:h-9 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-start sm:px-3.5 sm:max-w-sm"
           >
             <Search aria-hidden className="size-4 shrink-0" />
@@ -295,7 +319,7 @@ export function AppShell({
             type="button"
             aria-label="Close More menu"
             className="absolute inset-0 bg-black/30"
-            onClick={() => setMoreOpen(false)}
+            onClick={() => changeMoreOpen(false)}
           />
           <section
             role="dialog"
@@ -321,7 +345,7 @@ export function AppShell({
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    onClick={() => setMoreOpen(false)}
+                    onClick={() => changeMoreOpen(false)}
                     className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <Icon className="size-5" />
@@ -385,7 +409,7 @@ export function AppShell({
           type="button"
           aria-label="More destinations"
           aria-expanded={moreOpen}
-          onClick={() => setMoreOpen((open) => !open)}
+          onClick={() => changeMoreOpen(!moreOpen)}
           className={cn(
             "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
             moreOpen || moreDestinations.some(({ label }) => label === active)

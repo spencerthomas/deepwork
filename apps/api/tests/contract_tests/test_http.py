@@ -183,6 +183,7 @@ async def test_create_list_detail_and_real_pause() -> None:
             {
                 "taskId": "task_00000001",
                 "runId": "run_00000001",
+                "agentId": None,
                 "createdAt": _FIXED_CREATED_AT,
                 "title": objective,
                 "objective": objective,

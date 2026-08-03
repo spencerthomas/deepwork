@@ -7,6 +7,7 @@ export async function loginWithAccessKey(accessKey: string): Promise<LoginResult
     credentials: "include",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ accessKey }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (response.ok) return { ok: true };
   return { ok: false, reason: response.status === 401 ? "rejected" : "failed" };

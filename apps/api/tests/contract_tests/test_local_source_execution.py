@@ -23,6 +23,7 @@ import deepwork_api.bootstrap.api as bootstrap_api
 from deepwork_api import create_app
 from deepwork_api.adapters.sources.local import LocalAgentServerSource
 from deepwork_api.application import LocalAgentServerRunner
+from deepwork_api.contracts import encode_event_data
 
 UPSTREAM_MARKER = "SECRET-UPSTREAM-DETAIL"
 LOCAL_ENDPOINT = "http://127.0.0.1:2024"
@@ -354,8 +355,13 @@ async def _local_app(
             yield _Harness(app=app, client=client)
 
 
-async def _create_task(client: httpx.AsyncClient, prompt: str) -> dict[str, Any]:
-    response = await client.post("/api/v1/tasks", json={"prompt": prompt})
+async def _create_task(
+    client: httpx.AsyncClient, prompt: str, *, agent_id: str | None = None
+) -> dict[str, Any]:
+    body = {"prompt": prompt}
+    if agent_id is not None:
+        body["agentId"] = agent_id
+    response = await client.post("/api/v1/tasks", json=body)
     assert response.status_code == 202
     return cast("dict[str, Any]", response.json())
 
@@ -395,7 +401,11 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
     server = ScriptedAgentServer()
     async with _local_app(server, monkeypatch) as harness:
         client = harness.client
-        created = await _create_task(client, "Summarize the supplied notes")
+        created = await _create_task(
+            client,
+            "Summarize the supplied notes",
+            agent_id=LOCAL_ASSISTANT,
+        )
         assert created["taskId"] == "task_00000001"
         assert created["runId"] == "run-local-1"
         assert created["status"] == "queued"
@@ -404,6 +414,7 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
         assert source_interrupt is not None
 
         paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        assert paused["agentId"] == LOCAL_ASSISTANT
         assert paused["pendingInterrupt"] == {
             "interruptId": source_interrupt,
             "decisions": ["approve", "reject", "respond"],
@@ -417,6 +428,12 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
         }
         assert paused["result"] is None
         assert "thread-local-1" not in json.dumps(paused)
+
+        created_event = (
+            await harness.app.state.task_repository.events_after(created["taskId"], 0)
+        )[0]
+        assert created_event.name.value == "task.created"
+        assert json.loads(encode_event_data(created_event))["agentId"] == LOCAL_ASSISTANT
 
 
 async def test_approval_executes_and_maps_result_into_task_api(

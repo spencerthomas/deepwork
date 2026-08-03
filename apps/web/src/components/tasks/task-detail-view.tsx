@@ -253,6 +253,15 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           <div className="min-w-0 flex-1">
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-accent">
               Task · <span className="font-mono normal-case">{taskId}</span>
+              {(detail?.agentId ?? selected?.agentId) ? (
+                <>
+                  {" "}
+                  · Agent ·{" "}
+                  <span className="font-mono normal-case">
+                    {detail?.agentId ?? selected?.agentId}
+                  </span>
+                </>
+              ) : null}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="truncate text-pretty text-xl font-semibold tracking-tight">{title}</h1>

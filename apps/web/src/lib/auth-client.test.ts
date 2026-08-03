@@ -19,6 +19,7 @@ describe("loginWithAccessKey", () => {
       expect.objectContaining({
         credentials: "include",
         body: JSON.stringify({ accessKey: "workspace-secret" }),
+        signal: expect.any(AbortSignal),
       }),
     );
   });

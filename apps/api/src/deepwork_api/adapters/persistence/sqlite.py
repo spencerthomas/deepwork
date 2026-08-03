@@ -351,12 +351,17 @@ class SQLiteTaskRepository:
             self._closed = True
 
     async def create_task(
-        self, *, title: str, objective: str, run_id: str | None = None
+        self,
+        *,
+        title: str,
+        objective: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 
         _validate_task_input(title=title, objective=objective)
-        return await self._mutate(self._create_task_sync, title, objective, run_id)
+        return await self._mutate(self._create_task_sync, title, objective, run_id, agent_id)
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""
@@ -727,7 +732,11 @@ class SQLiteTaskRepository:
                 )
 
     def _create_task_sync(
-        self, title: str, objective: str, external_run_id: str | None = None
+        self,
+        title: str,
+        objective: str,
+        external_run_id: str | None = None,
+        agent_id: str | None = None,
     ) -> TaskSnapshot:
         connection = self._connect()
         try:
@@ -760,6 +769,7 @@ class SQLiteTaskRepository:
                     ("taskId", task_id),
                     ("runId", run_id),
                     ("status", TaskStatus.QUEUED.value),
+                    *(((("agentId", agent_id),)) if agent_id is not None else ()),
                 ),
             )
             self._insert_event_sync(connection, task_id, event)
@@ -1253,6 +1263,20 @@ class SQLiteTaskRepository:
                 maximum=64,
             )
         )
+        created_event_row = connection.execute(
+            "SELECT event_id, name, data FROM events WHERE task_id = ? AND event_id = 1",
+            (task_id,),
+        ).fetchone()
+        if created_event_row is None:
+            raise SQLiteTaskRepositoryDataError("stored task is missing its creation event")
+        created_event = self._event_from_row(created_event_row)
+        stored_agent_id = dict(created_event.data).get("agentId")
+        if stored_agent_id is not None and (
+            not isinstance(stored_agent_id, str)
+            or not stored_agent_id
+            or len(stored_agent_id) > 200
+        ):
+            raise SQLiteTaskRepositoryDataError("stored task agent identifier is invalid")
         return TaskSnapshot(
             task_id=cast(str, task["task_id"]),
             run_id=cast(str, task["run_id"]),
@@ -1265,6 +1289,7 @@ class SQLiteTaskRepository:
             proposed_plan=self._plan_from_row(task),
             evidence=evidence,
             result=result,
+            agent_id=stored_agent_id,
         )
 
     @staticmethod

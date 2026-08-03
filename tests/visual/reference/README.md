@@ -38,3 +38,13 @@ documented product decision in the release scorecard.
 The last two routes are reference evidence, not permission to fabricate unsupported API
 contracts. Their useful interaction patterns should be carried into truthful task, trace,
 agent, and settings surfaces.
+
+## Mechanical enforcement
+
+`reference-contract.spec.ts` verifies the SHA-256 of every immutable prototype capture,
+maps every prototype route to a current canonical route screenshot, and applies a bounded
+64-by-64 grayscale perceptual delta. `product-journey.spec.ts` separately blocks on the
+full-resolution current screenshots. The two checks make the source design binding while
+allowing documented copy and truthful contract differences. Intentional visual changes must
+update the current screenshot, the manifest threshold only when justified, and the release
+scorecard in the same review.

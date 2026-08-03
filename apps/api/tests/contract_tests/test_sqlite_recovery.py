@@ -124,6 +124,7 @@ async def test_completed_task_recovers_identically_across_app_lifespans(tmp_path
         {
             "taskId": created["taskId"],
             "runId": created["runId"],
+            "agentId": None,
             "createdAt": detail["createdAt"],
             "title": detail["title"],
             "objective": detail["objective"],

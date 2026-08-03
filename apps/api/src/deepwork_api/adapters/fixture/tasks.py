@@ -39,6 +39,7 @@ class _StoredTask:
     created_at: str
     title: str
     objective: str
+    agent_id: str | None
     status: TaskStatus
     events: list[TaskEvent] = field(default_factory=list)
     pending_interrupt_id: str | None = None
@@ -60,6 +61,7 @@ class _StoredTask:
             proposed_plan=self.proposed_plan,
             evidence=tuple(self.evidence),
             result=self.result,
+            agent_id=self.agent_id,
         )
 
 
@@ -74,7 +76,12 @@ class InMemoryTaskRepository:
         self._clock = clock
 
     async def create_task(
-        self, *, title: str, objective: str, run_id: str | None = None
+        self,
+        *,
+        title: str,
+        objective: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task containing only its sanitized objective."""
 
@@ -88,6 +95,7 @@ class InMemoryTaskRepository:
                 created_at=self._clock().isoformat(),
                 title=title,
                 objective=objective,
+                agent_id=agent_id,
                 status=TaskStatus.QUEUED,
             )
             task.events.append(
@@ -98,6 +106,7 @@ class InMemoryTaskRepository:
                         ("taskId", task.task_id),
                         ("runId", task.run_id),
                         ("status", TaskStatus.QUEUED.value),
+                        *(((("agentId", agent_id),)) if agent_id is not None else ()),
                     ),
                 )
             )

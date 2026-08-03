@@ -160,6 +160,7 @@ class TaskSummaryResponse(_TaskWireModel):
 
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
+    agent_id: AgentId | None = Field(default=None, alias="agentId")
     # Null only for tasks migrated from a pre-timestamp schema; the field stays
     # present on the wire so clients can distinguish "unknown" from a real time.
     created_at: str | None = Field(alias="createdAt", min_length=1, max_length=64)
@@ -173,6 +174,7 @@ class TaskSummaryResponse(_TaskWireModel):
         return cls(
             task_id=task.task_id,
             run_id=task.run_id,
+            agent_id=task.agent_id,
             created_at=task.created_at,
             title=task.title,
             objective=task.objective,
@@ -208,6 +210,7 @@ class TaskDetailResponse(TaskSummaryResponse):
         return cls(
             task_id=task.task_id,
             run_id=task.run_id,
+            agent_id=task.agent_id,
             created_at=task.created_at,
             title=task.title,
             objective=task.objective,
@@ -365,6 +368,7 @@ class TaskResultResponse(_TaskWireModel):
 class TaskCreatedEventData(_TaskWireModel):
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
+    agent_id: AgentId | None = Field(default=None, alias="agentId")
     status: Literal["queued"]
 
 

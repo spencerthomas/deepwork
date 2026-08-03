@@ -189,12 +189,13 @@ def create_app(
     trace_locator = _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
 
     async def _reconcile_orphaned_tasks() -> None:
-        """Fail-closed recovery for real-agent mode after a process restart.
+        """Fail-closed recovery for any persisted task after a process restart.
 
         Persisted history and results survive as-is. A task that was still in
         flight when the process died has lost its in-memory follower and thread
         binding, so it is marked failed with an honest reason instead of being
-        shown as running forever. Fixture mode keeps its own recovery behavior.
+        shown as running forever. The deterministic fixture runner also owns
+        process-local waiters, so it follows the same honest recovery rule.
         """
         for task in await task_repository.list_tasks():
             if task.status.is_terminal:
@@ -217,8 +218,7 @@ def create_app(
         try:
             if sqlite_repository is not None:
                 await sqlite_repository.initialize()
-                if isinstance(task_runner, LocalAgentServerRunner):
-                    await _reconcile_orphaned_tasks()
+                await _reconcile_orphaned_tasks()
             yield
         finally:
             try:

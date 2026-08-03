@@ -34,10 +34,12 @@ export type ConnectionState = "connecting" | "connected" | "reconnecting" | "clo
 export interface TaskSummary {
   taskId: string;
   runId?: string;
+  agentId?: string;
   title: string;
   prompt?: string;
   status: TaskStatus;
   createdAt?: string;
+  lastEventId?: number;
   updatedAt?: string;
 }
 

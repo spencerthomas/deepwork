@@ -17,6 +17,8 @@ import {
 } from "./plan-recovery";
 import { taskClient } from "./task-client";
 import {
+  detailAfterAcceptedDecision,
+  detailAfterAuthoritativeReload,
   getActiveInterrupt,
   getCompletionResultText,
   interruptAfterEvent,
@@ -354,6 +356,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         const created = await taskClient.createTask(prompt, agentId);
         const optimisticTask: TaskSummary = {
           ...created,
+          agentId,
           title: prompt,
           prompt,
           createdAt: dispatchedAt,
@@ -410,27 +413,42 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       }
       if (receipt.duplicate) {
         const currentTask = await taskClient.getTask(taskId);
-        setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
-        setTasks((current) => replaceTask(current, taskId, () => currentTask));
+        setDetailsByTask((current) => {
+          const streamed = current[taskId];
+          return {
+            ...current,
+            [taskId]: streamed
+              ? detailAfterAuthoritativeReload(streamed, currentTask)
+              : currentTask,
+          };
+        });
+        setTasks((current) =>
+          replaceTask(current, taskId, (streamed) =>
+            isTerminalStatus(streamed.status) && !isTerminalStatus(currentTask.status)
+              ? streamed
+              : currentTask,
+          ),
+        );
       } else {
         // A matching new receipt means the authoritative API accepted this
         // interrupt and resumed the task. Reflect that running state immediately
         // while SSE carries the same decision event and eventual completion.
         setDetailsByTask((current) => {
           const task = current[taskId];
-          if (!task || (task.status === "running" && task.pendingInterrupt === undefined)) {
+          if (!task) {
             return current;
           }
+          const updated = detailAfterAcceptedDecision(task, input.interruptId);
+          if (updated === task) return current;
           return {
             ...current,
-            [taskId]: { ...task, status: "running", pendingInterrupt: undefined },
+            [taskId]: updated,
           };
         });
-        setTasks((current) =>
-          replaceTask(current, taskId, (task) =>
-            task.status === "running" ? task : { ...task, status: "running" },
-          ),
-        );
+        // Do not optimistically rewrite the list summary: a decision event may
+        // already have advanced it to a newer interrupt or terminal state.
+        // The active detail above is enough for immediate feedback, and the
+        // authoritative stream/detail reload owns the summary.
       }
       if (
         pendingDecisionRef.current?.requestId === requestId &&

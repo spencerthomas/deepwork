@@ -15,6 +15,9 @@ export default defineConfig({
   reporter: "line",
   use: {
     ...localConfig.use,
+    // Playwright 1.61's downloaded Chromium build is the visual contract. CI
+    // installs this exact revision on the matching macOS image.
+    channel: undefined,
     storageState: undefined,
   },
   webServer: {

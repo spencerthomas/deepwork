@@ -266,6 +266,12 @@ export function RunPanel({
                   <dd className="truncate font-mono text-xs">{selected.runId}</dd>
                 </div>
               )}
+              {selected.agentId && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Agent</dt>
+                  <dd className="truncate font-mono text-xs">{selected.agentId}</dd>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">{runtimeCopy.taskConnectionLabel}</dt>
                 <dd>{runtimeCopy.taskOriginLabel}</dd>

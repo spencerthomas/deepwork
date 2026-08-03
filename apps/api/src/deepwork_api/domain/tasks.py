@@ -131,6 +131,9 @@ class TaskSnapshot:
     proposed_plan: ProposedPlan | None
     evidence: tuple[EvidenceRecord, ...]
     result: str | None
+    # The source assistant selected for this run. Older fixture tasks and
+    # pre-agent-registry event histories legitimately have no retained value.
+    agent_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -59,6 +59,16 @@ test("designed routes and supervised journey match their accepted screenshots", 
     await capture(page, name, "desktop");
     await capture(page, name, "phone");
   }
+  const compatibilityRoutes = [
+    ["agent-detail", "/agents/local"],
+    ["config", "/config"],
+    ["observability", "/observability"],
+  ] as const;
+  for (const [name, path] of compatibilityRoutes) {
+    await open(page, path);
+    await capture(page, name, "desktop");
+    await capture(page, name, "phone");
+  }
 
   await open(page, "/tasks/new");
   await page
@@ -98,4 +108,17 @@ test("designed routes and supervised journey match their accepted screenshots", 
   await expect(page).toHaveURL(new RegExp(`${taskPath}$`));
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   await capture(page, "task-reopened", "desktop");
+});
+
+test("the golden journey shell reflows at 320 CSS pixels", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/tasks");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+
+  for (const path of ["/tasks", "/tasks/new", "/approvals", "/agents", "/settings"]) {
+    await open(page, path);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(320);
+  }
 });

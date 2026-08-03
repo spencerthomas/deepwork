@@ -153,8 +153,8 @@ the root contract and CI. Hosted proof uses only configured secret references an
 fails rather than skipping when its required configuration is missing.
 
 Acceptance: local visual tests fail on an intentional pixel change; hosted tests
-target the deployed app, prohibit fixture disclosure, complete the task lifecycle,
-and retain screenshots/traces on failure.
+target the deployed app, prohibit fixture fallback, complete the task lifecycle,
+and retain only password-masked screenshots on failure.
 
 ### Milestone 5 — Live release scorecard
 
@@ -176,7 +176,12 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 - [x] 2026-08-03 — Blocking browser gates complete at `48e2102`.
 - [x] 2026-08-03 — Live release scorecard complete; hosted and release columns
   remain explicitly unproven.
-- [ ] Required checks, independent review, and delivery handoff complete.
+- [x] 2026-08-03 — Independent local review complete. Review fixes bind the
+  prototype pixels, harden hosted credential handling, retain selected agent
+  identity, guard decision races and fail orphaned SQLite fixture runs closed.
+- [x] 2026-08-03 — Final verification and delivery handoff complete. API, web,
+  documentation, local browser and visual acceptance pass; existing base
+  architecture, API typing and API formatting debt remains explicitly recorded.
 
 ## Surprises & Discoveries
 
@@ -189,6 +194,18 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 - 2026-08-03 — Development-mode Fast Refresh made screenshot output unstable when
   Playwright wrote artifacts. The visual gate builds once and serves the production
   bundle, which makes the comparison deterministic without changing API behavior.
+- 2026-08-03 — The first agent chooser forwarded `agentId` to execution but did
+  not retain it in the task snapshot. The recovered contract now records it in
+  `task.created`, projects it in list/detail responses, and renders it after reopen.
+- 2026-08-03 — The cross-model adversarial reviewer could not run because its
+  configured Claude CLI was not authenticated. Local correctness, security,
+  contract, reliability, race, testing, standards, maintainability and agent-native
+  reviewers still completed; the missing cross-model corroboration is explicit.
+- 2026-08-03 — Broad checks still expose base-branch debt outside this recovery:
+  14 pre-existing mypy findings in five files, four ruff-format findings in
+  untouched files, and ten architecture findings. The recovery adds no mypy or
+  ruff-format failure; `run-panel.tsx` is listed by architecture for a pre-existing
+  trace fetch.
 
 ## Decision Log
 
@@ -246,4 +263,14 @@ product owner for those external actions.
 
 ## Outcomes & Retrospective
 
-Pending implementation and independent review.
+The branch now contains the designed shell, a complete credential-free supervised
+task journey, retained result/evidence/export/trace inspection, reopen, immutable
+prototype references, complete route mappings, desktop/phone screenshots, 320px
+reflow, a fail-closed real-source hosted journey, and the 12-scenario scorecard.
+
+Independent review found and the branch fixed a stale decision-receipt race,
+unretained agent identity, overlapping mobile overlays, secret-bearing hosted
+traces, a fixture restart orphan, and an unqualified screenshot environment. The
+real hosted journey and every release-acceptance column remain unproven because no
+protected hosted credentials or release-owner acceptance were available in this
+recovery. No push, merge, deployment, secret change or release acceptance occurred.

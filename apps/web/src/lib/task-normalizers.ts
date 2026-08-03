@@ -175,10 +175,15 @@ export function normalizeTaskSummary(value: unknown, context = "Task"): TaskSumm
   return {
     taskId,
     runId: optionalString(value, "runId"),
+    agentId: optionalString(value, "agentId"),
     title: explicitTitle ?? fallbackTitle,
     prompt,
     status: normalizeTaskStatus(value.status),
     createdAt: optionalString(value, "createdAt"),
+    lastEventId:
+      Number.isInteger(value.lastEventId) && Number(value.lastEventId) >= 1
+        ? Number(value.lastEventId)
+        : undefined,
     updatedAt: optionalString(value, "updatedAt"),
   };
 }
@@ -575,6 +580,45 @@ export function isTerminalStatus(status: TaskStatus): boolean {
   return (
     status === "completed" || status === "rejected" || status === "failed" || status === "cancelled"
   );
+}
+
+/**
+ * Apply a newly accepted decision only while the UI is still showing the exact
+ * interrupt that receipt acknowledged. A later stream event or detail reload
+ * may already have completed the task or installed a newer interrupt by the
+ * time the HTTP response arrives; those states are authoritative.
+ */
+export function detailAfterAcceptedDecision(task: TaskDetail, interruptId: string): TaskDetail {
+  if (task.status !== "waiting-approval" || task.pendingInterrupt?.interruptId !== interruptId) {
+    return task;
+  }
+  return { ...task, status: "running", pendingInterrupt: undefined };
+}
+
+/** Preserve newer streamed state when an awaited detail reload resolves late. */
+export function detailAfterAuthoritativeReload(
+  current: TaskDetail,
+  incoming: TaskDetail,
+): TaskDetail {
+  if (isTerminalStatus(current.status) && !isTerminalStatus(incoming.status)) {
+    return current;
+  }
+  if (
+    current.lastEventId !== undefined &&
+    incoming.lastEventId !== undefined &&
+    incoming.lastEventId < current.lastEventId
+  ) {
+    return current;
+  }
+  if (
+    current.status === "waiting-approval" &&
+    current.pendingInterrupt !== undefined &&
+    incoming.pendingInterrupt !== undefined &&
+    current.pendingInterrupt.interruptId !== incoming.pendingInterrupt.interruptId
+  ) {
+    return current;
+  }
+  return incoming;
 }
 
 export function reduceEventsIntoDetail(task: TaskDetail, events: readonly TaskEvent[]): TaskDetail {

@@ -24,7 +24,12 @@ class TaskRepository(Protocol):
     """Persist and signal local task state behind application semantics."""
 
     async def create_task(
-        self, *, title: str, objective: str, run_id: str | None = None
+        self,
+        *,
+        title: str,
+        objective: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 

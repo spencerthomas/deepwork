@@ -44,6 +44,27 @@ from deepwork_api.domain import (
 )
 
 
+async def test_selected_agent_identity_survives_repository_reopen(tmp_path: Path) -> None:
+    database = tmp_path / "tasks.sqlite"
+    first = SQLiteTaskRepository(database)
+    created = await first.create_task(
+        title="Agent-bound task",
+        objective="Retain the selected agent",
+        agent_id="assistant-2",
+    )
+    assert created.agent_id == "assistant-2"
+    await first.close()
+
+    reopened = SQLiteTaskRepository(database)
+    try:
+        retained = await reopened.get_task(created.task_id)
+        assert retained.agent_id == "assistant-2"
+        event = (await reopened.events_after(created.task_id, 0))[0]
+        assert dict(event.data)["agentId"] == "assistant-2"
+    finally:
+        await reopened.close()
+
+
 async def _waiting_task(
     repository: SQLiteTaskRepository,
     *,

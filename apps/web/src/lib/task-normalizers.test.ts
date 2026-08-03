@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  detailAfterAcceptedDecision,
+  detailAfterAuthoritativeReload,
   getCompletionResultText,
   getEvidenceRecords,
   getActiveInterrupt,
@@ -19,7 +21,7 @@ import {
   validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
-import type { TaskEvent } from "./task-types";
+import type { TaskDetail, TaskEvent } from "./task-types";
 
 describe("task response normalization", () => {
   it("normalizes API status aliases without treating unknown values as success", () => {
@@ -154,6 +156,7 @@ describe("editable plan contracts", () => {
     expect(
       normalizeTaskDetail({
         taskId: "task-1",
+        agentId: "assistant-2",
         status: "waiting-approval",
         proposedPlan: {
           revision: 2,
@@ -172,6 +175,7 @@ describe("editable plan contracts", () => {
         ],
       }),
     ).toMatchObject({
+      agentId: "assistant-2",
       proposedPlan: { revision: 2, steps: ["Inspect", "Verify"] },
       evidence: [{ evidenceId: "evidence-1", verified: false }],
     });
@@ -194,9 +198,13 @@ describe("editable plan contracts", () => {
     ).toEqual({
       taskId: "task_00000001",
       runId: "run_00000001",
+      agentId: undefined,
       title: "Prepare a safe plan",
       prompt: "Prepare a safe plan",
       status: "queued",
+      createdAt: undefined,
+      lastEventId: 1,
+      updatedAt: undefined,
       evidence: [],
       pendingInterrupt: undefined,
       proposedPlan: undefined,
@@ -300,6 +308,68 @@ describe("editable plan contracts", () => {
 });
 
 describe("terminal result handling", () => {
+  it("never lets a late decision receipt overwrite newer task state", () => {
+    const waiting: TaskDetail = {
+      taskId: "task-1",
+      title: "Ship it",
+      status: "waiting-approval",
+      pendingInterrupt: {
+        interruptId: "interrupt-1",
+        decisions: ["approve", "reject"],
+        title: "Approval required",
+        question: "Continue?",
+      },
+    };
+
+    expect(detailAfterAcceptedDecision(waiting, "interrupt-1")).toMatchObject({
+      status: "running",
+      pendingInterrupt: undefined,
+    });
+
+    const completed: TaskDetail = { ...waiting, status: "completed", pendingInterrupt: undefined };
+    expect(detailAfterAcceptedDecision(completed, "interrupt-1")).toBe(completed);
+
+    const revised: TaskDetail = {
+      ...waiting,
+      pendingInterrupt: { ...waiting.pendingInterrupt!, interruptId: "interrupt-2" },
+    };
+    expect(detailAfterAcceptedDecision(revised, "interrupt-1")).toBe(revised);
+  });
+
+  it("never lets a late duplicate reload overwrite streamed completion or revision", () => {
+    const running: TaskDetail = {
+      taskId: "task-1",
+      title: "Ship it",
+      status: "running",
+      lastEventId: 7,
+    };
+    const completed: TaskDetail = {
+      ...running,
+      status: "completed",
+      lastEventId: 9,
+      result: "Done",
+    };
+    expect(detailAfterAuthoritativeReload(completed, running)).toBe(completed);
+
+    const revised: TaskDetail = {
+      ...running,
+      status: "waiting-approval",
+      lastEventId: 10,
+      pendingInterrupt: {
+        interruptId: "interrupt-2",
+        decisions: ["approve"],
+        title: "Approval required",
+        question: "Review revision two",
+      },
+    };
+    const stale: TaskDetail = {
+      ...revised,
+      lastEventId: 8,
+      pendingInterrupt: { ...revised.pendingInterrupt!, interruptId: "interrupt-1" },
+    };
+    expect(detailAfterAuthoritativeReload(revised, stale)).toBe(revised);
+  });
+
   it("reads structured completion output and requests detail when absent", () => {
     const withResult: TaskEvent = {
       id: "complete-1",

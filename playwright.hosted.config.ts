@@ -23,9 +23,10 @@ export default defineConfig({
     : "line",
   use: {
     baseURL: hostedUrl,
-    channel: "chrome",
     serviceWorkers: "block",
     screenshot: "only-on-failure",
-    trace: "retain-on-failure",
+    // The journey types a protected access key. Never retain traces because
+    // Playwright trace inputs can include the field value.
+    trace: "off",
   },
 });

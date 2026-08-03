@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "source": {
     "repository": "deep-work-frontend",
     "commit": "26c698b30ff08d5122cfaeedbd4a95296a7884f4",
@@ -13,17 +13,137 @@
     "minimumReflowWidth": 320
   },
   "routes": [
-    { "name": "login", "path": "/login" },
-    { "name": "tasks", "path": "/tasks" },
-    { "name": "tasks-new", "path": "/tasks/new" },
-    { "name": "task-detail", "path": "/tasks/t-901" },
-    { "name": "approvals", "path": "/approvals" },
-    { "name": "agents", "path": "/agents" },
-    { "name": "agent-detail", "path": "/agents/swe" },
-    { "name": "schedules", "path": "/schedules" },
-    { "name": "activity", "path": "/activity" },
-    { "name": "settings", "path": "/settings" },
-    { "name": "config", "path": "/config" },
-    { "name": "observability", "path": "/observability" }
+    {
+      "name": "login",
+      "path": "/login",
+      "canonicalPath": "/login",
+      "canonicalBaseline": "login",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "c5490ee1831ac90548ae75a017a51e809f3fcd52344aba4aed01f1a252ffebcc",
+        "phone": "2b2c85442c7ef45b515aaee0233866210711e4e1efd713532377072995309658"
+      }
+    },
+    {
+      "name": "tasks",
+      "path": "/tasks",
+      "canonicalPath": "/tasks",
+      "canonicalBaseline": "tasks",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "c7c6840007f8c38f97cf82b248653a3405069be287a9a24628ea31cfe3a39857",
+        "phone": "9e917357567ea57450478141382d5f9491272f1c70e15f5887769f505ff4718d"
+      }
+    },
+    {
+      "name": "tasks-new",
+      "path": "/tasks/new",
+      "canonicalPath": "/tasks/new",
+      "canonicalBaseline": "new-task-composed",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "7c0d480946bf54034491a09a77d8ff59484f7c287658e16d1160478bcae5ab8b",
+        "phone": "6c769857bed6a59abdf2ca6064eb7480a81d065b04246f04865c8875d4454122"
+      }
+    },
+    {
+      "name": "task-detail",
+      "path": "/tasks/t-901",
+      "canonicalPath": "/tasks/:taskId",
+      "canonicalBaseline": "task-completed",
+      "maxPerceptualDelta": { "desktop": 0.18, "phone": 0.21 },
+      "referenceSha256": {
+        "desktop": "8bbb4711f67a824562218ee6cec368451dc93f82e625496ff193272c17bb090a",
+        "phone": "5d7b1136d211e74218fc0573743bd7de2877241074f12ed24df9eb5da14b0410"
+      }
+    },
+    {
+      "name": "approvals",
+      "path": "/approvals",
+      "canonicalPath": "/approvals",
+      "canonicalBaseline": "approvals",
+      "maxPerceptualDelta": { "desktop": 0.06, "phone": 0.09 },
+      "referenceSha256": {
+        "desktop": "87e624b31da23685985ae6cb605a3f41dacde2dc218310095f2e517cbc54a7b3",
+        "phone": "a968f634fe488ad514c29745034ba7b6ba39f0eee93bf6b8083d820252f3dbd1"
+      }
+    },
+    {
+      "name": "agents",
+      "path": "/agents",
+      "canonicalPath": "/agents",
+      "canonicalBaseline": "agents",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "24579de9c1a5767d09703d9e24b913aa1b9ef47418585bd7951d9fb271d9db81",
+        "phone": "5b41725e504a65b7375be442c4a18d95155d8d81d513d07ac49625cbd119e572"
+      }
+    },
+    {
+      "name": "agent-detail",
+      "path": "/agents/swe",
+      "canonicalPath": "/agents/local",
+      "canonicalBaseline": "agent-detail",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "a0debeca0619d698318be7b66ff6ade3ccf1333798562606912149da8ae81be5",
+        "phone": "55b9f13f21ca255f02daad9cbfee67da51a0848266974dc2e4f18e28ef0d1c9d"
+      }
+    },
+    {
+      "name": "schedules",
+      "path": "/schedules",
+      "canonicalPath": "/schedules",
+      "canonicalBaseline": "schedules",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "5cdf1651db6695122eaf01d833f417d15d0a424faa42140c2691acf8e9929c01",
+        "phone": "21f0eedc7de83039919e0603a8dccac57aa7918425907992c1520fd906fed403"
+      }
+    },
+    {
+      "name": "activity",
+      "path": "/activity",
+      "canonicalPath": "/activity",
+      "canonicalBaseline": "activity",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "246d7dcabfe374ae1670905e1ee7c99994ab9e6d9df368d6a6c8924d0b0f0de6",
+        "phone": "4ff3755a24c80e812a28789cbed365224f0262e1e395b3f837461e6d7bc9926b"
+      }
+    },
+    {
+      "name": "settings",
+      "path": "/settings",
+      "canonicalPath": "/settings",
+      "canonicalBaseline": "settings",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.05 },
+      "referenceSha256": {
+        "desktop": "3830e6dd662b116dc9f6c237b0cf17846faa0c19a4fe2865f636370406207100",
+        "phone": "fd57a209b5cc2e730e4a158ae15d676f1ea8f80f18ba2392f58dc47586fcdf47"
+      }
+    },
+    {
+      "name": "config",
+      "path": "/config",
+      "canonicalPath": "/settings",
+      "canonicalBaseline": "config",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.05 },
+      "referenceSha256": {
+        "desktop": "3830e6dd662b116dc9f6c237b0cf17846faa0c19a4fe2865f636370406207100",
+        "phone": "fd57a209b5cc2e730e4a158ae15d676f1ea8f80f18ba2392f58dc47586fcdf47"
+      }
+    },
+    {
+      "name": "observability",
+      "path": "/observability",
+      "canonicalPath": "/activity",
+      "canonicalBaseline": "observability",
+      "maxPerceptualDelta": { "desktop": 0.04, "phone": 0.08 },
+      "referenceSha256": {
+        "desktop": "7c2b47c950982e575e43ce635f0df8546c971b2f86c2d0a1f5769e8e547ae661",
+        "phone": "e79a05d86d1c65bf5478f340ea7ce31567d4ac382dff4f9477ff9cae58133e97"
+      }
+    }
   ]
 }

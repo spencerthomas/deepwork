@@ -172,7 +172,10 @@ class LocalAgentServerRunner:
         except Exception:
             raise TaskSourceUnavailableError from None
         task = await self.repository.create_task(
-            title=title, objective=objective, run_id=run.run_id
+            title=title,
+            objective=objective,
+            run_id=run.run_id,
+            agent_id=agent_id,
         )
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)

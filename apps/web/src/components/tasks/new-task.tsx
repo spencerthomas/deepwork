@@ -32,7 +32,13 @@ const templates = [
 export function NewTask() {
   const router = useRouter();
   const { creating, createError, createTask, mode } = useTasksStore();
-  const { available: agentsAvailable, agents } = useAgents();
+  const {
+    available: agentsAvailable,
+    agents,
+    loading: agentsLoading,
+    error: agentsError,
+    refetch: refetchAgents,
+  } = useAgents();
   const [prompt, setPrompt] = useState("");
   const [agentId, setAgentId] = useState<string>("");
   const [validationError, setValidationError] = useState<string>();
@@ -57,6 +63,12 @@ export function NewTask() {
       setRestoredAge(formatDraftAge(draft.savedAt, Date.now()));
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (mode === "api" && agentsAvailable && agents.length > 0 && agentId === "") {
+      setAgentId((agents.find((agent) => agent.isDefault) ?? agents[0]).agentId);
+    }
+  }, [agentId, agents, agentsAvailable, mode]);
 
   // Persist the in-progress prompt device-locally; emptying the field clears it.
   useEffect(() => {
@@ -85,6 +97,10 @@ export function NewTask() {
     .join(" ");
 
   async function dispatch() {
+    if (mode === "api" && agentsAvailable && !agentId) {
+      setValidationError("Choose a connected agent before dispatching this task.");
+      return;
+    }
     try {
       validatePrompt(prompt);
     } catch (error) {
@@ -147,7 +163,7 @@ export function NewTask() {
           >
             {agentsAvailable && agents.length > 0 ? (
               agents.map((agent) => {
-                const value = agent.isDefault ? "" : agent.agentId;
+                const value = agent.agentId;
                 const selected = agentId === value;
                 return (
                   <button
@@ -208,6 +224,25 @@ export function NewTask() {
             )}
           </div>
         </fieldset>
+
+        {mode === "api" && agentsError ? (
+          <div
+            role="alert"
+            className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3 text-sm"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="font-medium">Agent registry unavailable.</span>{" "}
+              <span className="text-muted-foreground">{agentsError}</span>
+            </span>
+            <button
+              type="button"
+              onClick={refetchAgents}
+              className="rounded-lg border border-border bg-card px-2.5 py-1 font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
 
         <label
           htmlFor="new-task-prompt"
@@ -280,7 +315,12 @@ export function NewTask() {
             </span>
             <button
               type="button"
-              disabled={creating || prompt.trim() === ""}
+              disabled={
+                creating ||
+                prompt.trim() === "" ||
+                (mode === "api" &&
+                  (agentsLoading || agentsError !== undefined || (agentsAvailable && !agentId)))
+              }
               onClick={() => void dispatch()}
               className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
             >

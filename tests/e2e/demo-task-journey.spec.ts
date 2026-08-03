@@ -91,6 +91,10 @@ test("creates, approves, and completes one API-backed task", async ({
   await context.clearCookies();
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Connect to Deep Work" })).toBeVisible();
+  await page.getByLabel("Workspace access key").fill("not-the-workspace-key");
+  await page.getByRole("button", { name: "Connect workspace" }).click();
+  await expect(page.getByText("That access key was not accepted.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect workspace" })).toBeEnabled();
   await page.getByLabel("Workspace access key").fill("deepwork-local-browser-acceptance");
   const loginResponse = page.waitForResponse(
     (response) =>

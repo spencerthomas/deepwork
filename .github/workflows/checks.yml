@@ -65,9 +65,6 @@ jobs:
       - name: Run credential-free browser journey
         run: make test-e2e-demo
 
-      - name: Compare desktop and phone screenshots
-        run: make test-visual
-
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -76,9 +73,56 @@ jobs:
           path: output/playwright/
           if-no-files-found: ignore
 
+  visual-acceptance:
+    name: binding route and journey visuals
+    needs: verify
+    # Expected pixels are captured on macOS 26 with Playwright's pinned Chromium
+    # revision; keep the operating system and browser revision aligned.
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Enable pnpm via corepack
+        run: corepack enable
+
+      - name: Bootstrap all workspaces
+        run: make bootstrap
+
+      - name: Install pinned Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Compare desktop and phone screenshots
+        run: make test-visual
+
+      - name: Upload visual failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-acceptance-failure-screenshots
+          path: output/playwright/visual-results/**/test-failed-*.png
+          if-no-files-found: ignore
+
   hosted-acceptance:
     name: hosted golden journey
-    needs: verify
+    needs: [verify, visual-acceptance]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: hosted-acceptance
@@ -101,6 +145,9 @@ jobs:
       - name: Install pinned web dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install pinned Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Require hosted acceptance configuration
         run: |
           test -n "$DEEPWORK_HOSTED_URL"
@@ -114,5 +161,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hosted-acceptance-failure-artifacts
-          path: output/playwright/
+          # Traces and reports are deliberately excluded: the hosted journey
+          # enters a protected access key. A failure screenshot masks password
+          # controls and is the only retained browser artifact.
+          path: output/playwright/hosted-results/**/test-failed-*.png
           if-no-files-found: ignore

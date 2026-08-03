@@ -795,6 +795,18 @@
         "additionalProperties": false,
         "description": "Task summary plus the currently actionable interrupt.",
         "properties": {
+          "agentId": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentid"
+          },
           "createdAt": {
             "anyOf": [
               {
@@ -950,6 +962,18 @@
         "additionalProperties": false,
         "description": "Safe task summary containing only the sanitized objective.",
         "properties": {
+          "agentId": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentid"
+          },
           "createdAt": {
             "anyOf": [
               {

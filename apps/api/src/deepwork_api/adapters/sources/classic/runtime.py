@@ -26,12 +26,12 @@ from typing import Literal, cast
 
 from deepwork_api.adapters.sources.classic.source import validate_deployment_endpoint
 from deepwork_api.adapters.sources.local.source import (
+    _ASSISTANT_IDENTIFIER,
     Decision,
     LocalAgentServerSource,
     LocalSourceConfigurationError,
     LocalSourceUnavailableError,
     _AgentServerClient,
-    _ASSISTANT_IDENTIFIER,
 )
 
 DEFAULT_CLASSIC_ASSISTANT = "deep-work-local-agent"
@@ -99,7 +99,9 @@ class ClassicDeploymentSource(LocalAgentServerSource):
         # Qualified HTTPS endpoint instead of the loopback policy of the base class.
         object.__setattr__(self, "endpoint", validate_deployment_endpoint(self.endpoint))
         if not _ASSISTANT_IDENTIFIER.fullmatch(self.assistant_id):
-            raise LocalSourceConfigurationError("classic deployment assistant identifier is invalid")
+            raise LocalSourceConfigurationError(
+                "classic deployment assistant identifier is invalid"
+            )
 
     @classmethod
     def from_classic_deployment(

@@ -1,19 +1,44 @@
 """Pydantic wire contracts for the source-backed schedule (recurring run) registry.
 
 Deep Work does not own schedule storage: these contracts describe LangGraph
-Crons already registered on the configured task source, projected through
-:class:`~deepwork_api.application.local_runner.LocalScheduleSummary`. Read
-only: no create/update/delete contract exists yet because a schedule-
+Crons already registered on the configured task source. Read only: no
+create/update/delete contract exists yet because a schedule-
 triggered run does not currently surface in this application's task
 repository or event stream.
 """
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from deepwork_api.application.local_runner import LocalScheduleSummary
 from deepwork_api.contracts.tasks import AgentId
+
+
+class _ScheduleSummary(Protocol):
+    """Structural source projection accepted at the wire boundary."""
+
+    @property
+    def schedule_id(self) -> str: ...
+
+    @property
+    def agent_id(self) -> str: ...
+
+    @property
+    def cron_expression(self) -> str: ...
+
+    @property
+    def timezone(self) -> str | None: ...
+
+    @property
+    def end_time(self) -> str | None: ...
+
+    @property
+    def created_at(self) -> str: ...
+
+    @property
+    def updated_at(self) -> str: ...
 
 
 class _ScheduleWireModel(BaseModel):
@@ -32,7 +57,7 @@ class ScheduleSummaryResponse(_ScheduleWireModel):
     updated_at: str = Field(alias="updatedAt", max_length=64)
 
     @classmethod
-    def from_source(cls, schedule: LocalScheduleSummary) -> ScheduleSummaryResponse:
+    def from_source(cls, schedule: _ScheduleSummary) -> ScheduleSummaryResponse:
         return cls(
             schedule_id=schedule.schedule_id,
             agent_id=schedule.agent_id,

@@ -7,9 +7,8 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from deepwork_api.application import PromptStore, SystemPromptTooLongError
 from deepwork_api.contracts import SystemPromptResponse, SystemPromptUpdateRequest
-from deepwork_api.domain import SystemPromptTooLongError
-from deepwork_api.ports import PromptStore
 
 
 def build_settings_router(

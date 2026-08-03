@@ -48,7 +48,7 @@ class LangSmithTraceLocator:
             if response.status_code != 200:
                 return None
             payload = response.json()
-        except Exception:  # noqa: BLE001 - any transport/parse failure is "unavailable"
+        except Exception:
             return None
         app_path = payload.get("app_path") if isinstance(payload, dict) else None
         if (
@@ -65,5 +65,5 @@ class LangSmithTraceLocator:
         """Release the HTTP transport; idempotent."""
         try:
             await self._client.aclose()
-        except Exception:  # noqa: BLE001 - closing must never raise upward
+        except Exception:
             pass

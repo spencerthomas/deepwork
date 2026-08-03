@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, Path
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -23,8 +23,8 @@ from deepwork_api.application import (
     TaskSourceContractError,
     TaskSourceUnavailableError,
     TaskStatus,
+    TraceLocator,
 )
-from deepwork_api.ports.trace import TraceLocator
 from deepwork_api.contracts import (
     CancellationAcceptedResponse,
     DecisionAcceptedResponse,
@@ -48,7 +48,7 @@ _MAX_EVENT_CURSOR = 2_147_483_647
 def build_task_router(
     service: TaskService,
     *,
-    dependencies: list | None = None,
+    dependencies: list[Any] | None = None,
     trace_locator: TraceLocator | None = None,
 ) -> APIRouter:
     """Build the shared internal task API around an injected service.

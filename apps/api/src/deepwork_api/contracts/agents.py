@@ -1,15 +1,15 @@
 """Pydantic wire contracts for the source-backed agent registry.
 
 Deep Work does not own agent storage: these contracts describe LangGraph
-Assistants already registered on the configured task source, projected
-through :class:`~deepwork_api.application.local_runner.LocalAgentSummary`.
+Assistants already registered on the configured task source.
 """
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from deepwork_api.application.local_runner import LocalAgentSummary
 from deepwork_api.contracts._text import reject_unsafe_controls
 from deepwork_api.contracts.tasks import AgentId
 from deepwork_api.domain import (
@@ -17,6 +17,31 @@ from deepwork_api.domain import (
     MAX_AGENT_NAME_LENGTH,
     MAX_SYSTEM_PROMPT_LENGTH,
 )
+
+
+class _AgentSummary(Protocol):
+    """Structural source projection accepted at the wire boundary."""
+
+    @property
+    def agent_id(self) -> str: ...
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def description(self) -> str | None: ...
+
+    @property
+    def system_prompt(self) -> str | None: ...
+
+    @property
+    def is_default(self) -> bool: ...
+
+    @property
+    def created_at(self) -> str: ...
+
+    @property
+    def updated_at(self) -> str: ...
 
 
 class _AgentWireModel(BaseModel):
@@ -37,7 +62,7 @@ class AgentSummaryResponse(_AgentWireModel):
     updated_at: str = Field(alias="updatedAt", max_length=64)
 
     @classmethod
-    def from_source(cls, agent: LocalAgentSummary) -> AgentSummaryResponse:
+    def from_source(cls, agent: _AgentSummary) -> AgentSummaryResponse:
         return cls(
             agent_id=agent.agent_id,
             name=agent.name,

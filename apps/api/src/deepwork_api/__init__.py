@@ -44,21 +44,33 @@ def create_app(
 
     from deepwork_api.bootstrap.api import create_app as _create_app
 
-    kwargs: dict[str, object] = {
-        "task_database_path": task_database_path,
-        "settings_database_path": settings_database_path,
-        "local_agent_server_endpoint": local_agent_server_endpoint,
-        "local_agent_server_assistant": local_agent_server_assistant,
-        "allow_ungated_local_agent_source": allow_ungated_local_agent_source,
-        "classic_deployment_endpoint": classic_deployment_endpoint,
-        "classic_deployment_assistant": classic_deployment_assistant,
-        "classic_deployment_credential": classic_deployment_credential,
-        "access_key": access_key,
-        "web_origins": web_origins,
-        "trace_api_key": trace_api_key,
-    }
     # Forward an explicit clock only when supplied; otherwise the bootstrap
     # default (system_clock) applies, so this facade never imports it directly.
-    if clock is not None:
-        kwargs["clock"] = clock
-    return _create_app(**kwargs)
+    if clock is None:
+        return _create_app(
+            task_database_path=task_database_path,
+            settings_database_path=settings_database_path,
+            local_agent_server_endpoint=local_agent_server_endpoint,
+            local_agent_server_assistant=local_agent_server_assistant,
+            allow_ungated_local_agent_source=allow_ungated_local_agent_source,
+            classic_deployment_endpoint=classic_deployment_endpoint,
+            classic_deployment_assistant=classic_deployment_assistant,
+            classic_deployment_credential=classic_deployment_credential,
+            access_key=access_key,
+            web_origins=web_origins,
+            trace_api_key=trace_api_key,
+        )
+    return _create_app(
+        task_database_path=task_database_path,
+        settings_database_path=settings_database_path,
+        local_agent_server_endpoint=local_agent_server_endpoint,
+        local_agent_server_assistant=local_agent_server_assistant,
+        allow_ungated_local_agent_source=allow_ungated_local_agent_source,
+        classic_deployment_endpoint=classic_deployment_endpoint,
+        classic_deployment_assistant=classic_deployment_assistant,
+        classic_deployment_credential=classic_deployment_credential,
+        access_key=access_key,
+        web_origins=web_origins,
+        trace_api_key=trace_api_key,
+        clock=clock,
+    )

@@ -6,7 +6,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
-import pytest
 from fastapi import FastAPI
 
 from deepwork_api import create_app
@@ -15,8 +14,8 @@ ACCESS_KEY = "s3cret-operator-key"
 
 
 @asynccontextmanager
-async def _app(**kwargs: object) -> AsyncIterator[httpx.AsyncClient]:
-    app: FastAPI = create_app(**kwargs)
+async def _app(*, access_key: str | None = None) -> AsyncIterator[httpx.AsyncClient]:
+    app: FastAPI = create_app(access_key=access_key)
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         # https base URL so the Secure session cookie is sent back by the client.

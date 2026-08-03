@@ -18,18 +18,18 @@ from dataclasses import dataclass
 import httpx
 import pytest
 from fastapi import FastAPI
-
-import deepwork_api.bootstrap.api as bootstrap_api
-from deepwork_api import create_app
-from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
-from deepwork_api.application import LocalAgentServerRunner
 from test_local_source_execution import (
     INITIAL_PLAN,
     ScriptedAgentServer,
     _create_task,
-    _sse_events,
     _wait_for_status,
 )
+
+import deepwork_api.bootstrap.api as bootstrap_api
+from deepwork_api import create_app
+from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
+from deepwork_api.adapters.sources.local import LocalSourceGatedError
+from deepwork_api.application import LocalAgentServerRunner
 
 CLASSIC_ENDPOINT = "https://my-deployment.smith.langchain.com"
 CLASSIC_ASSISTANT = "deep-work-local-agent"
@@ -138,9 +138,7 @@ async def test_classic_mode_adds_no_new_wire_surface(
     def _fake_builder(
         *, endpoint: str, assistant_id: str, credential: str
     ) -> ClassicDeploymentSource:
-        return ClassicDeploymentSource(
-            client=server, endpoint=endpoint, assistant_id=assistant_id
-        )
+        return ClassicDeploymentSource(client=server, endpoint=endpoint, assistant_id=assistant_id)
 
     monkeypatch.setattr(bootstrap_api, "_build_classic_deployment_source", _fake_builder)
     classic = create_app(
@@ -159,7 +157,7 @@ async def test_classic_mode_adds_no_new_wire_surface(
 
 
 async def test_classic_mode_is_gated_off_by_default() -> None:
-    with pytest.raises(bootstrap_api.LocalSourceGatedError):
+    with pytest.raises(LocalSourceGatedError):
         create_app(
             classic_deployment_endpoint=CLASSIC_ENDPOINT,
             classic_deployment_assistant=CLASSIC_ASSISTANT,

@@ -15,16 +15,16 @@ from pathlib import Path
 import httpx
 import pytest
 from fastapi import FastAPI
-
-import deepwork_api.bootstrap.api as bootstrap_api
-from deepwork_api import create_app
-from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
 from test_local_source_execution import (
     ScriptedAgentServer,
     _create_task,
     _sse_events,
     _wait_for_status,
 )
+
+import deepwork_api.bootstrap.api as bootstrap_api
+from deepwork_api import create_app
+from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
 
 CLASSIC_ENDPOINT = "https://my-deployment.smith.langchain.com"
 CLASSIC_ASSISTANT = "deep-work-local-agent"
@@ -112,7 +112,7 @@ async def test_inflight_task_is_failed_honestly_on_restart(
     # A real LangGraph server issues UUID run ids that never collide across
     # restarts; offset the double's counter to mirror that.
     restarted = ScriptedAgentServer()
-    restarted._counter = 100  # noqa: SLF001 - test double setup
+    restarted._counter = 100
     async with _classic_app(restarted, monkeypatch, database) as client:
         failed = await _wait_for_status(client, task_id, {"failed"})
         assert failed["pendingInterrupt"] is None

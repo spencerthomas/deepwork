@@ -14,8 +14,8 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from deepwork_api.application import AuthService
-from deepwork_api.domain import (
+from deepwork_api.application import (
+    AuthService,
     InvalidCredentialError,
     Session,
     SessionExpiredError,

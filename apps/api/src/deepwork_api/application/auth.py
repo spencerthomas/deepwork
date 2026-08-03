@@ -58,9 +58,7 @@ class AuthService:
         """Exchange the access key for a fresh session, or fail closed."""
 
         provided = credential if isinstance(credential, str) else ""
-        if not hmac.compare_digest(
-            provided.encode("utf-8"), self._access_key.encode("utf-8")
-        ):
+        if not hmac.compare_digest(provided.encode("utf-8"), self._access_key.encode("utf-8")):
             raise InvalidCredentialError
         now = float(self._now())
         session = Session(

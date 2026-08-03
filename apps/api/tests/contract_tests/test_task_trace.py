@@ -34,9 +34,7 @@ async def _app(**kwargs: Any) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app(**kwargs)
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="https://trace.test"
-        ) as client:
+        async with httpx.AsyncClient(transport=transport, base_url="https://trace.test") as client:
             yield client
 
 
@@ -79,9 +77,7 @@ async def test_trace_unavailable_without_configuration() -> None:
 
 
 async def test_trace_unknown_task_is_404(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        bootstrap_api, "_build_trace_locator", lambda *, api_key: _FakeLocator({})
-    )
+    monkeypatch.setattr(bootstrap_api, "_build_trace_locator", lambda *, api_key: _FakeLocator({}))
     async with _app(trace_api_key="ls-key") as client:
         response = await client.get("/api/v1/tasks/task_99999999/trace")
         assert response.status_code == 404
@@ -90,9 +86,7 @@ async def test_trace_unknown_task_is_404(monkeypatch: pytest.MonkeyPatch) -> Non
 async def test_trace_requires_session_when_auth_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        bootstrap_api, "_build_trace_locator", lambda *, api_key: _FakeLocator({})
-    )
+    monkeypatch.setattr(bootstrap_api, "_build_trace_locator", lambda *, api_key: _FakeLocator({}))
     async with _app(trace_api_key="ls-key", access_key="operator-key") as client:
         unauth = await client.get("/api/v1/tasks/task_00000001/trace")
         assert unauth.status_code == 401

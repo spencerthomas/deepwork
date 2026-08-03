@@ -274,8 +274,9 @@ def create_app(
     async def problem_http_exception(request: Request, error: HTTPException) -> JSONResponse:
         # Render structured problem bodies (for example the auth guard's 401)
         # while preserving FastAPI's default rendering for plain-string details.
-        if isinstance(error.detail, dict):
-            return JSONResponse(status_code=error.status_code, content=error.detail)
+        detail: object = error.detail
+        if isinstance(detail, dict):
+            return JSONResponse(status_code=error.status_code, content=detail)
         return cast("JSONResponse", await http_exception_handler(request, error))
 
     app.include_router(build_router(status_service))

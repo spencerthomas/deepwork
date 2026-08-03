@@ -33,6 +33,7 @@ import type {
   TaskEvent,
   TaskSummary,
 } from "@/lib/task-types";
+import { taskTraceClient, type TaskTrace } from "@/lib/task-trace-client";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { cn } from "@/lib/utils";
 
@@ -96,25 +97,17 @@ export function RunPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
   const [streamFilter, setStreamFilter] = useState<ActivityFilter>("all");
-  const [trace, setTrace] = useState<{
-    state: "loading" | "available" | "unavailable";
-    url?: string;
-  }>({
+  const [trace, setTrace] = useState<TaskTrace | { state: "loading" }>({
     state: "loading",
   });
   useEffect(() => {
     if (tab !== "trace") return;
     let cancelled = false;
     setTrace({ state: "loading" });
-    fetch(`/api/v1/tasks/${encodeURIComponent(selected.taskId)}/trace`)
-      .then(async (response) => {
-        if (cancelled) return;
-        const body = response.ok ? await response.json() : null;
-        if (body?.state === "available" && typeof body.traceUrl === "string") {
-          setTrace({ state: "available", url: body.traceUrl });
-        } else {
-          setTrace({ state: "unavailable" });
-        }
+    taskTraceClient
+      .getTrace(selected.taskId)
+      .then((result) => {
+        if (!cancelled) setTrace(result);
       })
       .catch(() => {
         if (!cancelled) setTrace({ state: "unavailable" });

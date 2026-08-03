@@ -3,10 +3,7 @@
 import { LogOut, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-interface Session {
-  actorId: string;
-  expiresAt: number;
-}
+import { getSession, logout, type Session } from "@/lib/auth-client";
 
 /**
  * Who's signed in, and a real sign-out. Reads /api/v1/auth/session (the
@@ -22,9 +19,8 @@ export function AccountMenu() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/v1/auth/session", { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-      .then((body: Session) => {
+    getSession()
+      .then((body) => {
         if (!cancelled) setSession(body);
       })
       .catch(() => {
@@ -52,7 +48,7 @@ export function AccountMenu() {
   async function signOut() {
     setSigningOut(true);
     try {
-      await fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" });
+      await logout();
     } finally {
       // Full navigation so middleware re-evaluates without the cleared cookie,
       // even if the logout request itself failed to reach the API.

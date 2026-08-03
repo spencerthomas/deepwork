@@ -3,6 +3,7 @@
 import { Check, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { promptClient, type PromptState } from "@/lib/prompt-client";
 import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
@@ -13,21 +14,12 @@ const ACTION_CLASS =
 const PRIMARY_CLASS =
   "flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60";
 
-interface PromptState {
-  value: string;
-  isDefault: boolean;
-}
-
-function promptUrl(apiBaseUrl: string): string {
-  return `${apiBaseUrl.replace(/\/+$/, "")}/api/v1/settings/prompt`;
-}
-
 /**
  * Edit the workspace system prompt that governs the agent's execution. Reads and
  * writes /api/v1/settings/prompt; a saved prompt takes effect on the next run.
  */
 export function PromptSection() {
-  const { mode, apiBaseUrl } = useTasksStore();
+  const { mode } = useTasksStore();
   const connected = mode !== "fixture";
 
   const [draft, setDraft] = useState("");
@@ -42,14 +34,9 @@ export function PromptSection() {
     setLoading(true);
     setLoadError(null);
     try {
-      const response = await fetch(promptUrl(apiBaseUrl), { credentials: "include" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const body = (await response.json()) as { systemPrompt: string | null; isDefault: boolean };
-      const value = body.systemPrompt ?? "";
-      setSaved({ value, isDefault: body.isDefault });
-      setDraft(value);
+      const prompt = await promptClient.getPrompt();
+      setSaved(prompt);
+      setDraft(prompt.value);
     } catch {
       setLoadError(
         "Couldn’t load the current system prompt. Check that the API is reachable and you’re signed in.",
@@ -57,7 +44,7 @@ export function PromptSection() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     if (connected) {
@@ -80,19 +67,9 @@ export function PromptSection() {
     setSaveError(null);
     try {
       const trimmed = draft.trim();
-      const response = await fetch(promptUrl(apiBaseUrl), {
-        method: "PUT",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ systemPrompt: trimmed === "" ? null : draft }),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const body = (await response.json()) as { systemPrompt: string | null; isDefault: boolean };
-      const value = body.systemPrompt ?? "";
-      setSaved({ value, isDefault: body.isDefault });
-      setDraft(value);
+      const prompt = await promptClient.updatePrompt(trimmed === "" ? null : draft);
+      setSaved(prompt);
+      setDraft(prompt.value);
       setSavedFlash(true);
     } catch {
       setSaveError("Couldn’t save the system prompt. Your change was not applied.");

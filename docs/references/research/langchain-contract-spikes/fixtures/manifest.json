@@ -1,12 +1,17 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23",
-  "scrub_attestation": "Every listed fixture is synthetic package-source or documentary evidence only. No fixture is installed-distribution or live evidence.",
+  "generated_at": "2026-08-03",
+  "scrub_attestation": "Every listed fixture is synthetic. Installed-contract evidence was captured locally from the exact isolated lock; no live endpoint was contacted and no credential, tenant, or customer data is retained.",
   "files": [
     {
       "path": "hitl-ordered-batch.json",
       "sha256": "bcbb3f0e0e5cd745795e3687271f03e0a91061089841aa4f22837f08c18b062d",
       "evidence": "synthetic ordered HITL contract"
+    },
+    {
+      "path": "installed-hitl-contract.json",
+      "sha256": "fcc240ccc00e742cad9506f70b28f2e1201802d94a5d1b99883d784b7f6c4871",
+      "evidence": "sanitized synthetic transcript from the pinned installed HITL middleware and protocol-v3 SDK"
     },
     {
       "path": "package-source-contract-transcript.json",

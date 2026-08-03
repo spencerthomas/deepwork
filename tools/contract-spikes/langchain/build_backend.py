@@ -6,6 +6,7 @@ import base64
 import csv
 import hashlib
 import io
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -13,6 +14,22 @@ NAME = "deepwork_langchain_contract_spikes"
 VERSION = "0.1.0"
 WHEEL = f"{NAME}-{VERSION}-py3-none-any.whl"
 DIST_INFO = f"{NAME}-{VERSION}.dist-info"
+
+
+def _requirements() -> list[str]:
+    manifest = tomllib.loads((Path(__file__).parent / "pyproject.toml").read_text(encoding="utf-8"))
+    return manifest["project"]["dependencies"]
+
+
+def _metadata() -> bytes:
+    requirements = "".join(f"Requires-Dist: {requirement}\n" for requirement in _requirements())
+    return (
+        "Metadata-Version: 2.3\n"
+        "Name: deepwork-langchain-contract-spikes\n"
+        f"Version: {VERSION}\n"
+        "Requires-Python: >=3.11,<3.15\n"
+        f"{requirements}"
+    ).encode()
 
 
 def _record_line(path: str, data: bytes) -> tuple[str, str, str]:
@@ -26,12 +43,7 @@ def build_wheel(wheel_directory: str, config_settings=None, metadata_directory=N
     files: dict[str, bytes] = {}
     for path in sorted((root / "src/langchain_contract_spikes").glob("*.py")):
         files[f"langchain_contract_spikes/{path.name}"] = path.read_bytes()
-    files[f"{DIST_INFO}/METADATA"] = (
-        "Metadata-Version: 2.3\n"
-        "Name: deepwork-langchain-contract-spikes\n"
-        f"Version: {VERSION}\n"
-        "Requires-Python: >=3.11,<3.15\n"
-    ).encode()
+    files[f"{DIST_INFO}/METADATA"] = _metadata()
     files[f"{DIST_INFO}/WHEEL"] = (
         "Wheel-Version: 1.0\n"
         "Generator: deepwork-offline-build-backend\n"
@@ -59,13 +71,7 @@ def prepare_metadata_for_build_wheel(metadata_directory: str, config_settings=No
     del config_settings
     path = Path(metadata_directory) / DIST_INFO
     path.mkdir(parents=True, exist_ok=True)
-    (path / "METADATA").write_text(
-        "Metadata-Version: 2.3\n"
-        "Name: deepwork-langchain-contract-spikes\n"
-        f"Version: {VERSION}\n"
-        "Requires-Python: >=3.11,<3.15\n",
-        encoding="utf-8",
-    )
+    (path / "METADATA").write_bytes(_metadata())
     (path / "WHEEL").write_text(
         "Wheel-Version: 1.0\n"
         "Generator: deepwork-offline-build-backend\n"

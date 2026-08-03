@@ -1,0 +1,126 @@
+{
+  "ambiguous_resume_error": "thread.run.respond: ambiguous \u2014 2 outstanding interrupts (['synthetic-interrupt-1', 'synthetic-interrupt-2']). Provide an explicit `interrupt_id`.",
+  "decision_outcomes": {
+    "reject": {
+      "content": "Synthetic rejection",
+      "status": "error"
+    },
+    "respond": {
+      "content": "Synthetic answer",
+      "status": "success"
+    }
+  },
+  "distributions": {
+    "deepagents": "0.6.12",
+    "langchain": "1.3.14",
+    "langgraph": "1.2.9",
+    "langgraph-sdk": "0.4.2",
+    "pytest": "9.0.2"
+  },
+  "hitl": {
+    "decisions": [
+      {
+        "type": "approve"
+      },
+      {
+        "edited_action": {
+          "args": {
+            "content": "synthetic edited",
+            "path": "synthetic/b.txt"
+          },
+          "name": "write_file"
+        },
+        "type": "edit"
+      }
+    ],
+    "request": {
+      "action_requests": [
+        {
+          "args": {
+            "content": "synthetic",
+            "path": "synthetic/a.txt"
+          },
+          "description": "Tool execution requires approval\n\nTool: write_file\nArgs: {'path': 'synthetic/a.txt', 'content': 'synthetic'}",
+          "name": "write_file"
+        },
+        {
+          "args": {
+            "content": "synthetic second",
+            "path": "synthetic/c.txt"
+          },
+          "description": "Tool execution requires approval\n\nTool: write_file\nArgs: {'path': 'synthetic/c.txt', 'content': 'synthetic second'}",
+          "name": "write_file"
+        }
+      ],
+      "review_configs": [
+        {
+          "action_name": "write_file",
+          "allowed_decisions": [
+            "approve",
+            "edit",
+            "reject"
+          ]
+        },
+        {
+          "action_name": "write_file",
+          "allowed_decisions": [
+            "approve",
+            "edit",
+            "reject"
+          ]
+        }
+      ]
+    },
+    "revised_tool_calls": [
+      {
+        "args": {
+          "content": "synthetic",
+          "path": "synthetic/a.txt"
+        },
+        "id": "synthetic-call-1",
+        "name": "write_file",
+        "type": "tool_call"
+      },
+      {
+        "args": {
+          "content": "synthetic edited",
+          "path": "synthetic/b.txt"
+        },
+        "id": "synthetic-call-2",
+        "name": "write_file",
+        "type": "tool_call"
+      }
+    ]
+  },
+  "invalid_decision_length_error": "Number of human decisions (1) does not match number of hanging tool calls (2).",
+  "protocol_v3_resume": {
+    "command": "input.respond",
+    "params": {
+      "interrupt_id": "synthetic-interrupt-2",
+      "namespace": [
+        "synthetic",
+        "review"
+      ],
+      "response": {
+        "decisions": [
+          {
+            "type": "approve"
+          },
+          {
+            "edited_action": {
+              "args": {
+                "content": "synthetic edited",
+                "path": "synthetic/b.txt"
+              },
+              "name": "write_file"
+            },
+            "type": "edit"
+          }
+        ]
+      }
+    }
+  },
+  "schema_version": "1.0",
+  "scrub_attestation": "Contains only locally generated action, interrupt, and decision values; no request was sent to the synthetic.invalid host.",
+  "synthetic": true
+}

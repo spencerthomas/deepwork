@@ -1,13 +1,19 @@
 {
   "schema_version": "1.0",
-  "collected_at": "2026-07-23",
+  "collected_at": "2026-08-03",
   "source_precedence": [
     "sanitized-live-classic-sandbox",
     "installed-public-contract",
     "official-documented",
     "reference-repository-internals"
   ],
-  "installed_public_distributions": {},
+  "installed_public_distributions": {
+    "deepagents": "0.6.12",
+    "langchain": "1.3.14",
+    "langgraph": "1.2.9",
+    "langgraph-sdk": "0.4.2",
+    "pytest": "9.0.2"
+  },
   "global_live_blocker": "No human-provided non-production classic sandbox profile, account tier, region, authentication context, or server revision was available. Live-dependent conclusions are blocked-live-evidence.",
   "rows": [
     {
@@ -21,7 +27,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned public package source identifies candidate langgraph-sdk 0.4.2 APIs, but public-index egress was unavailable and no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific installed discovery probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -108,7 +114,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned public package source shows candidate assistant methods, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific assistant/config probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -172,7 +178,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source is data-plane oriented and does not establish a deployment control-plane client; no installed distribution contract was captured."
+          "finding": "The isolated installed SDK remains data-plane oriented and does not establish a deployment control-plane client; no operation-specific deployment probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -238,7 +244,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source shows a candidate RunsClient.create shape, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific create/run probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -315,7 +321,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source shows candidate create/get/search methods with limit/offset pagination, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific thread pagination probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -387,7 +393,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source shows candidate stream and join_stream parameters, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific legacy stream/join probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -463,7 +469,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source types four candidate strategies, but no installed distribution or live strategy behavior was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific or live multitask-strategy behavior was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -532,7 +538,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source contains candidate stream controller/subscription surfaces, but no installed distribution contract was captured and hosted retention remains unknown."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no complete operation-specific protocol-v3 stream probe was captured and hosted retention remains unknown."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -598,15 +604,15 @@
     {
       "spike_id": "SPIKE-HITL-001",
       "operation": "observe and respond to ordered human-in-the-loop interrupts",
-      "evidence_level": "official-documented",
+      "evidence_level": "installed-public-contract",
       "evidence": [
         {
           "level": "official-documented",
           "finding": "Deep Agents HITL aligns action_requests and review_configs and requires one ordered decision per action; documented decisions are approve, edit, reject, and respond subject to config."
         },
         {
-          "level": "unsupported-or-unknown",
-          "finding": "Pinned package sources expose candidate Interrupt and Command shapes; no installed distribution contract was captured and the interrupt value remains agent-defined."
+          "level": "installed-public-contract",
+          "finding": "The isolated lock proves deepagents 0.6.12, langchain 1.3.14, langgraph 1.2.9, and langgraph-sdk 0.4.2. Executable probes preserve repeated-name action order, exercise approve/edit/reject/respond semantics, reject an incomplete decision vector, dispatch protocol-v3 input.respond with explicit interrupt identity, and reject ambiguous multi-interrupt resume."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -622,16 +628,17 @@
         "account_tier": null,
         "region": null,
         "authentication_context": null,
-        "date": "2026-07-23",
+        "date": "2026-08-03",
         "live_evidence": "unavailable"
       },
       "request": {
         "documented_resume": "Command(resume={\"decisions\": [...]})",
         "ordering": "Exactly one decision per action request, in source order.",
-        "wire": "The exact hosted input.respond/run resume mapping requires live proof."
+        "installed_protocol_v3_wire": "thread.run.respond(response, interrupt_id=...) dispatches input.respond with interrupt_id, namespace, and response.",
+        "wire": "The installed SDK command is proven; hosted acceptance, stale/duplicate server responses, and post-resume state still require live proof."
       },
       "response_schema": {
-        "candidate_package_source": "ThreadState.interrupts: list[Interrupt] where Interrupt has id and open value",
+        "installed": "langchain HITL ordered action_requests/review_configs plus langgraph-sdk protocol-v3 interrupt projection and input.respond command",
         "documented_value": {
           "action_requests": "ordered list",
           "review_configs": "ordered aligned list"
@@ -682,7 +689,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source shows a candidate cancel signature with interrupt or rollback, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific cancel probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",
@@ -746,7 +753,7 @@
         },
         {
           "level": "unsupported-or-unknown",
-          "finding": "Pinned SDK source shows candidate state/history parameters, but no installed distribution contract was captured."
+          "finding": "langgraph-sdk 0.4.2 is installed in the isolated lock, but no operation-specific state/history probe was captured."
         },
         {
           "level": "sanitized-live-classic-sandbox",

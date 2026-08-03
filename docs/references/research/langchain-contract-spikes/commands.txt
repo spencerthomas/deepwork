@@ -1,4 +1,4 @@
-Working directory for every command:
+Working directory for commands through the initial external dispatch:
 /Users/tomspencer/dev/deepwork/worktrees/external-langchain-contract-spikes
 
 Initial dispatch gate:
@@ -122,3 +122,76 @@ exit: 0
 scope/result audit relative to 73ecb1576f56f64ee07265dbabb936e155310834
 exit: 0
 output: all changed paths inside the three allowed path groups; 11 matrix rows; only blocked-live-evidence results; live_evidence unavailable
+
+Installed-contract qualification (2026-08-03):
+uv lock --project tools/contract-spikes/langchain
+exit: 0
+output: Resolved 58 packages; exact public distributions and transitive dependencies retained
+
+uv sync --project tools/contract-spikes/langchain --frozen --reinstall-package deepwork-langchain-contract-spikes
+exit: 0
+output: isolated package rebuilt and 58-package environment synchronized
+
+uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 13 passed, 1 deselected
+
+uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.installed --output docs/references/research/langchain-contract-spikes/fixtures/installed-hitl-contract.json
+exit: 0
+output: wrote sanitized installed contract; no network request issued by the probe
+
+uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.inventory --output docs/references/research/langchain-contract-spikes/versions.json
+exit: 0
+output: wrote exact sanitized installed package inventory
+
+uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.validate_matrix docs/references/research/langchain-contract-spikes/matrix.json
+exit: 0
+output: validated 11 pinned contract rows
+
+uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.scrub docs/references/research/langchain-contract-spikes
+exit: 0
+output: scrubbed 10 evidence files; findings=0
+
+uv lock --project tools/contract-spikes/langchain --check --offline
+exit: 0
+output: Resolved 58 packages
+
+Review-hardening qualification (2026-08-03):
+Working directory:
+/Users/tomspencer/dev/deepwork/worktrees/golden-journey-recovery
+
+UV_CACHE_DIR=/private/tmp/deepwork-uv-cache uv sync --project tools/contract-spikes/langchain --frozen --reinstall-package deepwork-langchain-contract-spikes
+exit: 0
+output: isolated package rebuilt and synchronized
+
+UV_CACHE_DIR=/private/tmp/deepwork-uv-cache uv run --project tools/contract-spikes/langchain --frozen python -m langchain_contract_spikes.installed --output docs/references/research/langchain-contract-spikes/fixtures/installed-hitl-contract.json
+exit: 0
+output: wrote sanitized installed contract; no network request issued by the probe
+
+UV_CACHE_DIR=/private/tmp/deepwork-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 14 passed, 1 deselected; retained installed transcript equals the fresh capture
+
+UV_CACHE_DIR=/private/tmp/deepwork-uv-cache UV_OFFLINE=true uv run --project tools/contract-spikes/langchain --frozen pytest -m 'not live_contract'
+exit: 0
+output: 14 passed, 1 deselected
+
+UV_CACHE_DIR=/private/tmp/deepwork-uv-cache uv run --project tools/contract-spikes/langchain --frozen pytest -m live_contract --live-profile classic-sandbox --evidence-dir docs/references/research/langchain-contract-spikes/live
+exit: 1
+output: live profile unavailable; missing base_url, account_tier, region, server_revision
+qualification: expected fail-closed result; no live fixture was persisted
+
+env PATH=/private/tmp/deepwork-npm-cache/_npx/3e062c1ecdbab29f/node_modules/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin make check
+exit: 0
+output: root, API, and agent checks passed under isolated Node 24.14.0; 314 API tests passed with 2 skipped, 77 API contract tests passed with 1 skipped, 100 agent tests passed, and all 20 JS workspace tasks passed
+
+python3 tools/docs/generate.py --check
+exit: 0
+output: verified 6 generated documents
+
+python3 tools/docs/check.py
+exit: 0
+output: documentation validation passed
+
+git diff --check
+exit: 0

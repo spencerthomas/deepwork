@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from langchain_contract_spikes.pins import pinned_distributions
+
 SPIKE_IDS = (
     "SPIKE-SOURCE-001",
     "SPIKE-CONFIG-001",
@@ -52,7 +54,6 @@ RESULTS = {
     "rejected",
 }
 
-
 def validate_matrix_document(document: Mapping[str, Any]) -> list[str]:
     """Return deterministic validation errors for a matrix document."""
     errors: list[str] = []
@@ -62,8 +63,9 @@ def validate_matrix_document(document: Mapping[str, Any]) -> list[str]:
     if not isinstance(rows, list):
         return [*errors, "rows must be a list"]
     installed = document.get("installed_public_distributions")
-    if installed != {}:
-        errors.append("installed_public_distributions must be an empty object until inventory proves exact distributions")
+    has_pinned_inventory = installed == pinned_distributions()
+    if not has_pinned_inventory:
+        errors.append("installed_public_distributions must match the isolated pinned lock")
 
     seen: set[str] = set()
     for index, row in enumerate(rows):
@@ -83,9 +85,9 @@ def validate_matrix_document(document: Mapping[str, Any]) -> list[str]:
             seen.add(spike_id)
         if row.get("evidence_level") not in EVIDENCE_LEVELS:
             errors.append(f"{label} has invalid evidence_level")
-        if not installed:
+        if not has_pinned_inventory:
             if row.get("evidence_level") == "installed-public-contract":
-                errors.append(f"{label} cannot claim installed evidence without an installed distribution inventory")
+                errors.append(f"{label} cannot claim installed evidence without the pinned distribution inventory")
             if any(item.get("level") == "installed-public-contract" for item in row.get("evidence", [])):
                 errors.append(f"{label} evidence cannot claim an unavailable installed distribution")
             if "installed" in row.get("response_schema", {}):

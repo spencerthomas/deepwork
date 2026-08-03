@@ -1,5 +1,5 @@
 {
-  "collected_at": "2026-07-23",
+  "collected_at": "2026-08-03",
   "generated_contracts": {
     "agent_server_openapi": {
       "contract_version": "0.1.0",
@@ -16,20 +16,26 @@
     "authentication_context": null,
     "candidate_sdk_from_pinned_source": "0.4.2",
     "region": null,
-    "sdk": null,
+    "sdk": "langgraph-sdk==0.4.2",
     "server_revision": null,
     "status": "blocked-live-evidence"
   },
   "packages": {
-    "blocker": "Public package-index egress was not authorized; pinned source candidates were not promoted to installed public contracts.",
+    "blocker": null,
     "candidate_versions_from_pinned_sources": {
       "deepagents": "0.6.12",
       "langchain": "1.3.14",
       "langgraph": "1.2.9",
       "langgraph-sdk": "0.4.2"
     },
-    "installed_public_distributions": {},
-    "status": "blocked-package-index-evidence"
+    "installed_public_distributions": {
+      "deepagents": "0.6.12",
+      "langchain": "1.3.14",
+      "langgraph": "1.2.9",
+      "langgraph-sdk": "0.4.2",
+      "pytest": "9.0.2"
+    },
+    "status": "accepted-installed"
   },
   "schema_version": "1.0",
   "source_revisions": {

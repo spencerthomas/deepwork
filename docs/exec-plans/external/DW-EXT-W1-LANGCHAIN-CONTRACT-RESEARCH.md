@@ -205,16 +205,18 @@ publication, production mutation, or private-beta enablement is authorized.
   independent evidence reviews, not formal row acceptance; the author has not
   self-accepted any spike.
 - [ ] A human provides an explicitly authorized non-production classic sandbox
-  and approved public package-index access for installed/live acceptance.
-- [ ] Produce a genuinely isolated lock including the exact public distributions,
-  test runner, and transitive dependencies. Current validation delegates to the
-  workspace's exact `pytest 9.0.2` and is environment-bound.
+  for live acceptance.
+- [x] 2026-08-03: Produced a genuinely isolated lock containing the exact public
+  distributions, `pytest==9.0.2`, and all transitive dependencies. Installed
+  probes now retain repeated-name middleware order, all four decision semantics,
+  malformed-vector rejection, protocol-v3 `input.respond` dispatch, and
+  ambiguous-interrupt rejection without contacting a server.
 
 ## Surprises and discoveries
 
-- Public package-index egress was not authorized in this environment. The
-  candidate source versions are pinned, but the retained inventory correctly
-  records no installed LangChain/LangGraph/Deep Agents distributions.
+- Public package-index access was later approved for the exact pinned
+  distributions. The isolated lock and inventory now record installed
+  LangChain/LangGraph/Deep Agents evidence; live classic behavior remains absent.
 - Current typed event streaming is protocol v3. Earlier audit prose calling the
   `/threads/{thread_id}/stream/events` surface protocol v2 is stale; legacy
   `Last-Event-ID` streams remain separate.
@@ -247,28 +249,33 @@ publication, production mutation, or private-beta enablement is authorized.
 - **2026-07-23 — Keep deployment operator-owned.** The pinned control-plane
   evidence is insufficient for a safe app-owned mutation adapter, retry policy,
   or success state.
-- **2026-07-23 — Use an offline dependency-free probe runner.** Because package
-  egress was blocked, the probe lock contains only the probe package and requires
-  the exact workspace `pytest 9.0.2`; it does not masquerade as installed
-  LangChain evidence.
+- **2026-07-23 — Use an offline dependency-free probe runner (historical).** At
+  that time package egress was blocked, so the probe package deliberately had no
+  installed LangChain dependencies and used the workspace test runner. It did
+  not masquerade as installed LangChain evidence. This pre-egress decision is
+  superseded by the 2026-08-03 isolated-lock decision below.
 - **2026-07-23 — Separate evidence review from formal adjudication.** Independent
   contract-group and retained-artifact review corrected the packet and supports
   research handoff. It does not satisfy the named runtime-contract, security, or
   product acceptance authority and cannot change a row from
   `blocked-live-evidence`.
+- **2026-08-03 — Accept the installed shape, not the hosted behavior.** The exact
+  isolated packages prove ordered repeated-name middleware behavior, all four
+  decision semantics, malformed-vector rejection, and the protocol-v3
+  `input.respond` client command. They do not prove server-side stale,
+  duplicate, lost-response, authorization, or post-resume semantics, so product
+  submission remains fail-closed.
 
 ## Outcomes and retrospective
 
-The packet produced the required matrix, report, fixture set, version inventory,
-scrub report, command ledger, and an executable environment-bound offline probe
-scaffold within the allowed paths. The research resolves several contract-shape
-errors and supplies deterministic fallbacks, but it deliberately does not satisfy
-the installed-distribution, isolated-lock, or live-dependent acceptance gates.
+The packet now includes a reproducible isolated lock, installed distribution
+inventory, sanitized installed HITL transcript, matrix, report, fixture set,
+scrub report, and command ledger. The installed-distribution and isolated-lock
+gates are satisfied; live-dependent acceptance remains open.
 
 The most important integration result is negative and actionable: the
 coordinator must keep source registration, generic config mutation, deployment,
 dispatch, typed event-stream UX, steering queues, HITL submission, cancellation,
-and checkpoint restore/fork unavailable. Future work must first install exact
-public distributions from an approved index and run sanitized tests against an
-explicit non-production classic sandbox with recorded account tier, region,
-authentication context, and server revision.
+and checkpoint restore/fork unavailable. Future work must run sanitized tests
+against an explicit non-production classic sandbox with recorded account tier,
+region, authentication context, and server revision.

@@ -1,21 +1,22 @@
 # LangChain contract-spike research report
 
-Collected: 2026-07-23
+Collected: 2026-08-03
 
 Packet: `DW-EXT-W1-LANGCHAIN-CONTRACT-RESEARCH`
 
 ## Outcome
 
-No capability is accepted or enabled by this research.
+No application capability is enabled by this research.
 
-All eleven named spikes are `blocked-live-evidence`. The pinned official
-documentation, generated Agent Server OpenAPI, and public package source
-revisions establish useful candidate contracts and contradictions, but:
+All eleven named spikes remain `blocked-live-evidence`. The exact public
+distributions and transitive dependencies are now installed from an isolated
+lock. `SPIKE-HITL-001` has installed-contract evidence for repeated-name order,
+all four decision semantics, malformed-vector rejection, protocol-v3
+`input.respond` dispatch, and ambiguous-interrupt rejection, but:
 
 - no human-provided non-production classic sandbox profile was available; and
-- public package-index egress was not authorized, so the candidate distribution
-  versions were not locked, installed, or promoted to installed-public-contract
-  evidence.
+- stale, duplicate, lost-response, authorization, and post-resume server behavior
+  cannot be established by local package execution.
 
 The deterministic fallback is therefore unchanged: classic sources, task
 submission, streaming, decisions, cancellation, checkpoints, config mutation,
@@ -40,10 +41,10 @@ Exact local evidence was clean at:
 | `SRC-LCPY` | `592055e15e138f5369dce95dd049ce22430996e2` | LangChain HITL public package source |
 | `SRC-LG` | `31f90df3e6b0268fa77fd2d118a917d420b84a68` | LangGraph SDK/package source |
 
-Candidate package versions derived from those pinned sources are
+Installed package versions matching those pinned sources are
 `deepagents==0.6.12`, `langchain==1.3.14`, `langgraph==1.2.9`, and
-`langgraph-sdk==0.4.2`. They are recorded as candidates, not installed
-distribution evidence. The generated Agent Server OpenAPI identifies itself as
+`langgraph-sdk==0.4.2`, with `pytest==9.0.2` in the same isolated lock. The
+generated Agent Server OpenAPI identifies itself as
 `0.1.0` and has SHA-256
 `0b4d3d1e2da065a50a53838e7f63f5d90763a1dc759b165dd7a4409b5959888c`.
 
@@ -59,7 +60,7 @@ distribution evidence. The generated Agent Server OpenAPI identifies itself as
 | `SPIKE-STREAM-001` | Legacy thread/run join and resumable run stream are distinct from protocol v3 | `blocked-live-evidence` | State polling/non-live snapshot |
 | `SPIKE-STREAM-002` | Four Agent Server multitask strategies are documented; frontend queue APIs are not a Python/provider contract | `blocked-live-evidence` | Accept input only when idle; keep text as a draft |
 | `SPIKE-STREAM-003` | Beta protocol v3 uses `/stream/events`, body cursor `since`, and `event_id` dedupe | `blocked-live-evidence` | Qualified legacy join if later accepted, else refetch |
-| `SPIKE-HITL-001` | Python HITL is ordered snake_case arrays with positional decisions and no action IDs | `blocked-live-evidence` | Read-only interrupt; no force resolve or retry |
+| `SPIKE-HITL-001` | The installed middleware preserves ordered snake_case arrays and positional decisions with no action IDs; the installed protocol-v3 SDK dispatches `input.respond` with explicit interrupt identity and rejects ambiguous multi-interrupt response | `blocked-live-evidence` | Read-only interrupt until classic server stale/duplicate/post-resume behavior is accepted; no force resolve or blind retry |
 | `SPIKE-CANCEL-001` | Cancel accepts `interrupt` or destructive `rollback`; terminal/race behavior is unproven | `blocked-live-evidence` | Hide Stop and refresh source state |
 | `SPIKE-CHECKPOINT-001` | Current/historical state and same-thread checkpoint branching are exposed; selected-checkpoint-to-new-thread fork is not proven | `blocked-live-evidence` | Read-only history; no restore/fork action |
 
@@ -209,31 +210,37 @@ share an adapter or assumed authentication policy with Agent Server.
 
 ## Probe and fixture qualification
 
-The retained environment-bound probe scaffold:
+The retained isolated probe scaffold:
 
 - validates one complete matrix row for every named spike;
-- rejects lossy/reordered HITL batches and invented upstream action IDs;
+- locks the exact public distributions, test runner, and transitive dependencies;
+- executes the installed HITL middleware against repeated action names, proves
+  positional approve/edit behavior, exercises reject/respond messages, and
+  rejects an incomplete decision vector;
+- captures the installed protocol-v3 `input.respond` command and explicit
+  interrupt/namespace/response envelope without opening a network connection;
+- rejects ambiguous multi-interrupt response, lossy/reordered HITL batches, and
+  invented upstream action IDs;
 - tests protocol-v3 replay projection using `seq` for position and `event_id` for
   identity;
 - fails closed when the live classic-sandbox profile is absent;
-- records exact source, candidate package, generated schema, interpreter, and
-  blocker inventory;
+- records exact source, installed package, generated schema, interpreter, and
+  live blocker inventory;
 - scans retained evidence for secrets, credential references, tenant/customer
   identifiers, and unapproved hosts; and
 - contains only synthetic transcripts with hashes and scrub attestations.
 
-Because public-index access was blocked, the probe project deliberately has no
-registry dependencies. Its dependency-free package installs an offline test
-entrypoint that requires the workspace's exact `pytest 9.0.2`; this runner is
-tooling evidence only and is not counted as an installed LangChain contract.
-It is not a reproducible isolated test lock. Producing that lock remains blocked
-on approved public-index access.
+The probe now runs its own `pytest==9.0.2` from the isolated environment and
+passes again with `UV_OFFLINE=true`. The retained installed transcript contains
+only synthetic values, its hash is in `fixtures/manifest.json`, and the scrubber
+reports zero findings. This upgrades package-shape confidence without claiming a
+classic deployment accepted the same transport.
 
 ## Required future live evidence
 
 An independent reviewer still needs a human-provided, non-production classic
 sandbox and explicit account tier, region, authentication context, Agent Server
-revision, SDK distribution lock, and synthetic cleanup scope. At minimum, the live
+revision, and synthetic cleanup scope. At minimum, the live
 run must prove:
 
 - `/ok`, `/info`, disabled-meta behavior, assistant identity, auth failures, and

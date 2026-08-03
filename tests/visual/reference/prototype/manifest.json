@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "deep-work-frontend",
+    "commit": "26c698b30ff08d5122cfaeedbd4a95296a7884f4",
+    "capturedAt": "2026-08-03",
+    "theme": "light",
+    "browser": "chromium"
+  },
+  "viewports": {
+    "desktop": { "width": 1440, "height": 1000 },
+    "phone": { "width": 390, "height": 844 },
+    "minimumReflowWidth": 320
+  },
+  "routes": [
+    { "name": "login", "path": "/login" },
+    { "name": "tasks", "path": "/tasks" },
+    { "name": "tasks-new", "path": "/tasks/new" },
+    { "name": "task-detail", "path": "/tasks/t-901" },
+    { "name": "approvals", "path": "/approvals" },
+    { "name": "agents", "path": "/agents" },
+    { "name": "agent-detail", "path": "/agents/swe" },
+    { "name": "schedules", "path": "/schedules" },
+    { "name": "activity", "path": "/activity" },
+    { "name": "settings", "path": "/settings" },
+    { "name": "config", "path": "/config" },
+    { "name": "observability", "path": "/observability" }
+  ]
+}

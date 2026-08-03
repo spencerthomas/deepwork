@@ -364,3 +364,319 @@ test("completed fixture task survives an API restart and reopens without duplica
   expect(recoveredUnexpectedOrigins).toEqual(new Set());
   await recoveredContext.close();
 });
+
+test("reconnect episodes recover once, ignore a late initial read, and suppress duplicate events", async ({
+  browser,
+}) => {
+  const taskId = "task_recovery_browser";
+  const runId = "run_recovery_browser";
+  const objective = "Recover a dropped live task without losing its result";
+  const completedResult = "The durable task state was recovered after the stream disconnected.";
+  let detailReads = 0;
+  let eventRequests = 0;
+  let releaseInitialDetail!: () => void;
+  const initialDetailReleased = new Promise<void>((resolveRelease) => {
+    releaseInitialDetail = resolveRelease;
+  });
+  let releaseProgressStream!: () => void;
+  const progressStreamReleased = new Promise<void>((resolveRelease) => {
+    releaseProgressStream = resolveRelease;
+  });
+  let releaseTerminalStream!: () => void;
+  const terminalStreamReleased = new Promise<void>((resolveRelease) => {
+    releaseTerminalStream = resolveRelease;
+  });
+  const context = await browser.newContext({ baseURL: webOrigin, serviceWorkers: "block" });
+  const page = await context.newPage();
+  const unexpectedOrigins = await installLoopbackOnlyGuard(page);
+
+  await signIn(page);
+  await page.route(`**/api/v1/tasks/${taskId}/events`, async (route) => {
+    eventRequests += 1;
+    if (eventRequests === 2) {
+      await route.abort("connectionfailed");
+      return;
+    }
+    if (eventRequests === 3) await progressStreamReleased;
+    if (eventRequests === 4) await terminalStreamReleased;
+    if (eventRequests > 4) {
+      await route.abort("connectionfailed");
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: { "cache-control": "no-cache" },
+      body:
+        eventRequests === 4
+          ? [
+              'id: 3\nevent: content.delta\ndata: {"delta":"Recovered durable progress."}',
+              `id: 4\nevent: run.completed\ndata: ${JSON.stringify({ status: "completed", result: completedResult })}`,
+              "",
+            ].join("\n\n")
+          : eventRequests === 3
+            ? [
+                'id: 2\nevent: run.started\ndata: {"status":"running"}',
+                'id: 3\nevent: content.delta\ndata: {"delta":"Recovered durable progress."}',
+                "",
+              ].join("\n\n")
+            : [
+                'id: 1\nevent: task.created\ndata: {"status":"queued"}',
+                'id: 2\nevent: run.started\ndata: {"status":"running"}',
+                "",
+              ].join("\n\n"),
+    });
+  });
+  await page.route(`**/api/v1/tasks/${taskId}`, async (route) => {
+    detailReads += 1;
+    const read = detailReads;
+    if (read === 1) await initialDetailReleased;
+    const completed = read >= 2;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        taskId,
+        runId,
+        title: objective,
+        objective,
+        status: completed ? "completed" : read === 1 ? "queued" : "running",
+        lastEventId: completed ? 4 : 1,
+        evidence: [],
+        ...(completed ? { result: completedResult } : {}),
+      }),
+    });
+  });
+  await page.route("**/api/v1/tasks", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ taskId, runId, title: objective, objective, status: "running", lastEventId: 2 }],
+      }),
+    });
+  });
+
+  await page.goto(`/tasks/${taskId}`);
+  await expect(page.getByRole("heading", { name: objective })).toBeVisible();
+  await expect(
+    page.getByText("Recovered current task state from the API while the live stream reconnects."),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => eventRequests).toBeGreaterThanOrEqual(3);
+  expect(detailReads).toBe(2);
+
+  releaseInitialDetail();
+  await expect(page.getByText("Run started", { exact: true })).toHaveCount(1);
+  await expect(
+    page.getByText("Recovered current task state from the API while the live stream reconnects."),
+  ).toBeVisible();
+
+  releaseProgressStream();
+  await expect.poll(() => detailReads, { timeout: 15_000 }).toBe(3);
+  await expect.poll(() => eventRequests, { timeout: 15_000 }).toBeGreaterThanOrEqual(4);
+  releaseTerminalStream();
+  await expect(page.getByText(completedResult, { exact: true }).first()).toBeVisible();
+  await expect.poll(() => detailReads).toBe(4);
+  await expect(page.getByText("Run started", { exact: true })).toHaveCount(1);
+
+  const eventCountRow = page.getByText("Events", { exact: true }).locator("..");
+  await expect(eventCountRow.getByText("4", { exact: true })).toBeVisible();
+  expect(unexpectedOrigins).toEqual(new Set());
+  await context.close();
+});
+
+test("a timed-out recovery retains the last known state while EventSource keeps retrying", async ({
+  browser,
+}) => {
+  const taskId = "task_recovery_timeout";
+  const runId = "run_recovery_timeout";
+  const objective = "Keep useful state visible through a stalled recovery read";
+  const completedResult = "The live stream eventually supplied the terminal result.";
+  let detailReads = 0;
+  let eventRequests = 0;
+  let releaseRecoveryRead!: () => void;
+  const recoveryReadReleased = new Promise<void>((resolveRelease) => {
+    releaseRecoveryRead = resolveRelease;
+  });
+  let releaseRetryStream!: () => void;
+  const retryStreamReleased = new Promise<void>((resolveRelease) => {
+    releaseRetryStream = resolveRelease;
+  });
+  const context = await browser.newContext({ baseURL: webOrigin, serviceWorkers: "block" });
+  const page = await context.newPage();
+  const unexpectedOrigins = await installLoopbackOnlyGuard(page);
+
+  await signIn(page);
+  await page.route(`**/api/v1/tasks/${taskId}/events`, async (route) => {
+    eventRequests += 1;
+    if (eventRequests === 2) await retryStreamReleased;
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: { "cache-control": "no-cache" },
+      body:
+        eventRequests === 1
+          ? [
+              'id: 1\nevent: task.created\ndata: {"status":"queued"}',
+              'id: 2\nevent: run.started\ndata: {"status":"running"}',
+              "",
+            ].join("\n\n")
+          : [
+              'id: 2\nevent: run.started\ndata: {"status":"running"}',
+              'id: 3\nevent: content.delta\ndata: {"delta":"Progress after retry."}',
+              `id: 4\nevent: run.completed\ndata: ${JSON.stringify({ status: "completed", result: completedResult })}`,
+              "",
+            ].join("\n\n"),
+    });
+  });
+  await page.route(`**/api/v1/tasks/${taskId}`, async (route) => {
+    detailReads += 1;
+    const read = detailReads;
+    if (read === 2) {
+      await recoveryReadReleased;
+    }
+    await route
+      .fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          taskId,
+          runId,
+          title: objective,
+          objective,
+          status: read >= 3 ? "completed" : "running",
+          lastEventId: read >= 3 ? 4 : 2,
+          evidence: [],
+          ...(read >= 3 ? { result: completedResult } : {}),
+        }),
+      })
+      .catch(() => undefined);
+  });
+  await page.route("**/api/v1/tasks", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ taskId, runId, title: objective, objective, status: "running", lastEventId: 2 }],
+      }),
+    });
+  });
+
+  await page.goto(`/tasks/${taskId}`);
+  await expect(page.getByRole("heading", { name: objective })).toBeVisible();
+  await expect(
+    page.getByText(
+      /Could not recover current task state from the API\. The last known state is still shown/,
+    ),
+  ).toBeVisible({ timeout: 20_000 });
+  expect(detailReads).toBe(2);
+  await expect.poll(() => eventRequests).toBeGreaterThanOrEqual(2);
+  await expect(page.getByText("Run started", { exact: true })).toHaveCount(1);
+
+  releaseRecoveryRead();
+  releaseRetryStream();
+  await expect(page.getByText(completedResult, { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText(
+      /Could not recover current task state from the API\. The last known state is still shown/,
+    ),
+  ).not.toBeVisible();
+  await expect(page.getByText("Run started", { exact: true })).toHaveCount(1);
+  const eventCountRow = page.getByText("Events", { exact: true }).locator("..");
+  await expect(eventCountRow.getByText("4", { exact: true })).toBeVisible();
+  expect(unexpectedOrigins).toEqual(new Set());
+  await context.close();
+});
+
+test("a stale recovery snapshot stays unconfirmed until a newer live event arrives", async ({
+  browser,
+}) => {
+  const taskId = "task_recovery_unconfirmed";
+  const runId = "run_recovery_unconfirmed";
+  const objective = "Keep a newer live projection when durable recovery trails it";
+  const completedResult = "A newer live event restored confirmed progress.";
+  let detailReads = 0;
+  let eventRequests = 0;
+  let releaseFreshStream!: () => void;
+  const freshStreamReleased = new Promise<void>((resolveRelease) => {
+    releaseFreshStream = resolveRelease;
+  });
+  const context = await browser.newContext({ baseURL: webOrigin, serviceWorkers: "block" });
+  const page = await context.newPage();
+  const unexpectedOrigins = await installLoopbackOnlyGuard(page);
+
+  await signIn(page);
+  await page.route(`**/api/v1/tasks/${taskId}/events`, async (route) => {
+    eventRequests += 1;
+    if (eventRequests === 2) await freshStreamReleased;
+    if (eventRequests > 2) {
+      await route.abort("connectionfailed");
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: { "cache-control": "no-cache" },
+      body:
+        eventRequests === 1
+          ? [
+              'id: 1\nevent: task.created\ndata: {"status":"queued"}',
+              'id: 2\nevent: run.started\ndata: {"status":"running"}',
+              "",
+            ].join("\n\n")
+          : [
+              `id: 6\nevent: run.completed\ndata: ${JSON.stringify({ status: "completed", result: completedResult })}`,
+              "",
+            ].join("\n\n"),
+    });
+  });
+  await page.route(`**/api/v1/tasks/${taskId}`, async (route) => {
+    detailReads += 1;
+    const completed = detailReads >= 3;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        taskId,
+        runId,
+        title: objective,
+        objective,
+        status: completed ? "completed" : "running",
+        lastEventId: completed ? 6 : detailReads === 1 ? 5 : 2,
+        evidence: [],
+        ...(completed ? { result: completedResult } : {}),
+      }),
+    });
+  });
+  await page.route("**/api/v1/tasks", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ taskId, runId, title: objective, objective, status: "running", lastEventId: 5 }],
+      }),
+    });
+  });
+
+  await page.goto(`/tasks/${taskId}`);
+  await expect(page.getByRole("heading", { name: objective })).toBeVisible();
+  await expect(
+    page.getByText(
+      "The live stream is newer than the API snapshot. The last known state is shown, but durable recovery is not yet confirmed.",
+    ),
+  ).toBeVisible({ timeout: 20_000 });
+  expect(detailReads).toBe(2);
+  await expect.poll(() => eventRequests).toBeGreaterThanOrEqual(2);
+
+  releaseFreshStream();
+  await expect(page.getByText(completedResult, { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText(
+      "The live stream is newer than the API snapshot. The last known state is shown, but durable recovery is not yet confirmed.",
+    ),
+  ).not.toBeVisible();
+  const eventCountRow = page.getByText("Events", { exact: true }).locator("..");
+  await expect(eventCountRow.getByText("3", { exact: true })).toBeVisible();
+  expect(unexpectedOrigins).toEqual(new Set());
+  await context.close();
+});

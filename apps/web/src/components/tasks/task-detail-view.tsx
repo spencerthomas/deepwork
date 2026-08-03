@@ -135,6 +135,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     detailsByTask,
     eventsByTask,
     connectionState,
+    streamRecovery,
     detailError,
     streamError,
     actionError,
@@ -357,6 +358,36 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           >
             <AlertTriangle className="size-4 shrink-0 text-status-review" />
             <p className="min-w-0 text-sm text-foreground/90">{detailError ?? streamError}</p>
+          </div>
+        )}
+
+        {streamRecovery?.taskId === taskId && (selected || detail) && (
+          <div
+            className={cn(
+              "mb-4 flex items-center gap-3 rounded-2xl border px-4 py-3",
+              streamRecovery.state === "recovered"
+                ? "border-status-done/30 bg-status-done-bg"
+                : streamRecovery.state === "failed"
+                  ? "border-status-failed/30 bg-status-failed-bg"
+                  : "border-status-review/30 bg-status-review-bg",
+            )}
+            role={
+              streamRecovery.state === "failed" || streamRecovery.state === "unconfirmed"
+                ? "alert"
+                : "status"
+            }
+          >
+            {streamRecovery.state === "recovered" ? (
+              <CheckCircle2 className="size-4 shrink-0 text-status-done" />
+            ) : (
+              <AlertTriangle
+                className={cn(
+                  "size-4 shrink-0",
+                  streamRecovery.state === "failed" ? "text-status-failed" : "text-status-review",
+                )}
+              />
+            )}
+            <p className="min-w-0 text-sm text-foreground/90">{streamRecovery.message}</p>
           </div>
         )}
 

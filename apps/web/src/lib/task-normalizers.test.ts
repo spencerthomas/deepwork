@@ -498,6 +498,7 @@ describe("terminal result handling", () => {
     );
 
     expect(detail.status).toBe("waiting-approval");
+    expect(detail.lastEventId).toBe(2);
   });
 });
 

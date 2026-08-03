@@ -640,11 +640,17 @@ export function detailAfterAuthoritativeReload(
 export function reduceEventsIntoDetail(task: TaskDetail, events: readonly TaskEvent[]): TaskDetail {
   return events.reduce<TaskDetail>((current, event) => {
     const eventResult = event.name === "run.completed" ? getCompletionResultText(event) : undefined;
+    const eventCursor = taskEventCursor(event.id);
     return {
       ...current,
       status: statusAfterEvent(current.status, event, current.pendingInterrupt),
       pendingInterrupt: interruptAfterEvent(current.pendingInterrupt, event),
       result: eventResult ?? current.result,
+      lastEventId:
+        eventCursor !== undefined &&
+        (current.lastEventId === undefined || eventCursor > current.lastEventId)
+          ? eventCursor
+          : current.lastEventId,
     };
   }, task);
 }

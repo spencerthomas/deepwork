@@ -74,6 +74,11 @@ export interface TasksStore {
   activeTaskId?: string;
   setActiveTaskId: (taskId: string | undefined) => void;
   connectionState: ConnectionState;
+  streamRecovery?: {
+    taskId: string;
+    state: "recovering" | "recovered" | "unconfirmed" | "failed";
+    message: string;
+  };
   detailError?: string;
   streamError?: string;
   actionError?: string;
@@ -100,6 +105,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [detailsByTask, setDetailsByTask] = useState<Record<string, TaskDetail>>({});
   const [eventsByTask, setEventsByTask] = useState<Record<string, TaskEvent[]>>({});
   const [connectionState, setConnectionState] = useState<ConnectionState>("closed");
+  const [streamRecovery, setStreamRecovery] = useState<TasksStore["streamRecovery"]>();
   const [listError, setListError] = useState<string>();
   const [detailError, setDetailError] = useState<string>();
   const [streamError, setStreamError] = useState<string>();
@@ -175,6 +181,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     setDetailError(undefined);
     setStreamError(undefined);
+    setStreamRecovery(undefined);
     setSubmittedDecision(undefined);
     setSubmittingDecision(false);
     setActionError(undefined);
@@ -184,39 +191,147 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     decisionRequestRef.current += 1;
     pendingDecisionRef.current = undefined;
 
+    let recoveryStarted = false;
     void taskClient
       .getTask(activeTaskId, controller.signal)
       .then((task) => {
+        if (controller.signal.aborted || activeTaskIdRef.current !== activeTaskId) return;
         const taskWithEarlyEvents = reduceEventsIntoDetail(
           task,
           eventsByTaskRef.current[activeTaskId] ?? [],
         );
-        setDetailsByTask((current) => {
-          const existing = current[activeTaskId];
-          return {
-            ...current,
-            [activeTaskId]: existing
-              ? {
-                  ...taskWithEarlyEvents,
-                  result: existing.result ?? taskWithEarlyEvents.result,
-                }
-              : taskWithEarlyEvents,
-          };
-        });
-        setTasks((current) => replaceTask(current, activeTaskId, () => taskWithEarlyEvents));
+        const currentDetails = detailsByTaskRef.current;
+        const existing = currentDetails[activeTaskId];
+        const nextTask = existing
+          ? detailAfterAuthoritativeReload(existing, taskWithEarlyEvents)
+          : taskWithEarlyEvents;
+        if (nextTask !== existing) {
+          const nextDetails = { ...currentDetails, [activeTaskId]: nextTask };
+          detailsByTaskRef.current = nextDetails;
+          setDetailsByTask(nextDetails);
+        }
+        const nextTasks = replaceTask(tasksRef.current, activeTaskId, (current) =>
+          summaryAfterAuthoritativeReload(current, taskWithEarlyEvents),
+        );
+        if (nextTasks !== tasksRef.current) {
+          tasksRef.current = nextTasks;
+          setTasks(nextTasks);
+        }
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && !recoveryStarted) {
           setDetailError(messageFrom(error));
         }
       });
+
+    let disconnectEpisodeOpen = false;
+    let recoveryRequest = 0;
+    let recoveryController: AbortController | undefined;
+    const recoverFromDisconnect = () => {
+      if (disconnectEpisodeOpen) return;
+      disconnectEpisodeOpen = true;
+      recoveryStarted = true;
+      const request = recoveryRequest + 1;
+      recoveryRequest = request;
+      recoveryController?.abort();
+      recoveryController = new AbortController();
+      const recoverySignal = AbortSignal.any([
+        controller.signal,
+        recoveryController.signal,
+        AbortSignal.timeout(15_000),
+      ]);
+      setStreamRecovery({
+        taskId: activeTaskId,
+        state: "recovering",
+        message: "Checking the API for the latest durable task state…",
+      });
+
+      void taskClient
+        .getTask(activeTaskId, recoverySignal)
+        .then((authoritativeTask) => {
+          if (
+            controller.signal.aborted ||
+            activeTaskIdRef.current !== activeTaskId ||
+            recoveryRequest !== request
+          ) {
+            return;
+          }
+          const retainedEvents = eventsByTaskRef.current[activeTaskId] ?? [];
+          const eventsAfterSnapshot = retainedEvents.filter((event) => {
+            const cursor = taskEventCursor(event.id);
+            return (
+              authoritativeTask.lastEventId === undefined ||
+              cursor === undefined ||
+              cursor > authoritativeTask.lastEventId
+            );
+          });
+          const reducedTask = reduceEventsIntoDetail(authoritativeTask, eventsAfterSnapshot);
+          const currentDetails = detailsByTaskRef.current;
+          const streamed = currentDetails[activeTaskId];
+          const nextTask = streamed
+            ? detailAfterAuthoritativeReload(streamed, reducedTask)
+            : reducedTask;
+          const currentTasks = tasksRef.current;
+          const currentSummary = currentTasks.find((task) => task.taskId === activeTaskId);
+          const nextSummary = currentSummary
+            ? summaryAfterAuthoritativeReload(currentSummary, reducedTask)
+            : undefined;
+          const recoveryConfirmed =
+            (streamed === undefined || nextTask === reducedTask) &&
+            (currentSummary === undefined || nextSummary === reducedTask);
+          if (nextTask !== streamed) {
+            const nextDetails = { ...currentDetails, [activeTaskId]: nextTask };
+            detailsByTaskRef.current = nextDetails;
+            setDetailsByTask(nextDetails);
+          }
+          const nextTasks = replaceTask(currentTasks, activeTaskId, (current) =>
+            summaryAfterAuthoritativeReload(current, reducedTask),
+          );
+          if (nextTasks !== currentTasks) {
+            tasksRef.current = nextTasks;
+            setTasks(nextTasks);
+          }
+          setStreamRecovery(
+            recoveryConfirmed
+              ? {
+                  taskId: activeTaskId,
+                  state: "recovered",
+                  message:
+                    "Recovered current task state from the API while the live stream reconnects.",
+                }
+              : {
+                  taskId: activeTaskId,
+                  state: "unconfirmed",
+                  message:
+                    "The live stream is newer than the API snapshot. The last known state is shown, but durable recovery is not yet confirmed.",
+                },
+          );
+        })
+        .catch((error: unknown) => {
+          if (
+            controller.signal.aborted ||
+            activeTaskIdRef.current !== activeTaskId ||
+            recoveryRequest !== request
+          ) {
+            return;
+          }
+          setStreamRecovery({
+            taskId: activeTaskId,
+            state: "failed",
+            message: `Could not recover current task state from the API. The last known state is still shown while the live stream reconnects. ${messageFrom(error)}`,
+          });
+        });
+    };
 
     let closeStream: () => void = () => undefined;
     closeStream = taskClient.subscribe(activeTaskId, {
       onConnectionChange: (state) => {
         setConnectionState(state);
         if (state === "connected") {
+          disconnectEpisodeOpen = false;
           setStreamError(undefined);
+        } else if (state === "reconnecting") {
+          recoverFromDisconnect();
         }
       },
       onError: setStreamError,
@@ -238,6 +353,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           }
           return;
         }
+        setStreamRecovery((current) =>
+          current?.taskId === activeTaskId && current.state !== "recovered" ? undefined : current,
+        );
         const activeBeforeEvent = getActiveInterrupt(eventsBeforeEvent);
         const nextEventsByTask = {
           ...eventsByTaskRef.current,
@@ -252,23 +370,38 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           }
           const eventResult =
             event.name === "run.completed" ? getCompletionResultText(event) : undefined;
+          const streamedTask = {
+            ...task,
+            pendingInterrupt: interruptAfterEvent(task.pendingInterrupt, event),
+            status: statusAfterEvent(task.status, event, task.pendingInterrupt),
+            result: eventResult ?? task.result,
+            lastEventId: streamedCursor ?? task.lastEventId,
+          };
+          const nextTask =
+            streamedCursor !== undefined &&
+            task.lastEventId !== undefined &&
+            streamedCursor <= task.lastEventId
+              ? detailAfterAuthoritativeReload(task, streamedTask)
+              : streamedTask;
+          if (nextTask === task) return current;
           return {
             ...current,
-            [activeTaskId]: {
-              ...task,
-              pendingInterrupt: interruptAfterEvent(task.pendingInterrupt, event),
-              status: statusAfterEvent(task.status, event, task.pendingInterrupt),
-              result: eventResult ?? task.result,
-              lastEventId: streamedCursor ?? task.lastEventId,
-            },
+            [activeTaskId]: nextTask,
           };
         });
         setTasks((current) =>
-          replaceTask(current, activeTaskId, (task) => ({
-            ...task,
-            status: statusAfterEvent(task.status, event, activeBeforeEvent),
-            lastEventId: streamedCursor ?? task.lastEventId,
-          })),
+          replaceTask(current, activeTaskId, (task) => {
+            const streamedTask = {
+              ...task,
+              status: statusAfterEvent(task.status, event, activeBeforeEvent),
+              lastEventId: streamedCursor ?? task.lastEventId,
+            };
+            return streamedCursor !== undefined &&
+              task.lastEventId !== undefined &&
+              streamedCursor <= task.lastEventId
+              ? summaryAfterAuthoritativeReload(task, streamedTask)
+              : streamedTask;
+          }),
         );
         if (event.name === "decision.recorded") {
           const pending = pendingDecisionRef.current;
@@ -338,6 +471,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
     return () => {
       controller.abort();
+      recoveryController?.abort();
       closeStream();
     };
   }, [activeTaskId]);
@@ -668,6 +802,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       activeTaskId,
       setActiveTaskId,
       connectionState,
+      streamRecovery,
       detailError,
       streamError,
       actionError,
@@ -697,6 +832,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       loadDetail,
       activeTaskId,
       connectionState,
+      streamRecovery,
       detailError,
       streamError,
       actionError,

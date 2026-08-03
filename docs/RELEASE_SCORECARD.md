@@ -33,7 +33,7 @@ through `9fd1fc143fee769954869d36f0642975b29f564e`. Adversarial-review fixes are
 pinned at `265da2a1f2cfb53a9ce0ad02c1f3169881801b01`. Durable completed-task
 restart/reopen proof is pinned at `8b4b8c9ca404e9e08369440bce4a88fed24d964d`,
 and blocking assistive-interaction proof is pinned at
-`c0fe7c9a076d7e8877f142975e292529b2118e9c`, reviewed 2026-08-03 PDT.
+`16d79c2268132e9a6f737b1b543e33d29b46e806`, reviewed 2026-08-03 PDT.
 
 | Program scenario | Implemented | Browser-proven | Hosted-proven | Release-accepted | Current evidence and exact gap |
 |---|---|---|---|---|---|

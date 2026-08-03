@@ -71,4 +71,12 @@ describe("AppShell accessibility landmarks", () => {
     expect(markup).toContain("Search or run a command…");
     expect(markup).toContain("⌘K");
   });
+
+  it("uses the canonical phone destinations and puts secondary routes in More", () => {
+    const markup = renderShell("Tasks");
+
+    expect(markup).toContain('aria-label="More destinations"');
+    expect(markup).toContain('aria-label="More destinations" aria-expanded="false"');
+    expect(markup).toContain("More</button>");
+  });
 });

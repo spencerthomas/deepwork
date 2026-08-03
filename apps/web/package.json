@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.9.0",
   "scripts": {
     "build": "next build --webpack",
     "dev": "next dev",
@@ -34,5 +33,6 @@
     "tw-animate-css": "^1.4.0",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
-  }
+  },
+  "packageManager": "pnpm@11.9.0"
 }

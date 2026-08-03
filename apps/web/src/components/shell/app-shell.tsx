@@ -7,6 +7,7 @@ import {
   Calendar,
   CheckCheck,
   Inbox,
+  Menu,
   Plus,
   Search,
   Settings,
@@ -126,6 +127,7 @@ export function AppShell({
   const router = useRouter();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Surface how many loaded tasks are waiting on a human decision so the count
   // is visible from every destination, not only the Approvals page itself.
@@ -279,7 +281,66 @@ export function AppShell({
         )}
       </div>
 
-      {/* Phone bottom navigation — the primary destinations under lg. */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close More menu"
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setMoreOpen(false)}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-more-title"
+            className="absolute inset-x-3 bottom-[calc(4.75rem_+_env(safe-area-inset-bottom))] rounded-2xl border border-border bg-card p-4 shadow-xl"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 id="mobile-more-title" className="text-sm font-semibold">
+                  More
+                </h2>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  Workspace, activity, and account controls
+                </p>
+              </div>
+              <WorkspaceBadge />
+            </div>
+            <nav aria-label="More destinations" className="mt-4 grid grid-cols-3 gap-2">
+              {tabs.slice(3).map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Icon className="size-5" />
+                    {tab.label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/settings"
+                onClick={() => setMoreOpen(false)}
+                className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Settings className="size-5" />
+                Settings
+              </Link>
+            </nav>
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2">
+              <p className="text-[12px] text-muted-foreground">
+                {runtimeDisclosure(taskClient.mode)}
+              </p>
+              <AccountMenu />
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Phone bottom navigation — Tasks, Approvals, Agents, and More. */}
       <nav
         aria-label="Primary navigation"
         className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden"
@@ -288,7 +349,7 @@ export function AppShell({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {tabs.map((tab) => {
+        {tabs.slice(0, 3).map((tab) => {
           const isActive = active === tab.label;
           const Icon = tab.icon;
           const badge = tab.label === "Approvals" ? approvalsBadge : null;
@@ -320,6 +381,21 @@ export function AppShell({
             </Link>
           );
         })}
+        <button
+          type="button"
+          aria-label="More destinations"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+          className={cn(
+            "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
+            moreOpen || ["Schedules", "Activity", "Settings"].includes(active)
+              ? "text-brand-accent"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Menu className="size-5" />
+          More
+        </button>
       </nav>
     </div>
   );

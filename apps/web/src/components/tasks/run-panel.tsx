@@ -85,7 +85,10 @@ export function RunPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>("status");
   const [streamFilter, setStreamFilter] = useState<ActivityFilter>("all");
-  const [trace, setTrace] = useState<{ state: "loading" | "available" | "unavailable"; url?: string }>({
+  const [trace, setTrace] = useState<{
+    state: "loading" | "available" | "unavailable";
+    url?: string;
+  }>({
     state: "loading",
   });
   useEffect(() => {

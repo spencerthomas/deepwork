@@ -16,9 +16,7 @@ const nextConfig: NextConfig = {
     root: repositoryRoot,
   },
   async rewrites() {
-    return [
-      { source: "/api/:path*", destination: `${apiOrigin}/api/:path*` },
-    ];
+    return [{ source: "/api/:path*", destination: `${apiOrigin}/api/:path*` }];
   },
 };
 

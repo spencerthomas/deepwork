@@ -36,7 +36,8 @@ function behaviorContract(mode: "api" | "fixture") {
     },
     {
       title: "Waits for approval",
-      detail: "Every task pauses for your approval before anything runs. You decide what happens next.",
+      detail:
+        "Every task pauses for your approval before anything runs. You decide what happens next.",
     },
     {
       title: runtimeCopy.executionTitle,

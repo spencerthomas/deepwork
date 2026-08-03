@@ -9,9 +9,6 @@ export function resolveApiBaseUrl(
 }
 
 export const webRuntimeConfig = Object.freeze({
-  apiBaseUrl: resolveApiBaseUrl(
-    process.env.NEXT_PUBLIC_API_BASE_URL,
-    process.env.NODE_ENV,
-  ),
+  apiBaseUrl: resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, process.env.NODE_ENV),
   demoMode: process.env.NEXT_PUBLIC_DEMO_MODE,
 });

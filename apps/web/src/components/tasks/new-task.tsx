@@ -136,64 +136,78 @@ export function NewTask() {
           description={runtimeCopy.newTaskDescription}
         />
 
-        <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {runtimeCopy.dispatchTargetLabel}
-        </label>
-        <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            className="flex items-start gap-3 rounded-2xl border border-brand bg-brand-soft p-3 text-left"
+        <fieldset className="mb-6">
+          <legend className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Choose agent
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Choose agent"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
           >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-              <Bot className="size-4" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-crisp">
-                {runtimeCopy.taskOriginLabel}
-              </span>
-              <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
-                plan · approval · evidence
-              </span>
-            </span>
-          </button>
-          {agentsAvailable && agents.length > 0 ? (
-            <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 text-left">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                <Bot className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-crisp">Agent</span>
-                <select
-                  value={agentId}
-                  disabled={creating}
-                  onChange={(event) => setAgentId(event.target.value)}
-                  className="mt-1 w-full truncate rounded-lg border border-border bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground outline-none disabled:opacity-60"
-                >
-                  {agents.map((agent) => (
-                    <option key={agent.agentId} value={agent.isDefault ? "" : agent.agentId}>
-                      {agent.name}
-                      {agent.isDefault ? " (default)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </label>
-          ) : (
-            <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-3 text-left">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-                <Bot className="size-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-muted-foreground">
-                  External agent sources
+            {agentsAvailable && agents.length > 0 ? (
+              agents.map((agent) => {
+                const value = agent.isDefault ? "" : agent.agentId;
+                const selected = agentId === value;
+                return (
+                  <button
+                    key={agent.agentId}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={creating}
+                    onClick={() => setAgentId(value)}
+                    className={cn(
+                      "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-60",
+                      selected
+                        ? "border-brand bg-brand-soft"
+                        : "border-border bg-card hover:bg-accent/50",
+                    )}
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                      <Bot className="size-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-crisp">
+                        {agent.name}
+                        {agent.isDefault ? (
+                          <span className="ml-1.5 font-normal text-muted-foreground">default</span>
+                        ) : null}
+                      </span>
+                      <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
+                        {agent.description?.trim() ||
+                          "Connected through the configured agent registry."}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })
+            ) : (
+              <button
+                type="button"
+                role="radio"
+                aria-checked="true"
+                disabled
+                className="flex min-h-24 items-start gap-3 rounded-2xl border border-brand bg-brand-soft p-3 text-left disabled:opacity-100"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                  <Bot className="size-4" />
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {runtimeCopy.sourceSelectionDescription}
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-crisp">
+                    {runtimeCopy.taskOriginLabel}
+                  </span>
+                  <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
+                    {runtimeCopy.sourceSelectionDescription}
+                  </span>
+                  <span className="mt-2 block font-mono text-[11px] text-muted-foreground">
+                    plan · approval · evidence
+                  </span>
                 </span>
-              </span>
-            </div>
-          )}
-        </div>
+              </button>
+            )}
+          </div>
+        </fieldset>
 
         <label
           htmlFor="new-task-prompt"
@@ -294,6 +308,25 @@ export function NewTask() {
             </p>
           </div>
         )}
+
+        <details className="mt-4 rounded-2xl border border-border bg-card p-3 lg:hidden">
+          <summary className="cursor-pointer text-[13px] font-medium">
+            Start from a template
+          </summary>
+          <div className="mt-2 grid gap-1">
+            {templates.map((template) => (
+              <button
+                key={template}
+                type="button"
+                disabled={creating}
+                onClick={() => setPrompt(template)}
+                className="rounded-xl px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+              >
+                {template}
+              </button>
+            ))}
+          </div>
+        </details>
 
         <p className="mt-3 text-[13px] text-muted-foreground">
           The run streams into your inbox. The agent pauses at its proposed plan — you can edit the

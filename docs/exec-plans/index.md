@@ -6,6 +6,7 @@ keeps progress, discoveries, decisions, validation, and outcome current.
 
 ## Active
 
+- [Product recovery golden journey](active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md)
 - [Canonical program coordination](active/DW-EXEC-PROGRAM-CANONICAL.md)
 - [Wave 1 repository scaffold](active/DW-EXEC-M1-REPOSITORY-SCAFFOLD.md)
 - [Wave 1 TypeScript package scaffold rework](active/DW-EXEC-M1-TS-PACKAGES-SCAFFOLD.md)

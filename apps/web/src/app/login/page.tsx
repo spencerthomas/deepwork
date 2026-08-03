@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 
 import { BeamField } from "@/components/auth/beam-field";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { loginWithAccessKey } from "@/lib/auth-client";
 
 const trust = [
   {
@@ -34,16 +35,14 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ accessKey }),
-      });
-      if (response.ok) {
+      const result = await loginWithAccessKey(accessKey);
+      if (result.ok) {
         window.location.assign("/tasks");
         return;
       }
-      setError(response.status === 401 ? "That access key was not accepted." : "Sign in failed.");
+      setError(
+        result.reason === "rejected" ? "That access key was not accepted." : "Sign in failed.",
+      );
     } catch {
       setError("Could not reach Deep Work. Please try again.");
     }

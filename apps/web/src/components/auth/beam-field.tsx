@@ -1,28 +1,30 @@
+import { memo } from "react";
+
 import { cn } from "@/lib/utils";
 
-/** Decorative beam field from the binding front-end reference. */
-export function BeamField({ className }: { className?: string }) {
-  const width = 1000;
-  const height = 700;
-  const focal = { x: width * 0.9, y: height * 0.5 };
-  const dots = Array.from({ length: 14 * 20 }, (_, index) => {
-    const row = Math.floor(index / 20);
-    const column = index % 20;
-    return {
-      x: 40 + (column / 19) * (width * 0.5),
-      y: 40 + (row / 13) * (height - 80),
-      delay: (column * 0.12 + row * 0.09) % 3,
-    };
-  });
-  const beams = Array.from({ length: 16 }, (_, index) => {
-    const position = index / 15;
-    return {
-      x: width * 0.52,
-      y: 60 + position * (height - 120),
-      opacity: Math.max(0.08, 0.5 - Math.abs(position - 0.5) * 0.7),
-    };
-  });
+const WIDTH = 1000;
+const HEIGHT = 700;
+const FOCAL = { x: WIDTH * 0.9, y: HEIGHT * 0.5 };
+const DOTS = Array.from({ length: 14 * 20 }, (_, index) => {
+  const row = Math.floor(index / 20);
+  const column = index % 20;
+  return {
+    x: 40 + (column / 19) * (WIDTH * 0.5),
+    y: 40 + (row / 13) * (HEIGHT - 80),
+    delay: (column * 0.12 + row * 0.09) % 3,
+  };
+});
+const BEAMS = Array.from({ length: 16 }, (_, index) => {
+  const position = index / 15;
+  return {
+    x: WIDTH * 0.52,
+    y: 60 + position * (HEIGHT - 120),
+    opacity: Math.max(0.08, 0.5 - Math.abs(position - 0.5) * 0.7),
+  };
+});
 
+/** Decorative beam field from the binding front-end reference. */
+export const BeamField = memo(function BeamField({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
@@ -30,7 +32,7 @@ export function BeamField({ className }: { className?: string }) {
     >
       <svg
         className="h-full w-full"
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="xMidYMid slice"
         fill="none"
       >
@@ -41,7 +43,7 @@ export function BeamField({ className }: { className?: string }) {
           </radialGradient>
         </defs>
         <g fill="var(--hero)">
-          {dots.map((dot, index) => (
+          {DOTS.map((dot, index) => (
             <circle
               key={index}
               cx={dot.x}
@@ -55,20 +57,20 @@ export function BeamField({ className }: { className?: string }) {
           ))}
         </g>
         <g stroke="var(--hero)" strokeWidth={1}>
-          {beams.map((beam, index) => (
+          {BEAMS.map((beam, index) => (
             <g key={index}>
               <line
                 x1={beam.x}
                 y1={beam.y}
-                x2={focal.x}
-                y2={focal.y}
+                x2={FOCAL.x}
+                y2={FOCAL.y}
                 strokeOpacity={beam.opacity * 0.35}
               />
               <line
                 x1={beam.x}
                 y1={beam.y}
-                x2={focal.x}
-                y2={focal.y}
+                x2={FOCAL.x}
+                y2={FOCAL.y}
                 strokeOpacity={beam.opacity}
                 className="beam-flow"
                 style={{ animationDelay: `${(index % 5) * 0.2}s` }}
@@ -76,9 +78,9 @@ export function BeamField({ className }: { className?: string }) {
             </g>
           ))}
         </g>
-        <circle cx={focal.x} cy={focal.y} r={120} fill="url(#login-beam-focal)" />
-        <circle cx={focal.x} cy={focal.y} r={3} fill="var(--hero)" />
+        <circle cx={FOCAL.x} cy={FOCAL.y} r={120} fill="url(#login-beam-focal)" />
+        <circle cx={FOCAL.x} cy={FOCAL.y} r={3} fill="var(--hero)" />
       </svg>
     </div>
   );
-}
+});

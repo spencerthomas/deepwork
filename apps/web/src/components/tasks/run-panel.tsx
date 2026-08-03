@@ -133,7 +133,16 @@ export function RunPanel({
     () => events.filter((event) => eventMatchesActivityFilter(event.name, streamFilter)),
     [events, streamFilter],
   );
-  const artifacts = useMemo(() => buildTaskArtifacts(detail, evidence), [detail, evidence]);
+  const artifacts = useMemo(
+    () =>
+      tab === "files"
+        ? buildTaskArtifacts(detail, evidence).map((artifact) => ({
+            ...artifact,
+            downloadHref: artifactDownloadHref(artifact),
+          }))
+        : [],
+    [detail?.result, detail?.taskId, evidence, tab],
+  );
 
   // Reflect the active tab in the URL so a task's Evidence, Stream, or Trace
   // view is deep-linkable and survives a refresh or reopening the panel — the
@@ -435,7 +444,7 @@ export function RunPanel({
                           </p>
                         </div>
                         <a
-                          href={artifactDownloadHref(artifact)}
+                          href={artifact.downloadHref}
                           download={artifact.name}
                           aria-label={`Download ${artifact.name}`}
                           className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

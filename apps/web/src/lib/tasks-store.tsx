@@ -38,11 +38,18 @@ function messageFrom(error: unknown): string {
 }
 
 function replaceTask(
-  tasks: readonly TaskSummary[],
+  tasks: TaskSummary[],
   taskId: string,
   update: (task: TaskSummary) => TaskSummary,
 ): TaskSummary[] {
-  return tasks.map((task) => (task.taskId === taskId ? update(task) : task));
+  let changed = false;
+  const next = tasks.map((task) => {
+    if (task.taskId !== taskId) return task;
+    const updated = update(task);
+    changed ||= updated !== task;
+    return updated;
+  });
+  return changed ? next : tasks;
 }
 
 export interface TasksStore {
@@ -401,21 +408,30 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           "The decision receipt did not match the selected task, run, and interrupt.",
         );
       }
-      // A matching 202 receipt means the authoritative API accepted this
-      // interrupt and resumed the task. Reflect that running state immediately
-      // while SSE carries the same decision event and eventual completion.
-      setDetailsByTask((current) => {
-        const task = current[taskId];
-        return task
-          ? {
-              ...current,
-              [taskId]: { ...task, status: "running", pendingInterrupt: undefined },
-            }
-          : current;
-      });
-      setTasks((current) =>
-        replaceTask(current, taskId, (task) => ({ ...task, status: "running" })),
-      );
+      if (receipt.duplicate) {
+        const currentTask = await taskClient.getTask(taskId);
+        setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
+        setTasks((current) => replaceTask(current, taskId, () => currentTask));
+      } else {
+        // A matching new receipt means the authoritative API accepted this
+        // interrupt and resumed the task. Reflect that running state immediately
+        // while SSE carries the same decision event and eventual completion.
+        setDetailsByTask((current) => {
+          const task = current[taskId];
+          if (!task || (task.status === "running" && task.pendingInterrupt === undefined)) {
+            return current;
+          }
+          return {
+            ...current,
+            [taskId]: { ...task, status: "running", pendingInterrupt: undefined },
+          };
+        });
+        setTasks((current) =>
+          replaceTask(current, taskId, (task) =>
+            task.status === "running" ? task : { ...task, status: "running" },
+          ),
+        );
+      }
       if (
         pendingDecisionRef.current?.requestId === requestId &&
         activeTaskIdRef.current === taskId

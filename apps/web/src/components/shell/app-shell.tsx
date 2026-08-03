@@ -51,6 +51,12 @@ const tabs: readonly Destination[] = [
   { label: "Schedules", href: "/schedules", icon: Calendar },
   { label: "Activity", href: "/activity", icon: Activity },
 ];
+const settingsDestination: Destination = {
+  label: "Settings",
+  href: "/settings",
+  icon: Settings,
+};
+const moreDestinations: readonly Destination[] = [...tabs.slice(3), settingsDestination];
 
 function Logo() {
   return (
@@ -209,7 +215,9 @@ export function AppShell({
           >
             <Settings className="size-4" />
           </Link>
-          <AccountMenu />
+          <div className="hidden lg:block">
+            <AccountMenu />
+          </div>
           <Link
             href="/tasks/new"
             aria-label="New task"
@@ -307,7 +315,7 @@ export function AppShell({
               <WorkspaceBadge />
             </div>
             <nav aria-label="More destinations" className="mt-4 grid grid-cols-3 gap-2">
-              {tabs.slice(3).map((tab) => {
+              {moreDestinations.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <Link
@@ -321,14 +329,6 @@ export function AppShell({
                   </Link>
                 );
               })}
-              <Link
-                href="/settings"
-                onClick={() => setMoreOpen(false)}
-                className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Settings className="size-5" />
-                Settings
-              </Link>
             </nav>
             <div className="mt-3 flex items-center justify-between rounded-xl bg-secondary/60 px-3 py-2">
               <p className="text-[12px] text-muted-foreground">
@@ -388,7 +388,7 @@ export function AppShell({
           onClick={() => setMoreOpen((open) => !open)}
           className={cn(
             "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-            moreOpen || ["Schedules", "Activity", "Settings"].includes(active)
+            moreOpen || moreDestinations.some(({ label }) => label === active)
               ? "text-brand-accent"
               : "text-muted-foreground hover:text-foreground",
           )}

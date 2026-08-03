@@ -28,6 +28,7 @@ import {
   summaryAfterAuthoritativeReload,
   taskEventCursor,
 } from "./task-normalizers";
+import { appendUniqueTaskEvent } from "./task-event-index";
 import type {
   ConnectionState,
   DecisionInput,
@@ -114,6 +115,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [submittedDecision, setSubmittedDecision] = useState<DecisionInput["decision"]>();
   const [listAttempt, setListAttempt] = useState(0);
   const eventsByTaskRef = useRef<Record<string, TaskEvent[]>>({});
+  const seenEventIdsByTaskRef = useRef<Record<string, Set<string>>>({});
   const decisionRequestRef = useRef(0);
   const pendingDecisionRef = useRef<
     | {
@@ -221,18 +223,28 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       onEvent: (event) => {
         const streamedCursor = taskEventCursor(event.id);
         const eventsBeforeEvent = eventsByTaskRef.current[activeTaskId] ?? [];
+        const seenEventIds =
+          seenEventIdsByTaskRef.current[activeTaskId] ??
+          new Set(eventsBeforeEvent.map((candidate) => candidate.id));
+        seenEventIdsByTaskRef.current[activeTaskId] = seenEventIds;
+        const nextTaskEvents = appendUniqueTaskEvent(eventsBeforeEvent, seenEventIds, event);
+        if (nextTaskEvents === undefined) {
+          // A reopened completed task may replay its retained terminal event.
+          // The state transition is already applied, but this new subscription
+          // still needs to close instead of remaining connected forever.
+          if (event.name === "run.completed") {
+            setStreamError(undefined);
+            closeStream();
+          }
+          return;
+        }
         const activeBeforeEvent = getActiveInterrupt(eventsBeforeEvent);
-        setEventsByTask((current) => {
-          const taskEvents = current[activeTaskId] ?? [];
-          const next = taskEvents.some((candidate) => candidate.id === event.id)
-            ? current
-            : {
-                ...current,
-                [activeTaskId]: [...taskEvents, event],
-              };
-          eventsByTaskRef.current = next;
-          return next;
-        });
+        const nextEventsByTask = {
+          ...eventsByTaskRef.current,
+          [activeTaskId]: nextTaskEvents,
+        };
+        eventsByTaskRef.current = nextEventsByTask;
+        setEventsByTask(nextEventsByTask);
         setDetailsByTask((current) => {
           const task = current[activeTaskId];
           if (!task) {

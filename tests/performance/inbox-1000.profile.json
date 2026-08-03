@@ -28,9 +28,13 @@
     "maximumMountedTaskRows": 50,
     "maximumMountedThreadUpdates": 100,
     "maximumMountedStreamRows": 100,
-    "longStreamReadyMs": 4000
+    "longStreamReadyMs": 4000,
+    "incrementalStreamReadyMs": 5000,
+    "maximumMainThreadTimerLagMs": 100,
+    "maximumLongTaskMs": 100
   },
   "qualification": {
+    "incrementalStreamSynthetic": true,
     "referenceDeviceAccepted": false,
     "manualAssistiveTechnologyAccepted": false,
     "hostedLoadAccepted": false

@@ -2,7 +2,7 @@
 
 import { Check, ClipboardList, MessageSquare, ShieldQuestion, X } from "lucide-react";
 import type { ComponentType } from "react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { ContractError, unicodeLength, validateDecisionComment } from "../../lib/task-normalizers";
 import type { ActiveInterrupt, DecisionInput, ProposedPlan } from "../../lib/task-types";
@@ -33,6 +33,7 @@ interface ApprovalDecisionPanelProps {
   interrupt: ActiveInterrupt;
   /** Returns an error message on failure, undefined on success. */
   onDecide: (input: DecisionInput) => Promise<string | undefined>;
+  onDecisionError?: (message: string) => void;
   onResolved: (decision: DecisionVerb) => void;
   plan?: ProposedPlan;
 }
@@ -45,12 +46,14 @@ interface ApprovalDecisionPanelProps {
 export function ApprovalDecisionPanel({
   interrupt,
   onDecide,
+  onDecisionError,
   onResolved,
   plan,
 }: ApprovalDecisionPanelProps) {
   const [comment, setComment] = useState("");
   const [pendingVerb, setPendingVerb] = useState<DecisionVerb>();
   const [error, setError] = useState<string>();
+  const submissionRef = useRef(false);
   const commentId = useId();
 
   const verbs = orderedDecisions(interrupt);
@@ -59,6 +62,7 @@ export function ApprovalDecisionPanel({
   const preview = plan ? planPreview(plan) : undefined;
 
   async function submit(verb: DecisionVerb) {
+    if (submissionRef.current) return;
     let normalizedComment: string | undefined;
     try {
       normalizedComment = validateDecisionComment(comment);
@@ -75,16 +79,26 @@ export function ApprovalDecisionPanel({
       return;
     }
 
+    submissionRef.current = true;
     setPendingVerb(verb);
     setError(undefined);
-    const failure = await onDecide({
-      interruptId: interrupt.interruptId,
-      decision: verb,
-      ...(normalizedComment === undefined ? {} : { comment: normalizedComment }),
-    });
-    setPendingVerb(undefined);
+    let failure: string | undefined;
+    try {
+      failure = await onDecide({
+        interruptId: interrupt.interruptId,
+        decision: verb,
+        ...(normalizedComment === undefined ? {} : { comment: normalizedComment }),
+      });
+    } finally {
+      submissionRef.current = false;
+      setPendingVerb(undefined);
+    }
     if (failure !== undefined) {
-      setError(failure);
+      if (onDecisionError) {
+        onDecisionError(failure);
+      } else {
+        setError(failure);
+      }
     } else {
       setComment("");
       onResolved(verb);

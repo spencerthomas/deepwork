@@ -168,6 +168,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   }, []);
   const [rerunAttempted, setRerunAttempted] = useState(false);
   const resultRegionRef = useRef<HTMLDivElement>(null);
+  const decisionNoticeRef = useRef<HTMLDivElement>(null);
 
   const selected = tasks.find((task) => task.taskId === taskId);
   const detail = detailsByTask[taskId];
@@ -177,6 +178,11 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     () => (detail ? detail.pendingInterrupt : getActiveInterrupt(events)),
     [detail, events],
   );
+  useEffect(() => {
+    if (actionError !== undefined) {
+      decisionNoticeRef.current?.focus();
+    }
+  }, [actionError]);
   const plan = useMemo(
     () => getLatestPlan(detail?.proposedPlan, events),
     [detail?.proposedPlan, events],
@@ -361,6 +367,18 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           </div>
         )}
 
+        {actionError !== undefined && (selected || detail) && (
+          <div
+            ref={decisionNoticeRef}
+            tabIndex={-1}
+            className="mb-4 flex items-center gap-3 rounded-2xl border border-status-review/30 bg-status-review-bg px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            role="alert"
+          >
+            <AlertTriangle className="size-4 shrink-0 text-status-review" />
+            <p className="min-w-0 text-sm text-foreground/90">{actionError}</p>
+          </div>
+        )}
+
         {streamRecovery?.taskId === taskId && (selected || detail) && (
           <div
             className={cn(
@@ -469,7 +487,6 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                         interrupt={activeInterrupt}
                         submitting={submittingDecision}
                         submittedDecision={submittedDecision}
-                        error={actionError}
                         onDecide={decide}
                       />
                     </div>
@@ -547,7 +564,6 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                     interrupt={activeInterrupt}
                     submitting={submittingDecision}
                     submittedDecision={submittedDecision}
-                    error={actionError}
                     onDecide={decide}
                   />
                 </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  decisionPreflightProblem,
   detailAfterAcceptedDecision,
   detailAfterAuthoritativeReload,
   getCompletionResultText,
@@ -115,6 +116,55 @@ describe("validateDecisionComment", () => {
       decision: "approve",
       comment: undefined,
     });
+  });
+});
+
+describe("decision preflight", () => {
+  const waitingTask: TaskDetail = {
+    taskId: "task-1",
+    runId: "run-1",
+    title: "Review a plan",
+    status: "waiting-approval",
+    pendingInterrupt: {
+      interruptId: "interrupt-1",
+      decisions: ["approve", "reject"],
+      title: "Approval required",
+      question: "Review the plan.",
+    },
+  };
+
+  it("permits only a current advertised decision", () => {
+    expect(
+      decisionPreflightProblem(waitingTask, {
+        interruptId: "interrupt-1",
+        decision: "approve",
+      }),
+    ).toBeUndefined();
+    expect(
+      decisionPreflightProblem(waitingTask, {
+        interruptId: "interrupt-1",
+        decision: "respond",
+        comment: "Revise it.",
+      }),
+    ).toContain("does not offer respond");
+  });
+
+  it("blocks resolved and replaced interrupts before submission", () => {
+    expect(
+      decisionPreflightProblem(
+        { ...waitingTask, status: "completed", pendingInterrupt: undefined },
+        { interruptId: "interrupt-1", decision: "approve" },
+      ),
+    ).toContain("no longer current");
+    expect(
+      decisionPreflightProblem(
+        {
+          ...waitingTask,
+          pendingInterrupt: { ...waitingTask.pendingInterrupt!, interruptId: "interrupt-2" },
+        },
+        { interruptId: "interrupt-1", decision: "approve" },
+      ),
+    ).toContain("changed before submission");
   });
 });
 
@@ -370,6 +420,16 @@ describe("terminal result handling", () => {
       pendingInterrupt: { ...revised.pendingInterrupt!, interruptId: "interrupt-1" },
     };
     expect(detailAfterAuthoritativeReload(revised, stale)).toBe(revised);
+
+    const newerReplacement: TaskDetail = {
+      ...revised,
+      lastEventId: 11,
+      pendingInterrupt: { ...revised.pendingInterrupt!, interruptId: "interrupt-3" },
+    };
+    expect(detailAfterAuthoritativeReload(revised, newerReplacement)).toBe(newerReplacement);
+    expect(
+      detailAfterAuthoritativeReload({ ...revised, lastEventId: undefined }, newerReplacement),
+    ).toBe(newerReplacement);
   });
 
   it("keeps a newer nonterminal summary when a duplicate reload resolves late", () => {

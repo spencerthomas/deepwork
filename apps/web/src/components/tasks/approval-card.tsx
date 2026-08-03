@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MessageSquareReply, ShieldQuestion, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { unicodeLength, validateDecisionComment } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, DecisionInput } from "@/lib/task-types";
@@ -30,6 +30,7 @@ export function ApprovalCard({
   const fieldId = useId();
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string>();
+  const submissionRef = useRef(false);
   const disabled = submitting || submittedDecision !== undefined;
   // Length is measured the same way validateDecisionComment measures it — on the
   // trimmed value — so the visible/accessible invalid state matches what submits.
@@ -46,6 +47,7 @@ export function ApprovalCard({
     .join(" ");
 
   async function decide(decision: DecisionInput["decision"]) {
+    if (submissionRef.current) return;
     const trimmed = comment.trim() === "" ? undefined : comment;
     if (decision === "respond" && trimmed === undefined) {
       setValidationError("A response needs a comment so the agent knows how to revise the plan.");
@@ -60,11 +62,16 @@ export function ApprovalCard({
       }
     }
     setValidationError(undefined);
-    await onDecide({
-      interruptId: interrupt.interruptId,
-      decision,
-      ...(trimmed !== undefined ? { comment: trimmed } : {}),
-    });
+    submissionRef.current = true;
+    try {
+      await onDecide({
+        interruptId: interrupt.interruptId,
+        decision,
+        ...(trimmed !== undefined ? { comment: trimmed } : {}),
+      });
+    } finally {
+      submissionRef.current = false;
+    }
   }
 
   return (

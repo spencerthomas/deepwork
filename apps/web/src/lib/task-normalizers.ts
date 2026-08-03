@@ -618,6 +618,30 @@ export function detailAfterAcceptedDecision(task: TaskDetail, interruptId: strin
   return { ...task, status: "running", pendingInterrupt: undefined };
 }
 
+export const STALE_DECISION_MESSAGE =
+  "This approval is no longer current. No decision was sent. The latest task state is shown.";
+
+/**
+ * Validate a decision against the freshly reconciled task projection. This is
+ * a user-facing preflight, not the authority boundary: the API still owns the
+ * atomic stale/idempotency check for a race that happens after this read.
+ */
+export function decisionPreflightProblem(
+  task: TaskDetail,
+  input: DecisionInput,
+): string | undefined {
+  if (task.status !== "waiting-approval" || task.pendingInterrupt === undefined) {
+    return STALE_DECISION_MESSAGE;
+  }
+  if (task.pendingInterrupt.interruptId !== input.interruptId) {
+    return "The approval changed before submission. No decision was sent. Review the latest request.";
+  }
+  if (!task.pendingInterrupt.decisions.includes(input.decision)) {
+    return `The current approval does not offer ${input.decision}. No decision was sent.`;
+  }
+  return undefined;
+}
+
 /** Preserve newer streamed state when an awaited detail reload resolves late. */
 export function detailAfterAuthoritativeReload(
   current: TaskDetail,
@@ -630,7 +654,9 @@ export function detailAfterAuthoritativeReload(
     current.status === "waiting-approval" &&
     current.pendingInterrupt !== undefined &&
     incoming.pendingInterrupt !== undefined &&
-    current.pendingInterrupt.interruptId !== incoming.pendingInterrupt.interruptId
+    current.pendingInterrupt.interruptId !== incoming.pendingInterrupt.interruptId &&
+    (incoming.lastEventId === undefined ||
+      (current.lastEventId !== undefined && incoming.lastEventId <= current.lastEventId))
   ) {
     return current;
   }

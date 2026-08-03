@@ -19,6 +19,7 @@ import { taskClient } from "./task-client";
 import {
   detailAfterAcceptedDecision,
   detailAfterAuthoritativeReload,
+  decisionPreflightProblem,
   getActiveInterrupt,
   getCompletionResultText,
   interruptAfterEvent,
@@ -123,6 +124,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const eventsByTaskRef = useRef<Record<string, TaskEvent[]>>({});
   const seenEventIdsByTaskRef = useRef<Record<string, Set<string>>>({});
   const decisionRequestRef = useRef(0);
+  const decisionSubmissionRef = useRef<{ requestId: number; taskId: string } | undefined>(
+    undefined,
+  );
+  const taskDecisionSubmissionIdsRef = useRef<Set<string>>(new Set());
   const pendingDecisionRef = useRef<
     | {
         interruptId: string;
@@ -532,117 +537,154 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const decide = useCallback(async (input: DecisionInput): Promise<void> => {
-    const taskId = activeTaskIdRef.current;
-    if (!taskId) {
-      return;
-    }
+  const reconcileTaskSnapshot = useCallback(
+    (taskId: string, authoritativeTask: TaskDetail): TaskDetail => {
+      const currentDetails = detailsByTaskRef.current;
+      const streamedDetail = currentDetails[taskId];
+      const currentTask = streamedDetail
+        ? detailAfterAuthoritativeReload(streamedDetail, authoritativeTask)
+        : authoritativeTask;
+      if (currentTask !== streamedDetail) {
+        const nextDetails = { ...currentDetails, [taskId]: currentTask };
+        detailsByTaskRef.current = nextDetails;
+        setDetailsByTask(nextDetails);
+      }
 
-    const requestId = decisionRequestRef.current + 1;
-    decisionRequestRef.current = requestId;
-    pendingDecisionRef.current = {
-      taskId,
-      interruptId: input.interruptId,
-      requestId,
-    };
-    setSubmittingDecision(true);
-    setActionError(undefined);
-    try {
-      const receipt = await taskClient.decide(taskId, input);
-      const expectedRunId =
-        detailsByTaskRef.current[taskId]?.runId ??
-        tasksRef.current.find((task) => task.taskId === taskId)?.runId;
-      if (
-        receipt.taskId !== taskId ||
-        receipt.interruptId !== input.interruptId ||
-        receipt.decision !== input.decision ||
-        (expectedRunId !== undefined && receipt.runId !== expectedRunId)
-      ) {
-        throw new Error(
-          "The decision receipt did not match the selected task, run, and interrupt.",
-        );
+      const currentTasks = tasksRef.current;
+      const nextTasks = replaceTask(currentTasks, taskId, (streamedSummary) =>
+        summaryAfterAuthoritativeReload(streamedSummary, currentTask),
+      );
+      if (nextTasks !== currentTasks) {
+        tasksRef.current = nextTasks;
+        setTasks(nextTasks);
       }
-      if (receipt.duplicate) {
-        const currentTask = await taskClient.getTask(taskId);
-        setDetailsByTask((current) => {
-          const streamed = current[taskId];
-          return {
-            ...current,
-            [taskId]: streamed
-              ? detailAfterAuthoritativeReload(streamed, currentTask)
-              : currentTask,
-          };
-        });
-        setTasks((current) =>
-          replaceTask(current, taskId, (streamed) =>
-            summaryAfterAuthoritativeReload(streamed, currentTask),
-          ),
-        );
-      } else {
-        // A matching new receipt means the authoritative API accepted this
-        // interrupt and resumed the task. Reflect that running state immediately
-        // while SSE carries the same decision event and eventual completion.
-        setDetailsByTask((current) => {
-          const task = current[taskId];
-          if (!task) {
-            return current;
-          }
-          const updated = detailAfterAcceptedDecision(task, input.interruptId);
-          if (updated === task) return current;
-          return {
-            ...current,
-            [taskId]: updated,
-          };
-        });
-        // Do not optimistically rewrite the list summary: a decision event may
-        // already have advanced it to a newer interrupt or terminal state.
-        // The active detail above is enough for immediate feedback, and the
-        // authoritative stream/detail reload owns the summary.
+      return currentTask;
+    },
+    [],
+  );
+
+  const decide = useCallback(
+    async (input: DecisionInput): Promise<void> => {
+      const taskId = activeTaskIdRef.current;
+      if (!taskId) {
+        return;
       }
-      if (
-        pendingDecisionRef.current?.requestId === requestId &&
-        activeTaskIdRef.current === taskId
-      ) {
-        setSubmittedDecision(input.decision);
-      }
-    } catch (error) {
-      if (
-        pendingDecisionRef.current?.requestId === requestId &&
-        activeTaskIdRef.current === taskId
-      ) {
-        try {
-          const currentTask = await recoverCurrentTaskAfterDecisionProblem(
-            taskClient,
-            taskId,
-            error,
-          );
-          if (currentTask) {
-            setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
-            setTasks((current) => replaceTask(current, taskId, () => currentTask));
-            pendingDecisionRef.current = undefined;
-            setSubmittedDecision(undefined);
-            setSubmittingDecision(false);
-            setActionError(
-              `${messageFrom(error)} The current task and interruption were reloaded. Review the available actions before deciding again.`,
-            );
-          } else {
-            setActionError(messageFrom(error));
-          }
-        } catch (refreshError) {
-          setActionError(
-            `${messageFrom(error)} Deep Work could not reload the current interruption: ${messageFrom(refreshError)}`,
+      if (decisionSubmissionRef.current?.taskId === taskId) return;
+
+      const requestId = decisionRequestRef.current + 1;
+      decisionRequestRef.current = requestId;
+      decisionSubmissionRef.current = { taskId, requestId };
+      pendingDecisionRef.current = {
+        taskId,
+        interruptId: input.interruptId,
+        requestId,
+      };
+      setSubmittingDecision(true);
+      setActionError(undefined);
+      try {
+        const authoritativeTask = await taskClient.getTask(taskId, AbortSignal.timeout(15_000));
+        const currentTask = reconcileTaskSnapshot(taskId, authoritativeTask);
+        if (
+          activeTaskIdRef.current !== taskId ||
+          pendingDecisionRef.current?.requestId !== requestId
+        ) {
+          return;
+        }
+        const preflightProblem =
+          decisionPreflightProblem(authoritativeTask, input) ??
+          decisionPreflightProblem(currentTask, input);
+        if (preflightProblem !== undefined) {
+          pendingDecisionRef.current = undefined;
+          setSubmittedDecision(undefined);
+          setSubmittingDecision(false);
+          setActionError(preflightProblem);
+          return;
+        }
+        const receipt = await taskClient.decide(taskId, input);
+        const expectedRunId =
+          detailsByTaskRef.current[taskId]?.runId ??
+          tasksRef.current.find((task) => task.taskId === taskId)?.runId;
+        if (
+          receipt.taskId !== taskId ||
+          receipt.interruptId !== input.interruptId ||
+          receipt.decision !== input.decision ||
+          (expectedRunId !== undefined && receipt.runId !== expectedRunId)
+        ) {
+          throw new Error(
+            "The decision receipt did not match the selected task, run, and interrupt.",
           );
         }
+        if (receipt.duplicate) {
+          reconcileTaskSnapshot(taskId, await taskClient.getTask(taskId));
+        } else {
+          // A matching new receipt means the authoritative API accepted this
+          // interrupt and resumed the task. Reflect that running state immediately
+          // while SSE carries the same decision event and eventual completion.
+          setDetailsByTask((current) => {
+            const task = current[taskId];
+            if (!task) {
+              return current;
+            }
+            const updated = detailAfterAcceptedDecision(task, input.interruptId);
+            if (updated === task) return current;
+            return {
+              ...current,
+              [taskId]: updated,
+            };
+          });
+          // Do not optimistically rewrite the list summary: a decision event may
+          // already have advanced it to a newer interrupt or terminal state.
+          // The active detail above is enough for immediate feedback, and the
+          // authoritative stream/detail reload owns the summary.
+        }
+        if (
+          pendingDecisionRef.current?.requestId === requestId &&
+          activeTaskIdRef.current === taskId
+        ) {
+          setSubmittedDecision(input.decision);
+        }
+      } catch (error) {
+        if (
+          pendingDecisionRef.current?.requestId === requestId &&
+          activeTaskIdRef.current === taskId
+        ) {
+          try {
+            const currentTask = await recoverCurrentTaskAfterDecisionProblem(
+              taskClient,
+              taskId,
+              error,
+            );
+            if (currentTask) {
+              reconcileTaskSnapshot(taskId, currentTask);
+              pendingDecisionRef.current = undefined;
+              setSubmittedDecision(undefined);
+              setSubmittingDecision(false);
+              setActionError(
+                `${messageFrom(error)} The current task and interruption were reloaded. Review the available actions before deciding again.`,
+              );
+            } else {
+              setActionError(messageFrom(error));
+            }
+          } catch (refreshError) {
+            setActionError(
+              `${messageFrom(error)} Deep Work could not reload the current interruption: ${messageFrom(refreshError)}`,
+            );
+          }
+        }
+      } finally {
+        if (decisionSubmissionRef.current?.requestId === requestId) {
+          decisionSubmissionRef.current = undefined;
+        }
+        if (
+          pendingDecisionRef.current?.requestId === requestId &&
+          activeTaskIdRef.current === taskId
+        ) {
+          setSubmittingDecision(false);
+        }
       }
-    } finally {
-      if (
-        pendingDecisionRef.current?.requestId === requestId &&
-        activeTaskIdRef.current === taskId
-      ) {
-        setSubmittingDecision(false);
-      }
-    }
-  }, []);
+    },
+    [reconcileTaskSnapshot],
+  );
 
   /**
    * Decision path for tasks that are not the streaming active task (the
@@ -652,7 +694,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
    */
   const decideForTask = useCallback(
     async (taskId: string, input: DecisionInput): Promise<string | undefined> => {
+      if (taskDecisionSubmissionIdsRef.current.has(taskId)) {
+        return "A decision is already being checked for this approval. No second decision was sent.";
+      }
+      taskDecisionSubmissionIdsRef.current.add(taskId);
       try {
+        const authoritativeTask = await taskClient.getTask(taskId, AbortSignal.timeout(15_000));
+        const currentTask = reconcileTaskSnapshot(taskId, authoritativeTask);
+        const preflightProblem =
+          decisionPreflightProblem(authoritativeTask, input) ??
+          decisionPreflightProblem(currentTask, input);
+        if (preflightProblem !== undefined) {
+          return preflightProblem;
+        }
         const receipt = await taskClient.decide(taskId, input);
         const expectedRunId =
           detailsByTaskRef.current[taskId]?.runId ??
@@ -675,17 +729,18 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             error,
           );
           if (currentTask) {
-            setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
-            setTasks((current) => replaceTask(current, taskId, () => currentTask));
+            reconcileTaskSnapshot(taskId, currentTask);
             return `${messageFrom(error)} The task was reloaded — review it before deciding again.`;
           }
         } catch {
           // fall through to the original error
         }
         return messageFrom(error);
+      } finally {
+        taskDecisionSubmissionIdsRef.current.delete(taskId);
       }
     },
-    [loadDetail],
+    [loadDetail, reconcileTaskSnapshot],
   );
 
   const updatePlan = useCallback(async (input: PlanUpdateInput): Promise<boolean> => {

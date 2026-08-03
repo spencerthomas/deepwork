@@ -129,7 +129,8 @@ export function ApprovalsView() {
 
   const [filter, setFilter] = useState<ApprovalCapabilityFilter>("all");
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [keyboardError, setKeyboardError] = useState<string>();
+  const [decisionError, setDecisionError] = useState<string>();
+  const decisionErrorRef = useRef<HTMLDivElement>(null);
 
   // Mirror the active capability filter in the URL so a filtered queue is
   // shareable, and restore it on first load and on browser back/forward — the
@@ -205,6 +206,7 @@ export function ApprovalsView() {
   );
 
   const handleResolved = useCallback((row: ApprovalRow, decision: DecisionVerb) => {
+    setDecisionError(undefined);
     if (row.interrupt) {
       const resolvedId = row.interrupt.interruptId;
       setResolvedInterruptIds((current) => addToSet(current, resolvedId));
@@ -220,7 +222,7 @@ export function ApprovalsView() {
       if (!row.interrupt || !row.interrupt.decisions.includes(verb)) return;
       if (decidingRef.current) return;
       decidingRef.current = true;
-      setKeyboardError(undefined);
+      setDecisionError(undefined);
       void decideForTask(row.task.taskId, {
         interruptId: row.interrupt.interruptId,
         decision: verb,
@@ -229,12 +231,18 @@ export function ApprovalsView() {
         if (failure === undefined) {
           handleResolved(row, verb);
         } else {
-          setKeyboardError(failure);
+          setDecisionError(failure);
         }
       });
     },
     [decideForTask, handleResolved],
   );
+
+  useEffect(() => {
+    if (decisionError !== undefined) {
+      decisionErrorRef.current?.focus();
+    }
+  }, [decisionError]);
 
   // Roving keyboard navigation over the pending queue (mirrors the inbox):
   // j/k or arrows move the highlight, Enter opens it, a/r decide it.
@@ -384,16 +392,18 @@ export function ApprovalsView() {
         </div>
       )}
 
-      {keyboardError !== undefined && (
+      {decisionError !== undefined && (
         <div
+          ref={decisionErrorRef}
+          tabIndex={-1}
           role="alert"
-          className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-status-failed/35 bg-status-failed-bg px-4 py-3 text-[13px]"
+          className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-status-failed/35 bg-status-failed-bg px-4 py-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="min-w-0 flex-1">{keyboardError}</span>
+          <span className="min-w-0 flex-1">{decisionError}</span>
           <button
             type="button"
             aria-label="Dismiss error"
-            onClick={() => setKeyboardError(undefined)}
+            onClick={() => setDecisionError(undefined)}
             className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="size-3.5" />
@@ -507,7 +517,11 @@ export function ApprovalsView() {
                   <ApprovalDecisionPanel
                     interrupt={row.interrupt}
                     plan={row.plan}
-                    onDecide={(input) => decideForTask(row.task.taskId, input)}
+                    onDecide={async (input) => {
+                      setDecisionError(undefined);
+                      return decideForTask(row.task.taskId, input);
+                    }}
+                    onDecisionError={setDecisionError}
                     onResolved={(decision) => handleResolved(row, decision)}
                   />
                 ) : failedDetailIds.has(row.task.taskId) ? (

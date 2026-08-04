@@ -232,7 +232,7 @@ async function completeJourney(browser, config) {
   await page.getByRole("button", { name: "Dispatch" }).click();
   await page.waitForURL(/\/tasks\/task_[0-9]{8}$/);
   const taskUrl = page.url();
-  await page.getByText("deepwork-fixture-planner", { exact: true }).waitFor();
+  await page.getByText("deepwork-fixture-planner", { exact: true }).first().waitFor();
 
   await page.getByText("Safe local fixture plan", { exact: true }).first().waitFor();
   await page.getByRole("button", { name: "Edit plan" }).click();

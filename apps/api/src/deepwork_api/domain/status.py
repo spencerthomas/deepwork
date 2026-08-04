@@ -11,6 +11,14 @@ class EvidenceClass(StrEnum):
     LOCAL_SOURCE = "local-source"
 
 
+class RuntimeKind(StrEnum):
+    """Credential-free identity of the configured execution adapter."""
+
+    FIXTURE = "fixture"
+    LOCAL_AGENT_SERVER = "local-agent-server"
+    CLASSIC_DEPLOYMENT = "classic-deployment"
+
+
 class ProcessState(StrEnum):
     """Process-only liveness state."""
 
@@ -48,9 +56,10 @@ class Capability:
 
 @dataclass(frozen=True, slots=True)
 class DemoStatus:
-    """Fixture-only product-demo status."""
+    """Credential-free runtime status for product capability disclosure."""
 
     mode: EvidenceClass
+    runtime_kind: RuntimeKind
     evidence_class: EvidenceClass
     capabilities: tuple[Capability, ...]
     safe_reason: str

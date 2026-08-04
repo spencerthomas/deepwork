@@ -18,7 +18,7 @@ class StatusService:
         return self.provider.health()
 
     def demo(self) -> DemoStatus:
-        """Read fixture-only demo status."""
+        """Read credential-free configured runtime status."""
 
         return self.provider.demo()
 

@@ -6,7 +6,10 @@ boundary for Deep Work. The Wave 1 scaffold provides:
 - a side-effect-free `deepwork_api.create_app()` factory;
 - optional, explicit local SQLite fixture persistence;
 - process-only `GET /health`;
-- deterministic `GET /api/v1/demo/status` that is permanently labelled fixture;
+- credential-free `GET /api/v1/runtime/status` that identifies the configured
+  fixture, local Agent Server, or classic deployment adapter without exposing
+  provider endpoints or credentials (the original `/api/v1/demo/status` remains
+  as a deprecated read alias);
 - in-memory task create/list/detail endpoints with a sanitized, prompt-specific result;
 - replayable normalized SSE and real local approve/reject/respond pauses;
 - inspectable fixture evidence and an editable, revision-checked pending plan;
@@ -26,12 +29,14 @@ history for this deterministic local fixture. Startup creates or validates the
 schema and fails closed for an invalid path, schema, or database; it never falls
 back to memory. There is no environment lookup or default database path.
 
-The API does **not** provide authentication, source connections, provider calls,
-durable jobs, credentials, or production readiness. The opt-in SQLite adapter is
-not PostgreSQL, migrations, an outbox, or production durability, and active
-execution is not reconstructed or resumed after restart. Stream output is explicitly
-local fixture evidence, never a provider/model claim. The worker supports `--check`
-only and reports durability unavailable.
+The default mode does **not** provide authentication, source connections, provider
+calls, durable jobs, credentials, or production readiness. Authentication, a local
+Agent Server, or a classic deployment are explicit server-owned configuration; the
+browser never supplies their provider endpoint or credential. The opt-in SQLite
+adapter is not PostgreSQL, migrations, an outbox, or production durability, and
+active execution is not reconstructed or resumed after restart. Fixture stream
+output is explicitly local fixture evidence, never a provider/model claim. The
+worker supports `--check` only and reports durability unavailable.
 
 ## Local task loop
 

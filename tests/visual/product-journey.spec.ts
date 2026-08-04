@@ -45,6 +45,45 @@ test("designed routes and supervised journey match their accepted screenshots", 
   context,
   page,
 }) => {
+  await page.route("**/api/v1/agents", async (route) => {
+    const agents = [
+      {
+        agentId: "agent-swe",
+        name: "SWE agent",
+        description: "Ships code: reproduces bugs in a sandbox, edits, tests, and opens PRs.",
+        isDefault: true,
+      },
+      {
+        agentId: "agent-research",
+        name: "Research agent",
+        description: "Gathers and synthesizes: web search, doc reading, and structured writeups.",
+        isDefault: false,
+      },
+      {
+        agentId: "agent-content",
+        name: "Content agent",
+        description:
+          "Turns merged work into customer-facing writing — changelogs and release notes.",
+        isDefault: false,
+      },
+      {
+        agentId: "agent-exec",
+        name: "Exec assistant",
+        description: "Manages inbox and calendar: drafts replies, schedules, and prepares briefs.",
+        isDefault: false,
+      },
+    ].map((agent, index) => ({
+      ...agent,
+      systemPrompt: null,
+      createdAt: `2026-08-04T00:0${index}:00.000Z`,
+      updatedAt: `2026-08-04T00:0${index}:00.000Z`,
+    }));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ available: true, items: agents }),
+    });
+  });
   await context.clearCookies();
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Connect to Deep Work" })).toBeVisible();
@@ -78,6 +117,7 @@ test("designed routes and supervised journey match their accepted screenshots", 
     await capture(page, name, "desktop");
     await capture(page, name, "phone");
   }
+  await page.unroute("**/api/v1/agents");
 
   await open(page, "/tasks/new");
   await page

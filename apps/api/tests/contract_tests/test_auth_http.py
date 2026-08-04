@@ -58,6 +58,26 @@ async def test_tasks_require_a_session_when_auth_enabled() -> None:
         assert unauth.json() == {"code": "unauthorized", "message": "Authentication required."}
 
 
+async def test_runtime_status_honors_auth_while_health_stays_public() -> None:
+    async with _app(access_key=ACCESS_KEY) as client:
+        assert (await client.get("/health")).status_code == 200
+        for path in ("/api/v1/runtime/status", "/api/v1/demo/status"):
+            unauthenticated = await client.get(path)
+            assert unauthenticated.status_code == 401
+            assert unauthenticated.json() == {
+                "code": "unauthorized",
+                "message": "Authentication required.",
+            }
+
+        assert (
+            await client.post("/api/v1/auth/login", json={"accessKey": ACCESS_KEY})
+        ).status_code == 200
+        for path in ("/api/v1/runtime/status", "/api/v1/demo/status"):
+            authenticated = await client.get(path)
+            assert authenticated.status_code == 200
+            assert authenticated.json()["runtime_kind"] == "fixture"
+
+
 async def test_login_returns_only_session_projection_and_supports_cookie_auth() -> None:
     async with _app(access_key=ACCESS_KEY) as client:
         bad = await client.post("/api/v1/auth/login", json={"accessKey": "wrong"})

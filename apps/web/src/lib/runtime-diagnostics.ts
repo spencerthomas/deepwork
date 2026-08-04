@@ -52,6 +52,7 @@ export function formatRuntimeDiagnostics(input: RuntimeDiagnosticsInput): string
     sections.push(
       [
         "## Evidence",
+        `- Runtime kind: ${status.runtimeKind}`,
         `- Evidence class: ${neutralizeMarkdown(status.evidenceClass)}`,
         `- Status source: ${status.source}`,
         `- Safe reason: ${neutralizeMarkdown(status.safeReason)}`,
@@ -62,7 +63,12 @@ export function formatRuntimeDiagnostics(input: RuntimeDiagnosticsInput): string
       "## Reported capabilities\n_Runtime status unavailable — capability states are unknown, not assumed._",
     );
     sections.push(
-      ["## Evidence", "- Evidence class: unknown", "- Status source: unknown"].join("\n"),
+      [
+        "## Evidence",
+        "- Runtime kind: unknown",
+        "- Evidence class: unknown",
+        "- Status source: unknown",
+      ].join("\n"),
     );
   }
 

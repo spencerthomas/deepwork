@@ -38,6 +38,7 @@ def test_openapi_documents_the_versioned_surface() -> None:
         "/api/v1/agents",
         "/api/v1/agents/{agent_id}",
         "/api/v1/demo/status",
+        "/api/v1/runtime/status",
         "/api/v1/schedules",
         "/api/v1/tasks",
         "/api/v1/tasks/{task_id}",

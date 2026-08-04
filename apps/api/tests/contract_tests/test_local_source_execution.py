@@ -366,6 +366,23 @@ async def _create_task(
     return cast("dict[str, Any]", response.json())
 
 
+async def test_runtime_status_identifies_the_local_agent_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    async with _local_app(server, monkeypatch) as harness:
+        response = await harness.client.get("/api/v1/runtime/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["runtime_kind"] == "local-agent-server"
+    assert body["evidence_class"] == "local-source"
+    states = {capability["name"]: capability["state"] for capability in body["capabilities"]}
+    assert states["authentication"] == "unavailable"
+    assert states["sources"] == "available"
+    assert states["external_providers"] == "unavailable"
+
+
 async def _wait_for_status(
     client: httpx.AsyncClient,
     task_id: str,
@@ -1041,6 +1058,10 @@ async def test_local_mode_adds_no_new_wire_surface(
     serialized = json.dumps(local_schema)
     assert LOCAL_ENDPOINT not in serialized
     assert LOCAL_ASSISTANT not in serialized
-    # The shared schema now intentionally documents the bounded classic source
-    # qualification route. Local mode must still leak no configured value.
-    assert "classic-deployment" not in serialized.casefold()
+    # Runtime kinds are a fixed credential-free enum in the shared schema. The
+    # selected kind is returned only by runtime status, never baked into OpenAPI.
+    assert local_schema["components"]["schemas"]["RuntimeKind"]["enum"] == [
+        "fixture",
+        "local-agent-server",
+        "classic-deployment",
+    ]

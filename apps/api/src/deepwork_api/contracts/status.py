@@ -2,7 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from deepwork_api.domain import DemoStatus, EvidenceClass, HealthStatus, ProcessState, WorkerStatus
+from deepwork_api.domain import (
+    DemoStatus,
+    EvidenceClass,
+    HealthStatus,
+    ProcessState,
+    RuntimeKind,
+    WorkerStatus,
+)
 
 
 class _WireModel(BaseModel):
@@ -32,9 +39,10 @@ class CapabilityResponse(_WireModel):
 
 
 class DemoStatusResponse(_WireModel):
-    """Fixture-only demo status response."""
+    """Credential-free configured runtime status response."""
 
     mode: EvidenceClass
+    runtime_kind: RuntimeKind
     evidence_class: EvidenceClass
     capabilities: tuple[CapabilityResponse, ...]
     safe_reason: str
@@ -49,6 +57,7 @@ class DemoStatusResponse(_WireModel):
         )
         return cls(
             mode=status.mode,
+            runtime_kind=status.runtime_kind,
             evidence_class=status.evidence_class,
             capabilities=capabilities,
             safe_reason=status.safe_reason,

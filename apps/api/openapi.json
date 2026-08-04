@@ -612,7 +612,7 @@
       },
       "DemoStatusResponse": {
         "additionalProperties": false,
-        "description": "Fixture-only demo status response.",
+        "description": "Credential-free configured runtime status response.",
         "properties": {
           "capabilities": {
             "items": {
@@ -627,6 +627,9 @@
           "mode": {
             "$ref": "#/components/schemas/EvidenceClass"
           },
+          "runtime_kind": {
+            "$ref": "#/components/schemas/RuntimeKind"
+          },
           "safe_reason": {
             "title": "Safe Reason",
             "type": "string"
@@ -634,6 +637,7 @@
         },
         "required": [
           "mode",
+          "runtime_kind",
           "evidence_class",
           "capabilities",
           "safe_reason"
@@ -1106,6 +1110,16 @@
         ],
         "title": "ReviewConfigResponse",
         "type": "object"
+      },
+      "RuntimeKind": {
+        "description": "Credential-free identity of the configured execution adapter.",
+        "enum": [
+          "fixture",
+          "local-agent-server",
+          "classic-deployment"
+        ],
+        "title": "RuntimeKind",
+        "type": "string"
       },
       "ScheduleListResponse": {
         "additionalProperties": false,
@@ -2052,7 +2066,8 @@
     },
     "/api/v1/demo/status": {
       "get": {
-        "description": "Return deterministic fixture-only capability status.",
+        "deprecated": true,
+        "description": "Retain the original fixture-era path as a compatible read alias.",
         "operationId": "demo_status_api_v1_demo_status_get",
         "responses": {
           "200": {
@@ -2067,6 +2082,25 @@
           }
         },
         "summary": "Demo Status"
+      }
+    },
+    "/api/v1/runtime/status": {
+      "get": {
+        "description": "Return credential-free configured runtime capability status.",
+        "operationId": "runtime_status_api_v1_runtime_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Runtime Status"
       }
     },
     "/api/v1/schedules": {

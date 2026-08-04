@@ -1,5 +1,5 @@
 /**
- * Typed access to `GET {apiBaseUrl}/api/v1/demo/status`.
+ * Typed access to `GET {apiBaseUrl}/api/v1/runtime/status`.
  *
  * Honesty rule (docs/DESIGN.md): capability states drive gated/unavailable UI,
  * so this module fails closed. Anything malformed normalizes to `undefined`
@@ -14,8 +14,11 @@ export interface DemoCapability {
   state: CapabilityState;
 }
 
+export type RuntimeKind = "fixture" | "local-agent-server" | "classic-deployment" | "unknown";
+
 export interface DemoStatus {
   mode: string;
+  runtimeKind: RuntimeKind;
   evidenceClass: string;
   capabilities: DemoCapability[];
   safeReason: string;
@@ -54,6 +57,15 @@ function normalizeCapabilityState(value: unknown): CapabilityState {
   return value === "available" || value === "unavailable" ? value : "unknown";
 }
 
+function normalizeRuntimeKind(value: unknown, mode: string): RuntimeKind {
+  if (value === "fixture" || value === "local-agent-server" || value === "classic-deployment") {
+    return value;
+  }
+  // Compatibility with an older fixture-only API remains truthful. A source-
+  // backed response without the additive identity stays unknown.
+  return mode === "fixture" ? "fixture" : "unknown";
+}
+
 function normalizeCapability(value: unknown): DemoCapability | undefined {
   const record = asRecord(value);
   if (!record) {
@@ -80,6 +92,7 @@ export function normalizeDemoStatus(
   }
 
   const mode = readString(record, "mode");
+  const reportedRuntimeKind = readString(record, "runtime_kind", "runtimeKind");
   const evidenceClass = readString(record, "evidence_class", "evidenceClass");
   const safeReason = readString(record, "safe_reason", "safeReason");
   const rawCapabilities = record["capabilities"];
@@ -101,7 +114,14 @@ export function normalizeDemoStatus(
     capabilities.push(capability);
   }
 
-  return { mode, evidenceClass, capabilities, safeReason, source };
+  return {
+    mode,
+    runtimeKind: normalizeRuntimeKind(reportedRuntimeKind, mode),
+    evidenceClass,
+    capabilities,
+    safeReason,
+    source,
+  };
 }
 
 /** Look up one capability's state, failing closed to "unknown". */
@@ -125,6 +145,7 @@ export const FIXTURE_SAFE_REASON =
 export function fixtureDemoStatus(): DemoStatus {
   return {
     mode: "fixture",
+    runtimeKind: "fixture",
     evidenceClass: "fixture",
     capabilities: [
       { name: CAPABILITY_NAMES.localTaskLoop, state: "available" },
@@ -149,7 +170,7 @@ export async function fetchDemoStatus(
 ): Promise<DemoStatus | undefined> {
   try {
     const base = apiBaseUrl.replace(/\/+$/, "");
-    const response = await fetch(`${base}/api/v1/demo/status`, {
+    const response = await fetch(`${base}/api/v1/runtime/status`, {
       headers: { accept: "application/json" },
       signal,
     });

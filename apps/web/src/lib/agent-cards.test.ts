@@ -5,6 +5,7 @@ import {
   agentRuntimeCopy,
   agentSessionTaskLabel,
   deriveAgentCards,
+  deriveRegisteredAgentCards,
   mostRecentCreatedAt,
 } from "./agent-cards";
 import { fixtureDemoStatus, normalizeDemoStatus } from "./demo-status";
@@ -56,6 +57,48 @@ describe("deriveAgentCards", () => {
 
   it("counts only truly active agents", () => {
     expect(activeAgentCount(deriveAgentCards(fixtureDemoStatus(), "fixture"))).toBe(1);
+  });
+});
+
+describe("deriveRegisteredAgentCards", () => {
+  it("projects the source registry in provider order without inventing agents", () => {
+    const cards = deriveRegisteredAgentCards([
+      {
+        agentId: "agent-default",
+        name: "Workspace generalist",
+        description: "Plans and executes cross-functional work.",
+        isDefault: true,
+        createdAt: "2026-08-03T00:00:00Z",
+        updatedAt: "2026-08-03T00:00:00Z",
+      },
+      {
+        agentId: "agent-code",
+        name: "Coding review",
+        isDefault: false,
+        createdAt: "2026-08-03T00:00:00Z",
+        updatedAt: "2026-08-03T00:00:00Z",
+      },
+    ]);
+
+    expect(cards.map((card) => card.id)).toEqual(["agent-default", "agent-code"]);
+    expect(cards.map((card) => card.name)).toEqual(["Workspace generalist", "Coding review"]);
+    expect(cards[0]).toMatchObject({
+      agentId: "agent-default",
+      state: "active",
+      stateLabel: "Default",
+      actionHref: "/settings/agents",
+      actionLabel: "Manage",
+    });
+    expect(cards[1]).toMatchObject({
+      agentId: "agent-code",
+      state: "active",
+      stateLabel: "Available",
+    });
+    expect(cards[1].description).toContain("registered on the connected task source");
+  });
+
+  it("returns no cards when the registry contains no agents", () => {
+    expect(deriveRegisteredAgentCards([])).toEqual([]);
   });
 });
 

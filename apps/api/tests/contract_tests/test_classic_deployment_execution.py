@@ -81,6 +81,27 @@ async def test_classic_deployment_runs_plan_approve_result(
         client = harness.client
         assert isinstance(harness.app.state.task_runner, LocalAgentServerRunner)
 
+        runtime = await client.get("/api/v1/runtime/status")
+        assert runtime.status_code == 200
+        assert runtime.json() == {
+            "mode": "local-source",
+            "runtime_kind": "classic-deployment",
+            "evidence_class": "local-source",
+            "capabilities": [
+                {"name": "local_task_loop", "state": "available"},
+                {"name": "task_stream", "state": "available"},
+                {"name": "authentication", "state": "unavailable"},
+                {"name": "durable_jobs", "state": "unavailable"},
+                {"name": "sources", "state": "available"},
+                {"name": "external_providers", "state": "available"},
+            ],
+            "safe_reason": (
+                "A classic deployment task source is configured through the server-held "
+                "credential boundary. These are configured adapter mechanics, not a live "
+                "provider readiness check."
+            ),
+        }
+
         created = await _create_task(client, "Summarize the supplied notes")
         task_id = created["taskId"]
         paused = await _wait_for_status(client, task_id, {"waiting-approval"})

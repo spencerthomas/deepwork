@@ -7,6 +7,7 @@ from deepwork_api.domain import (
     EvidenceClass,
     HealthStatus,
     ProcessState,
+    RuntimeKind,
     WorkerDurability,
     WorkerStatus,
 )
@@ -38,6 +39,7 @@ class FixtureStatusProvider:
         )
         return DemoStatus(
             mode=EvidenceClass.FIXTURE,
+            runtime_kind=RuntimeKind.FIXTURE,
             evidence_class=EvidenceClass.FIXTURE,
             capabilities=capabilities,
             safe_reason=_SAFE_REASON,

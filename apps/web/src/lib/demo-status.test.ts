@@ -10,6 +10,7 @@ import {
 
 const apiPayload = {
   mode: "fixture",
+  runtime_kind: "fixture",
   evidence_class: "fixture",
   capabilities: [
     { name: "local_task_loop", state: "available" },
@@ -23,6 +24,7 @@ describe("normalizeDemoStatus", () => {
   it("normalizes the API's snake_case wire shape", () => {
     expect(normalizeDemoStatus(apiPayload)).toEqual({
       mode: "fixture",
+      runtimeKind: "fixture",
       evidenceClass: "fixture",
       capabilities: [
         { name: "local_task_loop", state: "available" },
@@ -42,7 +44,31 @@ describe("normalizeDemoStatus", () => {
       safeReason: "reason",
     });
     expect(status?.evidenceClass).toBe("fixture");
+    expect(status?.runtimeKind).toBe("fixture");
     expect(status?.safeReason).toBe("reason");
+  });
+
+  it.each(["local-agent-server", "classic-deployment"] as const)(
+    "preserves the configured source runtime kind %s",
+    (runtimeKind) => {
+      const status = normalizeDemoStatus({
+        ...apiPayload,
+        mode: "local-source",
+        runtime_kind: runtimeKind,
+        evidence_class: "local-source",
+      });
+      expect(status?.runtimeKind).toBe(runtimeKind);
+    },
+  );
+
+  it("fails closed when a source response reports an unrecognized runtime kind", () => {
+    const status = normalizeDemoStatus({
+      ...apiPayload,
+      mode: "local-source",
+      runtime_kind: "future-runtime",
+      evidence_class: "local-source",
+    });
+    expect(status?.runtimeKind).toBe("unknown");
   });
 
   it("fails closed on malformed payloads", () => {
@@ -118,7 +144,7 @@ describe("fetchDemoStatus", () => {
 
     const status = await fetchDemoStatus("http://127.0.0.1:8000/");
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/v1/demo/status",
+      "http://127.0.0.1:8000/api/v1/runtime/status",
       expect.objectContaining({ headers: { accept: "application/json" } }),
     );
     expect(status?.capabilities).toHaveLength(3);

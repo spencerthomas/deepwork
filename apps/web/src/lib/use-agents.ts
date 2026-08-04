@@ -18,7 +18,7 @@ export interface AgentsResult {
  * loading, on a failed fetch, and whenever no real task source is
  * configured — never a fabricated non-empty list.
  */
-export function useAgents(): AgentsResult {
+export function useAgents(enabled = true): AgentsResult {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [available, setAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,6 +27,13 @@ export function useAgents(): AgentsResult {
   const refetch = useCallback(() => setReloadNonce((nonce) => nonce + 1), []);
 
   useEffect(() => {
+    if (!enabled) {
+      setAgents([]);
+      setAvailable(false);
+      setLoading(false);
+      setError(undefined);
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError(undefined);
@@ -42,6 +49,7 @@ export function useAgents(): AgentsResult {
       .catch((caught: unknown) => {
         if (!controller.signal.aborted) {
           setAvailable(false);
+          setAgents([]);
           setError(caught instanceof Error ? caught.message : "Could not load agents.");
         }
       })
@@ -51,7 +59,7 @@ export function useAgents(): AgentsResult {
         }
       });
     return () => controller.abort();
-  }, [reloadNonce]);
+  }, [enabled, reloadNonce]);
 
   return { available, agents, loading, error, refetch };
 }

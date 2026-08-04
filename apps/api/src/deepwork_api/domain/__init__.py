@@ -39,6 +39,7 @@ from deepwork_api.domain.status import (
     EvidenceClass,
     HealthStatus,
     ProcessState,
+    RuntimeKind,
     WorkerDurability,
     WorkerStatus,
 )
@@ -133,6 +134,7 @@ __all__ = [
     "PlanUpdateRecord",
     "ProcessState",
     "ProposedPlan",
+    "RuntimeKind",
     "ScheduleDomainError",
     "ScheduleRegistryUnavailableError",
     "SecurityContext",

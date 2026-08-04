@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { formatRuntimeDiagnostics } from "@/lib/runtime-diagnostics";
+import type { RuntimeKind } from "@/lib/demo-status";
 import {
   probeClassicSource,
   type SourceProbeResult,
@@ -32,6 +33,13 @@ function probeChipState(state: SourceProbeState): "available" | "unavailable" | 
   if (state === "available") return "available";
   if (state === "unknown") return "unknown";
   return "unavailable";
+}
+
+function runtimeKindLabel(kind: RuntimeKind): string {
+  if (kind === "classic-deployment") return "Classic deployment";
+  if (kind === "local-agent-server") return "Local Agent Server";
+  if (kind === "fixture") return "Deterministic fixture";
+  return "Unknown";
 }
 
 function sourceAnnouncement(checking: boolean, result: SourceProbeResult | null): string {
@@ -282,12 +290,17 @@ export function RuntimeSection() {
           title="Connection target"
           control={<MonoValue>{runtimeCopy.settingsConnectionTarget}</MonoValue>}
         />
+        <Row
+          title="Execution runtime"
+          description="Reported by the workspace API without exposing a provider URL or credential."
+          control={<MonoValue>{runtimeKindLabel(status?.runtimeKind ?? "unknown")}</MonoValue>}
+        />
       </Card>
 
       <GroupLabel>Reported capabilities</GroupLabel>
       <Card className="mb-6">
         {loading ? (
-          <Row title="Checking the runtime…" description="Fetching /api/v1/demo/status." />
+          <Row title="Checking the runtime…" description="Fetching /api/v1/runtime/status." />
         ) : status ? (
           status.capabilities.map((capability) => (
             <div

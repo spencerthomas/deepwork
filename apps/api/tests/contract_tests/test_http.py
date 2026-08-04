@@ -53,19 +53,29 @@ async def test_health_is_process_only() -> None:
     }
 
 
-async def test_demo_status_cannot_imply_live_capability() -> None:
+async def test_runtime_status_cannot_imply_live_capability() -> None:
     async with _client() as client:
-        response = await client.get("/api/v1/demo/status")
+        response = await client.get("/api/v1/runtime/status")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["mode"] == "fixture"
+    assert payload["runtime_kind"] == "fixture"
     assert payload["evidence_class"] == "fixture"
     states = {item["name"]: item["state"] for item in payload["capabilities"]}
     assert states["local_task_loop"] == "available"
     assert states["task_stream"] == "available"
     assert states["external_providers"] == "unavailable"
     assert "unavailable" in payload["safe_reason"]
+
+
+async def test_legacy_demo_status_alias_matches_runtime_status() -> None:
+    async with _client() as client:
+        runtime = await client.get("/api/v1/runtime/status")
+        legacy = await client.get("/api/v1/demo/status")
+
+    assert legacy.status_code == 200
+    assert legacy.json() == runtime.json()
 
 
 def _field_names(value: Any) -> set[str]:

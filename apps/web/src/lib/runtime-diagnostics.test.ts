@@ -5,6 +5,7 @@ import { formatRuntimeDiagnostics } from "./runtime-diagnostics";
 
 const status: DemoStatus = {
   mode: "api",
+  runtimeKind: "classic-deployment",
   evidenceClass: "live",
   capabilities: [
     { name: "local_task_loop", state: "available" },
@@ -27,6 +28,7 @@ describe("formatRuntimeDiagnostics", () => {
     expect(markdown).toContain("- Connection target: http://127.0.0.1:8000");
     expect(markdown).toContain("- local_task_loop: available");
     expect(markdown).toContain("- durable_jobs: unavailable");
+    expect(markdown).toContain("- Runtime kind: classic-deployment");
     expect(markdown).toContain("- Evidence class: live");
     expect(markdown).toContain("- Status source: api");
     expect(markdown).toContain("- Safe reason: Local task loop is available; durability is not.");
@@ -41,6 +43,7 @@ describe("formatRuntimeDiagnostics", () => {
     });
 
     expect(markdown).toContain("Runtime status unavailable");
+    expect(markdown).toContain("- Runtime kind: unknown");
     expect(markdown).toContain("- Evidence class: unknown");
     expect(markdown).toContain("- Status source: unknown");
     // No capability lines are fabricated when the status could not be read.

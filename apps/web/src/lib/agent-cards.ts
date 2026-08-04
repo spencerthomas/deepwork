@@ -1,18 +1,21 @@
 /**
  * Pure derivation of the /agents fleet cards from real runtime data.
  *
- * Honesty rules (docs/DESIGN.md): only the two real agents appear, states come
- * from reported capabilities, and a missing/failed status yields "unknown" —
- * never a fabricated active state.
+ * Honesty rules (docs/DESIGN.md): fixture mode projects its two fixed capability
+ * cards; API mode projects the source-owned registry in provider order. Missing
+ * runtime or registry data never fabricates an active agent.
  */
 
 import { CAPABILITY_NAMES, capabilityState, type DemoStatus } from "./demo-status";
+import type { AgentSummary } from "./agent-client";
 import type { ClientMode, TaskSummary } from "./task-types";
 
 export type AgentCardState = "active" | "inactive" | "gated" | "unknown";
 
 export interface AgentCardModel {
   id: string;
+  /** Present only for a real source-owned registry entry. */
+  agentId?: string;
   name: string;
   description: string;
   /** Capability whose reported state drives this card. */
@@ -21,8 +24,25 @@ export interface AgentCardModel {
   stateLabel: string;
   /** Present only when the agent is actually configurable here. */
   configureHref?: string;
+  actionHref?: string;
+  actionLabel?: string;
   /** Shown next to the disabled affordance when the agent is not selectable. */
   gatedExplanation?: string;
+}
+
+/** Project the actual source registry; order and identity remain source-owned. */
+export function deriveRegisteredAgentCards(agents: readonly AgentSummary[]): AgentCardModel[] {
+  return agents.map((agent) => ({
+    id: agent.agentId,
+    agentId: agent.agentId,
+    name: agent.name,
+    description: agent.description ?? "This agent is registered on the connected task source.",
+    capabilityName: "agent_registry",
+    state: "active",
+    stateLabel: agent.isDefault ? "Default" : "Available",
+    actionHref: "/settings/agents",
+    actionLabel: "Manage",
+  }));
 }
 
 export interface AgentRuntimeCopy {
@@ -67,7 +87,7 @@ export function agentRuntimeCopy(mode: ClientMode): AgentRuntimeCopy {
     description:
       "Tasks are sent through the configured API. Its backend runner and provider configuration are unknown to this client.",
     fleetDescription:
-      "Execution capabilities reported to this browser. API mode does not identify the server-side runner or provider configuration.",
+      "Every agent registered in your workspace — its focus and recent activity. Agent identities stay owned by the connected task source.",
     contractDescription:
       "The behavior contract exposed by the task API. Its backend implementation is not configurable here.",
     executionTitle: "Uses the reported API behavior",

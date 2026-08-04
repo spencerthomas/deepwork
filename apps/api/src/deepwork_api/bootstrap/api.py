@@ -24,6 +24,7 @@ from deepwork_api.adapters.sources.local import (
     LocalAgentServerSource,
     LocalSourceGatedError,
 )
+from deepwork_api.adapters.sources.status import SourceStatusProvider
 from deepwork_api.adapters.trace import LangSmithTraceLocator
 from deepwork_api.application import (
     AuthService,
@@ -37,11 +38,12 @@ from deepwork_api.application.local_runner import LocalSource
 from deepwork_api.bootstrap.source_probe_config import SourceProbeConfig
 from deepwork_api.domain import (
     DEFAULT_SECURITY_CONTEXT,
+    RuntimeKind,
     TaskEventName,
     TaskStatus,
 )
 from deepwork_api.domain import SecurityContext as SecurityContext
-from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
+from deepwork_api.ports import Clock, PromptStore, StatusProvider, TaskRepository, system_clock
 from deepwork_api.ports import SourceProbeClient as SourceProbeClient
 from deepwork_api.transport import (
     build_agents_router,
@@ -131,7 +133,7 @@ def create_app(
     configuration is refused before any source object is constructed.
     """
 
-    status_service = StatusService(provider=FixtureStatusProvider())
+    status_provider: StatusProvider = FixtureStatusProvider()
     if source_probe_client is not None and source_probe_config is None:
         raise ValueError("a source probe client requires server-owned source probe settings")
     if source_probe_config is not None and len(source_probe_config.allowed_endpoints) != 1:
@@ -184,6 +186,10 @@ def create_app(
             source=cast("LocalSource", local_source),
             prompt_store=prompt_store,
         )
+        status_provider = SourceStatusProvider(
+            runtime_kind=RuntimeKind.CLASSIC_DEPLOYMENT,
+            authentication_enabled=access_key is not None or access_key_contexts is not None,
+        )
     elif local_agent_server_endpoint is None:
         if local_agent_server_assistant is not None:
             raise ValueError("local Agent Server assistant requires an explicit loopback endpoint")
@@ -212,6 +218,11 @@ def create_app(
             source=cast("LocalSource", local_source),
             prompt_store=prompt_store,
         )
+        status_provider = SourceStatusProvider(
+            runtime_kind=RuntimeKind.LOCAL_AGENT_SERVER,
+            authentication_enabled=access_key is not None or access_key_contexts is not None,
+        )
+    status_service = StatusService(provider=status_provider)
     task_service = TaskService(repository=task_repository, runner=task_runner)
     trace_locator = _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
 
@@ -329,7 +340,7 @@ def create_app(
             return JSONResponse(status_code=error.status_code, content=detail)
         return cast("JSONResponse", await http_exception_handler(request, error))
 
-    app.include_router(build_router(status_service))
+    app.include_router(build_router(status_service, status_dependencies=task_dependencies))
     app.include_router(
         build_task_router(
             task_service,

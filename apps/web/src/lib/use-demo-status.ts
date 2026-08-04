@@ -23,7 +23,7 @@ export interface DemoStatusResult {
  * equivalent status is synthesized locally and labeled fixture. In api mode a
  * fetch failure resolves to `undefined` so callers render an unknown state.
  */
-export function useDemoStatus(): DemoStatusResult {
+export function useDemoStatus(enabled = true): DemoStatusResult {
   const { mode, apiBaseUrl } = useTasksStore();
   const fixture = mode === "fixture";
   const [status, setStatus] = useState<DemoStatus | undefined>(() =>
@@ -35,7 +35,14 @@ export function useDemoStatus(): DemoStatusResult {
   const refetch = useCallback(() => setReloadNonce((nonce) => nonce + 1), []);
 
   useEffect(() => {
+    if (!enabled) {
+      setStatus(undefined);
+      setLoading(false);
+      return;
+    }
     if (fixture) {
+      setStatus(fixtureDemoStatus());
+      setLoading(false);
       return;
     }
     const controller = new AbortController();
@@ -47,7 +54,7 @@ export function useDemoStatus(): DemoStatusResult {
       }
     });
     return () => controller.abort();
-  }, [fixture, apiBaseUrl, reloadNonce]);
+  }, [enabled, fixture, apiBaseUrl, reloadNonce]);
 
   return { status, loading, refetch };
 }

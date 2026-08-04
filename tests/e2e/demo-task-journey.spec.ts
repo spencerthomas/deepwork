@@ -330,3 +330,52 @@ test("checks a classic source without saving or accepting browser credentials", 
   await page.getByLabel("Assistant ID").fill("assistant-2");
   await expect(result).toHaveCount(0);
 });
+
+test("renders the source-backed agent registry on the designed Agents route", async ({ page }) => {
+  let registryRequests = 0;
+  let runtimeStatusRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/runtime/status")) runtimeStatusRequests += 1;
+  });
+  await page.route("**/api/v1/agents", async (route) => {
+    registryRequests += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        available: true,
+        items: [
+          {
+            agentId: "agent-generalist",
+            name: "Workspace generalist",
+            description: "Plans and executes cross-functional work.",
+            systemPrompt: null,
+            isDefault: true,
+            createdAt: "2026-08-04T00:00:00.000Z",
+            updatedAt: "2026-08-04T00:00:00.000Z",
+          },
+          {
+            agentId: "agent-coding",
+            name: "Coding review",
+            description: null,
+            systemPrompt: "Review changes against the repository contract.",
+            isDefault: false,
+            createdAt: "2026-08-04T00:00:00.000Z",
+            updatedAt: "2026-08-04T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+  await expect(page.getByRole("heading", { name: "Agents", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workspace generalist" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coding review" })).toBeVisible();
+  await expect(page.getByText("Default", { exact: true })).toBeVisible();
+  await expect(page.getByText("Available", { exact: true })).toBeVisible();
+  await expect(page.getByText("Classic LangSmith deployment", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manage" })).toHaveCount(2);
+  await expect.poll(() => registryRequests).toBe(1);
+  expect(runtimeStatusRequests).toBe(0);
+});

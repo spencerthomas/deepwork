@@ -777,6 +777,7 @@ async def test_confirmed_plan_update_reconciles_without_second_state_read() -> N
     runner = LocalAgentServerRunner(repository, source)
     task = await _paused_task(repository)
     runner._threads[task.task_id] = "thread_1"
+    assert await runner._acquire_source_lease(task.task_id) is True
 
     update = await runner.update_plan(
         task,
@@ -800,6 +801,7 @@ async def test_plan_update_keeps_the_durable_selected_agent() -> None:
     runner = LocalAgentServerRunner(repository, source)
     task = await _paused_task(repository, agent_id="assistant-reviewer")
     runner._threads[task.task_id] = "thread_1"
+    assert await runner._acquire_source_lease(task.task_id) is True
 
     await runner.update_plan(
         task,
@@ -810,6 +812,47 @@ async def test_plan_update_keeps_the_durable_selected_agent() -> None:
 
     assert source.update_plan_agent_ids == ["assistant-reviewer"]
     await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_non_owner_plan_update_is_executed_once_by_the_lease_owner(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "cross-process-plan.sqlite"
+    owner_repository = SQLiteTaskRepository(database)
+    peer_repository = SQLiteTaskRepository(database)
+    task = await _paused_task(owner_repository, agent_id="assistant-reviewer")
+    await owner_repository.bind_source_run(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+    )
+    source = _IdempotentRecoverySource()
+    owner = LocalAgentServerRunner(owner_repository, source)
+    peer = LocalAgentServerRunner(peer_repository, source)
+    try:
+        assert await owner.recover(task) is True
+        update = await asyncio.wait_for(
+            peer.update_plan(
+                await peer_repository.get_task(task.task_id),
+                interrupt_id="interrupt_1",
+                expected_revision=1,
+                steps=("Updated by the peer",),
+            ),
+            timeout=2,
+        )
+        current = await peer_repository.get_task(task.task_id)
+        assert update.interrupt_id == "interrupt_2"
+        assert current.pending_interrupt_id == "interrupt_2"
+        assert current.proposed_plan is not None
+        assert current.proposed_plan.steps == ("Updated by the peer",)
+        assert source.upstream_plan_updates == 1
+        assert source.update_plan_agent_ids == ["assistant-reviewer"]
+    finally:
+        await peer.close()
+        await owner.close()
+        await peer_repository.close()
+        await owner_repository.close()
 
 
 @pytest.mark.asyncio
@@ -1103,6 +1146,7 @@ async def test_recovery_discovers_plan_edit_accepted_before_atomic_local_commit(
     task = await _paused_task(repository, agent_id="assistant-reviewer")
     first_runner = LocalAgentServerRunner(repository, source)
     first_runner._threads[task.task_id] = "thread_1"
+    assert await first_runner._acquire_source_lease(task.task_id) is True
 
     with pytest.raises(RuntimeError, match="plan binding crash"):
         await first_runner.update_plan(
@@ -1113,6 +1157,7 @@ async def test_recovery_discovers_plan_edit_accepted_before_atomic_local_commit(
         )
     pending = await repository.get_source_plan_transition(task.task_id)
     assert pending is not None
+    await first_runner.close()
 
     recovered_runner = LocalAgentServerRunner(repository, source)
     assert await recovered_runner.recover(await repository.get_task(task.task_id)) is True
@@ -1127,7 +1172,6 @@ async def test_recovery_discovers_plan_edit_accepted_before_atomic_local_commit(
     assert source.update_plan_agent_ids == ["assistant-reviewer", "assistant-reviewer"]
 
     await recovered_runner.close()
-    await first_runner.close()
 
 
 @pytest.mark.asyncio
@@ -1140,6 +1184,7 @@ async def test_plan_edit_recovery_survives_a_real_sqlite_repository_reopen(
     task = await _paused_task(first_repository, agent_id="assistant-reviewer")
     first_runner = LocalAgentServerRunner(first_repository, source)
     first_runner._threads[task.task_id] = "thread_1"
+    assert await first_runner._acquire_source_lease(task.task_id) is True
 
     with pytest.raises(RuntimeError, match="SQLite plan binding crash"):
         await first_runner.update_plan(
@@ -1173,6 +1218,7 @@ async def test_cancelled_plan_request_keeps_task_owned_operation_running() -> No
     task = await _paused_task(repository)
     runner = LocalAgentServerRunner(repository, source)
     runner._threads[task.task_id] = "thread_1"
+    assert await runner._acquire_source_lease(task.task_id) is True
     entered = asyncio.Event()
     release = asyncio.Event()
     original = source.update_plan
@@ -1231,6 +1277,7 @@ async def test_cancelled_plan_request_after_atomic_accept_still_swaps_follower()
     task = await _paused_task(repository)
     runner = LocalAgentServerRunner(repository, source)
     runner._threads[task.task_id] = "thread_1"
+    assert await runner._acquire_source_lease(task.task_id) is True
     request = asyncio.create_task(
         runner.update_plan(
             task,

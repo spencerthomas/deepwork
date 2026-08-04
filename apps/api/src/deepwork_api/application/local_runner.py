@@ -26,6 +26,7 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskSourceContractError,
     TaskSourceLease,
+    TaskSourcePlanTransition,
     TaskSourceUnavailableError,
     TaskStatus,
 )
@@ -713,11 +714,8 @@ class LocalAgentServerRunner:
             raise PlanUnavailableError
         if current.proposed_plan.revision != expected_revision:
             raise PlanRevisionConflictError
-        thread_id = self._threads.get(task.task_id)
-        if thread_id is None:
-            raise TaskSourceContractError
         binding = await self.repository.get_source_binding(task.task_id)
-        if binding is None or binding.thread_id != thread_id:
+        if binding is None:
             raise TaskSourceContractError
         transition_id = _source_plan_transition_id(
             task.task_id,
@@ -725,7 +723,7 @@ class LocalAgentServerRunner:
             expected_revision,
             steps,
         )
-        await self.repository.mark_source_plan_transition_pending(
+        transition = await self.repository.mark_source_plan_transition_pending(
             task.task_id,
             thread_id=binding.thread_id,
             run_id=binding.run_id,
@@ -734,31 +732,79 @@ class LocalAgentServerRunner:
             expected_revision=expected_revision,
             steps=tuple(steps),
         )
+        thread_id = self._threads.get(task.task_id)
+        if thread_id is None or task.task_id not in self._source_leases:
+            self.watch_recovery(current)
+            return await self._wait_for_plan_transition_commit(transition)
+        if binding.thread_id != thread_id:
+            raise TaskSourceContractError
+        updated, refreshed = await self._execute_source_plan_transition(
+            current,
+            transition,
+        )
+        active = self._tasks.pop(task.task_id, None)
+        if active is not None:
+            active.cancel()
+            await asyncio.gather(active, return_exceptions=True)
+        self.start(refreshed, updated)
+        assert refreshed.proposed_plan is not None
+        return PlanUpdateRecord(
+            task.task_id,
+            updated.run_id,
+            updated.interrupt_id,
+            refreshed.proposed_plan,
+        )
+
+    async def _execute_source_plan_transition(
+        self,
+        task: TaskSnapshot,
+        transition: TaskSourcePlanTransition,
+    ) -> tuple[LocalPlanUpdate, TaskSnapshot]:
+        """Execute one durable plan intent from the process owning its source lease."""
+
+        binding = await self.repository.get_source_binding(task.task_id)
+        if binding is None or (
+            binding.thread_id,
+            binding.run_id,
+            binding.pending_interrupt_id,
+            binding.pending_transition_id,
+        ) != (
+            transition.thread_id,
+            transition.run_id,
+            transition.interrupt_id,
+            transition.transition_id,
+        ):
+            raise TaskSourceContractError
         try:
             updated = await self.source.update_plan(
-                thread_id,
-                interrupt_id=interrupt_id,
-                expected_revision=expected_revision,
-                steps=steps,
-                transition_id=transition_id,
-                agent_id=current.agent_id,
+                transition.thread_id,
+                interrupt_id=transition.interrupt_id,
+                expected_revision=transition.expected_revision,
+                steps=transition.steps,
+                transition_id=transition.transition_id,
+                agent_id=task.agent_id,
             )
         except (StaleInterruptError, TaskSourceContractError):
             raise
         except Exception:
             raise TaskSourceUnavailableError from None
-        if updated.interrupt_id == interrupt_id or updated.plan_revision != expected_revision + 1:
+        if (
+            updated.interrupt_id == transition.interrupt_id
+            or updated.plan_revision != transition.expected_revision + 1
+        ):
             raise TaskSourceContractError
         await self.repository.accept_source_plan_transition(
             task.task_id,
             thread_id=updated.thread_id,
-            previous_run_id=binding.run_id,
+            previous_run_id=transition.run_id,
             run_id=updated.run_id,
-            transition_id=transition_id,
+            transition_id=transition.transition_id,
             new_interrupt_id=updated.interrupt_id,
             plan_revision=updated.plan_revision,
         )
-        acknowledgement = self._resume_acknowledgements.pop((task.task_id, interrupt_id), None)
+        acknowledgement = self._resume_acknowledgements.pop(
+            (task.task_id, transition.interrupt_id), None
+        )
         if acknowledgement is not None and not acknowledgement.done():
             acknowledgement.set_exception(StaleInterruptError())
         self._threads[task.task_id] = updated.thread_id
@@ -767,19 +813,76 @@ class LocalAgentServerRunner:
         if (
             refreshed.proposed_plan is None
             or refreshed.proposed_plan.revision != updated.plan_revision
+            or refreshed.proposed_plan.steps != transition.steps
+            or refreshed.pending_interrupt_id != updated.interrupt_id
         ):
             raise TaskSourceContractError
-        active = self._tasks.pop(task.task_id, None)
-        if active is not None:
-            active.cancel()
-            await asyncio.gather(active, return_exceptions=True)
-        self.start(refreshed, updated)
-        return PlanUpdateRecord(
-            task.task_id,
-            updated.run_id,
-            updated.interrupt_id,
-            refreshed.proposed_plan,
+        return updated, refreshed
+
+    async def _wait_for_plan_transition_commit(
+        self,
+        transition: TaskSourcePlanTransition,
+    ) -> PlanUpdateRecord:
+        """Wait for the lease owner to atomically publish a submitted plan edit."""
+
+        while True:
+            pending = await self.repository.get_source_plan_transition(transition.task_id)
+            if pending is not None:
+                if pending != transition:
+                    raise TaskSourceContractError
+                await asyncio.sleep(0.05)
+                continue
+            refreshed = await self.repository.get_task(transition.task_id)
+            if (
+                refreshed.status.is_terminal
+                or refreshed.pending_interrupt_id in {None, transition.interrupt_id}
+                or refreshed.proposed_plan is None
+                or refreshed.proposed_plan.revision != transition.expected_revision + 1
+                or refreshed.proposed_plan.steps != transition.steps
+            ):
+                raise TaskSourceContractError
+            binding = await self.repository.get_source_binding(transition.task_id)
+            if binding is None or binding.accepted_transition_id != transition.transition_id:
+                raise TaskSourceContractError
+            assert refreshed.pending_interrupt_id is not None
+            assert refreshed.proposed_plan is not None
+            return PlanUpdateRecord(
+                transition.task_id,
+                binding.run_id,
+                refreshed.pending_interrupt_id,
+                refreshed.proposed_plan,
+            )
+
+    async def _wait_for_interrupt_command(
+        self,
+        task_id: str,
+        interrupt_id: str,
+    ) -> DecisionValue | TaskSourcePlanTransition:
+        """Observe either a decision or a cross-process plan edit for one pause."""
+
+        decision = asyncio.create_task(
+            self.repository.wait_for_decision(task_id, interrupt_id),
+            name=f"deepwork-local-decision-{task_id}",
         )
+        try:
+            while True:
+                done, _ = await asyncio.wait({decision}, timeout=0.05)
+                if decision in done:
+                    return decision.result()
+                transition = await self.repository.get_source_plan_transition(task_id)
+                if transition is None:
+                    continue
+                if transition.interrupt_id != interrupt_id:
+                    raise TaskSourceContractError
+                # A plan operation running in this process executes its own
+                # source call and will replace this follower after commit.
+                if task_id in self._plan_updates:
+                    continue
+                return transition
+        finally:
+            if not decision.done():
+                decision.cancel()
+            await asyncio.gather(decision, return_exceptions=True)
 
     async def record_decision(
         self,
@@ -891,9 +994,19 @@ class LocalAgentServerRunner:
                     await self._pause(task, state)
                 elif task.pending_interrupt_id != state.interrupt.interrupt_id:
                     raise TaskSourceContractError
-                decision = await self.repository.wait_for_decision(
-                    task.task_id, state.interrupt.interrupt_id
+                command = await self._wait_for_interrupt_command(
+                    task.task_id,
+                    state.interrupt.interrupt_id,
                 )
+                if isinstance(command, TaskSourcePlanTransition):
+                    updated, refreshed = await self._execute_source_plan_transition(
+                        task,
+                        command,
+                    )
+                    self._tasks.pop(task.task_id, None)
+                    self.start(refreshed, updated)
+                    return
+                decision = command
                 key = (task.task_id, state.interrupt.interrupt_id)
                 transition_id = _source_transition_id(*key)
                 self._resumes_in_flight.add(key)

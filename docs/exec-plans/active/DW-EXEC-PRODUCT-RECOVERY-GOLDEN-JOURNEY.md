@@ -12,9 +12,9 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-04
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: ef0bcc852ddae90c92a3144b16922c7d067799a7
+last_verified_commit: 1a80096ce27d2fc7925d7c66161ff38ca207dc72
 risk: high
-governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, tools/product_demo/**, tools/worktree/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
+governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/agent/**, packages/domain/**, packages/sdk/**, packages/ui/**, tests/**, tools/architecture/**, tools/contract-spikes/**, tools/docs/**, tools/oss_audit/**, tools/product_demo/**, tools/worktree/**, ARCHITECTURE.md, dev, playwright.config.ts, playwright.hosted.config.ts, playwright.performance.config.ts, playwright.recovery.config.ts, playwright.security.config.ts, playwright.visual.config.ts, package.json, pnpm-lock.yaml, pnpm-workspace.yaml, pyproject.toml, .node-version, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
 decision_gates: [DEC-033]
 gate_review_status: reviewed-with-gates
@@ -281,6 +281,22 @@ scorecard columns.
   artifacts, sixteen bidirectional isolation observations and both reservation
   releases. Raw driver runs remain `pending-receipt`; interrupted finalization is
   recoverable and repeated namespace generations are regression-tested.
+- [x] 2026-08-04 — Source recovery completed through non-owner plan-edit routing
+  (`80cf434`), transient active-stream retry (`680ae40`), bounded replay/receipt
+  retention (`1e5c065`) and real OS-process kill/takeover proof (`7b65f96`).
+- [x] 2026-08-04 — Adversarial review correction completed at `1a80096`. Current
+  lease tokens fence source-owned commits, accepted handoffs re-enter durable
+  recovery, permanent stream outage terminates safely, API/domain/SDK contract
+  fields align, PostgreSQL waits are bounded, migrations really downgrade and
+  re-upgrade, the visual comparator is full-resolution/color-sensitive, and
+  hosted acceptance binds both deployed services to the exact CI commit.
+- [x] 2026-08-04 — Current focused verification passes 95 API tests, 80 domain
+  tests, 73 SDK tests, 22 composer-dispatch tests, three TypeScript type checks,
+  and the two-test 12-route desktop/phone visual reference contract.
+- [ ] 2026-08-04 — Current-head production-browser rerun. The harness starts, but
+  the nearly full workstation volume prevents Chromium from creating its profile
+  (`ENOSPC`) before any application assertion. Prior browser proof is retained but
+  is not relabelled as a current-head pass.
 - [ ] Protected hosted browser proof and release-owner acceptance.
 
 ## Surprises & Discoveries
@@ -318,6 +334,10 @@ scorecard columns.
   PostgreSQL and a transactional outbox. Consequence: implement and prove the
   PostgreSQL boundary before sealing the dual-stack driver; do not manufacture a
   product-demo pass around SQLite.
+- 2026-08-04 — The implementation volume reached 100% APFS capacity during the
+  current-head browser rerun. Next and Chromium failed with `ENOSPC`; only failed
+  generated `.next` and Playwright output were removed. This is an execution-host
+  blocker, not browser acceptance evidence.
 
 ## Decision Log
 
@@ -337,6 +357,10 @@ scorecard columns.
   Alembic and Psycopg 3 releases from official package metadata, retain exact
   package locks, and require real local PostgreSQL before product-demo acceptance.
   Approved by: product-owner directive to execute the roadmap through completion.
+- 2026-08-04 — Hosted acceptance must bind the checked-out CI commit to both the
+  API runtime status and the rendered web shell before exercising the journey.
+  Configuration or reachability alone cannot populate the hosted-proof column.
+  Approved by: product-owner directive for blocking hosted browser acceptance.
 
 ## Detailed implementation approach
 

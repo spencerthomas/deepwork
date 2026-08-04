@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,9 +14,17 @@ if TYPE_CHECKING:
 
     # The public facade may depend only on bootstrap; import the composition
     # root's already-bound type instead of bypassing the architecture inward.
-    from deepwork_api.bootstrap.api import SecurityContext, SourceProbeClient
+    from deepwork_api.bootstrap.api import SecurityContext
 
-__all__ = ["create_app"]
+__all__ = ["SourceProbeConfig", "create_app"]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceProbeConfig:
+    """Server-held qualification settings; never serialize this value."""
+
+    credential: str = field(repr=False)
+    allowed_endpoints: tuple[str, ...]
 
 
 def create_app(
@@ -28,9 +37,7 @@ def create_app(
     classic_deployment_endpoint: str | None = None,
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
-    source_probe_credential: str | None = None,
-    source_probe_allowed_endpoints: tuple[str, ...] = (),
-    source_probe_client: SourceProbeClient | None = None,
+    source_probe_config: SourceProbeConfig | None = None,
     access_key: str | None = None,
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
@@ -50,7 +57,17 @@ def create_app(
     ``web_origins`` overrides the allowed CORS origins for a hosted frontend.
     """
 
+    from deepwork_api.bootstrap.api import SourceProbeConfig as _BootstrapSourceProbeConfig
     from deepwork_api.bootstrap.api import create_app as _create_app
+
+    bootstrap_source_probe_config = (
+        _BootstrapSourceProbeConfig(
+            credential=source_probe_config.credential,
+            allowed_endpoints=source_probe_config.allowed_endpoints,
+        )
+        if source_probe_config is not None
+        else None
+    )
 
     # Forward an explicit clock only when supplied; otherwise the bootstrap
     # default (system_clock) applies, so this facade never imports it directly.
@@ -64,9 +81,7 @@ def create_app(
             classic_deployment_endpoint=classic_deployment_endpoint,
             classic_deployment_assistant=classic_deployment_assistant,
             classic_deployment_credential=classic_deployment_credential,
-            source_probe_credential=source_probe_credential,
-            source_probe_allowed_endpoints=source_probe_allowed_endpoints,
-            source_probe_client=source_probe_client,
+            source_probe_config=bootstrap_source_probe_config,
             access_key=access_key,
             access_key_contexts=access_key_contexts,
             web_origins=web_origins,
@@ -81,9 +96,7 @@ def create_app(
         classic_deployment_endpoint=classic_deployment_endpoint,
         classic_deployment_assistant=classic_deployment_assistant,
         classic_deployment_credential=classic_deployment_credential,
-        source_probe_credential=source_probe_credential,
-        source_probe_allowed_endpoints=source_probe_allowed_endpoints,
-        source_probe_client=source_probe_client,
+        source_probe_config=bootstrap_source_probe_config,
         access_key=access_key,
         access_key_contexts=access_key_contexts,
         web_origins=web_origins,

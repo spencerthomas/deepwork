@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from deepwork_api.domain import SourceCapabilityObservation, SourceProbeResult
+from deepwork_api.domain import SourceCapabilityObservation, SourceProbeResult, SourceProbeState
 
 
 class _SourceWireModel(BaseModel):
@@ -28,7 +28,7 @@ class SourceCapabilityResponse(_SourceWireModel):
     """One sanitized, independently observed capability state."""
 
     name: str = Field(min_length=1, max_length=64)
-    state: Literal["available", "unavailable", "gated", "permission-denied", "unknown"]
+    state: SourceProbeState
     reason: str = Field(min_length=1, max_length=128)
 
     @classmethod
@@ -40,7 +40,7 @@ class SourceProbeResponse(_SourceWireModel):
     """Credential-free result; read qualification never authorizes saving."""
 
     kind: Literal["langsmith_deployment"] = "langsmith_deployment"
-    state: Literal["available", "unavailable", "gated", "permission-denied", "unknown"]
+    state: SourceProbeState
     assistant_id: str | None = Field(default=None, alias="assistantId", max_length=256)
     graph_id: str | None = Field(default=None, alias="graphId", max_length=256)
     reason: str = Field(min_length=1, max_length=128)

@@ -10,7 +10,8 @@ import deepwork_api
 
 
 def test_public_api_is_deliberate_and_typed() -> None:
-    assert deepwork_api.__all__ == ["create_app"]
+    assert deepwork_api.__all__ == ["SourceProbeConfig", "create_app"]
+    assert deepwork_api.SourceProbeConfig.__module__ == "deepwork_api"
     assert callable(deepwork_api.create_app)
     assert files("deepwork_api").joinpath("py.typed").is_file()
 
@@ -34,8 +35,9 @@ class DeniedEnvironment:
     values = _deny
 
 os.environ = DeniedEnvironment()
-from deepwork_api import create_app
+from deepwork_api import SourceProbeConfig, create_app
 assert callable(create_app)
+assert SourceProbeConfig.__module__ == "deepwork_api"
 assert "fastapi" not in sys.modules
 assert "pydantic" not in sys.modules
 assert "deepwork_api.bootstrap.api" not in sys.modules

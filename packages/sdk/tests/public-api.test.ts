@@ -4,6 +4,7 @@ import type {
   GeneratedMutationTransport,
   MutationPort,
   QueryPort,
+  SourceProbeService,
   StreamPort,
 } from "@deepwork/sdk";
 import { describe, expectTypeOf, it } from "vitest";
@@ -16,5 +17,6 @@ describe("public contracts", () => {
     expectTypeOf<GeneratedMutationTransport<unknown, unknown>>().toBeObject();
     expectTypeOf<BatchDecisionInput>().toBeObject();
     expectTypeOf<BatchDecisionReceipt>().toBeObject();
+    expectTypeOf<SourceProbeService>().toBeObject();
   });
 });

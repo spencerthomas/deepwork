@@ -53,6 +53,13 @@ export {
 } from "./capability.js";
 
 export {
+  SOURCE_PROBE_STATES,
+  type SourceCapabilityObservation,
+  type SourceProbeResult,
+  type SourceProbeState,
+} from "./source-probe.js";
+
+export {
   applicationEventId,
   evidenceId,
   interruptId,

@@ -49,9 +49,15 @@ describe("source probe client", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: "No server credential is configured." }), {
-          status: 503,
-        }),
+        new Response(
+          JSON.stringify({
+            code: "source_probe_unavailable",
+            message: "untrusted upstream detail",
+          }),
+          {
+            status: 503,
+          },
+        ),
       ),
     );
     await expect(
@@ -59,7 +65,7 @@ describe("source probe client", () => {
         endpoint: "https://agent.example.test",
         assistantId: "assistant-1",
       }),
-    ).rejects.toThrow("No server credential is configured.");
+    ).rejects.toThrow("No server-held source credential is configured");
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({}))));
     await expect(

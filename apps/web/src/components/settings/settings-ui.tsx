@@ -140,6 +140,8 @@ export function TextInput({
   type = "text",
   className,
   mono,
+  required,
+  autoComplete,
 }: {
   value: string | number;
   onChange: (value: string) => void;
@@ -147,6 +149,8 @@ export function TextInput({
   type?: string;
   className?: string;
   mono?: boolean;
+  required?: boolean;
+  autoComplete?: string;
 }) {
   return (
     <input
@@ -154,6 +158,8 @@ export function TextInput({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
+      required={required}
+      autoComplete={autoComplete}
       className={cn(
         "rounded-lg border border-border bg-background px-3 py-1.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50",
         mono && "font-mono",

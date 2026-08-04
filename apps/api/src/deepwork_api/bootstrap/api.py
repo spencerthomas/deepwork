@@ -4,6 +4,7 @@ import argparse
 import os
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -63,6 +64,14 @@ _LOCAL_SOURCE_GATED_MESSAGE = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class SourceProbeConfig:
+    """Immutable server-owned settings for bounded source qualification."""
+
+    credential: str = field(repr=False)
+    allowed_endpoints: tuple[str, ...]
+
+
 def _open_security_context() -> SecurityContext:
     return DEFAULT_SECURITY_CONTEXT
 
@@ -111,8 +120,7 @@ def create_app(
     classic_deployment_endpoint: str | None = None,
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
-    source_probe_credential: str | None = None,
-    source_probe_allowed_endpoints: tuple[str, ...] = (),
+    source_probe_config: SourceProbeConfig | None = None,
     source_probe_client: SourceProbeClient | None = None,
     access_key: str | None = None,
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
@@ -132,18 +140,14 @@ def create_app(
     """
 
     status_service = StatusService(provider=FixtureStatusProvider())
-    if source_probe_client is not None and source_probe_credential is not None:
-        raise ValueError("configure either a source probe client or source probe credential")
-    if source_probe_client is not None and source_probe_allowed_endpoints:
-        raise ValueError("an injected source probe client owns its endpoint policy")
+    if source_probe_client is not None and source_probe_config is not None:
+        raise ValueError("configure either a source probe client or source probe settings")
     configured_probe_client = source_probe_client
-    if configured_probe_client is None and source_probe_credential is not None:
+    if configured_probe_client is None and source_probe_config is not None:
         configured_probe_client = ClassicSourceProbeClient(
-            source_probe_credential,
-            allowed_endpoints=source_probe_allowed_endpoints,
+            source_probe_config.credential,
+            allowed_endpoints=source_probe_config.allowed_endpoints,
         )
-    elif configured_probe_client is None and source_probe_allowed_endpoints:
-        raise ValueError("source probe allowed endpoints require a server-held credential")
     source_service = (
         SourceService(configured_probe_client) if configured_probe_client is not None else None
     )
@@ -482,10 +486,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             classic_deployment_credential=(
                 classic_credential if args.classic_deployment_endpoint is not None else None
             ),
-            source_probe_credential=(
-                classic_credential if source_probe_allowed_endpoints else None
+            source_probe_config=(
+                SourceProbeConfig(
+                    credential=classic_credential,
+                    allowed_endpoints=source_probe_allowed_endpoints,
+                )
+                if source_probe_allowed_endpoints and classic_credential is not None
+                else None
             ),
-            source_probe_allowed_endpoints=source_probe_allowed_endpoints,
             access_key=access_key,
             web_origins=web_origins,
             trace_api_key=trace_api_key,

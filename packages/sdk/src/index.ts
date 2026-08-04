@@ -69,3 +69,14 @@ export {
   unavailableQueryPort,
   unavailableStreamPort,
 } from "./unavailable.js";
+
+export {
+  createSourceProbeService,
+  mapSourceProbeResult,
+  SOURCE_PROBE_PROBLEM_CODES,
+  sourceProbeTransportProblem,
+  SourceProbeTransportProblemError,
+  type SourceProbeProblemCode,
+  type SourceProbeService,
+  type SourceProbeTransport,
+} from "./source-probe.js";

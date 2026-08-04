@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, RefreshCw, ShieldCheck } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { formatRuntimeDiagnostics } from "@/lib/runtime-diagnostics";
@@ -15,7 +15,7 @@ import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
 
-import { Card, GroupLabel, Row, SettingsHeader } from "./settings-ui";
+import { Card, GroupLabel, Row, SettingsHeader, TextInput } from "./settings-ui";
 
 const ACTION_CLASS =
   "flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60";
@@ -34,35 +34,65 @@ function probeChipState(state: SourceProbeState): "available" | "unavailable" | 
   return "unavailable";
 }
 
+function sourceAnnouncement(checking: boolean, result: SourceProbeResult | null): string {
+  if (checking) return "Checking the source.";
+  if (result?.state === "available") return "Assistant found. The source was not saved.";
+  if (result) return "The source was not qualified or saved.";
+  return "";
+}
+
 function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
   const [endpoint, setEndpoint] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<SourceProbeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+    },
+    [],
+  );
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (activeRequest.current) return;
+
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setChecking(true);
     setError(null);
     setResult(null);
     try {
-      setResult(
-        await probeClassicSource(apiBaseUrl, {
+      const nextResult = await probeClassicSource(
+        apiBaseUrl,
+        {
           endpoint: endpoint.trim(),
           assistantId: assistantId.trim(),
-        }),
+        },
+        controller.signal,
       );
+      if (activeRequest.current === controller && !controller.signal.aborted) {
+        setResult(nextResult);
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The source check failed safely.");
+      if (activeRequest.current === controller && !controller.signal.aborted) {
+        setError(caught instanceof Error ? caught.message : "The source check failed safely.");
+      }
     } finally {
-      setChecking(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        if (!controller.signal.aborted) setChecking(false);
+      }
     }
   }
 
   return (
     <>
-      <GroupLabel>Connect a source</GroupLabel>
+      <GroupLabel>Check a source</GroupLabel>
       <Card className="mb-6">
         <form onSubmit={(event) => void submit(event)} className="space-y-4 p-4">
           <div>
@@ -76,26 +106,28 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="min-w-0 text-[12px] font-medium text-foreground">
               Deployment URL
-              <input
+              <TextInput
                 type="url"
                 required
                 value={endpoint}
-                onChange={(event) => setEndpoint(event.target.value)}
+                onChange={setEndpoint}
                 placeholder="https://deployment.example.com"
                 autoComplete="url"
-                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
+                mono
+                className="mt-1.5 w-full py-2 text-[12px]"
               />
             </label>
             <label className="min-w-0 text-[12px] font-medium text-foreground">
               Assistant ID
-              <input
+              <TextInput
                 type="text"
                 required
                 value={assistantId}
-                onChange={(event) => setAssistantId(event.target.value)}
+                onChange={setAssistantId}
                 placeholder="deep-work-agent"
                 autoComplete="off"
-                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
+                mono
+                className="mt-1.5 w-full py-2 text-[12px]"
               />
             </label>
           </div>
@@ -160,13 +192,7 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
         )}
       </Card>
       <span role="status" aria-live="polite" className="sr-only">
-        {checking
-          ? "Checking the source."
-          : result
-            ? result.state === "available"
-              ? "Assistant found. The source was not saved."
-              : "The source was not qualified or saved."
-            : ""}
+        {sourceAnnouncement(checking, result)}
       </span>
     </>
   );

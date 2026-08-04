@@ -242,10 +242,12 @@ test("creates, approves, and completes one API-backed task", async ({
   expect(pageErrors).toEqual([]);
 });
 
-test("checks a classic source without saving or accepting browser credentials", async ({ page }) => {
+test("checks a classic source without saving or accepting browser credentials", async ({
+  page,
+}) => {
   await page.goto("/settings/runtime");
   await expect(page.getByRole("heading", { name: "Runtime" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Connect a source" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check a source" })).toBeVisible();
 
   await page.getByLabel("Deployment URL").fill("https://agent.example.test/api");
   await page.getByLabel("Assistant ID").fill("assistant-1");

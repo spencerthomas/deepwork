@@ -38,6 +38,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@deepwork/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@deepwork/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@fontsource-variable/inter':
         specifier: ^5.3.0
         version: 5.3.0

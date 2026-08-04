@@ -6,6 +6,7 @@ from deepwork_api.adapters.sources.classic.source import (
     ClassicSourceConfigurationError,
     ClassicSourceSettings,
     qualify_classic_sources,
+    validate_deployment_endpoint,
 )
 from deepwork_api.domain import (
     SourceCapabilityObservation,
@@ -28,13 +29,7 @@ class ClassicSourceProbeClient:
         self._credential = credential
         try:
             self._allowed_endpoints = frozenset(
-                ClassicSourceSettings(
-                    source_id=_SOURCE_ID,
-                    endpoint=endpoint,
-                    assistant_id="source-probe-placeholder",
-                    auth_ref=_AUTH_REF,
-                ).endpoint
-                for endpoint in allowed_endpoints
+                validate_deployment_endpoint(endpoint) for endpoint in allowed_endpoints
             )
         except ClassicSourceConfigurationError:
             raise ValueError("classic source probe allowed endpoint is invalid") from None

@@ -30,7 +30,6 @@ from deepwork_api.domain.sources import (
     SourceEndpointInvalidError,
     SourceProbeResult,
     SourceProbeState,
-    SourceProbeUnavailableError,
 )
 from deepwork_api.domain.status import (
     Capability,
@@ -143,7 +142,6 @@ __all__ = [
     "SourceEndpointInvalidError",
     "SourceProbeResult",
     "SourceProbeState",
-    "SourceProbeUnavailableError",
     "StaleInterruptError",
     "SystemPromptTooLongError",
     "TaskAlreadyResolvedError",

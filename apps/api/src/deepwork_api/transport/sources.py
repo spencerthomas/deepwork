@@ -13,7 +13,7 @@ from deepwork_api.application import (
     SourceEndpointInvalidError,
     SourceService,
 )
-from deepwork_api.contracts import SourceProbeRequest, SourceProbeResponse
+from deepwork_api.contracts import ProblemResponse, SourceProbeRequest, SourceProbeResponse
 
 
 def _default_security_context() -> SecurityContext:
@@ -38,24 +38,24 @@ def build_sources_router(
         _security_context: SecurityContext = security_context_marker,
     ) -> SourceProbeResponse | JSONResponse:
         if service is None:
+            problem = ProblemResponse(
+                code="source_probe_unavailable",
+                message="No server-held source credential is configured for connection checks.",
+            )
             return JSONResponse(
                 status_code=503,
-                content={
-                    "code": "source_probe_unavailable",
-                    "message": (
-                        "No server-held source credential is configured for connection checks."
-                    ),
-                },
+                content=problem.model_dump(),
             )
         try:
             result = await service.probe_classic(request.deployment_url, request.assistant_id)
         except SourceEndpointInvalidError:
+            problem = ProblemResponse(
+                code="source_endpoint_invalid",
+                message="The deployment URL is not an allowed hosted HTTPS endpoint.",
+            )
             return JSONResponse(
                 status_code=422,
-                content={
-                    "code": "source_endpoint_invalid",
-                    "message": "The deployment URL is not an allowed hosted HTTPS endpoint.",
-                },
+                content=problem.model_dump(),
             )
         return SourceProbeResponse.from_domain(result)
 

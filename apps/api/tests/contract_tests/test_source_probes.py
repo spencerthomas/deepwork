@@ -8,11 +8,15 @@ from typing import Any
 
 import httpx
 
-from deepwork_api import create_app
+from deepwork_api import SourceProbeConfig, create_app
 from deepwork_api.adapters.sources.classic.source import (
     ClassicSourceConfigurationError,
     validate_deployment_endpoint,
 )
+from deepwork_api.bootstrap.api import (
+    SourceProbeConfig as BootstrapSourceProbeConfig,
+)
+from deepwork_api.bootstrap.api import create_app as create_bootstrap_app
 from deepwork_api.domain import (
     SourceCapabilityObservation,
     SourceEndpointInvalidError,
@@ -42,7 +46,7 @@ class FakeSourceProbeClient:
 
 @asynccontextmanager
 async def _client(**kwargs: Any) -> AsyncIterator[httpx.AsyncClient]:
-    app = create_app(**kwargs)
+    app = create_bootstrap_app(**kwargs)
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="https://source.test") as client:
@@ -192,8 +196,10 @@ async def test_probe_request_rejects_unknown_fields_and_source_kinds() -> None:
 
 def test_server_probe_credential_does_not_enable_a_task_source_or_call_provider() -> None:
     app = create_app(
-        source_probe_credential="server-only-source-key",
-        source_probe_allowed_endpoints=("https://agent.example.test",),
+        source_probe_config=SourceProbeConfig(
+            credential="server-only-source-key",
+            allowed_endpoints=("https://agent.example.test",),
+        ),
     )
 
     assert app.state.source_service is not None
@@ -202,8 +208,10 @@ def test_server_probe_credential_does_not_enable_a_task_source_or_call_provider(
 
 async def test_server_probe_rejects_non_allowlisted_origin_without_network() -> None:
     async with _client(
-        source_probe_credential="server-only-source-key",
-        source_probe_allowed_endpoints=("https://approved.example.test",),
+        source_probe_config=BootstrapSourceProbeConfig(
+            credential="server-only-source-key",
+            allowed_endpoints=("https://approved.example.test",),
+        ),
     ) as client:
         response = await client.post(
             "/api/v1/sources/probes",

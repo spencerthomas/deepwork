@@ -36,7 +36,3 @@ class SourceProbeResult:
 
 class SourceEndpointInvalidError(ValueError):
     """The candidate endpoint is unsafe before any provider request."""
-
-
-class SourceProbeUnavailableError(RuntimeError):
-    """No server-held source qualification capability is configured."""

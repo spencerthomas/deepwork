@@ -62,6 +62,22 @@ async def test_authenticated_task_creation_requires_idempotency_key() -> None:
     }
 
 
+async def test_authenticated_openapi_publishes_required_idempotency_contract() -> None:
+    async with _client() as (_client_instance, app):
+        operation = app.openapi()["paths"]["/api/v1/tasks"]["post"]
+
+    header = next(
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["in"] == "header" and parameter["name"] == "Idempotency-Key"
+    )
+    assert header["required"] is True
+    assert {"202", "400", "409", "422", "502", "503"}.issubset(operation["responses"])
+    for status in ("400", "409", "502", "503"):
+        schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert schema == {"$ref": "#/components/schemas/ProblemResponse"}
+
+
 async def test_identical_retry_returns_original_task_without_restarting_runner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -145,6 +161,24 @@ async def test_same_scoped_key_with_changed_request_is_rejected(
         "message": "Idempotency-Key was already used for a different task request.",
     }
     assert len(listing.json()["items"]) == 1
+
+
+async def test_distinct_redacted_prompts_still_conflict_for_one_key() -> None:
+    async with _client() as (client, _app):
+        first = await client.post(
+            "/api/v1/tasks",
+            headers=_headers("secret-shaped-conflict"),
+            json={"prompt": "Review token=secret-one-value"},
+        )
+        conflict = await client.post(
+            "/api/v1/tasks",
+            headers=_headers("secret-shaped-conflict"),
+            json={"prompt": "Review token=secret-two-value"},
+        )
+
+    assert first.status_code == 202
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "task_idempotency_conflict"
 
 
 async def test_actor_and_workspace_scopes_may_reuse_the_same_key(tmp_path: Path) -> None:

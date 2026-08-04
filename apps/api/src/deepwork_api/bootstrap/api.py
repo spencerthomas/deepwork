@@ -409,6 +409,23 @@ def create_app(
         app.include_router(build_job_router(job_service, security_context_dependency=auth_guard))
     if auth_service is not None:
         app.include_router(build_auth_router(auth_service))
+        generated_openapi = app.openapi
+
+        def authenticated_openapi() -> dict[str, object]:
+            """Publish the stricter authenticated create contract."""
+
+            document = generated_openapi()
+            paths = cast(dict[str, object], document["paths"])
+            task_path = cast(dict[str, object], paths["/api/v1/tasks"])
+            operation = cast(dict[str, object], task_path["post"])
+            parameters = cast(list[dict[str, object]], operation["parameters"])
+            for parameter in parameters:
+                if parameter.get("in") == "header" and parameter.get("name") == "Idempotency-Key":
+                    parameter["required"] = True
+                    break
+            return document
+
+        app.openapi = authenticated_openapi  # type: ignore[method-assign]
     app.state.task_repository = task_repository
     app.state.task_runner = task_runner
     app.state.task_service = task_service

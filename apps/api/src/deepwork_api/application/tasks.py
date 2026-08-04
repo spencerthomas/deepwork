@@ -513,7 +513,6 @@ class TaskService:
 
     repository: TaskRepository
     runner: DeterministicFixtureRunner | LocalAgentServerRunner
-    _creation_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
 
     @property
     def batch_allowed_decisions(self) -> tuple[DecisionType, ...] | None:
@@ -543,14 +542,17 @@ class TaskService:
         task or the immutable local fixture agent in credential-free mode.
         """
 
-        objective = sanitize_objective(prompt)
-        title = _build_task_title(objective)
+        # The fingerprint represents the caller's validated immutable request,
+        # not the redacted value retained by the application. Distinct secrets
+        # must conflict even when both sanitize to the same safe objective.
         request_fingerprint = _task_request_fingerprint(
-            objective=objective,
+            objective=prompt,
             agent_id=agent_id,
             journey=journey,
             repository_id=repository_id,
         )
+        objective = sanitize_objective(prompt)
+        title = _build_task_title(objective)
         if journey is TaskJourney.CODING:
             if repository_id != _FIXTURE_REPOSITORY_ID:
                 raise TaskSourceUnavailableError
@@ -562,24 +564,16 @@ class TaskService:
             raise TaskSourceUnavailableError
         if idempotency_key is not None:
             _validate_task_idempotency_key(idempotency_key)
-            async with self._creation_lock:
-                existing = await self.repository.find_task_by_idempotency(
-                    idempotency_key=idempotency_key,
-                    request_fingerprint=request_fingerprint,
-                    security_context=security_context,
-                )
-                if existing is not None:
-                    return TaskCreation(task=existing, created=False)
-                return await self._create_task(
-                    title=title,
-                    objective=objective,
-                    agent_id=agent_id,
-                    journey=journey,
-                    repository_id=repository_id,
-                    idempotency_key=idempotency_key,
-                    request_fingerprint=request_fingerprint,
-                    security_context=security_context,
-                )
+            return await self._create_task(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                security_context=security_context,
+            )
         return await self._create_task(
             title=title,
             objective=objective,

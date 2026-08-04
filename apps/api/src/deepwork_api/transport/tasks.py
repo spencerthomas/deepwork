@@ -81,7 +81,17 @@ def build_task_router(
     )
     security_context_marker = Depends(security_context_dependency)
 
-    @router.post("", response_model=TaskAcceptedResponse, status_code=202)
+    @router.post(
+        "",
+        response_model=TaskAcceptedResponse,
+        status_code=202,
+        responses={
+            400: {"model": ProblemResponse},
+            409: {"model": ProblemResponse},
+            502: {"model": ProblemResponse},
+            503: {"model": ProblemResponse},
+        },
+    )
     async def create_task(
         request: TaskCreateRequest,
         security_context: SecurityContext = security_context_marker,

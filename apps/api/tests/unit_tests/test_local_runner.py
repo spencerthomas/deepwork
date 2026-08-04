@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from deepwork_api.adapters.fixture.tasks import InMemoryTaskRepository
+from deepwork_api.adapters.persistence.sqlite import SQLiteTaskRepository
 from deepwork_api.application.local_runner import (
     LocalAgentServerRunner,
     LocalRun,
@@ -212,6 +214,112 @@ async def test_service_idempotent_retry_does_not_restart_local_source() -> None:
     assert retried.task.task_id == first.task.task_id
     assert retried.task.run_id == first.task.run_id
     assert source.start_system_prompts == [None]
+
+
+async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_path: Path) -> None:
+    class BlockingSource(_Source):
+        def __init__(self) -> None:
+            super().__init__()
+            self.entered = asyncio.Event()
+            self.release = asyncio.Event()
+            self.starts = 0
+
+        async def start(
+            self,
+            objective: str,
+            *,
+            system_prompt: str | None = None,
+            agent_id: str | None = None,
+        ) -> _Run:
+            self.starts += 1
+            self.entered.set()
+            await self.release.wait()
+            return await super().start(
+                objective,
+                system_prompt=system_prompt,
+                agent_id=agent_id,
+            )
+
+    database = tmp_path / "shared-task-create.sqlite"
+    repositories = (SQLiteTaskRepository(database), SQLiteTaskRepository(database))
+    for repository in repositories:
+        await repository.initialize()
+    source = BlockingSource()
+    runners = tuple(LocalAgentServerRunner(repository, source) for repository in repositories)
+    services = tuple(
+        TaskService(repository, runner)
+        for repository, runner in zip(repositories, runners, strict=True)
+    )
+    first_request = asyncio.create_task(
+        services[0].create_task("Do the thing", idempotency_key="shared-source-key")
+    )
+    try:
+        await asyncio.wait_for(source.entered.wait(), timeout=1)
+        replay = await asyncio.wait_for(
+            services[1].create_task("Do the thing", idempotency_key="shared-source-key"),
+            timeout=1,
+        )
+        assert replay.created is False
+        assert source.starts == 1
+        source.release.set()
+        created = await asyncio.wait_for(first_request, timeout=1)
+        assert created.created is True
+        assert replay.task.task_id == created.task.task_id
+        assert source.starts == 1
+    finally:
+        source.release.set()
+        if not first_request.done():
+            first_request.cancel()
+        await asyncio.gather(first_request, return_exceptions=True)
+        for runner in runners:
+            await runner.close()
+        for repository in repositories:
+            await repository.close()
+
+
+async def test_independent_task_keys_can_start_the_source_concurrently() -> None:
+    class ConcurrentSource(_Source):
+        def __init__(self) -> None:
+            super().__init__()
+            self.objectives: list[str] = []
+            self.both_entered = asyncio.Event()
+            self.release = asyncio.Event()
+
+        async def start(
+            self,
+            objective: str,
+            *,
+            system_prompt: str | None = None,
+            agent_id: str | None = None,
+        ) -> _Run:
+            self.objectives.append(objective)
+            if len(self.objectives) == 2:
+                self.both_entered.set()
+            await self.release.wait()
+            return await super().start(
+                objective,
+                system_prompt=system_prompt,
+                agent_id=agent_id,
+            )
+
+    repository = InMemoryTaskRepository()
+    source = ConcurrentSource()
+    runner = LocalAgentServerRunner(repository, source)
+    service = TaskService(repository, runner)
+    requests = (
+        asyncio.create_task(service.create_task("First", idempotency_key="independent-a")),
+        asyncio.create_task(service.create_task("Second", idempotency_key="independent-b")),
+    )
+    try:
+        await asyncio.wait_for(source.both_entered.wait(), timeout=1)
+        source.release.set()
+        results = await asyncio.gather(*requests)
+        assert all(result.created for result in results)
+        assert source.objectives == ["First", "Second"]
+    finally:
+        source.release.set()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await runner.close()
 
 
 @pytest.mark.asyncio

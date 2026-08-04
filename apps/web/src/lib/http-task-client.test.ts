@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createHttpTaskClient } from "./http-task-client";
+import { createHttpTaskClient, TASK_CREATE_TIMEOUT_MS } from "./http-task-client";
 import { isTaskCreateFailure } from "./task-create-outcome";
 import {
   recoverCurrentTaskAfterDecisionProblem,
@@ -8,6 +8,7 @@ import {
 } from "./plan-recovery";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -101,6 +102,34 @@ describe("Outcome 2 HTTP client", () => {
       expect(isTaskCreateFailure(problem, "unknown")).toBe(true);
     },
   );
+
+  it("bounds a half-open create request and classifies the result as unknown", async () => {
+    const timeoutController = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation((milliseconds) => {
+      expect(milliseconds).toBe(TASK_CREATE_TIMEOUT_MS);
+      return timeoutController.signal;
+    });
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+            once: true,
+          });
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+      idempotencyKey: "dispatch-key-timeout",
+    });
+    timeoutController.abort(new DOMException("Timed out", "TimeoutError"));
+
+    await expect(pending).rejects.toSatisfy((error: unknown) =>
+      isTaskCreateFailure(error, "unknown"),
+    );
+    expect(timeout).toHaveBeenCalledWith(TASK_CREATE_TIMEOUT_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
   it("classifies a malformed accepted receipt as unknown", async () => {
     vi.stubGlobal(

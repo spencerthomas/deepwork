@@ -66,6 +66,12 @@ for (const [viewportName, viewport] of Object.entries(viewports)) {
 
     await page.goto("/tasks/new");
     await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+    const baselineTaskIds = await page.evaluate(async () => {
+      const response = await fetch("/api/v1/tasks", { credentials: "include" });
+      if (!response.ok) throw new Error("The baseline task list could not be read.");
+      const listing = (await response.json()) as { items: Array<{ taskId: string }> };
+      return listing.items.map((item) => item.taskId);
+    });
     const objective = `Recover a lost ${viewportName} task dispatch safely`;
     const prompt = page.getByLabel("Task", { exact: true });
     await prompt.fill(objective);
@@ -124,16 +130,89 @@ for (const [viewportName, viewport] of Object.entries(viewports)) {
       }
       const listing = (await listingResponse.json()) as { items: Array<{ taskId: string }> };
       return {
-        matchingTasks: listing.items.filter((item) => item.taskId === taskId).length,
+        taskIds: listing.items.map((item) => item.taskId),
         detail: (await detailResponse.json()) as { lastEventId: number; taskId: string },
         events: await eventsResponse.text(),
       };
     }, acceptedTaskId);
-    expect(retained.matchingTasks).toBe(1);
+    expect(retained.taskIds.filter((taskId) => !baselineTaskIds.includes(taskId))).toEqual([
+      acceptedTaskId,
+    ]);
     expect(retained.detail.taskId).toBe(acceptedTaskId);
     expect(retained.events.match(/event: task\.created/g)).toHaveLength(1);
   });
 }
+
+test("two tabs adopt one unresolved dispatch identity", async ({ page }) => {
+  const peer = await page.context().newPage();
+  const requests: Array<{ body: string | null; key: string | undefined }> = [];
+  let acceptedTaskId = "";
+  let releaseFirstResponse!: () => void;
+  const firstResponseReleased = new Promise<void>((resolve) => {
+    releaseFirstResponse = resolve;
+  });
+  let markFirstAccepted!: () => void;
+  const firstAccepted = new Promise<void>((resolve) => {
+    markFirstAccepted = resolve;
+  });
+
+  await page.context().route("**/api/v1/tasks", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    requests.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    const response = await route.fetch();
+    expect(response.status()).toBe(202);
+    const receipt = (await response.json()) as Record<string, unknown>;
+    if (requests.length === 1) {
+      expect(receipt["duplicate"]).toBe(false);
+      acceptedTaskId = String(receipt["taskId"]);
+      markFirstAccepted();
+      await firstResponseReleased;
+    } else {
+      expect(receipt["duplicate"]).toBe(true);
+      expect(receipt["taskId"]).toBe(acceptedTaskId);
+    }
+    await route.fulfill({ response });
+  });
+
+  await Promise.all([page.goto("/tasks/new"), peer.goto("/tasks/new")]);
+  const baselineTaskIds = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/tasks", { credentials: "include" });
+    const listing = (await response.json()) as { items: Array<{ taskId: string }> };
+    return listing.items.map((item) => item.taskId);
+  });
+  await page.getByLabel("Task", { exact: true }).fill("Coordinate this request across tabs");
+  await peer.getByLabel("Task", { exact: true }).fill("This draft must not overwrite the owner");
+  await page.getByRole("button", { name: "Dispatch" }).click();
+  await firstAccepted;
+
+  await expect(peer.getByText("Task start not confirmed.", { exact: true })).toBeVisible();
+  await expect(peer.getByLabel("Task", { exact: true })).toHaveValue(
+    "Coordinate this request across tabs",
+  );
+  await expect(peer.getByLabel("Task", { exact: true })).toBeDisabled();
+  expect(requests).toHaveLength(1);
+
+  releaseFirstResponse();
+  await expect(page).toHaveURL(new RegExp(`/tasks/${acceptedTaskId}$`));
+  await peer.getByRole("button", { name: "Check task" }).click();
+  await expect(peer).toHaveURL(new RegExp(`/tasks/${acceptedTaskId}$`));
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
+
+  const finalTaskIds = await peer.evaluate(async () => {
+    const response = await fetch("/api/v1/tasks", { credentials: "include" });
+    const listing = (await response.json()) as { items: Array<{ taskId: string }> };
+    return listing.items.map((item) => item.taskId);
+  });
+  expect(finalTaskIds.filter((taskId) => !baselineTaskIds.includes(taskId))).toEqual([
+    acceptedTaskId,
+  ]);
+  await peer.close();
+});
 
 test("an authoritative create rejection preserves the draft and rotates the next request identity", async ({
   page,

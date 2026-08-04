@@ -20,7 +20,7 @@
  */
 
 import { PROMPT_MAX_LENGTH } from "./task-types";
-import { validatePrompt } from "./task-normalizers";
+import { unicodeLength, validatePrompt } from "./task-normalizers";
 
 export const DRAFT_STORAGE_PREFIX = "dw-task-draft";
 export const DISPATCH_ATTEMPT_STORAGE_PREFIX = "dw-task-dispatch";
@@ -66,6 +66,7 @@ export function createComposerDispatchAttempt(
 }
 
 export interface DraftIdentity {
+  storageScope: string;
   actorId: string;
   workspaceId: string;
 }
@@ -82,7 +83,11 @@ export function draftScopeForRuntime(runtime: DraftRuntimeScope): string {
   if (runtime.mode === "fixture") {
     return "fixture";
   }
-  return `api:${JSON.stringify([runtime.identity.actorId, runtime.identity.workspaceId])}`;
+  return `api:${JSON.stringify([
+    runtime.identity.storageScope,
+    runtime.identity.actorId,
+    runtime.identity.workspaceId,
+  ])}`;
 }
 
 /**
@@ -155,7 +160,7 @@ export function serializeComposerDraft(prompt: string, now: number): string {
 
 export function parseComposerDispatchAttempt(
   raw: string | null,
-  now: number,
+  _now: number,
 ): ComposerDispatchAttempt | null {
   if (raw === null || raw === "") return null;
   let parsed: unknown;
@@ -175,7 +180,7 @@ export function parseComposerDispatchAttempt(
     !Number.isFinite(attemptedAt) ||
     typeof prompt !== "string" ||
     prompt.trim() === "" ||
-    prompt.length > PROMPT_MAX_LENGTH ||
+    unicodeLength(prompt) > PROMPT_MAX_LENGTH ||
     (journey !== "general" && journey !== "coding") ||
     (agentId !== undefined && (typeof agentId !== "string" || agentId.trim() === ""))
   ) {
@@ -183,7 +188,7 @@ export function parseComposerDispatchAttempt(
   }
   // Unlike an ordinary draft, an ambiguous dispatch must not silently expire:
   // only an accepted receipt or authoritative rejection may unlock it.
-  if (attemptedAt < 0 || attemptedAt > now) return null;
+  if (attemptedAt < 0) return null;
   return {
     schemaVersion: 1,
     idempotencyKey,
@@ -273,12 +278,33 @@ export function saveComposerDispatchAttempt(
   }
 }
 
-export function clearComposerDispatchAttempt(scope: string): void {
+export function clearComposerDispatchAttempt(scope: string, idempotencyKey: string): void {
   const store = storage();
   if (store === null) return;
   try {
-    store.removeItem(dispatchAttemptStorageKey(scope));
+    const key = dispatchAttemptStorageKey(scope);
+    const current = parseComposerDispatchAttempt(store.getItem(key), Date.now());
+    if (current?.idempotencyKey === idempotencyKey) {
+      store.removeItem(key);
+    }
   } catch {
     // Best effort; the in-memory composer remains locked for this session.
   }
+}
+
+/**
+ * Serialize dispatch ownership across tabs for one authenticated scope.
+ * Browsers without the Web Locks contract fail closed: an unresolved task
+ * request is more important than optimistic compatibility that can duplicate
+ * work.
+ */
+export async function withComposerDispatchLock<T>(
+  scope: string,
+  action: () => Promise<T>,
+): Promise<T> {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) {
+    throw new Error("Cross-tab task dispatch protection is unavailable in this browser.");
+  }
+  return locks.request(`${DISPATCH_ATTEMPT_STORAGE_PREFIX}:lock:${scope}`, action);
 }

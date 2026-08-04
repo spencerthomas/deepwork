@@ -88,10 +88,12 @@ async def test_login_returns_only_session_projection_and_supports_cookie_auth() 
         assert ok.status_code == 200
         body = ok.json()
         assert body == {
+            "storageScope": body["storageScope"],
             "actorId": "operator",
             "workspaceId": DEFAULT_WORKSPACE_ID,
             "expiresAt": body["expiresAt"],
         }
+        assert len(body["storageScope"]) == 64
         assert "tenantId" not in body
         assert "token" not in body
         assert "deepwork_session" in ok.headers.get("set-cookie", "")
@@ -105,6 +107,7 @@ async def test_login_returns_only_session_projection_and_supports_cookie_auth() 
         assert whoami.status_code == 200
         assert whoami.json()["actorId"] == "operator"
         assert whoami.json()["workspaceId"] == DEFAULT_WORKSPACE_ID
+        assert whoami.json()["storageScope"] == body["storageScope"]
         assert "tenantId" not in whoami.json()
 
 
@@ -119,10 +122,12 @@ async def test_mapped_access_keys_project_only_their_actor_and_workspace() -> No
 
         assert response.status_code == 200
         assert response.json() == {
+            "storageScope": response.json()["storageScope"],
             "actorId": "actor-b",
             "workspaceId": "workspace-b",
             "expiresAt": 44200.0,
         }
+        assert len(response.json()["storageScope"]) == 64
         serialized = response.text
         assert "tenant-secret-a" not in serialized
         assert "tenant-secret-b" not in serialized
@@ -131,6 +136,22 @@ async def test_mapped_access_keys_project_only_their_actor_and_workspace() -> No
 
         session = await client.get("/api/v1/auth/session")
         assert session.json() == response.json()
+
+
+async def test_storage_scope_changes_when_only_the_tenant_changes() -> None:
+    contexts = {
+        "key-a": SecurityContext("tenant-secret-a", "workspace-shared", "actor-shared"),
+        "key-b": SecurityContext("tenant-secret-b", "workspace-shared", "actor-shared"),
+    }
+
+    async with _mapped_auth_app(contexts) as client:
+        first = await client.post("/api/v1/auth/login", json={"accessKey": "key-a"})
+        second = await client.post("/api/v1/auth/login", json={"accessKey": "key-b"})
+
+    assert first.json()["actorId"] == second.json()["actorId"]
+    assert first.json()["workspaceId"] == second.json()["workspaceId"]
+    assert first.json()["storageScope"] != second.json()["storageScope"]
+    assert "tenant-secret" not in first.text + second.text
 
 
 async def test_logout_revokes_the_session() -> None:

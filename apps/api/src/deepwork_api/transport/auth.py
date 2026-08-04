@@ -7,6 +7,7 @@ Task routes are protected by :func:`build_session_guard` when auth is enabled.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
@@ -35,13 +36,19 @@ class LoginRequest(BaseModel):
 class SessionResponse(BaseModel):
     """Non-secret session projection returned to the client."""
 
+    storageScope: str
     actorId: str
     workspaceId: str
     expiresAt: float
 
     @classmethod
     def from_domain(cls, session: Session) -> SessionResponse:
+        context = session.security_context
+        storage_scope = hashlib.sha256(
+            "\0".join((context.tenant_id, context.workspace_id, context.actor_id)).encode("utf-8")
+        ).hexdigest()
         return cls(
+            storageScope=storage_scope,
             actorId=session.actor_id,
             workspaceId=session.security_context.workspace_id,
             expiresAt=session.expires_at,

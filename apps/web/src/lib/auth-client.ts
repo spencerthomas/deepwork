@@ -3,6 +3,7 @@ import { isRecord } from "./task-normalizers";
 export type LoginResult = { ok: true } | { ok: false; reason: "rejected" | "failed" };
 
 export interface Session {
+  storageScope: string;
   actorId: string;
   workspaceId: string;
   expiresAt: number;
@@ -12,17 +13,19 @@ function toSession(value: unknown): Session {
   if (!isRecord(value)) {
     throw new Error("The API returned a malformed session.");
   }
+  const storageScope = value["storageScope"];
   const actorId = value["actorId"];
   const workspaceId = value["workspaceId"];
   const expiresAt = value["expiresAt"];
   if (
+    typeof storageScope !== "string" ||
     typeof actorId !== "string" ||
     typeof workspaceId !== "string" ||
     typeof expiresAt !== "number"
   ) {
     throw new Error("The API returned a malformed session.");
   }
-  return { actorId, workspaceId, expiresAt };
+  return { storageScope, actorId, workspaceId, expiresAt };
 }
 
 /** Exchange an access key through the same-origin API proxy for an HttpOnly session. */

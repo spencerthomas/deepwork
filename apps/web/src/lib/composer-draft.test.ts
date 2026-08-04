@@ -15,6 +15,7 @@ import {
   parseComposerDraft,
   saveComposerDispatchAttempt,
   serializeComposerDraft,
+  withComposerDispatchLock,
 } from "./composer-draft";
 
 const NOW = 1_700_000_000_000;
@@ -86,32 +87,37 @@ describe("draftStorageKey", () => {
     expect(draftStorageKey(fixtureScope)).toBe("dw-task-draft:fixture");
   });
 
-  it("partitions API drafts by both workspace and actor", () => {
+  it("partitions API drafts by tenant, workspace, and actor", () => {
     const baseline = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "actor-a", workspaceId: "workspace-a" },
+      identity: { storageScope: "scope-a", actorId: "actor-a", workspaceId: "workspace-a" },
     });
     const otherWorkspace = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "actor-a", workspaceId: "workspace-b" },
+      identity: { storageScope: "scope-b", actorId: "actor-a", workspaceId: "workspace-b" },
     });
     const otherActor = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "actor-b", workspaceId: "workspace-a" },
+      identity: { storageScope: "scope-c", actorId: "actor-b", workspaceId: "workspace-a" },
+    });
+    const otherTenant = draftScopeForRuntime({
+      mode: "api",
+      identity: { storageScope: "scope-d", actorId: "actor-a", workspaceId: "workspace-a" },
     });
 
     expect(baseline).not.toBe(otherWorkspace);
     expect(baseline).not.toBe(otherActor);
+    expect(baseline).not.toBe(otherTenant);
   });
 
   it("uses collision-safe identity encoding even when identifiers contain delimiters", () => {
     const first = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "a:b", workspaceId: "c" },
+      identity: { storageScope: "scope-first", actorId: "a:b", workspaceId: "c" },
     });
     const second = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "a", workspaceId: "b:c" },
+      identity: { storageScope: "scope-second", actorId: "a", workspaceId: "b:c" },
     });
 
     expect(first).not.toBe(second);
@@ -120,7 +126,7 @@ describe("draftStorageKey", () => {
   it("never reads the legacy unscoped API key through an identity-qualified path", () => {
     const identityScope = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "operator", workspaceId: "workspace-a" },
+      identity: { storageScope: "scope-a", actorId: "operator", workspaceId: "workspace-a" },
     });
 
     const getItem = vi.fn((key: string) =>
@@ -196,7 +202,7 @@ describe("ComposerDispatchAttempt", () => {
     expect(createKey).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects malformed, future-dated, or incomplete attempts", () => {
+  it("rejects malformed or incomplete attempts without expiring clock-skewed work", () => {
     expect(parseComposerDispatchAttempt(null, NOW)).toBeNull();
     expect(parseComposerDispatchAttempt("not-json", NOW)).toBeNull();
     expect(
@@ -213,13 +219,19 @@ describe("ComposerDispatchAttempt", () => {
     ).toEqual({ ...attempt, attemptedAt: NOW - DRAFT_TTL_MS - 1 });
     expect(
       parseComposerDispatchAttempt(JSON.stringify({ ...attempt, attemptedAt: NOW + 1 }), NOW),
-    ).toBeNull();
+    ).toEqual({ ...attempt, attemptedAt: NOW + 1 });
+  });
+
+  it("restores a prompt at the Unicode limit even when every character is an emoji", () => {
+    const emojiAttempt = { ...attempt, prompt: "😀".repeat(8_000) };
+
+    expect(parseComposerDispatchAttempt(JSON.stringify(emojiAttempt), NOW)).toEqual(emojiAttempt);
   });
 
   it("uses the actor/workspace scope and clears only the dispatch record", () => {
     const scope = draftScopeForRuntime({
       mode: "api",
-      identity: { actorId: "actor-a", workspaceId: "workspace-a" },
+      identity: { storageScope: "scope-a", actorId: "actor-a", workspaceId: "workspace-a" },
     });
     const values = new Map<string, string>();
     const setItem = vi.fn((key: string, value: string) => values.set(key, value));
@@ -229,10 +241,41 @@ describe("ComposerDispatchAttempt", () => {
 
     expect(saveComposerDispatchAttempt(scope, attempt)).toBe(true);
     expect(loadComposerDispatchAttempt(scope, NOW)).toEqual(attempt);
-    clearComposerDispatchAttempt(scope);
+    clearComposerDispatchAttempt(scope, attempt.idempotencyKey);
 
     expect(removeItem).toHaveBeenCalledWith(dispatchAttemptStorageKey(scope));
     expect(removeItem).not.toHaveBeenCalledWith(draftStorageKey(scope));
+  });
+
+  it("does not let one tab clear another tab's newer attempt", () => {
+    const scope = "api:scope-a";
+    const newer = { ...attempt, idempotencyKey: "dispatch-key-newer" };
+    const values = new Map([[dispatchAttemptStorageKey(scope), JSON.stringify(newer)]]);
+    const removeItem = vi.fn((key: string) => values.delete(key));
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        removeItem,
+      },
+    });
+
+    clearComposerDispatchAttempt(scope, attempt.idempotencyKey);
+
+    expect(removeItem).not.toHaveBeenCalled();
+    expect(loadComposerDispatchAttempt(scope, NOW)).toEqual(newer);
+  });
+
+  it("serializes work through the browser lock and fails closed without it", async () => {
+    const request = vi.fn(async (_name: string, action: () => Promise<string>) => action());
+    vi.stubGlobal("navigator", { locks: { request } });
+
+    await expect(withComposerDispatchLock("scope-a", async () => "done")).resolves.toBe("done");
+    expect(request).toHaveBeenCalledWith("dw-task-dispatch:lock:scope-a", expect.any(Function));
+
+    vi.stubGlobal("navigator", {});
+    await expect(withComposerDispatchLock("scope-a", async () => "unsafe")).rejects.toThrow(
+      "Cross-tab task dispatch protection is unavailable",
+    );
   });
 
   it("fails closed when the exact dispatch request cannot be persisted", () => {

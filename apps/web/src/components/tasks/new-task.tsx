@@ -22,12 +22,15 @@ import {
   clearComposerDispatchAttempt,
   clearComposerDraft,
   createComposerDispatchAttempt,
+  dispatchAttemptStorageKey,
   draftScopeForRuntime,
   formatDraftAge,
   loadComposerDispatchAttempt,
   loadComposerDraft,
   saveComposerDispatchAttempt,
   saveComposerDraft,
+  parseComposerDispatchAttempt,
+  withComposerDispatchLock,
   type ComposerDispatchAttempt,
 } from "@/lib/composer-draft";
 import {
@@ -78,11 +81,21 @@ export function NewTask() {
   const editRerunCheckedRef = useRef(false);
   const editRerunWonRef = useRef(false);
   const dispatchBusyRef = useRef(false);
+  const mountedRef = useRef(true);
+  const dispatchEpochRef = useRef(0);
   const runtimeCopy = taskRuntimePresentation(mode);
   const codingFixtureAvailable =
     mode === "fixture" || (mode === "api" && runtimeStatus?.runtimeKind === "fixture");
   const codingUnavailable =
     mode === "api" && (agentsLoading || runtimeLoading || !codingFixtureAvailable);
+
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+      dispatchEpochRef.current += 1;
+    },
+    [],
+  );
 
   // Consume the transient Edit & re-run handoff immediately. It wins over any
   // persisted draft, including while an API session is still resolving.
@@ -115,7 +128,11 @@ export function NewTask() {
         setDraftScope(
           draftScopeForRuntime({
             mode: "api",
-            identity: { actorId: session.actorId, workspaceId: session.workspaceId },
+            identity: {
+              storageScope: session.storageScope,
+              actorId: session.actorId,
+              workspaceId: session.workspaceId,
+            },
           }),
         );
       })
@@ -155,6 +172,27 @@ export function NewTask() {
       setRestoredAge(formatDraftAge(draft.savedAt, Date.now()));
     }
     setReadyDraftScope(draftScope);
+  }, [draftScope]);
+
+  // A dispatch claimed in another tab becomes the authoritative attempt for
+  // this scope. Lock the composer immediately instead of allowing a second
+  // logical request to be authored over it.
+  useEffect(() => {
+    if (draftScope === null) return;
+    const key = dispatchAttemptStorageKey(draftScope);
+    const onStorage = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage || event.key !== key) return;
+      const pending = parseComposerDispatchAttempt(event.newValue, Date.now());
+      if (pending === null) return;
+      setPrompt(pending.prompt);
+      setAgentId(pending.agentId ?? "");
+      setJourney(pending.journey);
+      setDispatchAttempt(pending);
+      setDispatchPhase("outcome-unknown");
+      setDispatchMessage(undefined);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [draftScope]);
 
   useEffect(() => {
@@ -207,8 +245,39 @@ export function NewTask() {
 
   async function completeAttempt(
     attempt: ComposerDispatchAttempt,
+    attemptScope: string,
     automaticallyReconcileUnknown: boolean,
+    epoch: number,
   ) {
+    if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
+    if (mode === "api") {
+      try {
+        const session = await getSession(AbortSignal.timeout(15_000));
+        const currentScope = draftScopeForRuntime({
+          mode: "api",
+          identity: {
+            storageScope: session.storageScope,
+            actorId: session.actorId,
+            workspaceId: session.workspaceId,
+          },
+        });
+        if (currentScope !== attemptScope) {
+          if (mountedRef.current && dispatchEpochRef.current === epoch) {
+            setDispatchPhase("conflict");
+            setDispatchMessage(
+              "This request belongs to a different signed-in workspace. Switch back to reconcile it safely.",
+            );
+          }
+          return;
+        }
+      } catch {
+        if (mountedRef.current && dispatchEpochRef.current === epoch) {
+          setDispatchPhase("outcome-unknown");
+          setDispatchMessage("Deep Work could not verify the connected workspace.");
+        }
+        return;
+      }
+    }
     const outcome = await dispatchTask(
       attempt.prompt,
       attempt.idempotencyKey,
@@ -216,21 +285,21 @@ export function NewTask() {
       attempt.journey,
     );
     if (outcome.kind === "accepted") {
-      if (draftScope !== null) {
-        clearComposerDispatchAttempt(draftScope);
-        clearComposerDraft(draftScope);
-      }
+      clearComposerDispatchAttempt(attemptScope, attempt.idempotencyKey);
+      clearComposerDraft(attemptScope);
+      if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
       setDispatchAttempt(undefined);
       setRestoredAge(undefined);
       router.push(`/tasks/${outcome.task.taskId}`);
       return;
     }
+    if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
     const nextPhase = nextComposerDispatchPhase(
       automaticallyReconcileUnknown ? "submitting" : "reconciling",
       outcome.kind,
     );
     if (outcome.kind === "rejected") {
-      if (draftScope !== null) clearComposerDispatchAttempt(draftScope);
+      clearComposerDispatchAttempt(attemptScope, attempt.idempotencyKey);
       setDispatchAttempt(undefined);
       setDispatchPhase(nextPhase);
       setDispatchMessage(outcome.message);
@@ -246,7 +315,8 @@ export function NewTask() {
       // Let the checking state reach the accessibility tree before replaying
       // the exact persisted request once.
       await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
-      await completeAttempt(attempt, false);
+      if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
+      await completeAttempt(attempt, attemptScope, false, epoch);
       return;
     }
     setDispatchPhase(nextPhase);
@@ -278,37 +348,70 @@ export function NewTask() {
       return;
     }
     setValidationError(undefined);
-    const attempt = createComposerDispatchAttempt(
-      { prompt, ...(agentId ? { agentId } : {}), journey },
-      Date.now(),
-      () => globalThis.crypto.randomUUID(),
-    );
-    // Persist synchronously before the POST. Reloads can now reconcile this
-    // exact body and key without starting a second logical task.
-    if (!saveComposerDispatchAttempt(draftScope, attempt)) {
-      setValidationError(
-        "Deep Work could not safely save this request before starting it. Check device storage and try again.",
-      );
-      return;
-    }
+    const attemptScope = draftScope;
     dispatchBusyRef.current = true;
-    setDispatchAttempt(attempt);
-    setDispatchMessage(undefined);
-    setDispatchPhase("submitting");
+    const epoch = ++dispatchEpochRef.current;
     try {
-      await completeAttempt(attempt, true);
+      await withComposerDispatchLock(attemptScope, async () => {
+        if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
+        const existing = loadComposerDispatchAttempt(attemptScope);
+        if (existing !== null) {
+          setPrompt(existing.prompt);
+          setAgentId(existing.agentId ?? "");
+          setJourney(existing.journey);
+          setDispatchAttempt(existing);
+          setDispatchMessage(undefined);
+          setDispatchPhase("reconciling");
+          await completeAttempt(existing, attemptScope, false, epoch);
+          return;
+        }
+        const attempt = createComposerDispatchAttempt(
+          { prompt, ...(agentId ? { agentId } : {}), journey },
+          Date.now(),
+          () => globalThis.crypto.randomUUID(),
+        );
+        // Persist synchronously while holding the cross-tab lock and before
+        // POSTing. Reloads and peer tabs now share one exact body and key.
+        if (!saveComposerDispatchAttempt(attemptScope, attempt)) {
+          setValidationError(
+            "Deep Work could not safely save this request before starting it. Check device storage and try again.",
+          );
+          return;
+        }
+        setDispatchAttempt(attempt);
+        setDispatchMessage(undefined);
+        setDispatchPhase("submitting");
+        await completeAttempt(attempt, attemptScope, true, epoch);
+      });
+    } catch (error) {
+      if (mountedRef.current && dispatchEpochRef.current === epoch) {
+        setValidationError(
+          error instanceof Error ? error.message : "Task dispatch protection is unavailable.",
+        );
+      }
     } finally {
       dispatchBusyRef.current = false;
     }
   }
 
   async function checkTask() {
-    if (!dispatchAttempt || dispatchBusyRef.current) return;
+    if (!dispatchAttempt || dispatchBusyRef.current || draftScope === null) return;
+    const attemptScope = draftScope;
     dispatchBusyRef.current = true;
+    const epoch = ++dispatchEpochRef.current;
     setDispatchMessage(undefined);
     setDispatchPhase("reconciling");
     try {
-      await completeAttempt(dispatchAttempt, false);
+      await withComposerDispatchLock(attemptScope, async () => {
+        await completeAttempt(dispatchAttempt, attemptScope, false, epoch);
+      });
+    } catch (error) {
+      if (mountedRef.current && dispatchEpochRef.current === epoch) {
+        setDispatchPhase("outcome-unknown");
+        setDispatchMessage(
+          error instanceof Error ? error.message : "Task dispatch protection is unavailable.",
+        );
+      }
     } finally {
       dispatchBusyRef.current = false;
     }

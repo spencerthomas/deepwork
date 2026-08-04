@@ -380,6 +380,12 @@ test("a lost create response replays the original task identity after an API res
   let requestCount = 0;
 
   await signIn(page);
+  const baselineTaskIds = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/tasks", { credentials: "include" });
+    if (!response.ok) throw new Error("The baseline task list could not be read.");
+    const listing = (await response.json()) as { items: Array<{ taskId: string }> };
+    return listing.items.map((item) => item.taskId);
+  });
   await page.route("**/api/v1/tasks", async (route) => {
     const request = route.request();
     if (request.method() !== "POST") {
@@ -477,10 +483,10 @@ test("a lost create response replays the original task identity after an API res
   expect(retained.detail).toMatchObject({ taskId, runId, status: "failed" });
   expect(retainedEvents.filter((event) => event.name === "task.created")).toHaveLength(1);
   expect(
-    (retained.listing["items"] as Array<{ taskId: string }>).filter(
-      (item) => item.taskId === taskId,
-    ),
-  ).toHaveLength(1);
+    (retained.listing["items"] as Array<{ taskId: string }>)
+      .map((item) => item.taskId)
+      .filter((candidate) => !baselineTaskIds.includes(candidate)),
+  ).toEqual([taskId]);
   expect(unexpectedOrigins).toEqual(new Set());
   await context.close();
 });

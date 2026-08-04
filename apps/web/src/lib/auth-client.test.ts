@@ -32,6 +32,7 @@ describe("authenticated session client", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
+          storageScope: "scope-a",
           actorId: "operator",
           workspaceId: "workspace-a",
           expiresAt: 1_800_000_000,
@@ -42,6 +43,7 @@ describe("authenticated session client", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getSession()).resolves.toEqual({
+      storageScope: "scope-a",
       actorId: "operator",
       workspaceId: "workspace-a",
       expiresAt: 1_800_000_000,

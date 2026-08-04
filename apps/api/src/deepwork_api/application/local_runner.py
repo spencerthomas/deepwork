@@ -182,14 +182,38 @@ class LocalAgentServerRunner:
         # The source owns assistant identity and suppresses this workspace
         # override when a different named agent is selected. Keeping that
         # decision at the adapter boundary avoids a second registry lookup.
+        task: TaskSnapshot | None = None
+        if idempotency_key is not None:
+            if request_fingerprint is None:
+                raise ValueError("idempotent task creation requires a request fingerprint")
+            # Persist the scoped request before crossing the source boundary.
+            # The atomic repository receipt is the durable dispatch claim: only
+            # its creator may call source.start. Replays and other API processes
+            # return the same task without creating another upstream run.
+            creation = await self.repository.create_task_idempotently(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                security_context=security_context,
+            )
+            task = creation.task
+            if not creation.created:
+                return creation
+
         system_prompt = await self._current_system_prompt(security_context)
         try:
             run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
         except TaskSourceContractError:
+            if task is not None:
+                await self._fail(task, _SOURCE_CONTRACT_REASON)
             raise
         except Exception:
+            if task is not None:
+                await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
             raise TaskSourceUnavailableError from None
-        if idempotency_key is None:
+        if task is None:
             task = await self.repository.create_task(
                 title=title,
                 objective=objective,
@@ -197,25 +221,9 @@ class LocalAgentServerRunner:
                 agent_id=agent_id,
                 security_context=security_context,
             )
-            created = True
-        else:
-            if request_fingerprint is None:
-                raise ValueError("idempotent task creation requires a request fingerprint")
-            creation = await self.repository.create_task_idempotently(
-                title=title,
-                objective=objective,
-                run_id=run.run_id,
-                agent_id=agent_id,
-                idempotency_key=idempotency_key,
-                request_fingerprint=request_fingerprint,
-                security_context=security_context,
-            )
-            task = creation.task
-            created = creation.created
-        if created:
-            self._threads[task.task_id] = run.thread_id
-            self.start(task, run)
-        return TaskCreation(task=task, created=created)
+        self._threads[task.task_id] = run.thread_id
+        self.start(task, run)
+        return TaskCreation(task=task, created=True)
 
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
         return await self.source.list_agents()
@@ -470,7 +478,10 @@ class LocalAgentServerRunner:
                 await self.repository.append_event(
                     task.task_id,
                     name=TaskEventName.RUN_STARTED,
-                    data=(("runId", run.run_id), ("status", "running")),
+                    # The API owns a stable run identity that is durably claimed
+                    # before the source starts. The source run remains an
+                    # adapter-private cursor used to join/resume that execution.
+                    data=(("runId", task.run_id), ("status", "running")),
                     status=TaskStatus.RUNNING,
                 )
             state = await self._follow_stream_to_source_state(task, run)

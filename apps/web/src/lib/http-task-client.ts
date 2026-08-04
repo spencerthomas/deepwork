@@ -28,6 +28,7 @@ import type {
 } from "./task-types";
 
 export const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+export const TASK_CREATE_TIMEOUT_MS = 15_000;
 const RECOVERABLE_PLAN_PROBLEM_CODES = new Set([
   "plan_revision_conflict",
   "interrupt_stale",
@@ -77,6 +78,11 @@ function normalizeBaseUrl(value: string | undefined): string {
     return DEFAULT_API_BASE_URL;
   }
   return value.trim().replace(/\/+$/, "");
+}
+
+function boundedCreateSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(TASK_CREATE_TIMEOUT_MS);
+  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {
@@ -195,7 +201,7 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
               : {}),
             ...(options.agentId ? { agentId: options.agentId } : {}),
           }),
-          signal: options.signal,
+          signal: boundedCreateSignal(options.signal),
         });
       } catch {
         throw new TaskCreateFailure(

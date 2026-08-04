@@ -34,6 +34,22 @@ class HarnessCommandTests(unittest.TestCase):
             output["spike_worktree_001"], "implemented-not-accepted"
         )
 
+    def test_doctor_can_fail_closed_when_product_demo_is_required(self) -> None:
+        with mock.patch(
+            "harness._driver_status",
+            return_value={"available": False, "reason": "candidate is not sealed"},
+        ):
+            status, output = self.run_main(
+                [
+                    "doctor",
+                    "--root",
+                    str(REPOSITORY_ROOT),
+                    "--require-product-demo",
+                ]
+            )
+        self.assertNotEqual(status, 0)
+        self.assertFalse(output["product_demo"]["available"])
+
     def test_driver_path_is_never_executed_without_static_reviewed_contract(
         self,
     ) -> None:
@@ -196,6 +212,7 @@ class HarnessCommandTests(unittest.TestCase):
                         "static reviewed product-demo contract" in reason
                         or "repository identity markers" in reason
                         or "reviewed commit" in reason
+                        or "driver content" in reason
                     )
                     for reason in output["reasons"]
                 )

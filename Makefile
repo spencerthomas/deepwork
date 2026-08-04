@@ -48,6 +48,7 @@ dev-demo:
 check:
 	$(MAKE) check-toolchain
 	$(MAKE) check-oss
+	$(MAKE) test-product-demo-unit
 	pnpm check
 	$(MAKE) -C apps/api check
 	$(MAKE) -C packages/agent check
@@ -87,7 +88,7 @@ test-postgres:
 test-product-demo-unit:
 	python3 -m unittest discover -s tools/product_demo/tests -p 'test_*.py'
 	python3 -m unittest discover -s tools/worktree/tests -p 'test_*.py'
-	python3 tools/worktree/harness.py doctor --root .
+	python3 tools/worktree/harness.py doctor --root . --require-product-demo
 
 test-product-demo:
 	@test -n "$(DEEPWORK_PRODUCT_DEMO_PEER)" || (echo "DEEPWORK_PRODUCT_DEMO_PEER is required" >&2; exit 2)

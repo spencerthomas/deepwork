@@ -21,6 +21,7 @@ import re
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import threading
@@ -70,6 +71,7 @@ SHA_RE = re.compile(r"^[a-f0-9]{64}$")
 COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
 STATE_FILE = "product-demo-state.json"
 ACCESS_KEYS = ("deepwork-product-demo-a", "deepwork-product-demo-b")
+NEXT_ENV_MAX_BYTES = 64 * 1024
 
 
 class DriverError(RuntimeError):
@@ -232,6 +234,113 @@ def _write_private_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _capture_next_env(root: Path, workspace: Path) -> dict[str, Any]:
+    source = root / "apps/web/next-env.d.ts"
+    if source.is_symlink() or not source.is_file():
+        raise DriverError("tracked Next.js environment declaration is unsafe")
+    metadata = source.stat()
+    if metadata.st_size > NEXT_ENV_MAX_BYTES:
+        raise DriverError("tracked Next.js environment declaration is oversized")
+    contents = source.read_bytes()
+    snapshot = workspace / "runtime-snapshots" / "next-env.d.ts"
+    snapshot.parent.mkdir(parents=True, mode=0o700)
+    snapshot.write_bytes(contents)
+    snapshot.chmod(0o600)
+    return {
+        "path": str(snapshot),
+        "sha256": _sha256_bytes(contents),
+        "mode": stat.S_IMODE(metadata.st_mode),
+    }
+
+
+def _restore_next_env(root: Path, workspace: Path, record: Any) -> None:
+    if not isinstance(record, dict) or set(record) != {"path", "sha256", "mode"}:
+        raise DriverError("persisted Next.js environment snapshot is invalid")
+    expected_snapshot = workspace / "runtime-snapshots" / "next-env.d.ts"
+    snapshot = Path(str(record["path"]))
+    if snapshot != expected_snapshot or snapshot.is_symlink() or not snapshot.is_file():
+        raise DriverError("persisted Next.js environment snapshot is unsafe")
+    if snapshot.stat().st_size > NEXT_ENV_MAX_BYTES:
+        raise DriverError("persisted Next.js environment snapshot is oversized")
+    expected_sha = record["sha256"]
+    mode = record["mode"]
+    if not isinstance(expected_sha, str) or not SHA_RE.fullmatch(expected_sha):
+        raise DriverError("persisted Next.js environment digest is invalid")
+    if not isinstance(mode, int) or mode < 0 or mode > 0o777:
+        raise DriverError("persisted Next.js environment mode is invalid")
+    contents = snapshot.read_bytes()
+    if _sha256_bytes(contents) != expected_sha:
+        raise DriverError("persisted Next.js environment snapshot changed")
+    destination = root / "apps/web/next-env.d.ts"
+    if destination.parent.is_symlink() or not destination.parent.is_dir():
+        raise DriverError("Next.js environment destination is unsafe")
+    if destination.is_symlink():
+        raise DriverError("Next.js environment destination is linked")
+    temporary = destination.parent / f".next-env.d.ts.deepwork-{workspace.name}.tmp"
+    if temporary.exists() or temporary.is_symlink():
+        raise DriverError("Next.js environment restore temporary already exists")
+    try:
+        temporary.write_bytes(contents)
+        temporary.chmod(mode)
+        temporary.replace(destination)
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            temporary.unlink()
+    if (
+        destination.is_symlink()
+        or not destination.is_file()
+        or _sha256_bytes(destination.read_bytes()) != expected_sha
+    ):
+        raise DriverError("Next.js environment restoration could not be verified")
+
+
+def _postgres_is_running(pg_ctl: Path, pg_data: Path, env: dict[str, str]) -> bool:
+    result = subprocess.run(
+        [str(pg_ctl), "-D", str(pg_data), "status"],
+        check=False,
+        capture_output=True,
+        timeout=10,
+        env=env,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 3:
+        return False
+    raise DriverError("PostgreSQL status could not be verified")
+
+
+def _socket_is_closed(socket_dir: Path) -> bool:
+    socket_path = socket_dir / ".s.PGSQL.5432"
+    if not socket_path.exists():
+        return True
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.5)
+        return probe.connect_ex(str(socket_path)) != 0
+
+
+def _stop_postgres(
+    pg_ctl: Path, pg_data: Path, socket_dir: Path, env: dict[str, str]
+) -> None:
+    if pg_data.is_dir() and _postgres_is_running(pg_ctl, pg_data, env):
+        result = subprocess.run(
+            [str(pg_ctl), "-D", str(pg_data), "-m", "fast", "-w", "stop"],
+            check=False,
+            capture_output=True,
+            timeout=20,
+            env=env,
+        )
+        if result.returncode != 0:
+            raise DriverError("PostgreSQL shutdown failed")
+    if pg_data.is_dir() and _postgres_is_running(pg_ctl, pg_data, env):
+        raise DriverError("PostgreSQL remains active after shutdown")
+    if not _socket_is_closed(socket_dir):
+        raise DriverError("PostgreSQL socket remains active after shutdown")
+
+
 @dataclass
 class OwnedProcess:
     name: str
@@ -254,7 +363,7 @@ class Stack:
     stopped_at: str = ""
     api_restart_before: str = ""
     api_restart_after: str = ""
-    next_env_bytes: bytes | None = None
+    next_env_snapshot: dict[str, Any] | None = None
 
     @property
     def namespace(self) -> str:
@@ -315,6 +424,9 @@ class Stack:
         self.workspace.mkdir(parents=True, mode=0o700)
         (self.workspace / "home").mkdir(mode=0o700)
         self.logs.mkdir(mode=0o700)
+        ownership_log = self.logs / "ownership.log"
+        ownership_log.write_text(f"namespace={self.namespace}\n", encoding="utf-8")
+        ownership_log.chmod(0o600)
         if self.socket_dir.exists() or self.socket_dir.is_symlink():
             raise DriverError(
                 f"PostgreSQL socket allocation already exists: {self.namespace}"
@@ -326,10 +438,8 @@ class Stack:
         next_executable = self.root / "apps/web/node_modules/next/dist/bin/next"
         if not next_executable.is_file():
             raise DriverError(f"web dependencies are absent in {self.namespace} root")
-        next_env = self.root / "apps/web/next-env.d.ts"
-        if next_env.is_symlink() or not next_env.is_file():
-            raise DriverError("tracked Next.js environment declaration is unsafe")
-        self.next_env_bytes = next_env.read_bytes()
+        self.next_env_snapshot = _capture_next_env(self.root, self.workspace)
+        self._persist_state()
         self._init_postgres()
         self._migrate()
 
@@ -459,6 +569,7 @@ class Stack:
                 if item.process.poll() is None
             ],
             "postgres_data": str(self.pg_data),
+            "next_env": self.next_env_snapshot,
         }
         _write_private_json(self.workspace / STATE_FILE, state)
 
@@ -612,22 +723,10 @@ class Stack:
         for owned in reversed(self.processes):
             _stop_owned(owned)
         self.processes.clear()
-        with contextlib.suppress(Exception):
-            subprocess.run(
-                [
-                    str(self.postgres_bins["pg_ctl"]),
-                    "-D",
-                    str(self.pg_data),
-                    "-m",
-                    "fast",
-                    "-w",
-                    "stop",
-                ],
-                check=False,
-                capture_output=True,
-                timeout=20,
-                env=self._env(),
-            )
+        _stop_postgres(
+            self.postgres_bins["pg_ctl"], self.pg_data, self.socket_dir, self._env()
+        )
+        _restore_next_env(self.root, self.workspace, self.next_env_snapshot)
         proof = Path(self.manifest["proof_path"])
         if proof.exists() and proof.parent == Path(self.manifest["evidence_root"]):
             shutil.rmtree(proof)
@@ -636,14 +735,6 @@ class Stack:
             and self.workspace.parent == self.root / ".deepwork" / "worktrees"
         ):
             shutil.rmtree(self.workspace)
-        next_env = self.root / "apps/web/next-env.d.ts"
-        if (
-            self.next_env_bytes is not None
-            and next_env.is_file()
-            and not next_env.is_symlink()
-            and next_env.read_bytes() != self.next_env_bytes
-        ):
-            next_env.write_bytes(self.next_env_bytes)
         if self.socket_dir.is_dir() and not self.socket_dir.is_symlink():
             self.socket_dir.rmdir()
         _remove_empty_runtime_parents(self.root)
@@ -883,8 +974,23 @@ def fixture_service(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_proof_marker(stack: Stack, job_id: str) -> Path:
+    proof = Path(stack.manifest["proof_path"])
+    if proof.parent != Path(stack.manifest["evidence_root"]):
+        raise DriverError("allocated proof path is outside its evidence root")
+    marker = proof / f"synthetic-proof-{stack.namespace}.json"
+    _write_private_json(
+        marker,
+        {"namespace": stack.namespace, "jobId": job_id, "status": "observed"},
+    )
+    return marker
+
+
 def _probe_isolation(
-    source: Stack, target: Stack, browser_report: dict[str, Any]
+    source: Stack,
+    target: Stack,
+    browser_report: dict[str, Any],
+    job_ids: dict[str, str],
 ) -> dict[str, bool]:
     checks: dict[str, bool] = {}
     psql = source.postgres_bins["psql"]
@@ -936,10 +1042,21 @@ def _probe_isolation(
         and source.manifest["schema"] in schemas
         and target.manifest["schema"] not in schemas
     )
-    status, _ = _request_json(
-        f"http://127.0.0.1:{source.ports['worker']}/objects/{urllib.parse.quote(str(target.manifest['object_prefix']))}peer.json"
+    target_relative = (
+        f"{target.manifest['object_prefix']}{job_ids[target.namespace]}.json"
     )
-    checks["object_prefix"] = status == 404
+    target_status, target_object = _request_json(
+        f"http://127.0.0.1:{target.ports['worker']}/objects/{urllib.parse.quote(target_relative)}"
+    )
+    source_status, _ = _request_json(
+        f"http://127.0.0.1:{source.ports['worker']}/objects/{urllib.parse.quote(target_relative)}"
+    )
+    checks["object_prefix"] = (
+        target_status == 200
+        and isinstance(target_object, dict)
+        and target_object.get("namespace") == target.namespace
+        and source_status == 404
+    )
     journey = next(
         item
         for item in browser_report["journeys"]
@@ -947,29 +1064,60 @@ def _probe_isolation(
         == ("stack-a" if source.access_key == ACCESS_KEYS[0] else "stack-b")
     )
     checks["browser_storage"] = journey.get("peerStorageObserved") is None
+    own_status, own_telemetry = _request_json(
+        f"http://127.0.0.1:{source.ports['telemetry']}/events?namespace={urllib.parse.quote(source.namespace)}"
+    )
     status, telemetry = _request_json(
         f"http://127.0.0.1:{source.ports['telemetry']}/events?namespace={urllib.parse.quote(target.namespace)}"
     )
-    checks["telemetry"] = status == 200 and telemetry == {"events": []}
-    checks["logs"] = all(
-        target.namespace not in path.read_text(encoding="utf-8", errors="replace")
+    checks["telemetry"] = (
+        own_status == 200
+        and isinstance(own_telemetry, dict)
+        and any(
+            event.get("namespace") == source.namespace
+            for event in own_telemetry.get("events", [])
+            if isinstance(event, dict)
+        )
+        and status == 200
+        and telemetry == {"events": []}
+    )
+    log_contents = [
+        path.read_text(encoding="utf-8", errors="replace")
         for path in source.logs.glob("*.log")
-    )
-    target_proof_id = f"synthetic-proof-{target.namespace}"
+        if path.is_file() and not path.is_symlink()
+    ]
+    checks["logs"] = any(
+        source.namespace in content for content in log_contents
+    ) and all(target.namespace not in content for content in log_contents)
+    source_proof_id = f"synthetic-proof-{source.namespace}.json"
+    target_proof_id = f"synthetic-proof-{target.namespace}.json"
     source_proof = Path(source.manifest["proof_path"])
-    checks["proof"] = not source_proof.exists() or all(
-        target_proof_id not in path.name for path in source_proof.rglob("*")
-    )
-    source_pids = {
-        item.process.pid for item in source.processes if item.process.poll() is None
-    }
-    target_pids = {
-        item.process.pid for item in target.processes if item.process.poll() is None
-    }
-    checks["process_control"] = (
-        bool(source_pids) and bool(target_pids) and source_pids.isdisjoint(target_pids)
-    )
+    checks["proof"] = (source_proof / source_proof_id).is_file() and not (
+        source_proof / target_proof_id
+    ).exists()
     return checks
+
+
+def _live_api_pid(stack: Stack) -> int:
+    candidates = [
+        item.process.pid
+        for item in stack.processes
+        if item.name == "api" and item.process.poll() is None
+    ]
+    if not candidates:
+        raise DriverError(f"live API process is absent: {stack.namespace}")
+    return candidates[-1]
+
+
+def _prove_process_control(source: Stack, target: Stack) -> bool:
+    target_pid_before = _live_api_pid(target)
+    source.restart_api()
+    _wait_url(f"http://127.0.0.1:{target.ports['api']}/health", timeout=5)
+    return (
+        _live_api_pid(target) == target_pid_before
+        and source.api_restart_before != source.api_restart_after
+        and _live_api_pid(source) != target_pid_before
+    )
 
 
 def _browser_command(
@@ -1017,6 +1165,35 @@ def _validate_invocation(args: argparse.Namespace) -> tuple[Path, Path, Path]:
     if actual != args.driver_sha256:
         raise DriverError("invoked driver bytes do not match the sealed digest")
     return root, peer, evidence
+
+
+def _copy_failure_logs(stack: Stack, evidence_dir: Path) -> None:
+    if not stack.logs.is_dir():
+        return
+    diagnostic_dir = evidence_dir / "failure-logs" / stack.namespace
+    diagnostic_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    for log in stack.logs.glob("*.log"):
+        if (
+            log.is_file()
+            and not log.is_symlink()
+            and log.stat().st_size <= 2 * 1024 * 1024
+        ):
+            shutil.copy2(log, diagnostic_dir / log.name)
+
+
+def _cleanup_remaining(
+    stacks: Sequence[Stack], cleaned: set[str], evidence_dir: Path, *, passed: bool
+) -> None:
+    for stack in stacks:
+        if stack.namespace in cleaned:
+            continue
+        try:
+            if not passed:
+                with contextlib.suppress(Exception):
+                    _copy_failure_logs(stack, evidence_dir)
+        finally:
+            with contextlib.suppress(Exception):
+                stack.stop()
 
 
 def dual_exercise(args: argparse.Namespace) -> int:
@@ -1072,7 +1249,11 @@ def dual_exercise(args: argparse.Namespace) -> int:
             )
         if any(not stack.ready_at for stack in stacks):
             raise DriverError("one or more product-demo stacks did not become ready")
-        job_ids = [stack.exercise_worker() for stack in stacks]
+        job_ids_by_namespace = {
+            stack.namespace: stack.exercise_worker() for stack in stacks
+        }
+        for stack in stacks:
+            _write_proof_marker(stack, job_ids_by_namespace[stack.namespace])
         subprocess.run(
             _browser_command(root, node, browser_report_path, stacks),
             cwd=root,
@@ -1083,21 +1264,41 @@ def dual_exercise(args: argparse.Namespace) -> int:
         browser_report = json.loads(browser_report_path.read_text(encoding="utf-8"))
         if (
             not isinstance(browser_report, dict)
+            or not isinstance(browser_report.get("journeys"), list)
             or len(browser_report.get("journeys", [])) != 2
+            or not all(
+                isinstance(journey, dict)
+                for journey in browser_report.get("journeys", [])
+            )
+            or any(
+                not journey.get("liveProgressObserved")
+                or not journey.get("portableDownload")
+                or not isinstance(journey.get("resultText"), str)
+                or not isinstance(journey.get("prompt"), str)
+                or journey.get("prompt") not in journey.get("resultText", "")
+                or not isinstance(journey.get("sourceText"), str)
+                or not journey.get("sourceText")
+                or not isinstance(journey.get("retainedEventsText"), str)
+                for journey in browser_report.get("journeys", [])
+            )
         ):
             raise DriverError("browser journey report is incomplete")
         isolation = {
             (source.namespace, target.namespace): _probe_isolation(
-                source, target, browser_report
+                source, target, browser_report, job_ids_by_namespace
             )
             for source, target in ((stacks[0], stacks[1]), (stacks[1], stacks[0]))
         }
+        isolation[(stacks[0].namespace, stacks[1].namespace)]["process_control"] = (
+            _prove_process_control(stacks[0], stacks[1])
+        )
+        isolation[(stacks[1].namespace, stacks[0].namespace)]["process_control"] = (
+            _prove_process_control(stacks[1], stacks[0])
+        )
         if any(
             not passed for checks in isolation.values() for passed in checks.values()
         ):
             raise DriverError("one or more cross-stack isolation probes failed")
-        for stack in stacks:
-            stack.restart_api()
         task_paths = tuple(item["taskPath"] for item in browser_report["journeys"])
         subprocess.run(
             _browser_command(root, node, reopen_report_path, stacks, reopen=task_paths),
@@ -1107,8 +1308,25 @@ def dual_exercise(args: argparse.Namespace) -> int:
             timeout=120,
         )
         reopen_report = json.loads(reopen_report_path.read_text(encoding="utf-8"))
-        if len(reopen_report.get("reopened", [])) != 2:
-            raise DriverError("fresh-browser reopen after API restart was not proven")
+        reopened = reopen_report.get("reopened", [])
+        if (
+            len(reopened) != 4
+            or {
+                (item.get("label"), item.get("viewport"))
+                for item in reopened
+                if isinstance(item, dict)
+            }
+            != {
+                ("stack-a", "1440x900"),
+                ("stack-a", "390x844"),
+                ("stack-b", "1440x900"),
+                ("stack-b", "390x844"),
+            }
+            or not all(item.get("reopenedAfterApiRestart") for item in reopened)
+        ):
+            raise DriverError(
+                "desktop and phone fresh-browser reopen after API restart were not proven"
+            )
 
         public = [public_manifest(manifest_a), public_manifest(manifest_b)]
         allocation_digests = {
@@ -1222,10 +1440,10 @@ def dual_exercise(args: argparse.Namespace) -> int:
                     "object",
                     "telemetry",
                 ],
-                "jobs": job_ids,
+                "jobs": [job_ids_by_namespace[stack.namespace] for stack in stacks],
                 "browser": {
                     "journeys": 2,
-                    "reopenedAfterApiRestart": 2,
+                    "reopenedAfterApiRestart": 4,
                     "viewports": ["1440x900", "390x844"],
                 },
                 "isolationDimensions": sorted(PROBE_DIMENSIONS),
@@ -1235,67 +1453,115 @@ def dual_exercise(args: argparse.Namespace) -> int:
         passed = True
         return 0
     finally:
-        for stack in stacks:
-            if stack.namespace not in cleaned:
-                if not passed and stack.logs.is_dir():
-                    diagnostic_dir = evidence_dir / "failure-logs" / stack.namespace
-                    diagnostic_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-                    for log in stack.logs.glob("*.log"):
-                        if log.is_file() and not log.is_symlink():
-                            shutil.copy2(log, diagnostic_dir / log.name)
-                with contextlib.suppress(Exception):
-                    stack.stop()
+        _cleanup_remaining(stacks, cleaned, evidence_dir, passed=passed)
 
 
 def _recover_stack(root: Path, manifest: dict[str, Any], pg_ctl: Path) -> bool:
     workspace = Path(manifest["workspace_path"])
-    verified = True
+    if not workspace.exists():
+        socket_digest = hashlib.sha256(str(manifest["namespace"]).encode()).hexdigest()[
+            :16
+        ]
+        socket_dir = Path("/tmp") / f"deepwork-pg-{socket_digest}"
+        return (
+            _socket_is_closed(socket_dir)
+            and not socket_dir.exists()
+            and all(_port_closed(port) for port in manifest["ports"].values())
+        )
+    if workspace.parent != root / ".deepwork" / "worktrees":
+        return False
     state_path = workspace / STATE_FILE
-    if state_path.is_file() and not state_path.is_symlink():
-        with contextlib.suppress(OSError, json.JSONDecodeError):
-            state = json.loads(state_path.read_text(encoding="utf-8"))
-            for record in state.get("processes", []):
-                pid = record.get("pid")
-                if not isinstance(pid, int) or pid <= 1:
-                    verified = False
-                    continue
+    if state_path.is_symlink() or not state_path.is_file():
+        return False
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if (
+        not isinstance(state, dict)
+        or state.get("namespace") != manifest["namespace"]
+        or state.get("postgres_data") != str(workspace / "postgres-data")
+        or not isinstance(state.get("processes"), list)
+    ):
+        return False
+    verified = True
+    for record in state["processes"]:
+        if not isinstance(record, dict):
+            verified = False
+            continue
+        pid = record.get("pid")
+        marker = record.get("marker")
+        if not isinstance(pid, int) or pid <= 1 or not isinstance(marker, str):
+            verified = False
+            continue
+        try:
+            if os.getpgid(pid) != pid:
+                verified = False
+                continue
+            command = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "command="],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=3,
+            ).stdout
+            if marker not in command or (
+                str(root) not in command and "worktree_driver.py" not in command
+            ):
+                verified = False
+                continue
+            os.killpg(pid, signal.SIGTERM)
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline:
                 try:
-                    if os.getpgid(pid) != pid:
-                        verified = False
-                        continue
-                    command = subprocess.run(
-                        ["ps", "-p", str(pid), "-o", "command="],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=3,
-                    ).stdout
-                    if str(root) not in command and "worktree_driver.py" not in command:
-                        verified = False
-                        continue
-                    os.killpg(pid, signal.SIGTERM)
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.1)
+            else:
+                os.killpg(pid, signal.SIGKILL)
+                time.sleep(0.2)
+                try:
+                    os.kill(pid, 0)
                 except ProcessLookupError:
                     pass
+                else:
+                    verified = False
+        except ProcessLookupError:
+            pass
     pg_data = workspace / "postgres-data"
-    if pg_data.is_dir():
-        subprocess.run(
-            [str(pg_ctl), "-D", str(pg_data), "-m", "fast", "stop"],
-            check=False,
-            capture_output=True,
-            timeout=20,
-        )
+    socket_digest = hashlib.sha256(str(manifest["namespace"]).encode()).hexdigest()[:16]
+    socket_dir = Path("/tmp") / f"deepwork-pg-{socket_digest}"
+    try:
+        recovery_env = {
+            key: os.environ[key] for key in ("PATH", "TMPDIR") if key in os.environ
+        }
+        recovery_env["LC_ALL"] = "C"
+        _stop_postgres(pg_ctl, pg_data, socket_dir, recovery_env)
+        _restore_next_env(root, workspace, state.get("next_env"))
+    except (DriverError, OSError, subprocess.SubprocessError):
+        return False
+    if not verified or not all(
+        _port_closed(port) for port in manifest["ports"].values()
+    ):
+        return False
+    if socket_dir.is_dir() and not socket_dir.is_symlink():
+        try:
+            socket_dir.rmdir()
+        except OSError:
+            return False
+    if socket_dir.exists() or socket_dir.is_symlink():
+        return False
     proof = Path(manifest["proof_path"])
     if proof.exists() and proof.parent == Path(manifest["evidence_root"]):
         shutil.rmtree(proof)
-    if workspace.exists() and workspace.parent == root / ".deepwork" / "worktrees":
-        shutil.rmtree(workspace)
-    socket_digest = hashlib.sha256(str(manifest["namespace"]).encode()).hexdigest()[:16]
-    socket_dir = Path("/tmp") / f"deepwork-pg-{socket_digest}"
-    if socket_dir.is_dir() and not socket_dir.is_symlink():
-        with contextlib.suppress(OSError):
-            socket_dir.rmdir()
+    shutil.rmtree(workspace)
     _remove_empty_runtime_parents(root)
-    return verified and all(_port_closed(port) for port in manifest["ports"].values())
+    return (
+        not workspace.exists()
+        and not socket_dir.exists()
+        and all(_port_closed(port) for port in manifest["ports"].values())
+    )
 
 
 def cleanup(args: argparse.Namespace) -> int:
@@ -1307,7 +1573,10 @@ def cleanup(args: argparse.Namespace) -> int:
     pg_ctl = _find_executable("pg_ctl")
     records = []
     for workspace_root, manifest in ((root, manifests[0]), (peer, manifests[1])):
-        verified = _recover_stack(workspace_root, manifest, pg_ctl)
+        try:
+            verified = _recover_stack(workspace_root, manifest, pg_ctl)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            verified = False
         record = {
             "namespace": manifest["namespace"],
             "process_identity_verified": verified,

@@ -4,6 +4,41 @@ import { chromium } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
+function monitorPage(page, label, origin) {
+  const failures = [];
+  page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") failures.push(`console: ${message.text()}`);
+  });
+  page.on("requestfailed", (request) => {
+    failures.push(`requestfailed: ${request.method()} ${request.url()}`);
+  });
+  page.on("response", (response) => {
+    if (response.url().startsWith(`${origin}/api/`) && response.status() >= 400) {
+      failures.push(`api-response: ${response.status()} ${response.url()}`);
+    }
+  });
+  return () => {
+    if (failures.length > 0) throw new Error(`${label} browser failures: ${failures.join("; ")}`);
+  };
+}
+
+async function assertCompletedOutcome(page, prompt) {
+  const resultRegion = page.getByRole("region", { name: "Task result" });
+  await resultRegion.getByText("Run completed", { exact: true }).waitFor({ timeout: 20_000 });
+  const resultText = (await resultRegion.textContent()) ?? "";
+  if (!resultText.includes(`Objective: ${prompt}`) || !resultText.includes("Next actions:")) {
+    throw new Error("completed task did not render a useful prompt-specific result");
+  }
+  const downloadPromise = page.waitForEvent("download");
+  await resultRegion.getByRole("button", { name: "Download", exact: true }).click();
+  const download = await downloadPromise;
+  if (!(await download.path()) || !download.suggestedFilename().endsWith(".md")) {
+    throw new Error("portable result download was not produced");
+  }
+  return resultText;
+}
+
 function parseArgs(argv) {
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
@@ -46,8 +81,7 @@ async function completeJourney(browser, config) {
     serviceWorkers: "block",
   });
   const page = await context.newPage();
-  const pageErrors = [];
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const assertDesktopHealthy = monitorPage(page, `${config.label} desktop`, config.origin);
   await login(page, config.origin, config.accessKey);
 
   await page.goto(`${config.origin}/agents`);
@@ -86,13 +120,27 @@ async function completeJourney(browser, config) {
     .getByRole("button", { name: "Approve", exact: true })
     .click();
   await batch.getByRole("button", { name: "Submit reviewed batch" }).click();
-  await page.getByText("Run completed", { exact: true }).waitFor({ timeout: 20_000 });
+  await page
+    .getByText("Agent is working — it pauses at the plan checkpoint for your review", {
+      exact: true,
+    })
+    .waitFor({ timeout: 5_000 });
+  const resultText = await assertCompletedOutcome(page, prompt);
+  await page.getByRole("tab", { name: "Activity" }).click();
+  await page.getByText("run.completed", { exact: true }).waitFor();
   await page.getByRole("tab", { name: "Sources" }).click();
-  await page.getByText("local-runner", { exact: false }).waitFor();
+  const sourceRecord = page.getByText("local-runner", { exact: false });
+  await sourceRecord.waitFor();
+  const sourceText = (await sourceRecord.locator("..").textContent()) ?? "";
   await page.getByRole("tab", { name: "Files" }).click();
   await page.getByText("result.md", { exact: true }).waitFor();
   await page.getByRole("tab", { name: "Details" }).click();
   await page.getByText("Execution trace", { exact: true }).waitFor();
+  const retainedEventsText =
+    (await page.getByText("Retained events", { exact: true }).locator("..").textContent()) ?? "";
+  if (!/[1-9][0-9]*/.test(retainedEventsText)) {
+    throw new Error("execution trace did not retain any events");
+  }
 
   await page.evaluate(({ ownKey, label }) => localStorage.setItem(ownKey, `owned-by-${label}`), {
     ownKey: config.ownStorageKey,
@@ -114,6 +162,7 @@ async function completeJourney(browser, config) {
     .first()
     .click();
   await page.getByText("Run completed", { exact: true }).waitFor();
+  await assertCompletedOutcome(page, prompt);
 
   const phone = await browser.newContext({
     baseURL: config.origin,
@@ -121,23 +170,29 @@ async function completeJourney(browser, config) {
     serviceWorkers: "block",
   });
   const phonePage = await phone.newPage();
+  const assertPhoneHealthy = monitorPage(phonePage, `${config.label} phone`, config.origin);
   await login(phonePage, config.origin, config.accessKey);
   await phonePage.goto(taskUrl);
-  await phonePage.getByText("Run completed", { exact: true }).waitFor();
+  await assertCompletedOutcome(phonePage, prompt);
   await phonePage.getByRole("tab", { name: "Files" }).click();
   await phonePage.getByText("result.md", { exact: true }).waitFor();
   await phonePage.screenshot({
     path: `${config.artifactDir}/phone-reopened.png`,
     fullPage: true,
   });
+  assertPhoneHealthy();
   await phone.close();
+  assertDesktopHealthy();
   await context.close();
-  if (pageErrors.length > 0)
-    throw new Error(`${config.label} page errors: ${pageErrors.join("; ")}`);
   return {
     label: config.label,
     taskPath: new URL(taskUrl).pathname,
     prompt,
+    resultText,
+    sourceText,
+    retainedEventsText,
+    portableDownload: true,
+    liveProgressObserved: true,
     peerStorageObserved,
     states: [
       "sign-in",
@@ -157,18 +212,29 @@ async function completeJourney(browser, config) {
 async function reopenJourney(browser, config) {
   const context = await browser.newContext({
     baseURL: config.origin,
-    viewport: { width: 390, height: 844 },
+    viewport: config.viewport,
     serviceWorkers: "block",
   });
   const page = await context.newPage();
+  const assertHealthy = monitorPage(
+    page,
+    `${config.label} ${config.viewport.width}x${config.viewport.height} restart reopen`,
+    config.origin,
+  );
   await login(page, config.origin, config.accessKey);
   await page.goto(`${config.origin}${config.taskPath}`);
-  await page.getByText("Run completed", { exact: true }).waitFor();
+  await assertCompletedOutcome(page, config.prompt);
   await page.getByRole("tab", { name: "Files" }).click();
   await page.getByText("result.md", { exact: true }).waitFor();
   await page.screenshot({ path: config.screenshot, fullPage: true });
+  assertHealthy();
   await context.close();
-  return { label: config.label, taskPath: config.taskPath, reopenedAfterApiRestart: true };
+  return {
+    label: config.label,
+    taskPath: config.taskPath,
+    viewport: `${config.viewport.width}x${config.viewport.height}`,
+    reopenedAfterApiRestart: true,
+  };
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -176,22 +242,28 @@ await mkdir(dirname(args.report), { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
   if (args["reopen-a"] && args["reopen-b"]) {
-    const reopened = [
-      await reopenJourney(browser, {
-        label: "stack-a",
-        origin: args["origin-a"],
-        accessKey: "deepwork-product-demo-a",
-        taskPath: args["reopen-a"],
-        screenshot: `${dirname(args.report)}/stack-a/reopened-after-api-restart.png`,
-      }),
-      await reopenJourney(browser, {
-        label: "stack-b",
-        origin: args["origin-b"],
-        accessKey: "deepwork-product-demo-b",
-        taskPath: args["reopen-b"],
-        screenshot: `${dirname(args.report)}/stack-b/reopened-after-api-restart.png`,
-      }),
-    ];
+    const reopened = [];
+    for (const [label, origin, accessKey, taskPath] of [
+      ["stack-a", args["origin-a"], "deepwork-product-demo-a", args["reopen-a"]],
+      ["stack-b", args["origin-b"], "deepwork-product-demo-b", args["reopen-b"]],
+    ]) {
+      for (const viewport of [
+        { width: 1440, height: 900, name: "desktop" },
+        { width: 390, height: 844, name: "phone" },
+      ]) {
+        reopened.push(
+          await reopenJourney(browser, {
+            label,
+            origin,
+            accessKey,
+            taskPath,
+            prompt: `Prepare isolated product-demo result for ${label}`,
+            viewport,
+            screenshot: `${dirname(args.report)}/${label}/reopened-after-api-restart-${viewport.name}.png`,
+          }),
+        );
+      }
+    }
     await writeFile(args.report, `${JSON.stringify({ schemaVersion: 1, reopened }, null, 2)}\n`, {
       mode: 0o600,
     });

@@ -210,6 +210,7 @@ def _parser() -> argparse.ArgumentParser:
 
     doctor = subparsers.add_parser("doctor", help="check harness prerequisites")
     doctor.add_argument("--root", required=True)
+    doctor.add_argument("--require-product-demo", action="store_true")
 
     self_test = subparsers.add_parser(
         "self-test", help="run synthetic allocator and ownership proof"
@@ -837,6 +838,10 @@ def doctor(args: argparse.Namespace) -> int:
         status["python"]["supported"]
         and status["root"]["repository_markers"]
         and status["fixtures"]["available"]
+        and (
+            not args.require_product_demo
+            or status["product_demo"].get("available") is True
+        )
     )
     _emit(status)
     return 0 if ok else EXIT_INVALID

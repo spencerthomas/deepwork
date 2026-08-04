@@ -58,6 +58,18 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
       ) {
         return;
       }
+      // The task store deliberately closes its long-lived EventSource after the
+      // terminal event and again during route cleanup. Chromium reports that
+      // client-owned stream shutdown as an aborted request even though the SSE
+      // response was healthy. Keep every other API cancellation and every
+      // non-success response blocking.
+      if (
+        request.method() === "GET" &&
+        /^\/api\/v1\/tasks\/[^/]+\/events$/.test(path) &&
+        failure === "net::ERR_ABORTED"
+      ) {
+        return;
+      }
       failedApiRequests.push(`${request.method()} ${path}: ${failure}`);
     }
   });

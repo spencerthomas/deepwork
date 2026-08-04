@@ -12,10 +12,10 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-03
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: 48e21024a0bf9691c2d8a9531be7f210e4547b45
+last_verified_commit: e11efe03fb75754639b20c71bbc18982586bfb60
 risk: high
-governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, tests/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
-contract_gates: []
+governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
+contract_gates: [SPIKE-HITL-001]
 decision_gates: [DEC-033]
 gate_review_status: reviewed-with-gates
 gate_reviewed_by: [product-owner]
@@ -167,6 +167,19 @@ artifact; unknown stays unknown.
 Acceptance: documentation checks pass, no row infers release acceptance, and the
 README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 
+### Milestone 6 — Normalized ordered approval batch
+
+Carry the installed positional HITL shape through the application API, pure domain,
+browser SDK, and task/approvals UI. Fixture mode must exercise repeated action names,
+per-position allowed decisions, edit-only-where-allowed, complete-vector validation,
+expected-version stale rejection, idempotent duplicate handling, durable audit, and
+desktop/phone interaction. The classic source adapter stays on its existing bounded
+single-action fallback until live server evidence accepts ordered resume behavior.
+
+Acceptance: focused API/domain/SDK/web tests and a two-width browser case prove one
+complete repeated-name vector. A malformed or stale vector sends no provider request;
+the scorecard continues to distinguish installed/local proof from hosted acceptance.
+
 ## Progress
 
 - [x] 2026-08-03 00:00 PDT — Product-owner recovery directive accepted and clean
@@ -189,6 +202,16 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
   documentation, local browser and visual acceptance pass for the implemented
   slice; this ExecPlan stays active while the twelve-scenario scorecard retains
   unimplemented, hosted-unproven and release-unaccepted work.
+- [x] 2026-08-03 — Exact installed HITL middleware and protocol-v3 command evidence
+  pinned at `8b1b7f5cfa23a5528b39a446337e1663379fe4b5`; live classic-server semantics
+  remain unavailable and product submission stays fail-closed beyond the current
+  bounded contract.
+- [x] 2026-08-03 — Normalized ordered approval batch completed at
+  `e11efe03fb75754639b20c71bbc18982586bfb60` across the application API, domain,
+  SDK and browser UI. Repeated-name mixed vectors, durable version-bound replay,
+  edited-plan trace, explicit per-action choice, two-device stale/conflict safety,
+  keyboard/touch access and desktop/phone screenshots pass locally. Classic batch
+  resume, hosted proof and release acceptance remain gated.
 
 ## Surprises & Discoveries
 
@@ -212,6 +235,13 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
   recovery: 14 mypy findings, four ruff-format findings and ten architecture
   findings. The follow-on contributor-gate repair removed those findings without
   changing product behavior; the supported root `make check` now passes.
+- 2026-08-03 — Final correctness, contract/security and product/browser reviewers
+  found replay-version spoofing, API/SDK version drift, rejected batch events,
+  missing edited-plan trace, stale cross-device controls and implicit approve-all
+  behavior. The final contract binds and persists the reviewed version, uses the
+  API string version end to end, maps positional audit types, emits `plan.updated`
+  atomically, invalidates stale controls and requires an explicit choice for every
+  action.
 
 ## Decision Log
 
@@ -221,6 +251,11 @@ README/PLANS/QUALITY_SCORE status language agrees with the scorecard.
 - 2026-08-03 — Visual and hosted gates are separate: fixture screenshots cannot
   satisfy hosted proof, and hosted reachability cannot satisfy visual parity.
   Approved by: product-owner.
+- 2026-08-03 — Installed public packages are sufficient to freeze the normalized
+  positional application shape and fixture behavior, but not to enable a classic
+  provider batch resume. The provider adapter keeps its bounded fallback until a
+  live transcript proves stale, duplicate, authorization, transport-failure and
+  post-resume behavior. Approved by: product-owner.
 
 ## Detailed implementation approach
 

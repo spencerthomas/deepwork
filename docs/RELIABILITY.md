@@ -34,6 +34,35 @@ Open runtime contract questions remain in the
 
 ## Local SQLite recovery boundary
 
+Local/classic source execution now persists an application-owned source binding
+before a follower is considered recoverable. A globally unique application run
+ID is the stable source dispatch identity; source thread/run IDs remain
+server-only. Startup can rediscover an accepted initial dispatch, approval
+transition or plan edit after an API crash or lost upstream response. Plan edits
+persist the exact bounded requested steps before source I/O and then atomically
+commit the revised plan, replacement source run and fresh approval interrupt.
+The initiating HTTP request awaits a shielded task-owned operation, so a browser
+disconnect cannot cancel an accepted edit or strand the follower swap.
+
+Resumable source progress is retained only when it carries an event identity.
+Deep Work hashes that identity with the bound thread/run into an application
+receipt and atomically inserts the receipt plus normalized progress event. Raw
+provider cursors never enter the schema. On restart the source stream may replay
+from its beginning; receipt lookup suppresses duplicate normalized progress.
+Cursorless progress fails closed because it cannot satisfy this exactly-once
+contract.
+
+This is sequential local recovery, not production distributed ownership. Receipt
+rows and replay work are not yet compacted or bounded; every restart can scan the
+full provider history. Concurrent API replicas do not yet lease one source
+follower, startup recovery is serial, and transient source unavailability can
+still become a terminal local failure. An unaccepted `respond` transition cannot
+be reconstructed after restart because the review comment is deliberately not
+retained; it fails closed, while an already accepted response is rediscovered by
+transition metadata. These limitations keep `E2E-V1-03` and `E2E-V1-05` Partial
+until lease/worker, bounded replay, process-kill, provider and hosted acceptance
+gates pass.
+
 The local adapter has a stopped-application backup/restore utility for recovery
 testing and developer-owned data. Stop the API first so the task and settings
 databases represent one application point in time, then use absolute paths:

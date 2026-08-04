@@ -1008,9 +1008,7 @@ async def test_stream_sanitizes_payload_and_exposes_only_application_receipts() 
 
     events = [
         event
-        async for event in source.stream(
-            LocalRunReference("thread-official-1", "run-official-1")
-        )
+        async for event in source.stream(LocalRunReference("thread-official-1", "run-official-1"))
     ]
 
     assert client.runs.stream_calls == [
@@ -1031,8 +1029,7 @@ async def test_stream_sanitizes_payload_and_exposes_only_application_receipts() 
     )
     assert len(set(receipt_keys)) == 3
     assert all(
-        source_id not in repr(events)
-        for source_id in ("event-alpha", "event-beta", "event-gamma")
+        source_id not in repr(events) for source_id in ("event-alpha", "event-beta", "event-gamma")
     )
     assert events[0].run_id == "run-official-1"
     assert events[1].updated_nodes == ("plan",)

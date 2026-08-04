@@ -144,8 +144,6 @@ class _Source:
     async def stream(
         self,
         run: LocalRun,
-        *,
-        after_cursor: str | None = None,
     ) -> AsyncIterator[object]:
         for event in self.events:
             yield event
@@ -181,8 +179,6 @@ class _HangingStreamSource(_Source):
     async def stream(
         self,
         run: LocalRun,
-        *,
-        after_cursor: str | None = None,
     ) -> AsyncIterator[object]:
         pending = asyncio.get_running_loop().create_future()
         yield await pending
@@ -679,7 +675,7 @@ async def test_expired_source_lease_is_taken_over_after_owner_process_is_killed(
                     interrupt=None,
                 )
 
-            async def stream(self, run, *, after_cursor=None):
+            async def stream(self, run):
                 if sys.argv[2] == "owner":
                     await asyncio.Event().wait()
                 if False:
@@ -1064,7 +1060,7 @@ async def test_error_stream_event_fails_instead_of_completing() -> None:
 @pytest.mark.asyncio
 async def test_cursorless_progress_fails_without_persisting_an_undedupeable_event() -> None:
     repository = InMemoryTaskRepository()
-    source = _Source(events=(SimpleNamespace(kind="progress", cursor=None),))
+    source = _Source(events=(SimpleNamespace(kind="progress", receipt_key=None),))
     runner = LocalAgentServerRunner(repository, source)
     task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
     await _bind_source_for_test(repository, task.task_id)
@@ -1097,20 +1093,16 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
                 )
             )
             self.attempts = 0
-            self.after_cursors: list[str | None] = []
 
         async def stream(
             self,
             run: LocalRun,
-            *,
-            after_cursor: str | None = None,
         ) -> AsyncIterator[object]:
             self.attempts += 1
-            self.after_cursors.append(after_cursor)
-            yield SimpleNamespace(kind="progress", cursor="cursor-1")
+            yield SimpleNamespace(kind="progress", receipt_key="1" * 64)
             if self.attempts == 1:
                 raise TaskSourceUnavailableError
-            yield SimpleNamespace(kind="progress", cursor="cursor-2")
+            yield SimpleNamespace(kind="progress", receipt_key="2" * 64)
 
     repository = InMemoryTaskRepository()
     source = FlakyActiveStreamSource()
@@ -1124,7 +1116,6 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
     current = await repository.get_task(task.task_id)
     events = await repository.events_after(task.task_id, 0)
     assert source.attempts == 2
-    assert source.after_cursors == [None, "cursor-1"]
     assert current.status is TaskStatus.COMPLETED
     assert current.result == "Recovered result"
     assert [event.name for event in events].count(TaskEventName.CONTENT_DELTA) == 2
@@ -1151,10 +1142,8 @@ async def test_active_stream_fails_safely_after_bounded_unavailability(
         async def stream(
             self,
             run: LocalRun,
-            *,
-            after_cursor: str | None = None,
         ) -> AsyncIterator[object]:
-            del run, after_cursor
+            del run
             self.attempts += 1
             if False:
                 yield None

@@ -51,41 +51,20 @@ class _SourceHandoffPersistenceError(Exception):
 
 @dataclass(slots=True)
 class _SourceReplayState:
-    """Bound one follower's source reads and retain only its in-memory cursor."""
+    """Bound one follower's source reads across transient reconnects."""
 
     remaining_events: int
-    after_cursor: str | None = None
 
     def consume_event(self) -> None:
         self.remaining_events -= 1
         if self.remaining_events < 0:
             raise TaskSourceContractError
 
-    def advance(self, cursor: object) -> None:
-        if cursor is None:
-            return
-        if not isinstance(cursor, str) or not cursor:
-            raise TaskSourceContractError
-        self.after_cursor = cursor
-
 
 async def _next_source_event(stream: AsyncIterator[object]) -> object:
     """Present ``anext`` as a coroutine accepted by ``asyncio.create_task``."""
 
     return await anext(stream)
-
-
-def _source_event_key(thread_id: str, run_id: str, provider_cursor: object) -> str:
-    """Derive a bounded application receipt without retaining provider data."""
-
-    if not isinstance(provider_cursor, str) or not provider_cursor:
-        raise TaskSourceContractError
-    digest = hashlib.sha256()
-    for value in (thread_id, run_id, provider_cursor):
-        encoded = value.encode("utf-8")
-        digest.update(len(encoded).to_bytes(8, byteorder="big"))
-        digest.update(encoded)
-    return digest.hexdigest()
 
 
 def _source_transition_id(task_id: str, interrupt_id: str) -> str:
@@ -228,8 +207,6 @@ class LocalSource(Protocol):
     def stream(
         self,
         run: LocalRun,
-        *,
-        after_cursor: str | None = None,
     ) -> AsyncIterator[object]: ...
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]: ...
     async def create_agent(
@@ -1149,7 +1126,7 @@ class LocalAgentServerRunner:
         in ``running`` while preserving the same fail-closed state validation.
         """
 
-        stream = self.source.stream(run, after_cursor=replay.after_cursor)
+        stream = self.source.stream(run)
         pending: asyncio.Task[object] = asyncio.create_task(_next_source_event(stream))
         reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
         try:
@@ -1175,9 +1152,13 @@ class LocalAgentServerRunner:
                 kind = getattr(event, "kind", None)
                 if kind == "error":
                     raise TaskSourceContractError
-                cursor = getattr(event, "cursor", None)
+                receipt_key = getattr(event, "receipt_key", None)
                 if kind == "progress":
-                    if cursor is None:
+                    if (
+                        not isinstance(receipt_key, str)
+                        or len(receipt_key) != 64
+                        or any(character not in "0123456789abcdef" for character in receipt_key)
+                    ):
                         raise TaskSourceContractError
                     data = (
                         ("text", "Local Agent Server progress received."),
@@ -1188,14 +1169,9 @@ class LocalAgentServerRunner:
                         lease_token=self._source_lease_token(task.task_id),
                         thread_id=run.thread_id,
                         run_id=run.run_id,
-                        source_event_key=_source_event_key(
-                            run.thread_id,
-                            run.run_id,
-                            cursor,
-                        ),
+                        source_event_key=receipt_key,
                         data=data,
                     )
-                replay.advance(cursor)
                 reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
                 pending = asyncio.create_task(_next_source_event(stream))
         finally:

@@ -986,31 +986,30 @@ async def test_state_rejects_wrong_interrupt_action_or_trust(
         await source.get_state("thread-official-1")
 
 
-async def test_stream_reconnects_with_official_cursor_and_sanitizes_payload() -> None:
+async def test_stream_sanitizes_payload_and_exposes_only_application_receipts() -> None:
     source, client = _source()
     client.runs.stream_events = [
         {
             "event": "metadata",
             "data": {"run_id": "run-official-1", "secret": "not-exposed"},
-            "id": "next/cursor==",
+            "id": "event-alpha",
         },
         {
             "event": "updates",
             "data": {"plan": {"reviewer_comment": "not-exposed"}},
-            "id": "cursor:2",
+            "id": "event-beta",
         },
         {
             "event": "error",
             "data": {"message": "private upstream failure"},
-            "id": "cursor:3",
+            "id": "event-gamma",
         },
     ]
 
     events = [
         event
         async for event in source.stream(
-            LocalRunReference("thread-official-1", "run-official-1"),
-            after_cursor="opaque/cursor==",
+            LocalRunReference("thread-official-1", "run-official-1")
         )
     ]
 
@@ -1020,10 +1019,21 @@ async def test_stream_reconnects_with_official_cursor_and_sanitizes_payload() ->
             "run_id": "run-official-1",
             "cancel_on_disconnect": False,
             "stream_mode": ("values", "updates"),
-            "last_event_id": "opaque/cursor==",
+            "last_event_id": None,
         }
     ]
-    assert [event.cursor for event in events] == ["next/cursor==", "cursor:2", "cursor:3"]
+    receipt_keys = [event.receipt_key for event in events]
+    assert all(
+        isinstance(receipt_key, str)
+        and len(receipt_key) == 64
+        and set(receipt_key) <= set("0123456789abcdef")
+        for receipt_key in receipt_keys
+    )
+    assert len(set(receipt_keys)) == 3
+    assert all(
+        source_id not in repr(events)
+        for source_id in ("event-alpha", "event-beta", "event-gamma")
+    )
     assert events[0].run_id == "run-official-1"
     assert events[1].updated_nodes == ("plan",)
     assert events[2].summary == "The local Agent Server reported a run error."

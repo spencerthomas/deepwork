@@ -325,7 +325,7 @@ class LocalPlanUpdate:
 class LocalStreamEvent:
     """Sanitized projection of one official resumable run-stream event."""
 
-    cursor: str | None
+    receipt_key: str | None
     kind: StreamEventKind
     summary: str
     run_id: str | None = None
@@ -605,24 +605,20 @@ class LocalAgentServerSource:
     async def stream(
         self,
         run: LocalRunReference,
-        *,
-        after_cursor: str | None = None,
     ) -> AsyncIterator[LocalStreamEvent]:
-        """Join or reconnect to the official resumable stream with Last-Event-ID."""
+        """Join the official stream and expose only application-owned receipts."""
 
         thread_id = _validate_identifier(run.thread_id, field="thread identifier")
         run_id = _validate_identifier(run.run_id, field="run identifier")
-        cursor = _validate_cursor(after_cursor) if after_cursor is not None else None
         try:
             source_stream = self.client.runs.join_stream(
                 thread_id,
                 run_id,
                 cancel_on_disconnect=False,
                 stream_mode=("values", "updates"),
-                last_event_id=cursor,
             )
             async for raw_event in source_stream:
-                yield _stream_event(raw_event)
+                yield _stream_event(raw_event, thread_id=thread_id, run_id=run_id)
         except LocalSourceContractError:
             raise
         except Exception:
@@ -1349,16 +1345,27 @@ def _agent_timestamp(value: object) -> str:
     return value if isinstance(value, str) and value else ""
 
 
-def _validate_cursor(value: object) -> str:
+def _validate_source_event_id(value: object) -> str:
     if (
         not isinstance(value, str)
         or not value
         or len(value) > _MAX_IDENTIFIER_LENGTH
         or any(character in value for character in ("\0", "\r", "\n"))
     ):
-        message = "event cursor is invalid"
+        message = "source event identifier is invalid"
         raise LocalSourceContractError(message)
     return value
+
+
+def _source_receipt_key(thread_id: str, run_id: str, event_id: str) -> str:
+    """Irreversibly map an upstream event identity into the application namespace."""
+
+    digest = hashlib.sha256()
+    for value in (thread_id, run_id, event_id):
+        encoded = value.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()
 
 
 def _bounded_text(value: object, *, field: str, maximum: int) -> str:
@@ -1557,7 +1564,7 @@ def _bounded_output_text(value: object, *, field: str, maximum: int) -> str:
     return value
 
 
-def _stream_event(value: object) -> LocalStreamEvent:
+def _stream_event(value: object, *, thread_id: str, run_id: str) -> LocalStreamEvent:
     if isinstance(value, tuple) and hasattr(value, "event") and hasattr(value, "data"):
         event_name = getattr(value, "event", None)
         data = getattr(value, "data", None)
@@ -1570,10 +1577,15 @@ def _stream_event(value: object) -> LocalStreamEvent:
     else:
         message = "local Agent Server stream event shape is unsupported"
         raise LocalSourceContractError(message)
-    cursor = _validate_cursor(event_id) if isinstance(event_id, str) else None
-    if event_id is not None and cursor is None:
-        message = "local Agent Server stream cursor is invalid"
+    source_event_id = _validate_source_event_id(event_id) if isinstance(event_id, str) else None
+    if event_id is not None and source_event_id is None:
+        message = "local Agent Server stream event identifier is invalid"
         raise LocalSourceContractError(message)
+    receipt_key = (
+        _source_receipt_key(thread_id, run_id, source_event_id)
+        if source_event_id is not None
+        else None
+    )
     if event_name == "values":
         state = _state_snapshot(
             {
@@ -1583,7 +1595,7 @@ def _stream_event(value: object) -> LocalStreamEvent:
             }
         )
         return LocalStreamEvent(
-            cursor=cursor,
+            receipt_key=receipt_key,
             kind="state",
             summary="Agent state updated.",
             state=state,
@@ -1598,7 +1610,7 @@ def _stream_event(value: object) -> LocalStreamEvent:
             sorted(key for key in update if isinstance(key, str) and _IDENTIFIER.fullmatch(key))
         )
         return LocalStreamEvent(
-            cursor=cursor,
+            receipt_key=receipt_key,
             kind="progress",
             summary="Agent progress updated.",
             updated_nodes=nodes,
@@ -1606,19 +1618,19 @@ def _stream_event(value: object) -> LocalStreamEvent:
     if event_name == "metadata":
         metadata = _as_mapping(data)
         return LocalStreamEvent(
-            cursor=cursor,
+            receipt_key=receipt_key,
             kind="run",
             summary="Agent run connected.",
             run_id=_required_identifier(metadata, "run_id"),
         )
     if event_name == "error":
         return LocalStreamEvent(
-            cursor=cursor,
+            receipt_key=receipt_key,
             kind="error",
             summary="The local Agent Server reported a run error.",
         )
     return LocalStreamEvent(
-        cursor=cursor,
+        receipt_key=receipt_key,
         kind="progress",
         summary="The local Agent Server emitted a progress event.",
     )

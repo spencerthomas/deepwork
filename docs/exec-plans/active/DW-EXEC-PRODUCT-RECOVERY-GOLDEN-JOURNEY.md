@@ -216,9 +216,11 @@ must contain the real web, API, worker, PostgreSQL, object and telemetry service
 the driver may not relabel SQLite or an in-process stub as PostgreSQL. Seal the
 reviewed driver blob in an ancestor commit before binding its contract digest.
 
-Acceptance: the harness proves collision-free namespaces and ports, eight
+Acceptance: the harness proves collision-free namespaces and ports, sixteen
 bidirectional isolation probes, process restart/read-back, browser golden journey,
-evidence digest binding, teardown and reservation release for both stacks. This
+task/run-qualified evidence and artifact digest binding, true 390x844 viewport
+captures, exact clean execution commits, teardown and reservation release for both
+stacks, plus idempotent recovery if receipt finalization is interrupted. This
 is local product-demo proof only and does not populate hosted or release-accepted
 scorecard columns.
 
@@ -272,7 +274,13 @@ scorecard columns.
   The existing SQLite `/api/v1/jobs` response remains byte-compatible; the
   additive `/api/v1/durable-jobs` contract truthfully identifies the guarded
   PostgreSQL outbox implementation.
-- [ ] Sealed dual-stack product-demo driver and local browser acceptance.
+- [x] 2026-08-04 — Sealed dual-stack product-demo driver and local browser
+  acceptance complete through the canonical harness. The accepted receipt binds
+  both clean execution commits, exact driver/browser/contract provenance, two
+  complete journeys, four restart/reopen observations, ten retained browser
+  artifacts, sixteen bidirectional isolation observations and both reservation
+  releases. Raw driver runs remain `pending-receipt`; interrupted finalization is
+  recoverable and repeated namespace generations are regression-tested.
 - [ ] Protected hosted browser proof and release-owner acceptance.
 
 ## Surprises & Discoveries
@@ -389,8 +397,9 @@ task journey, retained result/evidence/export/trace inspection, reopen, immutabl
 prototype references, complete route mappings, desktop/phone screenshots, 320px
 reflow, a truthful credential-free coding-to-draft-PR fixture journey, a fail-closed
 real-source hosted journey, a real local PostgreSQL transactional job/outbox with
-packaged migrations and separate API/worker restart proof, and the 12-scenario
-scorecard.
+packaged migrations and separate API/worker restart proof, a sealed dual-stack
+product-demo receipt with clean-source and crash-recovery guarantees, and the
+12-scenario scorecard.
 
 Independent review found and the branch fixed a stale decision-receipt race,
 unretained agent identity, overlapping mobile overlays, secret-bearing hosted

@@ -304,6 +304,8 @@ class DeterministicFixtureRunner:
             await asyncio.sleep(0)
             evidence = EvidenceRecord(
                 evidence_id=task.task_id.replace("task_", "evidence_", 1),
+                task_id=task.task_id,
+                run_id=task.run_id,
                 kind=EvidenceKind.FIXTURE,
                 summary=(
                     "The deterministic local runner classified the objective and "
@@ -365,6 +367,8 @@ class DeterministicFixtureRunner:
                 raise RuntimeError("responded task has no proposed plan")
             response_evidence = EvidenceRecord(
                 evidence_id=f"{task.task_id.replace('task_', 'evidence_', 1)}_{generation:02d}",
+                task_id=task.task_id,
+                run_id=task.run_id,
                 kind=EvidenceKind.FIXTURE,
                 summary=(
                     "Additional reviewer guidance was recorded locally. Its text is "

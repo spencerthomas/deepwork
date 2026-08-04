@@ -217,6 +217,8 @@ async def test_create_list_detail_and_real_pause() -> None:
         assert paused["evidence"] == [
             {
                 "evidenceId": "evidence_00000001",
+                "taskId": created["taskId"],
+                "runId": created["runId"],
                 "kind": "fixture",
                 "summary": (
                     "The deterministic local runner classified the objective and "
@@ -631,6 +633,8 @@ async def test_respond_resumes_exact_interrupt_without_replaying_raw_guidance() 
         ]
         assert revised["evidence"][-1] == {
             "evidenceId": "evidence_00000001_01",
+            "taskId": created["taskId"],
+            "runId": created["runId"],
             "kind": "fixture",
             "summary": (
                 "Additional reviewer guidance was recorded locally. Its text is "

@@ -104,6 +104,7 @@ PRODUCT_EVIDENCE_KEYS = {
     "driver_revision",
     "driver_sha256",
     "evidence_class",
+    "execution_commits",
     "exercise_id",
     "manifests",
     "namespaces",
@@ -198,6 +199,7 @@ RECEIPT_KEYS = {
     "driver_sha256",
     "evidence_sha256",
     "exercise_id",
+    "execution_commits",
     "namespaces",
     "receipt_class",
     "receipt_hmac",
@@ -387,6 +389,13 @@ def _product_schema_failures(evidence: Any) -> list[str]:
     )
     if not isinstance(evidence.get("namespaces"), list):
         failures.append("namespaces must be a list")
+    execution_commits = evidence.get("execution_commits")
+    if (
+        not isinstance(execution_commits, list)
+        or len(execution_commits) != 2
+        or any(not isinstance(commit, str) for commit in execution_commits)
+    ):
+        failures.append("execution_commits must contain two commit strings")
     artifacts = evidence.get("browser_artifacts")
     if not isinstance(artifacts, list):
         failures.append("browser_artifacts must be a list")
@@ -799,6 +808,44 @@ def _reviewed_commit_is_ancestor(root: Path, reviewed_commit: str) -> bool:
     return result.returncode == 0
 
 
+def _sealed_execution_commit(root: Path, reviewed_commit: str) -> str | None:
+    """Return the exact clean seal commit for one reviewed candidate."""
+
+    commands = (
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        ["git", "rev-parse", "HEAD"],
+        ["git", "rev-parse", "HEAD^"],
+        ["git", "diff", "--name-only", reviewed_commit, "HEAD"],
+    )
+    results: list[subprocess.CompletedProcess[str]] = []
+    try:
+        for command in commands:
+            results.append(
+                subprocess.run(
+                    command,
+                    cwd=root,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    env={"PATH": os.environ.get("PATH", ""), "LC_ALL": "C"},
+                )
+            )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    status, head, parent, changed = results
+    execution_commit = head.stdout.strip()
+    if (
+        any(result.returncode != 0 for result in results)
+        or status.stdout != ""
+        or not COMMIT_RE.fullmatch(execution_commit)
+        or parent.stdout.strip() != reviewed_commit
+        or changed.stdout.splitlines() != [PRODUCT_DEMO_CONTRACT.as_posix()]
+    ):
+        return None
+    return execution_commit
+
+
 def _git_blob(root: Path, commit: str, relative: Path) -> bytes | None:
     try:
         result = subprocess.run(
@@ -991,6 +1038,12 @@ def _driver_status(root: Path) -> dict[str, Any]:
             "available": False,
             "reason": "current contract semantics do not match reviewed Git blob",
         }
+    execution_commit = _sealed_execution_commit(root, reviewed_commit)
+    if execution_commit is None:
+        return {
+            "available": False,
+            "reason": "execution tree is not the exact clean contract-only seal",
+        }
     contract_semantic_sha256 = _semantic_digest(_contract_semantics(contract))
     return {
         "available": True,
@@ -999,6 +1052,7 @@ def _driver_status(root: Path) -> dict[str, Any]:
         "browser_sha256": browser_sha256,
         "reviewed_repository_commit": reviewed_commit,
         "contract_semantic_sha256": contract_semantic_sha256,
+        "execution_commit": execution_commit,
         "protocol": PRODUCT_DEMO_PROTOCOL,
     }
 
@@ -1616,6 +1670,7 @@ def exercise(args: argparse.Namespace) -> int:
         or root_status["browser_sha256"] != peer_status["browser_sha256"]
         or root_status["reviewed_repository_commit"]
         != peer_status["reviewed_repository_commit"]
+        or root_status["execution_commit"] != peer_status["execution_commit"]
     ):
         reason = "primary and peer static driver pins do not match"
         _blocker_evidence(
@@ -1639,6 +1694,10 @@ def exercise(args: argparse.Namespace) -> int:
     driver_sha256 = root_status["driver_sha256"]
     browser_sha256 = root_status["browser_sha256"]
     contract_semantic_sha256 = root_status["contract_semantic_sha256"]
+    execution_commits = [
+        root_status["execution_commit"],
+        peer_status["execution_commit"],
+    ]
     manifest_a = allocate_manifest(
         root=root,
         namespace=namespace_a,
@@ -1657,6 +1716,7 @@ def exercise(args: argparse.Namespace) -> int:
         driver_sha256=driver_sha256,
         contract_semantic_sha256=contract_semantic_sha256,
         namespaces=[namespace_a, namespace_b],
+        execution_commits=execution_commits,
     )
     reserved_a = False
     reserved_b = False
@@ -1786,6 +1846,9 @@ def exercise(args: argparse.Namespace) -> int:
         )
         if not isinstance(evidence, dict):
             raise EvidenceError("driver evidence is not an object")
+        if "execution_commits" in evidence:
+            raise EvidenceError("driver cannot self-assert execution commits")
+        evidence["execution_commits"] = execution_commits
         validate_evidence(evidence)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, EvidenceError) as error:
         reason = f"reviewed driver evidence failed validation: {type(error).__name__}"
@@ -1811,6 +1874,7 @@ def exercise(args: argparse.Namespace) -> int:
         and evidence.get("driver_revision") == driver_revision
         and evidence.get("driver_sha256") == driver_sha256
         and evidence.get("contract_semantic_sha256") == contract_semantic_sha256
+        and evidence.get("execution_commits") == execution_commits
         and evidence.get("namespaces") == [namespace_a, namespace_b]
         and evidence.get("manifests")
         == [public_manifest(manifest_a), public_manifest(manifest_b)]
@@ -1856,6 +1920,10 @@ def exercise(args: argparse.Namespace) -> int:
             contract_semantic_sha256=contract_semantic_sha256,
         )
 
+    # Persist the harness-bound execution commits before the irreversible
+    # release. Recovery can then finalize the receipt after a process crash.
+    write_evidence(evidence_path, evidence)
+
     try:
         store.release_pair(
             release_id=run_nonce,
@@ -1884,31 +1952,9 @@ def exercise(args: argparse.Namespace) -> int:
             driver_sha256=driver_sha256,
             contract_semantic_sha256=contract_semantic_sha256,
         )
-    for record in evidence["teardown"]:
-        record["reservation_absent"] = True
-        payload = {
-            key: nested for key, nested in record.items() if key != "cleanup_digest"
-        }
-        record["cleanup_digest"] = _bound_digest(
-            kind="cleanup",
-            payload=payload,
-            run_nonce=run_nonce,
-            driver_revision=driver_revision,
-            driver_sha256=driver_sha256,
-        )
-    evidence["acceptance"] = "accepted"
-    final_failures = _product_demo_failures(
-        evidence,
-        require_no_cross_observation=True,
-        require_clean_teardown=True,
-    )
-    if final_failures:
-        raise EvidenceError(
-            "final product-demo evidence failed after reservation release"
-        )
-    write_evidence(evidence_path, evidence)
-    receipt = _build_receipt(
+    _finalize_released_evidence(
         evidence=evidence,
+        evidence_dir=evidence_dir,
         evidence_path=evidence_path,
         receipt_record=receipt_record,
         reservation_release=[
@@ -1916,7 +1962,6 @@ def exercise(args: argparse.Namespace) -> int:
             {"namespace": namespace_b, "state": "released"},
         ],
     )
-    write_evidence(evidence_dir / "receipt.json", receipt)
     _emit(
         {
             "command": "exercise",
@@ -1926,6 +1971,52 @@ def exercise(args: argparse.Namespace) -> int:
         }
     )
     return 0
+
+
+def _finalize_released_evidence(
+    *,
+    evidence: dict[str, Any],
+    evidence_dir: Path,
+    evidence_path: Path,
+    receipt_record: dict[str, Any],
+    reservation_release: list[dict[str, str]],
+) -> None:
+    """Idempotently turn valid released evidence into accepted receipt proof."""
+
+    for record in evidence["teardown"]:
+        record["reservation_absent"] = True
+        payload = {
+            key: nested for key, nested in record.items() if key != "cleanup_digest"
+        }
+        record["cleanup_digest"] = _bound_digest(
+            kind="cleanup",
+            payload=payload,
+            run_nonce=evidence["run_nonce"],
+            driver_revision=evidence["driver_revision"],
+            driver_sha256=evidence["driver_sha256"],
+        )
+    evidence["acceptance"] = "accepted"
+    final_failures = _product_demo_failures(
+        evidence,
+        require_no_cross_observation=True,
+        require_clean_teardown=True,
+    )
+    final_failures.extend(
+        _browser_artifact_failures(evidence_dir, evidence.get("browser_artifacts"))
+    )
+    if final_failures:
+        raise EvidenceError(
+            "final product-demo evidence failed after reservation release: "
+            + "; ".join(final_failures)
+        )
+    write_evidence(evidence_path, evidence)
+    receipt = _build_receipt(
+        evidence=evidence,
+        evidence_path=evidence_path,
+        receipt_record=receipt_record,
+        reservation_release=reservation_release,
+    )
+    write_evidence(evidence_dir / "receipt.json", receipt)
 
 
 def recover(args: argparse.Namespace) -> int:
@@ -1938,9 +2029,94 @@ def recover(args: argparse.Namespace) -> int:
     evidence_dir = Path(args.evidence_dir).expanduser().resolve(strict=True)
     blocker_path = evidence_dir / "exercise.json"
     try:
-        blocker = json.loads(blocker_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise EvidenceError("recovery requires retained blocker evidence") from error
+        retained = json.loads(
+            _read_bounded_regular_bytes(
+                blocker_path, maximum_bytes=3 * 1024 * 1024
+            ).decode("utf-8")
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise EvidenceError("recovery requires retained exercise evidence") from error
+    if isinstance(retained, dict) and retained.get("evidence_class") == "product-demo":
+        evidence = retained
+        acceptance = evidence.get("acceptance")
+        if acceptance not in {"pending-receipt", "accepted"}:
+            raise EvidenceError("released evidence is not recoverable")
+        failures = _product_demo_failures(
+            evidence,
+            require_no_cross_observation=True,
+            require_clean_teardown=acceptance == "accepted",
+            require_accepted=acceptance == "accepted",
+        )
+        failures.extend(
+            _browser_artifact_failures(evidence_dir, evidence.get("browser_artifacts"))
+        )
+        if acceptance == "pending-receipt":
+            failures.extend(
+                _teardown_failures(
+                    evidence.get("teardown"),
+                    [namespace_a, namespace_b],
+                    run_nonce=evidence.get("run_nonce", ""),
+                    driver_revision=evidence.get("driver_revision", ""),
+                    driver_sha256=evidence.get("driver_sha256", ""),
+                    require_reservation_absent=False,
+                )
+            )
+        statuses = [_driver_status(root), _driver_status(peer_root)]
+        if not all(status.get("available") for status in statuses):
+            failures.append(
+                "reviewed driver provenance is unavailable for finalization"
+            )
+        else:
+            expected_identity = {
+                "driver_revision": statuses[0]["reviewed_repository_commit"],
+                "driver_sha256": statuses[0]["driver_sha256"],
+                "contract_semantic_sha256": statuses[0]["contract_semantic_sha256"],
+                "execution_commits": [
+                    statuses[0]["execution_commit"],
+                    statuses[1]["execution_commit"],
+                ],
+                "namespaces": [namespace_a, namespace_b],
+            }
+            if any(
+                evidence.get(field) != value
+                for field, value in expected_identity.items()
+            ):
+                failures.append(
+                    "released evidence does not match exact sealed roots and namespaces"
+                )
+        if failures:
+            raise EvidenceError("; ".join(failures))
+        store = ReservationStore()
+        store.released_pair(
+            release_id=evidence["run_nonce"],
+            namespace_a=namespace_a,
+            root_a=root,
+            namespace_b=namespace_b,
+            root_b=peer_root,
+        )
+        receipt_record = store.receipt_record(run_nonce=evidence["run_nonce"])
+        _finalize_released_evidence(
+            evidence=evidence,
+            evidence_dir=evidence_dir,
+            evidence_path=blocker_path,
+            receipt_record=receipt_record,
+            reservation_release=[
+                {"namespace": namespace_a, "state": "released"},
+                {"namespace": namespace_b, "state": "released"},
+            ],
+        )
+        _emit(
+            {
+                "command": "recover",
+                "status": "passed",
+                "acceptance": "accepted",
+                "recovery": "receipt-finalized",
+                "retryable": False,
+                "evidence": _display_path(blocker_path),
+            }
+        )
+        return 0
+    blocker = retained
     failures = _blocker_schema_failures(blocker)
     if failures or not isinstance(blocker, dict):
         raise EvidenceError("; ".join(failures))
@@ -2068,6 +2244,7 @@ def _build_receipt(
         "driver_sha256": evidence["driver_sha256"],
         "contract_semantic_sha256": evidence["contract_semantic_sha256"],
         "namespaces": evidence["namespaces"],
+        "execution_commits": evidence["execution_commits"],
     }
     if any(
         receipt_record.get(field) != value
@@ -2085,6 +2262,7 @@ def _build_receipt(
         "driver_sha256": evidence["driver_sha256"],
         "contract_semantic_sha256": evidence["contract_semantic_sha256"],
         "namespaces": list(evidence["namespaces"]),
+        "execution_commits": list(evidence["execution_commits"]),
         "evidence_sha256": _sha256_file(evidence_path),
         "reservation_release": reservation_release,
     }
@@ -2139,6 +2317,12 @@ def _receipt_failures(
         isinstance(namespace, str) for namespace in receipt.get("namespaces", ())
     ):
         failures.append("receipt namespaces have invalid type")
+    if (
+        not isinstance(receipt.get("execution_commits"), list)
+        or len(receipt["execution_commits"]) != 2
+        or any(not isinstance(commit, str) for commit in receipt["execution_commits"])
+    ):
+        failures.append("receipt execution commits have invalid type")
     release = receipt.get("reservation_release")
     if not isinstance(release, list) or len(release) != 2:
         failures.append("harness receipt must contain two reservation releases")
@@ -2180,6 +2364,7 @@ def _receipt_failures(
         "driver_revision",
         "driver_sha256",
         "contract_semantic_sha256",
+        "execution_commits",
         "namespaces",
     ):
         if receipt.get(field) != evidence.get(field):
@@ -2199,6 +2384,7 @@ def _receipt_failures(
             "driver_sha256": evidence.get("driver_sha256"),
             "contract_semantic_sha256": evidence.get("contract_semantic_sha256"),
             "namespaces": evidence.get("namespaces"),
+            "execution_commits": evidence.get("execution_commits"),
         }
         if any(
             authority.get(field) != value for field, value in authority_fields.items()
@@ -2235,6 +2421,9 @@ def _receipt_failures(
         for receipt_field, status_field in provenance.items():
             if receipt.get(receipt_field) != driver_status.get(status_field):
                 failures.append(f"harness receipt provenance mismatch: {receipt_field}")
+        expected_execution = [driver_status.get("execution_commit")] * 2
+        if receipt.get("execution_commits") != expected_execution:
+            failures.append("harness receipt execution commit mismatch")
     return failures
 
 
@@ -2307,6 +2496,17 @@ def _product_demo_failures(
         contract_semantic_sha256
     ):
         failures.append("reviewed contract semantic SHA-256 is absent or invalid")
+    execution_commits = evidence.get("execution_commits")
+    if (
+        not isinstance(execution_commits, list)
+        or len(execution_commits) != 2
+        or any(
+            not isinstance(commit, str) or not COMMIT_RE.fullmatch(commit)
+            for commit in execution_commits
+        )
+        or len(set(execution_commits)) != 1
+    ):
+        failures.append("exactly two matching sealed execution commits are required")
 
     namespaces = evidence.get("namespaces")
     if (

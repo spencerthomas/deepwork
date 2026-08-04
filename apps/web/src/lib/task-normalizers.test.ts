@@ -391,6 +391,8 @@ describe("editable plan contracts", () => {
         evidence: [
           {
             evidenceId: "evidence-1",
+            taskId: "task-1",
+            runId: "run-1",
             kind: "fixture",
             summary: "Local inspection",
             source: "deterministic-local-runner",
@@ -502,6 +504,8 @@ describe("editable plan contracts", () => {
         name: "evidence.recorded",
         data: {
           evidenceId: "evidence-2",
+          taskId: "task-1",
+          runId: "run-1",
           kind: "fixture",
           summary: "Revision checked",
           source: "deterministic-local-runner",
@@ -521,6 +525,8 @@ describe("editable plan contracts", () => {
         [
           {
             evidenceId: "evidence-1",
+            taskId: "task-1",
+            runId: "run-1",
             kind: "fixture",
             summary: "Request inspected",
             source: "deterministic-local-runner",

@@ -1028,6 +1028,8 @@ class SQLiteTaskRepository:
             task = self._task_row_sync(connection, task_id)
             if _decode_status(task["status"]).is_terminal:
                 raise StaleInterruptError
+            if evidence.task_id != task_id or evidence.run_id != task["run_id"]:
+                raise ValueError("evidence identity does not match its owning task and run")
             position = cast(
                 int,
                 connection.execute(
@@ -1056,6 +1058,8 @@ class SQLiteTaskRepository:
                 name=TaskEventName.EVIDENCE_RECORDED,
                 data=(
                     ("evidenceId", evidence.evidence_id),
+                    ("taskId", evidence.task_id),
+                    ("runId", evidence.run_id),
                     ("kind", evidence.kind),
                     ("summary", evidence.summary),
                     ("source", evidence.source),
@@ -1490,7 +1494,7 @@ class SQLiteTaskRepository:
             task = self._task_row_sync(connection, task_id)
         event_count = self._event_count_for_existing_task_sync(connection, task_id)
         evidence = tuple(
-            self._evidence_from_row(row)
+            self._evidence_from_row(row, task_id=task_id, run_id=task["run_id"])
             for row in connection.execute(
                 """
                 SELECT evidence_id, kind, summary, source, verified
@@ -1692,7 +1696,7 @@ class SQLiteTaskRepository:
         )
 
     @staticmethod
-    def _evidence_from_row(row: sqlite3.Row) -> EvidenceRecord:
+    def _evidence_from_row(row: sqlite3.Row, *, task_id: str, run_id: str) -> EvidenceRecord:
         verified = row["verified"]
         if verified not in (0, 1):
             raise SQLiteTaskRepositoryDataError("stored evidence verification is invalid")
@@ -1702,6 +1706,8 @@ class SQLiteTaskRepository:
                 field="evidence identifier",
                 maximum=100,
             ),
+            task_id=task_id,
+            run_id=run_id,
             kind=_decode_evidence_kind(row["kind"]),
             summary=_bounded_stored_string(
                 row["summary"],

@@ -713,6 +713,11 @@
           "kind": {
             "$ref": "#/components/schemas/EvidenceKind"
           },
+          "runId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Runid",
+            "type": "string"
+          },
           "source": {
             "$ref": "#/components/schemas/EvidenceSource"
           },
@@ -722,6 +727,11 @@
             "title": "Summary",
             "type": "string"
           },
+          "taskId": {
+            "pattern": "^task_[0-9]{8}$",
+            "title": "Taskid",
+            "type": "string"
+          },
           "verified": {
             "title": "Verified",
             "type": "boolean"
@@ -729,6 +739,8 @@
         },
         "required": [
           "evidenceId",
+          "taskId",
+          "runId",
           "kind",
           "summary",
           "source",

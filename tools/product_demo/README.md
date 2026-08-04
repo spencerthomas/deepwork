@@ -12,6 +12,14 @@ the exact reviewed driver and browser-oracle bytes; its descendant seal changes 
 entry point is always `tools/worktree/harness.py exercise`; running the driver
 directly does not create an acceptance receipt.
 
+Acceptance additionally requires both worktrees to be clean at the same exact seal
+commit, whose parent is the reviewed candidate and whose only changed path is the
+contract file. Both execution commits are retained in evidence, the private receipt
+authority and the HMAC-bound receipt. Evidence is written as `pending-receipt`
+before pair release; `harness.py recover` can idempotently finish an interrupted
+post-release receipt write. Reusing the same namespace pair starts a new generation
+without reusing its prior release tombstones.
+
 Requirements are local PostgreSQL binaries, the bootstrapped API environment,
 Node 24, offline-installed web dependencies in both checked-out roots, and the
 pinned Playwright browser already used by the repository browser gates.

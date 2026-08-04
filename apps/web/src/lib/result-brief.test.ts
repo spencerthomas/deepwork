@@ -6,6 +6,8 @@ import type { EvidenceRecord } from "./task-types";
 const evidence: EvidenceRecord[] = [
   {
     evidenceId: "evidence_00000001",
+    taskId: "task_00000001",
+    runId: "run_00000001",
     kind: "citation",
     source: "fixture://demo",
     summary: "Reviewed the bounded request.",
@@ -13,6 +15,8 @@ const evidence: EvidenceRecord[] = [
   },
   {
     evidenceId: "evidence_00000002",
+    taskId: "task_00000001",
+    runId: "run_00000001",
     kind: "note",
     source: "fixture://demo",
     summary: "Left an unverified follow-up.",
@@ -77,6 +81,8 @@ describe("formatResultBrief", () => {
       evidence: [
         {
           evidenceId: "evidence_00000001",
+          taskId: "task_00000001",
+          runId: "run_00000001",
           kind: "citation",
           source: "https://attacker.example/z",
           summary: "See [click me](https://attacker.example/w).",

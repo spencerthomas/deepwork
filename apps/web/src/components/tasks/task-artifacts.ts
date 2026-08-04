@@ -35,6 +35,14 @@ export function buildTaskArtifacts(
     });
   }
   for (const record of evidence) {
+    if (
+      detail?.taskId === undefined ||
+      detail.runId === undefined ||
+      record.taskId !== detail.taskId ||
+      record.runId !== detail.runId
+    ) {
+      continue;
+    }
     artifacts.push({
       id: record.evidenceId,
       name: `evidence-${safeSegment(record.evidenceId)}.json`,
@@ -43,9 +51,9 @@ export function buildTaskArtifacts(
       mimeType: "application/json",
       content: JSON.stringify(
         {
-          taskId: detail?.taskId ?? null,
-          runId: detail?.runId ?? null,
-          objective: detail?.prompt ?? null,
+          taskId: record.taskId,
+          runId: record.runId,
+          objective: detail.prompt ?? null,
           evidence: record,
         },
         null,

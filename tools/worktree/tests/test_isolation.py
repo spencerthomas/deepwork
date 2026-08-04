@@ -95,9 +95,7 @@ class ManifestTests(unittest.TestCase):
         self.root_a.mkdir()
         self.root_b.mkdir()
 
-    def manifest(
-        self, root: Path, namespace: str, token: str
-    ) -> dict[str, object]:
+    def manifest(self, root: Path, namespace: str, token: str) -> dict[str, object]:
         return allocate_manifest(
             root=root,
             namespace=namespace,
@@ -274,9 +272,9 @@ class ReservationTests(unittest.TestCase):
             root=self.root_a,
         )
         self.assertEqual(repeated.state, "already-absent")
-        tombstone = (
-            self.store.state_dir / "dw-test-a.released.json"
-        ).read_text(encoding="utf-8")
+        tombstone = (self.store.state_dir / "dw-test-a.released.json").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn(FIXED_TOKEN_A, tombstone)
 
     def test_pair_release_recovers_after_second_unlink_failure(self) -> None:
@@ -292,12 +290,8 @@ class ReservationTests(unittest.TestCase):
                 raise OSError("injected second release failure")
             path.unlink()
 
-        with mock.patch(
-            "isolation._unlink_reservation", side_effect=fail_second
-        ):
-            with self.assertRaisesRegex(
-                OSError, "injected second release failure"
-            ):
+        with mock.patch("isolation._unlink_reservation", side_effect=fail_second):
+            with self.assertRaisesRegex(OSError, "injected second release failure"):
                 self.store.release_pair(
                     release_id=release_id,
                     namespace_a="dw-test-a",
@@ -309,17 +303,58 @@ class ReservationTests(unittest.TestCase):
                 )
 
         self.assertEqual(self.store.active_namespaces(), ("dw-test-b",))
-        self.assertTrue(
-            self.store.release_pair_pending(release_id=release_id)
-        )
+        self.assertTrue(self.store.release_pair_pending(release_id=release_id))
         results = self.store.commit_pair_release(release_id=release_id)
         self.assertEqual(
             [result.state for result in results],
             ["already-absent", "released"],
         )
         self.assertEqual(self.store.active_namespaces(), ())
-        self.assertFalse(
-            self.store.release_pair_pending(release_id=release_id)
+        self.assertFalse(self.store.release_pair_pending(release_id=release_id))
+
+    def test_pair_release_supports_two_generations_of_the_same_namespaces(self) -> None:
+        first_release_id = "c" * 32
+        second_release_id = "d" * 32
+        self.store.reserve(self.manifest_a)
+        self.store.reserve(self.manifest_b)
+        self.store.release_pair(
+            release_id=first_release_id,
+            namespace_a="dw-test-a",
+            teardown_token_a=FIXED_TOKEN_A,
+            root_a=self.root_a,
+            namespace_b="dw-test-b",
+            teardown_token_b=FIXED_TOKEN_B,
+            root_b=self.root_b,
+        )
+
+        next_a = {**self.manifest_a, "teardown_token": "c" * 43}
+        next_b = {**self.manifest_b, "teardown_token": "d" * 43}
+        self.store.reserve(next_a)
+        self.store.reserve(next_b)
+        results = self.store.release_pair(
+            release_id=second_release_id,
+            namespace_a="dw-test-a",
+            teardown_token_a=next_a["teardown_token"],
+            root_a=self.root_a,
+            namespace_b="dw-test-b",
+            teardown_token_b=next_b["teardown_token"],
+            root_b=self.root_b,
+        )
+
+        self.assertEqual([result.state for result in results], ["released", "released"])
+        self.assertEqual(self.store.active_namespaces(), ())
+        self.assertEqual(
+            [
+                result.state
+                for result in self.store.released_pair(
+                    release_id=second_release_id,
+                    namespace_a="dw-test-a",
+                    root_a=self.root_a,
+                    namespace_b="dw-test-b",
+                    root_b=self.root_b,
+                )
+            ],
+            ["released", "released"],
         )
 
     def test_corrupt_reservation_fails_closed(self) -> None:

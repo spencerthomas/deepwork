@@ -220,6 +220,8 @@ export interface ProposedPlan {
 
 export interface EvidenceRecord {
   evidenceId: string;
+  taskId: string;
+  runId: string;
   kind: string;
   source: string;
   summary: string;

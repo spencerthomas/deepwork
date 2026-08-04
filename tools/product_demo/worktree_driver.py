@@ -1420,14 +1420,26 @@ def _browser_diagnostics_are_clean(value: Any) -> bool:
             return False
     if login_aborts > 1:
         return False
+    observed_probes: set[tuple[str, str, str]] = set()
     for record in probes:
-        if (
-            not isinstance(record, dict)
-            or set(record) != {"method", "path", "resourceType"}
-            or not isinstance(record.get("path"), str)
-            or not record["path"].startswith("/__deepwork_policy_probe")
-        ):
+        if not isinstance(record, dict) or set(record) != {
+            "method",
+            "path",
+            "resourceType",
+        }:
             return False
+        observed_probes.add(
+            (record.get("method"), record.get("path"), record.get("resourceType"))
+        )
+    expected_probes = {
+        ("GET", "/__deepwork_policy_probe_public__", "fetch"),
+        ("GET", "/__deepwork_policy_probe_dns__", "fetch"),
+        ("GET", "/__deepwork_policy_probe_peer__", "fetch"),
+        ("POST", "/__deepwork_policy_probe_beacon__", "ping"),
+        ("WEBSOCKET", "/__deepwork_policy_probe_ws__", "websocket"),
+    }
+    if probes and (len(observed_probes) != 5 or observed_probes != expected_probes):
+        return False
     return True
 
 

@@ -113,6 +113,7 @@ class HarnessCommandTests(unittest.TestCase):
             with (
                 mock.patch("harness._reviewed_commit_is_ancestor", return_value=True),
                 mock.patch("harness._git_blob", side_effect=reviewed_blob),
+                mock.patch("harness._sealed_execution_commit", return_value="b" * 40),
             ):
                 self.assertTrue(harness._driver_status(root)["available"])
                 driver.write_text("raise SystemExit('tampered')\n", encoding="utf-8")
@@ -140,6 +141,34 @@ class HarnessCommandTests(unittest.TestCase):
                 status = harness._driver_status(root)
             self.assertFalse(status["available"])
             self.assertIn("contract semantics", status["reason"])
+
+    def test_execution_seal_requires_clean_direct_contract_only_child(self) -> None:
+        reviewed = "a" * 40
+        sealed = "b" * 40
+
+        def result(command: list[str], stdout: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+        valid = [
+            result([], ""),
+            result([], f"{sealed}\n"),
+            result([], f"{reviewed}\n"),
+            result([], f"{harness.PRODUCT_DEMO_CONTRACT.as_posix()}\n"),
+        ]
+        with mock.patch("harness.subprocess.run", side_effect=valid):
+            self.assertEqual(
+                harness._sealed_execution_commit(Path.cwd(), reviewed), sealed
+            )
+
+        dirty = [*valid]
+        dirty[0] = result([], " M apps/web/src/app/page.tsx\n")
+        with mock.patch("harness.subprocess.run", side_effect=dirty):
+            self.assertIsNone(harness._sealed_execution_commit(Path.cwd(), reviewed))
+
+        descendant = [*valid]
+        descendant[2] = result([], f"{'c' * 40}\n")
+        with mock.patch("harness.subprocess.run", side_effect=descendant):
+            self.assertIsNone(harness._sealed_execution_commit(Path.cwd(), reviewed))
 
     def test_self_test_retains_sanitized_fixture_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -370,6 +399,7 @@ class HarnessCommandTests(unittest.TestCase):
             "driver_revision": driver_revision,
             "driver_sha256": driver_sha256,
             "contract_semantic_sha256": contract_semantic_sha256,
+            "execution_commits": ["e" * 40, "e" * 40],
             "namespaces": namespaces,
             "manifests": manifests,
             "allocation_digests": allocation_digests,
@@ -403,6 +433,7 @@ class HarnessCommandTests(unittest.TestCase):
                 driver_sha256=evidence["driver_sha256"],
                 contract_semantic_sha256=evidence["contract_semantic_sha256"],
                 namespaces=evidence["namespaces"],
+                execution_commits=evidence["execution_commits"],
             )
             receipt = harness._build_receipt(
                 evidence=evidence,
@@ -421,6 +452,7 @@ class HarnessCommandTests(unittest.TestCase):
                 "reviewed_repository_commit": evidence["driver_revision"],
                 "driver_sha256": evidence["driver_sha256"],
                 "contract_semantic_sha256": evidence["contract_semantic_sha256"],
+                "execution_commit": evidence["execution_commits"][0],
             }
             with (
                 mock.patch("harness._driver_status", return_value=driver_status),
@@ -437,6 +469,101 @@ class HarnessCommandTests(unittest.TestCase):
                 )
             self.assertEqual(status, 0, output)
             self.assertEqual(output["status"], "passed")
+
+    def test_recover_finalizes_pending_receipt_after_pair_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sandbox = Path(temporary).resolve()
+            evidence = self._valid_evidence(sandbox)
+            evidence["acceptance"] = "pending-receipt"
+            for record in evidence["teardown"]:
+                record["reservation_absent"] = False
+                payload = {
+                    key: value
+                    for key, value in record.items()
+                    if key != "cleanup_digest"
+                }
+                record["cleanup_digest"] = harness._bound_digest(
+                    kind="cleanup",
+                    payload=payload,
+                    run_nonce=evidence["run_nonce"],
+                    driver_revision=evidence["driver_revision"],
+                    driver_sha256=evidence["driver_sha256"],
+                )
+            evidence_dir = sandbox / "evidence"
+            evidence_path = evidence_dir / "exercise.json"
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            root_a = sandbox / "a"
+            root_b = sandbox / "b"
+            manifest_a = allocate_manifest(
+                root=root_a,
+                namespace="dw-iso-a",
+                evidence_dir=evidence_dir,
+                teardown_token="a" * 43,
+            )
+            manifest_b = allocate_manifest(
+                root=root_b,
+                namespace="dw-iso-b",
+                evidence_dir=evidence_dir,
+                teardown_token="b" * 43,
+            )
+            store = ReservationStore(sandbox / "state")
+            store.create_receipt_record(
+                run_nonce=evidence["run_nonce"],
+                driver_revision=evidence["driver_revision"],
+                driver_sha256=evidence["driver_sha256"],
+                contract_semantic_sha256=evidence["contract_semantic_sha256"],
+                namespaces=evidence["namespaces"],
+                execution_commits=evidence["execution_commits"],
+            )
+            store.reserve(manifest_a)
+            store.reserve(manifest_b)
+            store.release_pair(
+                release_id=evidence["run_nonce"],
+                namespace_a="dw-iso-a",
+                teardown_token_a=manifest_a["teardown_token"],
+                root_a=root_a,
+                namespace_b="dw-iso-b",
+                teardown_token_b=manifest_b["teardown_token"],
+                root_b=root_b,
+            )
+            driver_status = {
+                "available": True,
+                "reviewed_repository_commit": evidence["driver_revision"],
+                "driver_sha256": evidence["driver_sha256"],
+                "contract_semantic_sha256": evidence["contract_semantic_sha256"],
+                "execution_commit": evidence["execution_commits"][0],
+            }
+            arguments = [
+                "recover",
+                "--root",
+                str(root_a),
+                "--peer-root",
+                str(root_b),
+                "--namespace-a",
+                "dw-iso-a",
+                "--namespace-b",
+                "dw-iso-b",
+                "--evidence-dir",
+                str(evidence_dir),
+            ]
+            with (
+                mock.patch("harness._driver_status", return_value=driver_status),
+                mock.patch("harness.ReservationStore", return_value=store),
+            ):
+                status, output = self.run_main(arguments)
+                self.assertEqual(status, 0, output)
+                self.assertEqual(output["recovery"], "receipt-finalized")
+                # Receipt finalization is idempotent if the first recovery dies
+                # after writing accepted evidence but before returning.
+                (evidence_dir / "receipt.json").unlink()
+                status, output = self.run_main(arguments)
+                self.assertEqual(status, 0, output)
+            accepted = json.loads(evidence_path.read_text(encoding="utf-8"))
+            self.assertEqual(accepted["acceptance"], "accepted")
+            self.assertTrue(
+                all(item["reservation_absent"] for item in accepted["teardown"])
+            )
+            self.assertTrue((evidence_dir / "receipt.json").is_file())
 
     def test_browser_artifact_manifest_detects_retained_file_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -561,6 +688,7 @@ class HarnessCommandTests(unittest.TestCase):
                 driver_sha256=evidence["driver_sha256"],
                 contract_semantic_sha256=evidence["contract_semantic_sha256"],
                 namespaces=evidence["namespaces"],
+                execution_commits=evidence["execution_commits"],
             )
             receipt = harness._build_receipt(
                 evidence=evidence,
@@ -581,6 +709,7 @@ class HarnessCommandTests(unittest.TestCase):
                     "reviewed_repository_commit": evidence["driver_revision"],
                     "driver_sha256": evidence["driver_sha256"],
                     "contract_semantic_sha256": evidence["contract_semantic_sha256"],
+                    "execution_commit": evidence["execution_commits"][0],
                 },
             ):
                 failures = harness._receipt_failures(

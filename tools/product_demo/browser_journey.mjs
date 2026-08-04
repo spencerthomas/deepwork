@@ -5,6 +5,17 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 
 const POLICY_PROBE_PREFIX = "/__deepwork_policy_probe";
+const EXPECTED_POLICY_PROBES = [
+  { method: "GET", path: "/__deepwork_policy_probe_public__", resourceType: "fetch" },
+  { method: "GET", path: "/__deepwork_policy_probe_dns__", resourceType: "fetch" },
+  { method: "GET", path: "/__deepwork_policy_probe_peer__", resourceType: "fetch" },
+  { method: "POST", path: "/__deepwork_policy_probe_beacon__", resourceType: "ping" },
+  { method: "WEBSOCKET", path: "/__deepwork_policy_probe_ws__", resourceType: "websocket" },
+];
+
+function canonicalProbe(record) {
+  return `${record.method}\u0000${record.path}\u0000${record.resourceType}`;
+}
 
 async function captureScreenshot(page, screenshots, relativePath) {
   const viewport = page.viewportSize();
@@ -245,7 +256,9 @@ async function proveNetworkPolicy(page, peerOrigin, networkPolicy) {
   );
   await page.waitForTimeout(250);
   const observed = networkPolicy.blockedNetworkProbes;
-  if (observed.filter((item) => item.path.startsWith(POLICY_PROBE_PREFIX)).length !== 5) {
+  const actual = observed.map(canonicalProbe).sort();
+  const expected = EXPECTED_POLICY_PROBES.map(canonicalProbe).sort();
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`network policy probes were incomplete: ${JSON.stringify(observed)}`);
   }
 }
@@ -346,6 +359,8 @@ async function completeJourney(browser, config) {
     retainedEvidenceRecord.taskId !== new URL(taskUrl).pathname.split("/").at(-1) ||
     !/^run_[0-9]{8}$/.test(String(retainedEvidenceRecord.runId ?? "")) ||
     retainedEvidenceRecord.objective !== prompt ||
+    retainedEvidenceRecord.evidence?.taskId !== retainedEvidenceRecord.taskId ||
+    retainedEvidenceRecord.evidence?.runId !== retainedEvidenceRecord.runId ||
     retainedEvidenceRecord.evidence?.source !== "deterministic-local-runner" ||
     !String(retainedEvidenceRecord.evidence?.summary ?? "").includes(
       "deterministic local runner classified",

@@ -263,6 +263,45 @@ class DriverContractTests(unittest.TestCase):
         report["journeys"][0]["liveProgressObserved"] = False
         self.assertFalse(driver._journey_report_is_complete(report))
 
+    def test_browser_diagnostics_reject_duplicate_or_missing_policy_probes(
+        self,
+    ) -> None:
+        probes = [
+            {
+                "method": "GET",
+                "path": "/__deepwork_policy_probe_public__",
+                "resourceType": "fetch",
+            },
+            {
+                "method": "GET",
+                "path": "/__deepwork_policy_probe_dns__",
+                "resourceType": "fetch",
+            },
+            {
+                "method": "GET",
+                "path": "/__deepwork_policy_probe_peer__",
+                "resourceType": "fetch",
+            },
+            {
+                "method": "POST",
+                "path": "/__deepwork_policy_probe_beacon__",
+                "resourceType": "ping",
+            },
+            {
+                "method": "WEBSOCKET",
+                "path": "/__deepwork_policy_probe_ws__",
+                "resourceType": "websocket",
+            },
+        ]
+        diagnostics = {
+            "blockedNetworkProbes": probes,
+            "browserErrors": 0,
+            "classifiedNavigationAborts": [],
+        }
+        self.assertTrue(driver._browser_diagnostics_are_clean(diagnostics))
+        diagnostics["blockedNetworkProbes"] = [*probes[:-1], probes[0]]
+        self.assertFalse(driver._browser_diagnostics_are_clean(diagnostics))
+
     def test_browser_image_validation_requires_true_phone_viewport(self) -> None:
         def png_header(width: int, height: int) -> bytes:
             return (

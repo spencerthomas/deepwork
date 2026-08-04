@@ -215,6 +215,8 @@ class EvidenceResponse(_TaskWireModel):
     """Inspectable source-qualified evidence."""
 
     evidence_id: EvidenceId = Field(alias="evidenceId")
+    task_id: TaskId = Field(alias="taskId")
+    run_id: RunId = Field(alias="runId")
     kind: EvidenceKind
     summary: str = Field(min_length=1, max_length=300)
     source: EvidenceSource
@@ -224,6 +226,8 @@ class EvidenceResponse(_TaskWireModel):
     def from_domain(cls, evidence: EvidenceRecord) -> EvidenceResponse:
         return cls(
             evidence_id=evidence.evidence_id,
+            task_id=evidence.task_id,
+            run_id=evidence.run_id,
             kind=evidence.kind,
             summary=evidence.summary,
             source=evidence.source,

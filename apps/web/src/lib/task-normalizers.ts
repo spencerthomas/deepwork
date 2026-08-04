@@ -640,6 +640,8 @@ function normalizeEvidence(value: unknown, context: string): EvidenceRecord {
   }
   return {
     evidenceId: requiredString(value, "evidenceId", context),
+    taskId: requiredString(value, "taskId", context),
+    runId: requiredString(value, "runId", context),
     kind: requiredString(value, "kind", context),
     summary: requiredString(value, "summary", context),
     source: requiredString(value, "source", context),
@@ -859,6 +861,10 @@ export function getEvidenceRecords(
       const evidenceId = `event:${event.id}`;
       records.set(evidenceId, {
         evidenceId,
+        // Generic progress events carry no authoritative task/run evidence
+        // identity. Keep them inspectable, but make them ineligible for export.
+        taskId: "",
+        runId: "",
         kind: evidenceClass,
         source: "normalized task event",
         summary: getEventText(event) ?? `${event.name} reported ${evidenceClass} evidence.`,

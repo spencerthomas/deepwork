@@ -222,12 +222,16 @@ class InMemoryTaskRepository:
             task = self._get(task_id)
             if task.status.is_terminal:
                 raise StaleInterruptError
+            if evidence.task_id != task_id or evidence.run_id != task.run_id:
+                raise ValueError("evidence identity does not match its owning task and run")
             task.evidence.append(evidence)
             event = TaskEvent(
                 event_id=len(task.events) + 1,
                 name=TaskEventName.EVIDENCE_RECORDED,
                 data=(
                     ("evidenceId", evidence.evidence_id),
+                    ("taskId", evidence.task_id),
+                    ("runId", evidence.run_id),
                     ("kind", evidence.kind),
                     ("summary", evidence.summary),
                     ("source", evidence.source),

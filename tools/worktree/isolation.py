@@ -110,9 +110,7 @@ def validate_namespace(namespace: str) -> str:
             f"namespace length must be between 1 and {MAX_NAMESPACE_LENGTH}"
         )
     if not NAMESPACE_RE.fullmatch(namespace):
-        raise UnsafeNamespace(
-            "namespace must match ^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
-        )
+        raise UnsafeNamespace("namespace must match ^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
     return namespace
 
 
@@ -226,18 +224,16 @@ def differing_dimensions(
 ) -> dict[str, bool]:
     """Compare every required allocation dimension."""
 
-    result = {
-        field: left[field] != right[field] for field in RESOURCE_FIELDS
-    }
-    result["ports"] = set(left["ports"].values()).isdisjoint(
-        right["ports"].values()
-    )
+    result = {field: left[field] != right[field] for field in RESOURCE_FIELDS}
+    result["ports"] = set(left["ports"].values()).isdisjoint(right["ports"].values())
     return result
 
 
 def assert_distinct(left: Mapping[str, Any], right: Mapping[str, Any]) -> None:
     duplicates = [
-        field for field, differs in differing_dimensions(left, right).items() if not differs
+        field
+        for field, differs in differing_dimensions(left, right).items()
+        if not differs
     ]
     if duplicates:
         raise ReservationConflict(
@@ -364,10 +360,7 @@ class ReservationStore:
             manifest = self._read_private_json(path)
             workspace = Path(str(manifest["workspace_path"])).resolve(strict=False)
             expected_parent = expected_root / ".deepwork" / "worktrees"
-            if (
-                workspace.parent != expected_parent
-                or workspace.name != safe_namespace
-            ):
+            if workspace.parent != expected_parent or workspace.name != safe_namespace:
                 raise OwnershipError(
                     "recovery reservation does not belong to requested workspace"
                 )
@@ -381,6 +374,7 @@ class ReservationStore:
         driver_sha256: str,
         contract_semantic_sha256: str,
         namespaces: list[str],
+        execution_commits: list[str],
     ) -> dict[str, Any]:
         """Create an unpredictable private authority record before driver execution."""
 
@@ -395,6 +389,7 @@ class ReservationStore:
             "driver_sha256": driver_sha256,
             "contract_semantic_sha256": contract_semantic_sha256,
             "namespaces": safe_namespaces,
+            "execution_commits": list(execution_commits),
             "receipt_key_hex": secrets.token_hex(32),
         }
         _validate_receipt_record(record)
@@ -470,6 +465,48 @@ class ReservationStore:
             _validate_release_transaction(transaction)
             return transaction["state"] != "released"
 
+    def released_pair(
+        self,
+        *,
+        release_id: str,
+        namespace_a: str,
+        root_a: str | Path,
+        namespace_b: str,
+        root_b: str | Path,
+    ) -> tuple[TeardownResult, TeardownResult]:
+        """Prove that one exact private pair-release transaction completed."""
+
+        expected = [
+            (validate_namespace(namespace_a), canonical_root(root_a)),
+            (validate_namespace(namespace_b), canonical_root(root_b)),
+        ]
+        if expected[0][0] == expected[1][0]:
+            raise OwnershipError("released pair requires distinct namespaces")
+        transaction_path = self._release_path(release_id)
+        with self._locked():
+            if not transaction_path.exists():
+                raise OwnershipError("release transaction is unavailable")
+            transaction = self._read_private_json(transaction_path)
+            _validate_release_transaction(transaction)
+            if transaction["state"] != "released":
+                raise OwnershipError("release transaction is not complete")
+            entries = transaction["entries"]
+            if [
+                (entry["namespace"], canonical_root(entry["workspace_root"]))
+                for entry in entries
+            ] != expected:
+                raise OwnershipError(
+                    "release transaction does not match exact namespaces and roots"
+                )
+            for entry in entries:
+                manifest_path = self._path(entry["namespace"])
+                if manifest_path.exists():
+                    raise OwnershipError("released reservation is still active")
+        return (
+            TeardownResult(expected[0][0], "released"),
+            TeardownResult(expected[1][0], "released"),
+        )
+
     def commit_pair_release(
         self, *, release_id: str
     ) -> tuple[TeardownResult, TeardownResult]:
@@ -490,9 +527,7 @@ class ReservationStore:
                 tombstone = self.state_dir / f"{namespace}.released.json"
                 if manifest_path.exists():
                     manifest = self._read_private_json(manifest_path)
-                    _require_owner(
-                        manifest, entry["teardown_token"], expected_root
-                    )
+                    _require_owner(manifest, entry["teardown_token"], expected_root)
                 elif tombstone.exists():
                     released = self._read_private_json(tombstone)
                     _require_released_owner(
@@ -552,16 +587,19 @@ class ReservationStore:
         namespace = validate_namespace(str(manifest.get("namespace", "")))
         _validate_manifest(manifest)
         path = self._path(namespace)
+        tombstone = self.state_dir / f"{namespace}.released.json"
         with self._locked():
             if path.exists():
                 raise ReservationConflict(f"namespace already reserved: {namespace}")
             for peer in self._list_unlocked():
                 assert_distinct(manifest, peer)
+            if tombstone.exists():
+                released = self._read_private_json(tombstone)
+                _validate_released_record(released, namespace=namespace)
+                tombstone.unlink()
             payload = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
             try:
-                descriptor = os.open(
-                    path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-                )
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             except FileExistsError as error:
                 raise ReservationConflict(
                     f"namespace already reserved: {namespace}"
@@ -629,9 +667,7 @@ class ReservationStore:
             }
             _write_json_atomic(tombstone, released, mode=0o600)
             path.unlink()
-            return TeardownResult(
-                safe_namespace, "released", tuple(sorted(removed))
-            )
+            return TeardownResult(safe_namespace, "released", tuple(sorted(removed)))
 
 
 def _validate_receipt_record(record: Mapping[str, Any]) -> None:
@@ -639,6 +675,7 @@ def _validate_receipt_record(record: Mapping[str, Any]) -> None:
         "contract_semantic_sha256",
         "driver_revision",
         "driver_sha256",
+        "execution_commits",
         "namespaces",
         "receipt_key_hex",
         "run_nonce",
@@ -654,6 +691,16 @@ def _validate_receipt_record(record: Mapping[str, Any]) -> None:
         raise IsolationError("private receipt requires two distinct namespaces")
     for namespace in record["namespaces"]:
         validate_namespace(namespace)
+    execution_commits = record.get("execution_commits")
+    if (
+        not isinstance(execution_commits, list)
+        or len(execution_commits) != 2
+        or any(
+            not isinstance(commit, str) or not re.fullmatch(r"[a-f0-9]{40}", commit)
+            for commit in execution_commits
+        )
+    ):
+        raise IsolationError("private receipt execution commits are invalid")
     patterns = {
         "run_nonce": r"[a-f0-9]{32,64}",
         "driver_revision": r"[a-f0-9]{40}",
@@ -697,11 +744,7 @@ def _validate_release_transaction(transaction: Mapping[str, Any]) -> None:
         namespace = validate_namespace(entry["namespace"])
         token = entry["teardown_token"]
         root = entry["workspace_root"]
-        if (
-            not isinstance(token, str)
-            or len(token) < 32
-            or not isinstance(root, str)
-        ):
+        if not isinstance(token, str) or len(token) < 32 or not isinstance(root, str):
             raise IsolationError("private release entry values are invalid")
         canonical_root(root)
         namespaces.append(namespace)
@@ -739,7 +782,28 @@ def _require_released_owner(
     workspace = Path(str(released["workspace_path"])).resolve(strict=False)
     expected_parent = expected_root / ".deepwork" / "worktrees"
     if workspace.parent != expected_parent or workspace.name != released["namespace"]:
-        raise OwnershipError("release record does not belong to the requested workspace")
+        raise OwnershipError(
+            "release record does not belong to the requested workspace"
+        )
+
+
+def _validate_released_record(released: Mapping[str, Any], *, namespace: str) -> None:
+    if set(released) != {
+        "namespace",
+        "teardown_token_digest",
+        "workspace_path",
+    }:
+        raise IsolationError("released reservation record schema is invalid")
+    if released.get("namespace") != validate_namespace(namespace):
+        raise IsolationError("released reservation namespace is invalid")
+    digest = released.get("teardown_token_digest")
+    workspace_path = released.get("workspace_path")
+    if (
+        not isinstance(digest, str)
+        or not re.fullmatch(r"[a-f0-9]{64}", digest)
+        or not isinstance(workspace_path, str)
+    ):
+        raise IsolationError("released reservation record values are invalid")
 
 
 def _remove_exact_fixture_path(
@@ -759,14 +823,11 @@ def _remove_exact_fixture_path(
         raise OwnershipError("teardown refuses broad paths")
     workspace = Path(str(manifest["workspace_path"])).resolve(strict=False)
     evidence_root = Path(str(manifest["evidence_root"])).resolve(strict=False)
-    allowed_relations = (
-        candidate == workspace / "logs"
-        or (
-            candidate.parent == evidence_root
-            and candidate.name == namespace
-            and evidence_root not in {Path(evidence_root.anchor), Path.home().resolve()}
-            and len(candidate.parts) >= 3
-        )
+    allowed_relations = candidate == workspace / "logs" or (
+        candidate.parent == evidence_root
+        and candidate.name == namespace
+        and evidence_root not in {Path(evidence_root.anchor), Path.home().resolve()}
+        and len(candidate.parts) >= 3
     )
     if not allowed_relations:
         raise OwnershipError("teardown path is not safely contained")
@@ -801,7 +862,9 @@ def _validate_manifest(manifest: Mapping[str, Any]) -> None:
         raise IsolationError("manifest must allocate all four named ports")
     if len(set(ports.values())) != len(ports):
         raise IsolationError("manifest ports must be distinct")
-    if not all(isinstance(port, int) and 1024 <= port <= 65535 for port in ports.values()):
+    if not all(
+        isinstance(port, int) and 1024 <= port <= 65535 for port in ports.values()
+    ):
         raise IsolationError("manifest contains an unsafe port")
 
 
@@ -840,13 +903,9 @@ def write_evidence(path: str | Path, evidence: Mapping[str, Any]) -> None:
     _write_json_atomic(destination, evidence, mode=0o644)
 
 
-def _write_json_atomic(
-    path: Path, value: Mapping[str, Any], *, mode: int
-) -> None:
+def _write_json_atomic(path: Path, value: Mapping[str, Any], *, mode: int) -> None:
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    descriptor = os.open(
-        temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode
-    )
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
             json.dump(value, output, indent=2, sort_keys=True)

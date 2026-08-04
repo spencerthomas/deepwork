@@ -270,6 +270,8 @@ async def _waiting_task(
     )
     evidence = EvidenceRecord(
         evidence_id=task.task_id.replace("task_", "evidence_", 1),
+        task_id=task.task_id,
+        run_id=task.run_id,
         kind=EvidenceKind.FIXTURE,
         summary="The local runner prepared a bounded durable plan.",
         source=EvidenceSource.LOCAL_RUNNER,
@@ -340,6 +342,24 @@ async def test_cancellation_is_durable_idempotent_and_wakes_waiters(tmp_path: Pa
     assert recovered == cancelled
     assert (await reopened.cancel_task(task_id)).duplicate is True
     await reopened.close()
+
+
+async def test_evidence_identity_must_match_owning_task_and_run(tmp_path: Path) -> None:
+    repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
+    task = await repository.create_task(title="Bound evidence", objective="Bind evidence")
+    mismatched = EvidenceRecord(
+        evidence_id="evidence_00000001",
+        task_id="task_99999999",
+        run_id=task.run_id,
+        kind=EvidenceKind.FIXTURE,
+        summary="Evidence must retain authoritative source identity.",
+        source=EvidenceSource.LOCAL_RUNNER,
+        verified=False,
+    )
+
+    with pytest.raises(ValueError, match="evidence identity"):
+        await repository.record_evidence(task.task_id, mismatched)
+    assert (await repository.get_task(task.task_id)).evidence == ()
 
 
 async def test_cancellation_refuses_a_completed_task(tmp_path: Path) -> None:
@@ -464,6 +484,8 @@ async def test_full_plan_response_approval_evidence_and_result_survive_reopen(
     )
     response_evidence = EvidenceRecord(
         evidence_id="evidence_00000001_01",
+        task_id=task_id,
+        run_id=run_id,
         kind=EvidenceKind.FIXTURE,
         summary="Reviewer guidance was recorded without retaining its raw text.",
         source=EvidenceSource.REVIEWER_RESPONSE,
@@ -535,6 +557,8 @@ async def test_full_plan_response_approval_evidence_and_result_survive_reopen(
     assert detail.evidence == (
         EvidenceRecord(
             evidence_id="evidence_00000001",
+            task_id=task_id,
+            run_id=run_id,
             kind=EvidenceKind.FIXTURE,
             summary="The local runner prepared a bounded durable plan.",
             source=EvidenceSource.LOCAL_RUNNER,
@@ -920,6 +944,8 @@ async def test_maximum_bounds_cursor_validation_and_terminal_immutability(
             task.task_id,
             EvidenceRecord(
                 evidence_id="evidence_00000001",
+                task_id=task.task_id,
+                run_id=task.run_id,
                 kind=EvidenceKind.FIXTURE,
                 summary="Late evidence",
                 source=EvidenceSource.LOCAL_RUNNER,

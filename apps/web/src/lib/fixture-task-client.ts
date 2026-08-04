@@ -35,7 +35,8 @@ function isTerminalFixtureStatus(status: TaskStatus): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
-interface FixtureTask extends TaskDetail {
+interface FixtureTask extends Omit<TaskDetail, "runId"> {
+  runId: string;
   events: TaskEvent[];
   interruptId: string;
   responseNumber: number;
@@ -128,6 +129,8 @@ function scheduleRun(task: FixtureTask) {
       () => {
         const evidence: EvidenceRecord = {
           evidenceId: `${task.taskId}:request`,
+          taskId: task.taskId,
+          runId: task.runId,
           kind: "fixture",
           summary: "The deterministic local runner inspected the sanitized task request.",
           source: "deterministic-local-runner",

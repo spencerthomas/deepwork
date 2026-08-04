@@ -273,6 +273,8 @@ class EvidenceRecord:
     """Inspectable evidence with explicit local-fixture provenance."""
 
     evidence_id: str
+    task_id: str
+    run_id: str
     kind: EvidenceKind
     summary: str
     source: EvidenceSource

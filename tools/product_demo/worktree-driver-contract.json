@@ -1,0 +1,17 @@
+{
+  "components": [
+    "api",
+    "object",
+    "postgres",
+    "telemetry",
+    "web",
+    "worker"
+  ],
+  "contract_version": 1,
+  "credential_free": true,
+  "driver_path": "tools/product_demo/worktree_driver.py",
+  "driver_sha256": "f9fc009fa8aa91205893c087be610de0d3e7bb03d0003b6ad4e254446b35c7f4",
+  "loopback_only": true,
+  "protocol": "deepwork-dual-product-demo-v1",
+  "reviewed_repository_commit": "844649afbb8175c48d507e5d81c4bb6e7c5f8561"
+}

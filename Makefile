@@ -7,7 +7,7 @@ SHELL := /bin/sh
 
 .PHONY: help doctor bootstrap dev-demo check check-toolchain check-architecture check-docs check-oss \
 	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted \
-	test-performance test-postgres
+	test-performance test-postgres test-product-demo-unit test-product-demo
 
 help:
 	@echo "Deep Work command contract:"
@@ -23,6 +23,8 @@ help:
 	@echo "  make test-e2e-demo      Run the credential-free browser task journey"
 	@echo "  make test-recovery      Prove a completed local task survives an API restart"
 	@echo "  make test-postgres      Prove PostgreSQL migration, outbox, restart, concurrency, and scope"
+	@echo "  make test-product-demo-unit Check the sealed dual-stack driver and harness contract"
+	@echo "  make test-product-demo  Run sealed two-cell browser/isolation acceptance (peer required)"
 	@echo "  make test-security-boundary Prove reusable credentials stay outside client/sandbox artifacts"
 	@echo "  make test-visual        Run blocking desktop/phone screenshot comparisons"
 	@echo "  make test-hosted        Run the fail-closed hosted golden journey"
@@ -81,6 +83,16 @@ test-recovery:
 
 test-postgres:
 	$(MAKE) -C apps/api test-postgres
+
+test-product-demo-unit:
+	python3 -m unittest discover -s tools/product_demo/tests -p 'test_*.py'
+	python3 -m unittest discover -s tools/worktree/tests -p 'test_*.py'
+	python3 tools/worktree/harness.py doctor --root .
+
+test-product-demo:
+	@test -n "$(DEEPWORK_PRODUCT_DEMO_PEER)" || (echo "DEEPWORK_PRODUCT_DEMO_PEER is required" >&2; exit 2)
+	python3 tools/worktree/harness.py exercise --root . --peer-root "$(DEEPWORK_PRODUCT_DEMO_PEER)" --namespace-a dw-iso-a --namespace-b dw-iso-b --evidence-dir "$${DEEPWORK_PRODUCT_DEMO_EVIDENCE:-/tmp/deepwork-product-demo-evidence}"
+	python3 tools/worktree/harness.py verify --evidence-dir "$${DEEPWORK_PRODUCT_DEMO_EVIDENCE:-/tmp/deepwork-product-demo-evidence}" --require-no-cross-observation --require-clean-teardown
 
 test-security-boundary:
 	pnpm test:security-boundary

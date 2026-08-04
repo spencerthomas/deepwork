@@ -165,7 +165,9 @@ class HarnessCommandTests(unittest.TestCase):
             self.assertEqual(evidence["resources_reserved"], 0)
             self.assertEqual(evidence["acceptance"], "implemented-not-accepted")
 
-    def test_exercise_missing_product_driver_blocks_with_two_roots(self) -> None:
+    def test_exercise_unsealed_or_missing_product_driver_blocks_with_two_roots(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sandbox = Path(temporary)
             peer = sandbox / "peer"
@@ -193,6 +195,7 @@ class HarnessCommandTests(unittest.TestCase):
                     (
                         "static reviewed product-demo contract" in reason
                         or "repository identity markers" in reason
+                        or "reviewed commit" in reason
                     )
                     for reason in output["reasons"]
                 )

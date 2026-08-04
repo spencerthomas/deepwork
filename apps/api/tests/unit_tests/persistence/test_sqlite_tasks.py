@@ -778,6 +778,71 @@ async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_p
     await reopened.close()
 
 
+async def test_source_progress_allocates_from_sequence_without_decoding_history(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = SQLiteTaskRepository(tmp_path / "source-progress-sequence.sqlite")
+    task = await repository.create_task(title="Streaming", objective="Append in bounded memory")
+    lease_token = await _source_lease_token(repository, task.task_id)
+    await repository.bind_source_run(
+        task.task_id,
+        lease_token=lease_token,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+
+    def reject_history_decode(row: sqlite3.Row) -> TaskEvent:
+        del row
+        raise AssertionError("source progress append decoded historical event payloads")
+
+    monkeypatch.setattr(
+        SQLiteTaskRepository,
+        "_event_from_row",
+        staticmethod(reject_history_decode),
+    )
+    event = await repository.append_source_progress(
+        task.task_id,
+        lease_token=lease_token,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+        source_event_key="d" * 64,
+        data=(("text", "Source progress received."),),
+    )
+
+    assert event is not None and event.event_id == 2
+    await repository.close()
+
+
+async def test_source_progress_sequence_allocation_rejects_event_gaps(tmp_path: Path) -> None:
+    database = tmp_path / "source-progress-gap.sqlite"
+    repository = SQLiteTaskRepository(database)
+    task = await repository.create_task(title="Streaming", objective="Reject corrupt sequence")
+    lease_token = await _source_lease_token(repository, task.task_id)
+    await repository.bind_source_run(
+        task.task_id,
+        lease_token=lease_token,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE events SET event_id = 2 WHERE task_id = ? AND event_id = 1",
+            (task.task_id,),
+        )
+
+    with pytest.raises(SQLiteTaskRepositoryDataError, match="not contiguous"):
+        await repository.append_source_progress(
+            task.task_id,
+            lease_token=lease_token,
+            thread_id="source-thread-1",
+            run_id="source-run-1",
+            source_event_key="e" * 64,
+            data=(("text", "Never committed."),),
+        )
+    await repository.close()
+
+
 async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

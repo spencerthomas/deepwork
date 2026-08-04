@@ -2944,7 +2944,31 @@ class SQLiteTaskRepository:
         connection: sqlite3.Connection,
         task_id: str,
     ) -> int:
-        return self._event_count_for_existing_task_sync(connection, task_id) + 1
+        row = connection.execute(
+            """
+            SELECT
+                COUNT(*) AS event_count,
+                MIN(event_id) AS first_event_id,
+                MAX(event_id) AS last_event_id
+            FROM events
+            WHERE task_id = ?
+            """,
+            (task_id,),
+        ).fetchone()
+        if row is None:
+            raise SQLiteTaskRepositoryDataError("stored task event history is not contiguous")
+        event_count = row["event_count"]
+        first_event_id = row["first_event_id"]
+        last_event_id = row["last_event_id"]
+        if (
+            not isinstance(event_count, int)
+            or isinstance(event_count, bool)
+            or event_count < 1
+            or first_event_id != 1
+            or last_event_id != event_count
+        ):
+            raise SQLiteTaskRepositoryDataError("stored task event history is not contiguous")
+        return event_count + 1
 
     @staticmethod
     def _insert_event_sync(

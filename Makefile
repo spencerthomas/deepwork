@@ -5,7 +5,7 @@ SHELL := /bin/sh
 # Targets that the scaffold has not yet implemented report the gap and fail
 # rather than inventing a passing substitute.
 
-.PHONY: help doctor bootstrap dev-demo check check-architecture check-docs \
+.PHONY: help doctor bootstrap dev-demo check check-toolchain check-architecture check-docs \
 	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted \
 	test-performance
 
@@ -27,14 +27,11 @@ help:
 	@echo "  make test-performance   Run the 1,000-task desktop/phone browser budget"
 
 doctor:
+	@python3 tools/doctor/check.py
 	@echo "== API toolchain =="
 	@$(MAKE) -C apps/api doctor
 	@echo "== Agent toolchain =="
 	@$(MAKE) -C packages/agent doctor
-	@echo "== Node.js =="
-	@node --version || { echo "Node.js >=24.14.0 <25 is required (or set DEEPWORK_NODE)" >&2; exit 2; }
-	@echo "== pnpm =="
-	@pnpm --version || { echo "pnpm is required; enable it with 'corepack enable'" >&2; exit 2; }
 
 bootstrap:
 	$(MAKE) -C apps/api bootstrap
@@ -45,9 +42,13 @@ dev-demo:
 	./dev
 
 check:
+	$(MAKE) check-toolchain
 	pnpm check
 	$(MAKE) -C apps/api check
 	$(MAKE) -C packages/agent check
+
+check-toolchain:
+	python3 -m unittest discover -s tools/doctor/tests -p 'test_*.py'
 
 check-architecture:
 	pnpm check-architecture

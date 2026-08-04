@@ -10,7 +10,7 @@
   "contract_version": 1,
   "credential_free": true,
   "driver_path": "tools/product_demo/worktree_driver.py",
-  "driver_sha256": "f9fc009fa8aa91205893c087be610de0d3e7bb03d0003b6ad4e254446b35c7f4",
+  "driver_sha256": "1722a06b14bfb1507e264aa0a9e18a54bbb608efe8fa15f19023ff383fa155d7",
   "loopback_only": true,
   "protocol": "deepwork-dual-product-demo-v1",
   "reviewed_repository_commit": "844649afbb8175c48d507e5d81c4bb6e7c5f8561"

@@ -254,6 +254,7 @@ class Stack:
     stopped_at: str = ""
     api_restart_before: str = ""
     api_restart_after: str = ""
+    next_env_bytes: bytes | None = None
 
     @property
     def namespace(self) -> str:
@@ -325,6 +326,10 @@ class Stack:
         next_executable = self.root / "apps/web/node_modules/next/dist/bin/next"
         if not next_executable.is_file():
             raise DriverError(f"web dependencies are absent in {self.namespace} root")
+        next_env = self.root / "apps/web/next-env.d.ts"
+        if next_env.is_symlink() or not next_env.is_file():
+            raise DriverError("tracked Next.js environment declaration is unsafe")
+        self.next_env_bytes = next_env.read_bytes()
         self._init_postgres()
         self._migrate()
 
@@ -411,7 +416,12 @@ class Stack:
         )
 
     def _start_process(
-        self, name: str, command: list[str], *, extra_env: dict[str, str] | None = None
+        self,
+        name: str,
+        command: list[str],
+        *,
+        extra_env: dict[str, str] | None = None,
+        cwd: Path | None = None,
     ) -> OwnedProcess:
         log_path = self.logs / f"{name}.log"
         log_file = log_path.open("ab", buffering=0)
@@ -420,7 +430,7 @@ class Stack:
             env.update(extra_env)
         process = subprocess.Popen(
             command,
-            cwd=self.root,
+            cwd=cwd or self.root,
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
@@ -514,6 +524,7 @@ class Stack:
                 "DEEPWORK_API_ORIGIN": f"http://127.0.0.1:{self.ports['api']}",
                 "NEXT_TELEMETRY_DISABLED": "1",
             },
+            cwd=self.root / "apps/web",
         )
         _wait_url(f"http://127.0.0.1:{self.ports['telemetry']}/health")
         _wait_url(f"http://127.0.0.1:{self.ports['worker']}/health")
@@ -557,22 +568,33 @@ class Stack:
             raise DriverError("durable job was not accepted")
         job_id = accepted.get("jobId")
         deadline = time.monotonic() + 20
+        last_observation: tuple[int, Any] | None = None
         while time.monotonic() < deadline:
             status, job = _request_json(
                 f"http://127.0.0.1:{self.ports['api']}/api/v1/durable-jobs/{job_id}",
                 opener=opener,
             )
+            last_observation = (status, job)
             if (
                 status == 200
                 and isinstance(job, dict)
-                and job.get("status") == "completed"
+                and job.get("status") == "succeeded"
             ):
                 _wait_url(
                     f"http://127.0.0.1:{self.ports['worker']}/objects-ready/{job_id}"
                 )
                 return str(job_id)
             time.sleep(0.2)
-        raise DriverError("durable worker did not complete the accepted job")
+        safe_state = (
+            last_observation[1].get("status")
+            if last_observation
+            and isinstance(last_observation[1], dict)
+            and isinstance(last_observation[1].get("status"), str)
+            else "unavailable"
+        )
+        raise DriverError(
+            f"durable worker did not complete the accepted job; last state={safe_state}"
+        )
 
     def restart_api(self) -> None:
         api = next(
@@ -614,8 +636,17 @@ class Stack:
             and self.workspace.parent == self.root / ".deepwork" / "worktrees"
         ):
             shutil.rmtree(self.workspace)
+        next_env = self.root / "apps/web/next-env.d.ts"
+        if (
+            self.next_env_bytes is not None
+            and next_env.is_file()
+            and not next_env.is_symlink()
+            and next_env.read_bytes() != self.next_env_bytes
+        ):
+            next_env.write_bytes(self.next_env_bytes)
         if self.socket_dir.is_dir() and not self.socket_dir.is_symlink():
             self.socket_dir.rmdir()
+        _remove_empty_runtime_parents(self.root)
         self.stopped_at = _now()
         if not all(_port_closed(port) for port in self.ports.values()):
             raise DriverError(
@@ -636,6 +667,13 @@ def _stop_owned(owned: OwnedProcess) -> None:
             process.wait(timeout=5)
     with contextlib.suppress(Exception):
         owned.log_file.close()
+
+
+def _remove_empty_runtime_parents(root: Path) -> None:
+    for path in (root / ".deepwork" / "worktrees", root / ".deepwork"):
+        if path.is_dir() and not path.is_symlink():
+            with contextlib.suppress(OSError):
+                path.rmdir()
 
 
 class _FixtureHandler(http.server.BaseHTTPRequestHandler):
@@ -770,11 +808,19 @@ def _worker_loop(
             timeout=15,
             env=env,
         )
+        _write_private_json(
+            server.data_root / "worker-status.json",
+            {
+                "returncode": result.returncode,
+                "stdout": result.stdout[-2_000:],
+                "stderr": result.stderr[-2_000:],
+            },
+        )
         if result.returncode == 0:
             with contextlib.suppress(json.JSONDecodeError):
                 payload = json.loads(result.stdout)
                 job_id = payload.get("jobId")
-                if payload.get("status") == "completed" and isinstance(job_id, str):
+                if payload.get("status") == "succeeded" and isinstance(job_id, str):
                     relative = f"{server.object_prefix}{job_id}.json"
                     target = server.object_path(relative)
                     if target is not None:
@@ -784,7 +830,7 @@ def _worker_loop(
                             {
                                 "jobId": job_id,
                                 "namespace": server.namespace,
-                                "status": "completed",
+                                "status": "succeeded",
                             },
                         )
                         server.completed_jobs.add(job_id)
@@ -793,7 +839,7 @@ def _worker_loop(
                             method="POST",
                             payload={
                                 "namespace": server.namespace,
-                                "event": "job.completed",
+                                "event": "job.succeeded",
                                 "jobId": job_id,
                             },
                         )
@@ -999,6 +1045,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
     browser_report_path = browser_root / "journeys.json"
     reopen_report_path = browser_root / "reopen.json"
     cleaned: set[str] = set()
+    passed = False
     try:
         for stack in stacks:
             stack.prepare()
@@ -1018,8 +1065,10 @@ def dual_exercise(args: argparse.Namespace) -> int:
         for thread in starters:
             thread.join()
         if start_errors:
+            first_error = start_errors[0]
             raise DriverError(
-                f"product-demo stack startup failed: {type(start_errors[0]).__name__}"
+                "product-demo stack startup failed: "
+                f"{type(first_error).__name__}: {first_error}"
             )
         if any(not stack.ready_at for stack in stacks):
             raise DriverError("one or more product-demo stacks did not become ready")
@@ -1183,10 +1232,17 @@ def dual_exercise(args: argparse.Namespace) -> int:
             },
         )
         write_evidence(evidence_dir / "exercise.json", evidence)
+        passed = True
         return 0
     finally:
         for stack in stacks:
             if stack.namespace not in cleaned:
+                if not passed and stack.logs.is_dir():
+                    diagnostic_dir = evidence_dir / "failure-logs" / stack.namespace
+                    diagnostic_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+                    for log in stack.logs.glob("*.log"):
+                        if log.is_file() and not log.is_symlink():
+                            shutil.copy2(log, diagnostic_dir / log.name)
                 with contextlib.suppress(Exception):
                     stack.stop()
 
@@ -1238,6 +1294,7 @@ def _recover_stack(root: Path, manifest: dict[str, Any], pg_ctl: Path) -> bool:
     if socket_dir.is_dir() and not socket_dir.is_symlink():
         with contextlib.suppress(OSError):
             socket_dir.rmdir()
+    _remove_empty_runtime_parents(root)
     return verified and all(_port_closed(port) for port in manifest["ports"].values())
 
 
@@ -1328,7 +1385,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         json.JSONDecodeError,
     ) as error:
         print(
-            json.dumps({"status": "error", "error": type(error).__name__}),
+            json.dumps(
+                {
+                    "status": "error",
+                    "error": type(error).__name__,
+                    "message": str(error),
+                }
+            ),
             file=sys.stderr,
         )
         return 2

@@ -23,8 +23,19 @@ function parseArgs(argv) {
 async function login(page, origin, accessKey) {
   await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Connect to Deep Work" }).waitFor();
-  await page.getByLabel("Workspace access key").fill(accessKey);
-  await page.getByRole("button", { name: "Connect workspace" }).click();
+  const input = page.getByLabel("Workspace access key");
+  const submit = page.getByRole("button", { name: "Connect workspace" });
+  // The first request compiles the route in development mode. Let hydration
+  // replace the server-rendered form before entering the credential.
+  await page.waitForTimeout(3_000);
+  await input.fill(accessKey);
+  await page.waitForFunction(
+    () => !(document.querySelector('button[type="submit"]')?.disabled ?? true),
+    undefined,
+    { timeout: 15_000 },
+  );
+  if (!(await submit.isEnabled())) throw new Error(`login form did not hydrate: ${origin}`);
+  await submit.click();
   await page.waitForURL(`${origin}/tasks`);
 }
 
@@ -165,44 +176,42 @@ await mkdir(dirname(args.report), { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
   if (args["reopen-a"] && args["reopen-b"]) {
-    const reopened = await Promise.all([
-      reopenJourney(browser, {
+    const reopened = [
+      await reopenJourney(browser, {
         label: "stack-a",
         origin: args["origin-a"],
         accessKey: "deepwork-product-demo-a",
         taskPath: args["reopen-a"],
         screenshot: `${dirname(args.report)}/stack-a/reopened-after-api-restart.png`,
       }),
-      reopenJourney(browser, {
+      await reopenJourney(browser, {
         label: "stack-b",
         origin: args["origin-b"],
         accessKey: "deepwork-product-demo-b",
         taskPath: args["reopen-b"],
         screenshot: `${dirname(args.report)}/stack-b/reopened-after-api-restart.png`,
       }),
-    ]);
+    ];
     await writeFile(args.report, `${JSON.stringify({ schemaVersion: 1, reopened }, null, 2)}\n`, {
       mode: 0o600,
     });
   } else {
-    const [a, b] = await Promise.all([
-      completeJourney(browser, {
-        label: "stack-a",
-        origin: args["origin-a"],
-        accessKey: "deepwork-product-demo-a",
-        ownStorageKey: args["storage-a"],
-        peerStorageKey: args["storage-b"],
-        artifactDir: `${dirname(args.report)}/stack-a`,
-      }),
-      completeJourney(browser, {
-        label: "stack-b",
-        origin: args["origin-b"],
-        accessKey: "deepwork-product-demo-b",
-        ownStorageKey: args["storage-b"],
-        peerStorageKey: args["storage-a"],
-        artifactDir: `${dirname(args.report)}/stack-b`,
-      }),
-    ]);
+    const a = await completeJourney(browser, {
+      label: "stack-a",
+      origin: args["origin-a"],
+      accessKey: "deepwork-product-demo-a",
+      ownStorageKey: args["storage-a"],
+      peerStorageKey: args["storage-b"],
+      artifactDir: `${dirname(args.report)}/stack-a`,
+    });
+    const b = await completeJourney(browser, {
+      label: "stack-b",
+      origin: args["origin-b"],
+      accessKey: "deepwork-product-demo-b",
+      ownStorageKey: args["storage-b"],
+      peerStorageKey: args["storage-a"],
+      artifactDir: `${dirname(args.report)}/stack-b`,
+    });
     await writeFile(
       args.report,
       `${JSON.stringify({ schemaVersion: 1, journeys: [a, b] }, null, 2)}\n`,

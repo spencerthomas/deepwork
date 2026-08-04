@@ -14,14 +14,9 @@
  * try/catch guards (private mode, quota, disabled storage) so a lost draft can
  * never break typing.
  *
- * Tenant boundary: this client is single-tenant and device-local — there is no
- * authenticated actor/workspace identity exposed to it (the "workspace" label
- * is the build-time runtime mode, fixed per origin, not a runtime tenant). So
- * there is nothing to namespace the key by today. If an authenticated
- * actor/workspace identity later becomes available client-side, this key MUST
- * be partitioned by it (or the draft purged on every identity change) before a
- * shared origin can serve more than one actor — see AGENTS.md "Enforce
- * tenant... boundaries."
+ * Tenant boundary: fixture drafts retain their historic device-local scope.
+ * API drafts are partitioned by the authenticated actor and workspace before
+ * any storage access; there is deliberately no generic API fallback.
  */
 
 export const DRAFT_STORAGE_PREFIX = "dw-task-draft";
@@ -37,11 +32,29 @@ export interface ComposerDraft {
   savedAt: number;
 }
 
+export interface DraftIdentity {
+  actorId: string;
+  workspaceId: string;
+}
+
+export type DraftRuntimeScope = { mode: "fixture" } | { mode: "api"; identity: DraftIdentity };
+
 /**
- * Storage key for a draft, qualified by the client's source identity (`scope` —
- * the runtime mode). This is the only source qualifier the client has today; an
- * authenticated actor/workspace identity must be folded in here (or trigger a
- * purge) once one exists, per the tenant-boundary note above.
+ * Return the only valid draft scope for a runtime. JSON's array encoding is
+ * unambiguous even when either identity contains punctuation or delimiters.
+ * The API branch requires an identity by construction, so callers cannot fall
+ * back to the legacy unscoped `api` key while a session is unresolved.
+ */
+export function draftScopeForRuntime(runtime: DraftRuntimeScope): string {
+  if (runtime.mode === "fixture") {
+    return "fixture";
+  }
+  return `api:${JSON.stringify([runtime.identity.actorId, runtime.identity.workspaceId])}`;
+}
+
+/**
+ * Storage key for a draft, qualified by a scope returned from
+ * `draftScopeForRuntime`.
  */
 export function draftStorageKey(scope: string): string {
   return `${DRAFT_STORAGE_PREFIX}:${scope}`;

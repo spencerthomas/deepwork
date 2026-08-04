@@ -20,10 +20,12 @@ import { PageHeader } from "@/components/shell/page-header";
 import { SidebarLabel } from "@/components/shell/sidebar-nav";
 import {
   clearComposerDraft,
+  draftScopeForRuntime,
   formatDraftAge,
   loadComposerDraft,
   saveComposerDraft,
 } from "@/lib/composer-draft";
+import { getSession } from "@/lib/auth-client";
 import { consumeEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
@@ -54,31 +56,76 @@ export function NewTask() {
   const [journey, setJourney] = useState<"general" | "coding">("general");
   const [validationError, setValidationError] = useState<string>();
   const [restoredAge, setRestoredAge] = useState<string>();
+  const [draftScope, setDraftScope] = useState<string | null>(() =>
+    mode === "fixture" ? draftScopeForRuntime({ mode: "fixture" }) : null,
+  );
+  const [readyDraftScope, setReadyDraftScope] = useState<string | null>(null);
   const promptTouchedRef = useRef(false);
+  const editRerunCheckedRef = useRef(false);
+  const editRerunWonRef = useRef(false);
   const runtimeCopy = taskRuntimePresentation(mode);
   const codingUnavailable = mode === "api" && (agentsLoading || agentsAvailable);
 
-  // Seed the composer once on mount. An in-session "Edit & re-run" handoff wins
-  // (an explicit action, carried through transient module state — never the URL,
-  // so private prompt content is not written to history or the referrer);
-  // otherwise a persisted device-local draft is restored so navigating away or
-  // reloading does not lose in-progress work. The draft key is scoped to the
-  // runtime mode so a fixture-mode draft cannot surface in an API-backed one.
+  // Consume the transient Edit & re-run handoff immediately. It wins over any
+  // persisted draft, including while an API session is still resolving.
   useEffect(() => {
-    // Hydration or a slow storage read must never overwrite text the user has
-    // already entered into the now-interactive composer.
-    if (promptTouchedRef.current) return;
+    if (editRerunCheckedRef.current) return;
+    editRerunCheckedRef.current = true;
     const seeded = consumeEditRerunPrompt();
     if (seeded !== null && seeded.trim() !== "") {
+      editRerunWonRef.current = true;
       setPrompt(seeded.slice(0, PROMPT_MAX_LENGTH * 2));
+    }
+  }, []);
+
+  // Resolve an authenticated identity before API-mode storage is touched.
+  // Failure leaves persistence disabled but never disables or clears typing.
+  useEffect(() => {
+    setReadyDraftScope(null);
+    setRestoredAge(undefined);
+    if (mode === "fixture") {
+      setDraftScope(draftScopeForRuntime({ mode: "fixture" }));
       return;
     }
-    const draft = loadComposerDraft(mode);
+
+    setDraftScope(null);
+    const controller = new AbortController();
+    let active = true;
+    void getSession(controller.signal)
+      .then((session) => {
+        if (!active) return;
+        setDraftScope(
+          draftScopeForRuntime({
+            mode: "api",
+            identity: { actorId: session.actorId, workspaceId: session.workspaceId },
+          }),
+        );
+      })
+      .catch(() => {
+        // No identity means no API draft access; the composer itself stays live.
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [mode]);
+
+  // Restore only after a valid scope exists. A delayed session/storage read
+  // must never overwrite text the user already entered, and Edit & re-run keeps
+  // precedence over device-local persistence.
+  useEffect(() => {
+    if (draftScope === null) return;
+    if (promptTouchedRef.current || editRerunWonRef.current) {
+      setReadyDraftScope(draftScope);
+      return;
+    }
+    const draft = loadComposerDraft(draftScope);
     if (draft !== null) {
       setPrompt(draft.prompt.slice(0, PROMPT_MAX_LENGTH * 2));
       setRestoredAge(formatDraftAge(draft.savedAt, Date.now()));
     }
-  }, [mode]);
+    setReadyDraftScope(draftScope);
+  }, [draftScope]);
 
   useEffect(() => {
     if (mode === "api" && agentsAvailable && agents.length > 0 && agentId === "") {
@@ -94,13 +141,16 @@ export function NewTask() {
 
   // Persist the in-progress prompt device-locally; emptying the field clears it.
   useEffect(() => {
-    saveComposerDraft(mode, prompt);
-  }, [mode, prompt]);
+    if (draftScope === null || readyDraftScope !== draftScope) return;
+    saveComposerDraft(draftScope, prompt);
+  }, [draftScope, prompt, readyDraftScope]);
 
   const draftRestored = restoredAge !== undefined;
 
   function discardDraft() {
-    clearComposerDraft(mode);
+    if (draftScope !== null) {
+      clearComposerDraft(draftScope);
+    }
     setPrompt("");
     setRestoredAge(undefined);
     setValidationError(undefined);
@@ -144,7 +194,9 @@ export function NewTask() {
     if (created) {
       // The work is now a real task; drop the local draft so a later visit
       // starts clean.
-      clearComposerDraft(mode);
+      if (draftScope !== null) {
+        clearComposerDraft(draftScope);
+      }
       setRestoredAge(undefined);
       router.push(`/tasks/${created.taskId}`);
     }
@@ -164,7 +216,10 @@ export function NewTask() {
           key={template}
           type="button"
           disabled={creating}
-          onClick={() => setPrompt(template)}
+          onClick={() => {
+            promptTouchedRef.current = true;
+            setPrompt(template);
+          }}
           className="rounded-xl px-3 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
           {template}
@@ -460,7 +515,10 @@ export function NewTask() {
                 key={template}
                 type="button"
                 disabled={creating}
-                onClick={() => setPrompt(template)}
+                onClick={() => {
+                  promptTouchedRef.current = true;
+                  setPrompt(template);
+                }}
                 className="rounded-xl px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
               >
                 {template}

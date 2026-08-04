@@ -4,6 +4,7 @@ export type LoginResult = { ok: true } | { ok: false; reason: "rejected" | "fail
 
 export interface Session {
   actorId: string;
+  workspaceId: string;
   expiresAt: number;
 }
 
@@ -12,11 +13,16 @@ function toSession(value: unknown): Session {
     throw new Error("The API returned a malformed session.");
   }
   const actorId = value["actorId"];
+  const workspaceId = value["workspaceId"];
   const expiresAt = value["expiresAt"];
-  if (typeof actorId !== "string" || typeof expiresAt !== "number") {
+  if (
+    typeof actorId !== "string" ||
+    typeof workspaceId !== "string" ||
+    typeof expiresAt !== "number"
+  ) {
     throw new Error("The API returned a malformed session.");
   }
-  return { actorId, expiresAt };
+  return { actorId, workspaceId, expiresAt };
 }
 
 /** Exchange an access key through the same-origin API proxy for an HttpOnly session. */

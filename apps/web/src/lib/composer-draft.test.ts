@@ -1,16 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DRAFT_MAX_LENGTH,
   DRAFT_TTL_MS,
+  draftScopeForRuntime,
   draftStorageKey,
   formatDraftAge,
+  loadComposerDraft,
   parseComposerDraft,
   serializeComposerDraft,
 } from "./composer-draft";
 
 const NOW = 1_700_000_000_000;
 const MINUTE = 60_000;
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("parseComposerDraft", () => {
   it("returns null for absent, empty, or malformed values", () => {
@@ -69,11 +73,58 @@ describe("serializeComposerDraft", () => {
 });
 
 describe("draftStorageKey", () => {
-  it("qualifies the key by the given source scope", () => {
-    expect(draftStorageKey("fixture")).toBe("dw-task-draft:fixture");
-    expect(draftStorageKey("api")).toBe("dw-task-draft:api");
-    // Distinct scopes never collide, so one source's draft cannot surface in another.
-    expect(draftStorageKey("fixture")).not.toBe(draftStorageKey("api"));
+  it("keeps fixture drafts on their existing scope", () => {
+    const fixtureScope = draftScopeForRuntime({ mode: "fixture" });
+
+    expect(fixtureScope).toBe("fixture");
+    expect(draftStorageKey(fixtureScope)).toBe("dw-task-draft:fixture");
+  });
+
+  it("partitions API drafts by both workspace and actor", () => {
+    const baseline = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "actor-a", workspaceId: "workspace-a" },
+    });
+    const otherWorkspace = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "actor-a", workspaceId: "workspace-b" },
+    });
+    const otherActor = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "actor-b", workspaceId: "workspace-a" },
+    });
+
+    expect(baseline).not.toBe(otherWorkspace);
+    expect(baseline).not.toBe(otherActor);
+  });
+
+  it("uses collision-safe identity encoding even when identifiers contain delimiters", () => {
+    const first = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "a:b", workspaceId: "c" },
+    });
+    const second = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "a", workspaceId: "b:c" },
+    });
+
+    expect(first).not.toBe(second);
+  });
+
+  it("never reads the legacy unscoped API key through an identity-qualified path", () => {
+    const identityScope = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "operator", workspaceId: "workspace-a" },
+    });
+
+    const getItem = vi.fn((key: string) =>
+      key === "dw-task-draft:api" ? serializeComposerDraft("legacy draft", NOW) : null,
+    );
+    vi.stubGlobal("window", { localStorage: { getItem } });
+
+    expect(loadComposerDraft(identityScope, NOW)).toBeNull();
+    expect(getItem).toHaveBeenCalledWith(draftStorageKey(identityScope));
+    expect(getItem).not.toHaveBeenCalledWith("dw-task-draft:api");
   });
 });
 

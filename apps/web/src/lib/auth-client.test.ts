@@ -30,14 +30,20 @@ describe("authenticated session client", () => {
 
   it("loads and validates the current session", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ actorId: "operator", expiresAt: 1_800_000_000 }), {
-        status: 200,
-      }),
+      new Response(
+        JSON.stringify({
+          actorId: "operator",
+          workspaceId: "workspace-a",
+          expiresAt: 1_800_000_000,
+        }),
+        { status: 200 },
+      ),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getSession()).resolves.toEqual({
       actorId: "operator",
+      workspaceId: "workspace-a",
       expiresAt: 1_800_000_000,
     });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -51,6 +57,16 @@ describe("authenticated session client", () => {
     await expect(getSession()).rejects.toThrow("HTTP 401");
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({}))));
+    await expect(getSession()).rejects.toThrow("malformed session");
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ actorId: "operator", expiresAt: 1_800_000_000 })),
+        ),
+    );
     await expect(getSession()).rejects.toThrow("malformed session");
   });
 

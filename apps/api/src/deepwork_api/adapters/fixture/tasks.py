@@ -39,6 +39,7 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskSourceBinding,
     TaskSourceContractError,
+    TaskSourcePlanTransition,
     TaskStatus,
     aggregate_batch_decision,
     coding_outcome_from_event_data,
@@ -115,6 +116,7 @@ class InMemoryTaskRepository:
         self._tasks: dict[str, _StoredTask] = {}
         self._idempotency: dict[tuple[str, str, str, str], tuple[str, str]] = {}
         self._source_bindings: dict[str, TaskSourceBinding] = {}
+        self._source_plan_transitions: dict[str, TaskSourcePlanTransition] = {}
         self._source_event_receipts: dict[str, set[str]] = {}
         self._next_task_number = 1
         self._clock = clock
@@ -296,6 +298,156 @@ class InMemoryTaskRepository:
                 accepted_transition_id=transition_id,
             )
             self._source_bindings[task_id] = binding
+            self._condition.notify_all()
+            return binding
+
+    async def mark_source_plan_transition_pending(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        interrupt_id: str,
+        transition_id: str,
+        expected_revision: int,
+        steps: tuple[str, ...],
+    ) -> TaskSourcePlanTransition:
+        """Retain one exact plan edit under the repository lock."""
+
+        transition = TaskSourcePlanTransition(
+            task_id=task_id,
+            thread_id=thread_id,
+            run_id=run_id,
+            interrupt_id=interrupt_id,
+            transition_id=transition_id,
+            expected_revision=expected_revision,
+            steps=steps,
+        )
+        async with self._condition:
+            task = self._get(task_id)
+            current = self._source_bindings.get(task_id)
+            if (
+                current is None
+                or (current.thread_id, current.run_id) != (thread_id, run_id)
+                or task.pending_interrupt_id != interrupt_id
+                or task.proposed_plan is None
+                or task.proposed_plan.revision != expected_revision
+            ):
+                raise TaskSourceContractError
+            existing = self._source_plan_transitions.get(task_id)
+            if existing is not None and existing != transition:
+                raise TaskSourceContractError
+            if current.pending_transition_id is not None and (
+                current.pending_interrupt_id,
+                current.pending_transition_id,
+            ) != (interrupt_id, transition_id):
+                raise TaskSourceContractError
+            self._source_bindings[task_id] = TaskSourceBinding(
+                task_id=task_id,
+                thread_id=thread_id,
+                run_id=run_id,
+                pending_interrupt_id=interrupt_id,
+                pending_transition_id=transition_id,
+                accepted_transition_id=current.accepted_transition_id,
+            )
+            self._source_plan_transitions[task_id] = transition
+            self._condition.notify_all()
+            return transition
+
+    async def get_source_plan_transition(
+        self,
+        task_id: str,
+    ) -> TaskSourcePlanTransition | None:
+        """Return a pending source plan edit without exposing it through HTTP."""
+
+        async with self._lock:
+            self._get(task_id)
+            return self._source_plan_transitions.get(task_id)
+
+    async def accept_source_plan_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+        new_interrupt_id: str,
+        plan_revision: int,
+    ) -> TaskSourceBinding:
+        """Commit the revised plan, interrupt, and binding as one mutation."""
+
+        async with self._condition:
+            task = self._get(task_id)
+            pending = self._source_plan_transitions.get(task_id)
+            current = self._source_bindings.get(task_id)
+            if (
+                pending is None
+                or current is None
+                or (
+                    pending.thread_id,
+                    pending.run_id,
+                    pending.transition_id,
+                    current.thread_id,
+                    current.run_id,
+                    current.pending_transition_id,
+                )
+                != (
+                    thread_id,
+                    previous_run_id,
+                    transition_id,
+                    thread_id,
+                    previous_run_id,
+                    transition_id,
+                )
+                or plan_revision != pending.expected_revision + 1
+                or task.pending_interrupt_id != pending.interrupt_id
+                or task.proposed_plan is None
+                or task.proposed_plan.revision != pending.expected_revision
+            ):
+                raise TaskSourceContractError
+            updated = ProposedPlan(
+                revision=plan_revision,
+                title=task.proposed_plan.title,
+                steps=pending.steps,
+                evidence_refs=task.proposed_plan.evidence_refs,
+            )
+            task.proposed_plan = updated
+            task.pending_interrupt_id = new_interrupt_id
+            task.status = TaskStatus.WAITING_APPROVAL
+            task.events.append(
+                TaskEvent(
+                    event_id=len(task.events) + 1,
+                    name=TaskEventName.PLAN_UPDATED,
+                    data=(
+                        ("title", updated.title),
+                        ("steps", updated.steps),
+                        ("revision", updated.revision),
+                        ("evidenceRefs", updated.evidence_refs),
+                        ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
+                    ),
+                )
+            )
+            task.events.append(
+                TaskEvent(
+                    event_id=len(task.events) + 1,
+                    name=TaskEventName.INTERRUPT_REQUESTED,
+                    data=(
+                        ("interruptId", new_interrupt_id),
+                        ("question", "Approve the updated plan?"),
+                        ("decisions", ("approve", "reject", "respond")),
+                        ("planRevision", plan_revision),
+                    ),
+                )
+            )
+            binding = TaskSourceBinding(
+                task_id=task_id,
+                thread_id=thread_id,
+                run_id=run_id,
+                accepted_transition_id=transition_id,
+            )
+            self._source_bindings[task_id] = binding
+            del self._source_plan_transitions[task_id]
             self._condition.notify_all()
             return binding
 

@@ -69,6 +69,22 @@ def _source_transition_id(task_id: str, interrupt_id: str) -> str:
     return f"transition-{digest}"
 
 
+def _source_plan_transition_id(
+    task_id: str,
+    interrupt_id: str,
+    expected_revision: int,
+    steps: Sequence[str],
+) -> str:
+    """Derive one stable identity from the exact bounded plan-edit request."""
+
+    digest = hashlib.sha256()
+    for value in (task_id, interrupt_id, str(expected_revision), *steps):
+        encoded = value.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return f"plan-transition-{digest.hexdigest()}"
+
+
 def _local_task_run_id() -> str:
     """Create a globally unique, public-safe application run identity."""
 
@@ -180,6 +196,7 @@ class LocalSource(Protocol):
         interrupt_id: str,
         expected_revision: int,
         steps: Sequence[str],
+        transition_id: str,
         agent_id: str | None = None,
     ) -> LocalPlanUpdate: ...
     def stream(
@@ -219,6 +236,14 @@ class LocalAgentServerRunner:
     )
     _command_locks: dict[str, asyncio.Lock] = field(default_factory=dict, init=False)
     _resumes_in_flight: set[tuple[str, str]] = field(default_factory=set, init=False)
+    _plan_updates: dict[str, asyncio.Task[PlanUpdateRecord]] = field(
+        default_factory=dict,
+        init=False,
+    )
+    _plan_update_requests: dict[str, tuple[str, int, tuple[str, ...]]] = field(
+        default_factory=dict,
+        init=False,
+    )
     _closing: bool = field(default=False, init=False)
 
     async def create(
@@ -363,7 +388,39 @@ class LocalAgentServerRunner:
                 thread_id=run.thread_id,
                 run_id=run.run_id,
             )
-        if binding.pending_transition_id is not None:
+        plan_transition = await self.repository.get_source_plan_transition(task.task_id)
+        if plan_transition is not None:
+            if (
+                binding.pending_interrupt_id != plan_transition.interrupt_id
+                or binding.pending_transition_id != plan_transition.transition_id
+                or (binding.thread_id, binding.run_id)
+                != (plan_transition.thread_id, plan_transition.run_id)
+            ):
+                raise TaskSourceContractError
+            updated = await self.source.update_plan(
+                binding.thread_id,
+                interrupt_id=plan_transition.interrupt_id,
+                expected_revision=plan_transition.expected_revision,
+                steps=plan_transition.steps,
+                transition_id=plan_transition.transition_id,
+                agent_id=task.agent_id,
+            )
+            if (
+                updated.interrupt_id == plan_transition.interrupt_id
+                or updated.plan_revision != plan_transition.expected_revision + 1
+            ):
+                raise TaskSourceContractError
+            binding = await self.repository.accept_source_plan_transition(
+                task.task_id,
+                thread_id=updated.thread_id,
+                previous_run_id=binding.run_id,
+                run_id=updated.run_id,
+                transition_id=plan_transition.transition_id,
+                new_interrupt_id=updated.interrupt_id,
+                plan_revision=updated.plan_revision,
+            )
+            task = await self.repository.get_task(task.task_id)
+        elif binding.pending_transition_id is not None:
             if binding.pending_interrupt_id is None:
                 raise TaskSourceContractError
             transition_id = _source_transition_id(task.task_id, binding.pending_interrupt_id)
@@ -428,29 +485,34 @@ class LocalAgentServerRunner:
     async def close(self) -> None:
         self._closing = True
         active = dict(self._tasks)
+        active_plan_updates = tuple(self._plan_updates.values())
         resuming_task_ids = {task_id for task_id, _ in self._resumes_in_flight}
         draining = tuple(
             background for task_id, background in active.items() if task_id in resuming_task_ids
         )
-        for task_id, task in active.items():
+        for task_id, follower in active.items():
             if task_id not in resuming_task_ids:
-                task.cancel()
+                follower.cancel()
         if draining:
             _, unfinished = await asyncio.wait(draining, timeout=_RESUME_SHUTDOWN_GRACE_SECONDS)
-            for task in unfinished:
-                task.cancel()
+            for unfinished_task in unfinished:
+                unfinished_task.cancel()
         remaining = tuple(
-            task for task in set(active.values()) | set(self._tasks.values()) if not task.done()
+            task
+            for task in set(active.values()) | set(self._tasks.values()) | set(active_plan_updates)
+            if not task.done()
         )
-        for task in remaining:
-            task.cancel()
-        tracked = tuple(set(active.values()) | set(self._tasks.values()))
+        for remaining_task in remaining:
+            remaining_task.cancel()
+        tracked = tuple(set(active.values()) | set(self._tasks.values()) | set(active_plan_updates))
         if tracked:
             await asyncio.gather(*tracked, return_exceptions=True)
         for acknowledgement in self._resume_acknowledgements.values():
             if not acknowledgement.done():
                 acknowledgement.set_exception(TaskSourceUnavailableError())
         self._tasks.clear()
+        self._plan_updates.clear()
+        self._plan_update_requests.clear()
 
     async def update_plan(
         self,
@@ -463,12 +525,39 @@ class LocalAgentServerRunner:
         async with self._command_lock(task.task_id):
             if self._closing:
                 raise TaskSourceUnavailableError
-            return await self._update_plan(
-                task,
-                interrupt_id=interrupt_id,
-                expected_revision=expected_revision,
-                steps=steps,
-            )
+            request = (interrupt_id, expected_revision, steps)
+            operation = self._plan_updates.get(task.task_id)
+            if operation is None:
+                operation = asyncio.create_task(
+                    self._update_plan(
+                        task,
+                        interrupt_id=interrupt_id,
+                        expected_revision=expected_revision,
+                        steps=steps,
+                    ),
+                    name=f"deepwork-local-plan-{task.task_id}",
+                )
+                self._plan_updates[task.task_id] = operation
+                self._plan_update_requests[task.task_id] = request
+                operation.add_done_callback(
+                    lambda finished: self._discard_plan_update(task.task_id, finished)
+                )
+            elif self._plan_update_requests.get(task.task_id) != request:
+                raise TaskSourceContractError
+            return await asyncio.shield(operation)
+
+    def _discard_plan_update(
+        self,
+        task_id: str,
+        operation: asyncio.Task[PlanUpdateRecord],
+    ) -> None:
+        """Retire an exact task-owned plan operation and consume its exception."""
+
+        if self._plan_updates.get(task_id) is operation:
+            self._plan_updates.pop(task_id, None)
+            self._plan_update_requests.pop(task_id, None)
+        if not operation.cancelled():
+            operation.exception()
 
     async def _update_plan(
         self,
@@ -492,12 +581,31 @@ class LocalAgentServerRunner:
         thread_id = self._threads.get(task.task_id)
         if thread_id is None:
             raise TaskSourceContractError
+        binding = await self.repository.get_source_binding(task.task_id)
+        if binding is None or binding.thread_id != thread_id:
+            raise TaskSourceContractError
+        transition_id = _source_plan_transition_id(
+            task.task_id,
+            interrupt_id,
+            expected_revision,
+            steps,
+        )
+        await self.repository.mark_source_plan_transition_pending(
+            task.task_id,
+            thread_id=binding.thread_id,
+            run_id=binding.run_id,
+            interrupt_id=interrupt_id,
+            transition_id=transition_id,
+            expected_revision=expected_revision,
+            steps=tuple(steps),
+        )
         try:
             updated = await self.source.update_plan(
                 thread_id,
                 interrupt_id=interrupt_id,
                 expected_revision=expected_revision,
                 steps=steps,
+                transition_id=transition_id,
                 agent_id=current.agent_id,
             )
         except (StaleInterruptError, TaskSourceContractError):
@@ -506,46 +614,37 @@ class LocalAgentServerRunner:
             raise TaskSourceUnavailableError from None
         if updated.interrupt_id == interrupt_id or updated.plan_revision != expected_revision + 1:
             raise TaskSourceContractError
-        # The source has confirmed the edit at this point.  Reconcile the known
-        # checkpoint before doing any further source I/O, so the old interrupt is
-        # never advertised after the source has advanced it.
-        record = await self.repository.update_plan(
+        await self.repository.accept_source_plan_transition(
             task.task_id,
-            interrupt_id=interrupt_id,
-            expected_revision=expected_revision,
-            steps=steps,
-            evidence_class=EvidenceClass.LOCAL_SOURCE,
+            thread_id=updated.thread_id,
+            previous_run_id=binding.run_id,
+            run_id=updated.run_id,
+            transition_id=transition_id,
+            new_interrupt_id=updated.interrupt_id,
+            plan_revision=updated.plan_revision,
         )
         acknowledgement = self._resume_acknowledgements.pop((task.task_id, interrupt_id), None)
         if acknowledgement is not None and not acknowledgement.done():
             acknowledgement.set_exception(StaleInterruptError())
-        if record.plan.revision != updated.plan_revision:
-            raise TaskSourceContractError
-        await self.repository.bind_source_run(
-            task.task_id,
-            thread_id=updated.thread_id,
-            run_id=updated.run_id,
-        )
         self._threads[task.task_id] = updated.thread_id
         self._register_resume_acknowledgement((task.task_id, updated.interrupt_id))
-        await self.repository.append_event(
-            task.task_id,
-            name=TaskEventName.INTERRUPT_REQUESTED,
-            data=(
-                ("interruptId", updated.interrupt_id),
-                ("question", "Approve the updated plan?"),
-                ("decisions", ("approve", "reject", "respond")),
-                ("planRevision", updated.plan_revision),
-            ),
-            status=TaskStatus.WAITING_APPROVAL,
-            pending_interrupt_id=updated.interrupt_id,
-        )
+        refreshed = await self.repository.get_task(task.task_id)
+        if (
+            refreshed.proposed_plan is None
+            or refreshed.proposed_plan.revision != updated.plan_revision
+        ):
+            raise TaskSourceContractError
         active = self._tasks.pop(task.task_id, None)
         if active is not None:
             active.cancel()
             await asyncio.gather(active, return_exceptions=True)
-        self.start(await self.repository.get_task(task.task_id), updated)
-        return PlanUpdateRecord(task.task_id, updated.run_id, updated.interrupt_id, record.plan)
+        self.start(refreshed, updated)
+        return PlanUpdateRecord(
+            task.task_id,
+            updated.run_id,
+            updated.interrupt_id,
+            refreshed.proposed_plan,
+        )
 
     async def record_decision(
         self,
@@ -582,6 +681,8 @@ class LocalAgentServerRunner:
         response_digest: str | None,
     ) -> DecisionRecord:
         key = (task_id, interrupt_id)
+        if await self.repository.get_source_plan_transition(task_id) is not None:
+            raise TaskSourceUnavailableError
         stored_comment = self._review_comments.get(key)
         inserted_comment = (
             decision is DecisionValue.RESPOND and comment is not None and stored_comment is None

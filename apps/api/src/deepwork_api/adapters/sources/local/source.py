@@ -46,6 +46,12 @@ _SAFE_AGENT_STATUSES = frozenset({"planned", "approved", "completed", "rejected"
 _SAFE_DECISIONS: tuple[Decision, ...] = ("approve", "reject", "respond")
 
 
+async def _anext_source_event(stream: AsyncIterator[object]) -> object:
+    """Present ``anext`` as a coroutine accepted by ``asyncio.create_task``."""
+
+    return await anext(stream)
+
+
 class _ThreadsClient(Protocol):
     async def create(
         self,
@@ -759,6 +765,7 @@ class LocalAgentServerSource:
         interrupt_id: str,
         expected_revision: int,
         steps: Sequence[str],
+        transition_id: str | None = None,
         agent_id: str | None = None,
     ) -> LocalPlanUpdate:
         """Edit state as the plan node, then run forward to a fresh official interrupt."""
@@ -774,50 +781,116 @@ class LocalAgentServerSource:
             resolved_assistant = await self._resolve_default_assistant_id()
         validated_steps = _plan_steps(steps)
         expected = _plan_revision(expected_revision, field="expected plan revision")
+        safe_transition_id = _validate_identifier(
+            transition_id
+            or _direct_plan_transition_id(
+                safe_thread_id,
+                safe_interrupt_id,
+                expected,
+                validated_steps,
+            ),
+            field="transition identifier",
+        )
         if expected == MAX_PLAN_REVISION:
             message = "plan revision cannot be advanced beyond the shared bound"
             raise LocalSourceContractError(message)
         async with self._thread_guard(safe_thread_id):
-            current = await self.get_state(safe_thread_id)
-            if current.interrupt is None or current.interrupt.interrupt_id != safe_interrupt_id:
-                message = "interrupt is no longer current"
-                raise LocalSourceStaleInterruptError(message)
-            if current.plan_revision != expected:
-                message = "plan revision is no longer current"
-                raise LocalSourceStaleInterruptError(message)
             next_revision = expected + 1
+            plan_digest = _plan_digest(validated_steps)
+            expected_metadata = {
+                "deepwork_transition_kind": "plan",
+                "deepwork_interrupt_id": safe_interrupt_id,
+                "deepwork_plan_revision": str(next_revision),
+                "deepwork_plan_digest": plan_digest,
+                "deepwork_agent_id": resolved_assistant,
+            }
             try:
-                _as_mapping(
-                    await self.client.threads.update_state(
-                        safe_thread_id,
-                        {
-                            "plan": list(validated_steps),
-                            "plan_revision": next_revision,
-                            "plan_trust": "untrusted",
-                            "approval": "pending",
-                            "status": "planned",
-                        },
-                        as_node="plan",
-                    )
-                )
-                run = await self.client.runs.create(
+                existing_run_id = await self._find_run_by_metadata(
                     safe_thread_id,
-                    resolved_assistant,
-                    stream_mode=("values", "updates"),
-                    stream_resumable=True,
-                    multitask_strategy="reject",
-                    durability="sync",
+                    key="deepwork_transition_id",
+                    value=safe_transition_id,
+                    expected=expected_metadata,
                 )
-                run_id = _required_identifier(_as_mapping(run), "run_id")
+                if existing_run_id is None:
+                    current = await self.get_state(safe_thread_id)
+                    source_plan_already_updated = (
+                        current.plan == validated_steps and current.plan_revision == next_revision
+                    )
+                    if not source_plan_already_updated:
+                        if (
+                            current.interrupt is None
+                            or current.interrupt.interrupt_id != safe_interrupt_id
+                        ):
+                            raise LocalSourceStaleInterruptError("interrupt is no longer current")
+                        if current.plan_revision != expected:
+                            raise LocalSourceStaleInterruptError(
+                                "plan revision is no longer current"
+                            )
+                        try:
+                            _as_mapping(
+                                await self.client.threads.update_state(
+                                    safe_thread_id,
+                                    {
+                                        "plan": list(validated_steps),
+                                        "plan_revision": next_revision,
+                                        "plan_trust": "untrusted",
+                                        "approval": "pending",
+                                        "status": "planned",
+                                    },
+                                    as_node="plan",
+                                )
+                            )
+                        except Exception:
+                            advanced = await self.get_state(safe_thread_id)
+                            if not (
+                                advanced.plan == validated_steps
+                                and advanced.plan_revision == next_revision
+                            ):
+                                raise
+                    elif current.interrupt is not None:
+                        raise LocalSourceUnavailableError(
+                            "local Agent Server plan transition discovery is incomplete"
+                        )
+                    try:
+                        run = await self.client.runs.create(
+                            safe_thread_id,
+                            resolved_assistant,
+                            stream_mode=("values", "updates"),
+                            stream_resumable=True,
+                            multitask_strategy="reject",
+                            durability="sync",
+                            metadata={
+                                "deepwork_transition_id": safe_transition_id,
+                                **expected_metadata,
+                            },
+                        )
+                    except Exception:
+                        accepted_run_id = await self._find_run_by_metadata(
+                            safe_thread_id,
+                            key="deepwork_transition_id",
+                            value=safe_transition_id,
+                            expected=expected_metadata,
+                        )
+                        if accepted_run_id is None:
+                            raise LocalSourceUnavailableError(
+                                "local Agent Server plan update failed"
+                            ) from None
+                        run_id = accepted_run_id
+                    else:
+                        run_id = _required_identifier(_as_mapping(run), "run_id")
+                else:
+                    run_id = existing_run_id
                 run_reference = LocalRunReference(
                     thread_id=safe_thread_id,
                     run_id=run_id,
                 )
-                async with asyncio.timeout(_PLAN_UPDATE_CONFIRM_TIMEOUT_SECONDS):
-                    async for _ in self.stream(run_reference):
-                        pass
-                confirmed = await self.get_state(safe_thread_id)
-            except LocalSourceContractError:
+                confirmed = await self._wait_for_plan_confirmation(
+                    run_reference,
+                    previous_interrupt_id=safe_interrupt_id,
+                    expected_plan=validated_steps,
+                    expected_revision=next_revision,
+                )
+            except (LocalSourceContractError, LocalSourceStaleInterruptError):
                 raise
             except Exception:
                 message = "local Agent Server plan update failed"
@@ -834,6 +907,62 @@ class LocalAgentServerSource:
             plan_revision=next_revision,
             interrupt_id=new_interrupt.interrupt_id,
         )
+
+    async def _wait_for_plan_confirmation(
+        self,
+        run: LocalRunReference,
+        *,
+        previous_interrupt_id: str,
+        expected_plan: tuple[str, ...],
+        expected_revision: int,
+    ) -> LocalStateSnapshot:
+        """Confirm a plan checkpoint even when a settled replay stream stays silent."""
+
+        def confirmed(state: LocalStateSnapshot) -> bool:
+            try:
+                _confirmed_plan_interrupt(
+                    state,
+                    previous_interrupt_id=previous_interrupt_id,
+                    expected_plan=expected_plan,
+                    expected_revision=expected_revision,
+                )
+            except LocalSourceContractError:
+                return False
+            return True
+
+        state = await self.get_state(run.thread_id)
+        if confirmed(state):
+            return state
+        stream = self.stream(run)
+        pending: asyncio.Task[object] = asyncio.create_task(_anext_source_event(stream))
+        try:
+            async with asyncio.timeout(_PLAN_UPDATE_CONFIRM_TIMEOUT_SECONDS):
+                while True:
+                    done, _ = await asyncio.wait({pending}, timeout=1.0)
+                    if pending not in done:
+                        state = await self.get_state(run.thread_id)
+                        if confirmed(state):
+                            return state
+                        continue
+                    try:
+                        pending.result()
+                    except StopAsyncIteration:
+                        state = await self.get_state(run.thread_id)
+                        _confirmed_plan_interrupt(
+                            state,
+                            previous_interrupt_id=previous_interrupt_id,
+                            expected_plan=expected_plan,
+                            expected_revision=expected_revision,
+                        )
+                        return state
+                    pending = asyncio.create_task(_anext_source_event(stream))
+        finally:
+            if not pending.done():
+                pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+            close = getattr(stream, "aclose", None)
+            if callable(close):
+                await close()
 
     async def _resolve_default_assistant(self) -> Mapping[str, object]:
         """Resolve a configured UUID or graph alias to the default Assistant record."""
@@ -1139,6 +1268,31 @@ def _dispatch_thread_id(dispatch_id: str) -> str:
 
     digest = hashlib.sha256(f"deepwork-source-thread:{dispatch_id}".encode()).hexdigest()
     return f"{digest[:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"
+
+
+def _plan_digest(steps: Sequence[str]) -> str:
+    """Hash one validated plan without retaining it in provider metadata."""
+
+    digest = hashlib.sha256()
+    for step in steps:
+        encoded = step.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()
+
+
+def _direct_plan_transition_id(
+    thread_id: str,
+    interrupt_id: str,
+    expected_revision: int,
+    steps: Sequence[str],
+) -> str:
+    """Give direct adapter callers a deterministic non-application identity."""
+
+    digest = hashlib.sha256(
+        f"{thread_id}:{interrupt_id}:{expected_revision}:{_plan_digest(steps)}".encode()
+    ).hexdigest()
+    return f"direct-plan-transition-{digest}"
 
 
 def _required_identifier(value: Mapping[str, object], key: str) -> str:

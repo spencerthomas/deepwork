@@ -182,6 +182,7 @@ class _FakeThreads:
         self.server.state.plan_revision = revision
         self.server.state.status = "planned"
         self.server.state.interrupt_id = None
+        self.server.fail_after_accept("threads.update_state")
         if self.server.block_update_return:
             self.server.update_accepted.set()
             await self.server.update_return_release.wait()
@@ -677,6 +678,64 @@ async def test_plan_edit_binds_to_source_revision_and_reaches_execution(
         assert len(updates) == 1
         assert updates[0]["data"]["revision"] == 2
         assert updates[0]["data"]["evidenceClass"] == "local-source"
+
+
+async def test_plan_edit_recovers_an_accepted_run_after_its_response_is_lost(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    server = ScriptedAgentServer()
+    async with _local_app(server, monkeypatch, tmp_path / "tasks.sqlite") as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        server.failures_after_accept.add("runs.create")
+
+        edited = await client.patch(
+            f"/api/v1/tasks/{created['taskId']}/plan",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "expectedRevision": 1,
+                "steps": ["Recover this exact edit."],
+            },
+        )
+        current = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+
+        assert edited.status_code == 200
+        assert edited.json()["plan"]["steps"] == ["Recover this exact edit."]
+        assert current["proposedPlan"]["revision"] == 2
+        assert len(server.update_state_calls) == 1
+        assert len(server.accepted_runs) == 2
+        assert (
+            await harness.app.state.task_repository.get_source_plan_transition(created["taskId"])
+            is None
+        )
+
+
+async def test_plan_edit_recovers_when_update_state_response_is_lost(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    server = ScriptedAgentServer()
+    async with _local_app(server, monkeypatch, tmp_path / "tasks.sqlite") as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        server.failures_after_accept.add("threads.update_state")
+
+        edited = await client.patch(
+            f"/api/v1/tasks/{created['taskId']}/plan",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "expectedRevision": 1,
+                "steps": ["Recover state mutation."],
+            },
+        )
+
+        assert edited.status_code == 200
+        assert edited.json()["plan"]["revision"] == 2
+        assert len(server.update_state_calls) == 1
+        assert len(server.accepted_runs) == 2
 
 
 async def test_respond_guidance_produces_fresh_interrupt_and_revision(

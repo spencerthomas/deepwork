@@ -365,6 +365,40 @@ class TaskSourceBinding:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskSourcePlanTransition:
+    """Durable application intent for one source-side plan edit."""
+
+    task_id: str
+    thread_id: str
+    run_id: str
+    interrupt_id: str
+    transition_id: str
+    expected_revision: int
+    steps: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        identifiers = (
+            self.task_id,
+            self.thread_id,
+            self.run_id,
+            self.interrupt_id,
+            self.transition_id,
+        )
+        if any(not value or len(value) > 256 for value in identifiers):
+            raise ValueError("task source plan transition is invalid")
+        if (
+            not isinstance(self.expected_revision, int)
+            or isinstance(self.expected_revision, bool)
+            or not 1 <= self.expected_revision < MAX_PLAN_REVISION
+        ):
+            raise ValueError("task source plan revision is invalid")
+        if not 1 <= len(self.steps) <= MAX_PLAN_STEPS or any(
+            not step.strip() or len(step) > MAX_PLAN_STEP_LENGTH for step in self.steps
+        ):
+            raise ValueError("task source plan steps are invalid")
+
+
+@dataclass(frozen=True, slots=True)
 class DecisionRecord:
     """Accepted decision result, including idempotent replay state."""
 

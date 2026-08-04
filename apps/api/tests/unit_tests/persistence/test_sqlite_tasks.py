@@ -591,6 +591,65 @@ async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_pat
     await final.close()
 
 
+async def test_source_plan_transition_commits_plan_interrupt_and_binding_atomically(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "tasks.sqlite"
+    repository = SQLiteTaskRepository(database)
+    task = await repository.create_task(title="Plan task", objective="Edit durably")
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+    await repository.set_plan(
+        task.task_id,
+        plan=ProposedPlan(1, "Plan", ("Original step",), ()),
+        event_name=TaskEventName.PLAN_PROPOSED,
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.INTERRUPT_REQUESTED,
+        data=(("interruptId", "interrupt-1"),),
+        status=TaskStatus.WAITING_APPROVAL,
+        pending_interrupt_id="interrupt-1",
+    )
+    pending = await repository.mark_source_plan_transition_pending(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+        interrupt_id="interrupt-1",
+        transition_id="plan-transition-1",
+        expected_revision=1,
+        steps=("Edited step",),
+    )
+    await repository.close()
+
+    reopened = SQLiteTaskRepository(database)
+    assert await reopened.get_source_plan_transition(task.task_id) == pending
+    binding = await reopened.accept_source_plan_transition(
+        task.task_id,
+        thread_id="source-thread-1",
+        previous_run_id="source-run-1",
+        run_id="source-run-2",
+        transition_id="plan-transition-1",
+        new_interrupt_id="interrupt-2",
+        plan_revision=2,
+    )
+    current = await reopened.get_task(task.task_id)
+    names = [event.name for event in await reopened.events_after(task.task_id, 0)]
+
+    assert binding.run_id == "source-run-2"
+    assert current.pending_interrupt_id == "interrupt-2"
+    assert current.status is TaskStatus.WAITING_APPROVAL
+    assert current.proposed_plan is not None
+    assert current.proposed_plan.revision == 2
+    assert current.proposed_plan.steps == ("Edited step",)
+    assert names[-2:] == [TaskEventName.PLAN_UPDATED, TaskEventName.INTERRUPT_REQUESTED]
+    assert await reopened.get_source_plan_transition(task.task_id) is None
+    await reopened.close()
+
+
 async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_path: Path) -> None:
     repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
     task = await repository.create_task(title="Streaming", objective="Retain exact progress")
@@ -1578,6 +1637,7 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
                 and "task_idempotency" not in statement
                 and "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
+                and "task_source_plan_transitions" not in statement
             ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
@@ -1613,6 +1673,7 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
                 "task_idempotency" not in statement
                 and "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
+                and "task_source_plan_transitions" not in statement
             ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(
@@ -1652,6 +1713,7 @@ async def test_v6_database_adds_source_recovery_tables_without_rewriting_tasks(
             if (
                 "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
+                and "task_source_plan_transitions" not in statement
             ):
                 connection.execute(statement)
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
@@ -1679,6 +1741,32 @@ async def test_v6_database_adds_source_recovery_tables_without_rewriting_tasks(
         ).fetchone()[0]
     assert version == sqlite_adapter._SCHEMA_VERSION
     assert source_tables == 2
+
+
+async def test_v7_database_adds_durable_plan_transition_table(tmp_path: Path) -> None:
+    database = tmp_path / "schema-v7.sqlite"
+    with sqlite3.connect(database) as connection:
+        for statement in sqlite_adapter._SCHEMA_STATEMENTS:
+            if "task_source_plan_transitions" not in statement:
+                connection.execute(statement)
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 7")
+
+    repository = SQLiteTaskRepository(database)
+    await repository.initialize()
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        plan_table = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'task_source_plan_transitions'
+            """
+        ).fetchone()[0]
+    assert version == sqlite_adapter._SCHEMA_VERSION
+    assert plan_table == 1
 
 
 def _seed_v1_database(database: Path) -> None:

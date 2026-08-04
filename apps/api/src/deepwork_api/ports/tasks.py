@@ -23,6 +23,7 @@ from deepwork_api.domain import (
     TaskJourney,
     TaskSnapshot,
     TaskSourceBinding,
+    TaskSourcePlanTransition,
     TaskStatus,
 )
 
@@ -97,6 +98,38 @@ class TaskRepository(Protocol):
         transition_id: str,
     ) -> TaskSourceBinding:
         """Atomically replace a source run and acknowledge its transition."""
+
+    async def mark_source_plan_transition_pending(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        interrupt_id: str,
+        transition_id: str,
+        expected_revision: int,
+        steps: tuple[str, ...],
+    ) -> TaskSourcePlanTransition:
+        """Durably retain one exact plan edit before source I/O."""
+
+    async def get_source_plan_transition(
+        self,
+        task_id: str,
+    ) -> TaskSourcePlanTransition | None:
+        """Return the pending plan edit payload required for recovery."""
+
+    async def accept_source_plan_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+        new_interrupt_id: str,
+        plan_revision: int,
+    ) -> TaskSourceBinding:
+        """Atomically commit an accepted source plan checkpoint and binding."""
 
     async def get_source_binding(self, task_id: str) -> TaskSourceBinding | None:
         """Return the server-only source identity for a task when one exists."""

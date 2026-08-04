@@ -25,6 +25,7 @@ from deepwork_api.domain import (
     TaskEventName,
     TaskSnapshot,
     TaskSourceBinding,
+    TaskSourceContractError,
     TaskSourceUnavailableError,
     TaskStatus,
 )
@@ -116,6 +117,7 @@ class _Source:
         interrupt_id: str,
         expected_revision: int,
         steps: Sequence[str],
+        transition_id: str,
         agent_id: str | None = None,
     ) -> _PlanUpdate:
         self.update_plan_agent_ids.append(agent_id)
@@ -189,8 +191,10 @@ class _IdempotentRecoverySource(_Source):
         super().__init__()
         self.accepted_dispatches: dict[str, _Run] = {}
         self.accepted_transitions: dict[str, _Run] = {}
+        self.accepted_plan_transitions: dict[str, _PlanUpdate] = {}
         self.upstream_starts = 0
         self.upstream_resumes = 0
+        self.upstream_plan_updates = 0
 
     async def start(
         self,
@@ -236,6 +240,35 @@ class _IdempotentRecoverySource(_Source):
             interrupt=None,
         )
         return run
+
+    async def update_plan(
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: Sequence[str],
+        transition_id: str,
+        agent_id: str | None = None,
+    ) -> _PlanUpdate:
+        self.update_plan_agent_ids.append(agent_id)
+        existing = self.accepted_plan_transitions.get(transition_id)
+        if existing is not None:
+            return existing
+        self.upstream_plan_updates += 1
+        updated = _PlanUpdate()
+        self.accepted_plan_transitions[transition_id] = updated
+        self.state = _State(
+            status="planned",
+            plan=tuple(steps),
+            plan_revision=expected_revision + 1,
+            interrupt=_Interrupt(
+                interrupt_id=updated.interrupt_id,
+                plan=tuple(steps),
+                plan_revision=expected_revision + 1,
+            ),
+        )
+        return updated
 
 
 class _CrashBeforeBindingRepository(InMemoryTaskRepository):
@@ -294,8 +327,95 @@ class _CrashOnAcceptRepository(InMemoryTaskRepository):
         )
 
 
+class _CrashOnAcceptPlanRepository(InMemoryTaskRepository):
+    crash_once = True
+
+    async def accept_source_plan_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+        new_interrupt_id: str,
+        plan_revision: int,
+    ) -> TaskSourceBinding:
+        if self.crash_once:
+            self.crash_once = False
+            raise RuntimeError("simulated plan binding crash")
+        return await super().accept_source_plan_transition(
+            task_id,
+            thread_id=thread_id,
+            previous_run_id=previous_run_id,
+            run_id=run_id,
+            transition_id=transition_id,
+            new_interrupt_id=new_interrupt_id,
+            plan_revision=plan_revision,
+        )
+
+
+class _BlockingAfterAcceptPlanRepository(InMemoryTaskRepository):
+    def __init__(self) -> None:
+        super().__init__()
+        self.accepted = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def accept_source_plan_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+        new_interrupt_id: str,
+        plan_revision: int,
+    ) -> TaskSourceBinding:
+        binding = await super().accept_source_plan_transition(
+            task_id,
+            thread_id=thread_id,
+            previous_run_id=previous_run_id,
+            run_id=run_id,
+            transition_id=transition_id,
+            new_interrupt_id=new_interrupt_id,
+            plan_revision=plan_revision,
+        )
+        self.accepted.set()
+        await self.release.wait()
+        return binding
+
+
+class _CrashOnAcceptPlanSQLiteRepository(SQLiteTaskRepository):
+    crash_once = True
+
+    async def accept_source_plan_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+        new_interrupt_id: str,
+        plan_revision: int,
+    ) -> TaskSourceBinding:
+        if self.crash_once:
+            self.crash_once = False
+            raise RuntimeError("simulated SQLite plan binding crash")
+        return await super().accept_source_plan_transition(
+            task_id,
+            thread_id=thread_id,
+            previous_run_id=previous_run_id,
+            run_id=run_id,
+            transition_id=transition_id,
+            new_interrupt_id=new_interrupt_id,
+            plan_revision=plan_revision,
+        )
+
+
 async def _paused_task(
-    repository: InMemoryTaskRepository,
+    repository: InMemoryTaskRepository | SQLiteTaskRepository,
     *,
     agent_id: str | None = None,
 ) -> TaskSnapshot:
@@ -935,6 +1055,197 @@ async def test_recovery_discovers_resume_accepted_before_replacement_binding() -
 
     await recovered_runner.close()
     await first_runner.close()
+
+
+@pytest.mark.asyncio
+async def test_recovery_discovers_plan_edit_accepted_before_atomic_local_commit() -> None:
+    repository = _CrashOnAcceptPlanRepository()
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository, agent_id="assistant-reviewer")
+    first_runner = LocalAgentServerRunner(repository, source)
+    first_runner._threads[task.task_id] = "thread_1"
+
+    with pytest.raises(RuntimeError, match="plan binding crash"):
+        await first_runner.update_plan(
+            task,
+            interrupt_id="interrupt_1",
+            expected_revision=1,
+            steps=("Recovered edited step",),
+        )
+    pending = await repository.get_source_plan_transition(task.task_id)
+    assert pending is not None
+
+    recovered_runner = LocalAgentServerRunner(repository, source)
+    assert await recovered_runner.recover(await repository.get_task(task.task_id)) is True
+    current = await repository.get_task(task.task_id)
+
+    assert current.pending_interrupt_id == "interrupt_2"
+    assert current.proposed_plan is not None
+    assert current.proposed_plan.revision == 2
+    assert current.proposed_plan.steps == ("Recovered edited step",)
+    assert await repository.get_source_plan_transition(task.task_id) is None
+    assert source.upstream_plan_updates == 1
+    assert source.update_plan_agent_ids == ["assistant-reviewer", "assistant-reviewer"]
+
+    await recovered_runner.close()
+    await first_runner.close()
+
+
+@pytest.mark.asyncio
+async def test_plan_edit_recovery_survives_a_real_sqlite_repository_reopen(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "tasks.sqlite"
+    first_repository = _CrashOnAcceptPlanSQLiteRepository(database)
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(first_repository, agent_id="assistant-reviewer")
+    first_runner = LocalAgentServerRunner(first_repository, source)
+    first_runner._threads[task.task_id] = "thread_1"
+
+    with pytest.raises(RuntimeError, match="SQLite plan binding crash"):
+        await first_runner.update_plan(
+            task,
+            interrupt_id="interrupt_1",
+            expected_revision=1,
+            steps=("Persisted edited step",),
+        )
+    await first_runner.close()
+    await first_repository.close()
+
+    reopened = SQLiteTaskRepository(database)
+    recovered_runner = LocalAgentServerRunner(reopened, source)
+    assert await recovered_runner.recover(await reopened.get_task(task.task_id)) is True
+    current = await reopened.get_task(task.task_id)
+
+    assert current.pending_interrupt_id == "interrupt_2"
+    assert current.proposed_plan is not None
+    assert current.proposed_plan.steps == ("Persisted edited step",)
+    assert source.upstream_plan_updates == 1
+    assert await reopened.get_source_plan_transition(task.task_id) is None
+
+    await recovered_runner.close()
+    await reopened.close()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_plan_request_keeps_task_owned_operation_running() -> None:
+    repository = InMemoryTaskRepository()
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository)
+    runner = LocalAgentServerRunner(repository, source)
+    runner._threads[task.task_id] = "thread_1"
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    original = source.update_plan
+
+    async def blocked_update_plan(
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: Sequence[str],
+        transition_id: str,
+        agent_id: str | None = None,
+    ) -> _PlanUpdate:
+        entered.set()
+        await release.wait()
+        return await original(
+            thread_id,
+            interrupt_id=interrupt_id,
+            expected_revision=expected_revision,
+            steps=steps,
+            transition_id=transition_id,
+            agent_id=agent_id,
+        )
+
+    source.update_plan = blocked_update_plan  # type: ignore[method-assign]
+    request = asyncio.create_task(
+        runner.update_plan(
+            task,
+            interrupt_id="interrupt_1",
+            expected_revision=1,
+            steps=("Continue after disconnect",),
+        )
+    )
+    await entered.wait()
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+    release.set()
+    for _ in range(20):
+        current = await repository.get_task(task.task_id)
+        if current.proposed_plan is not None and current.proposed_plan.revision == 2:
+            break
+        await asyncio.sleep(0)
+
+    current = await repository.get_task(task.task_id)
+    assert current.pending_interrupt_id == "interrupt_2"
+    assert current.proposed_plan is not None
+    assert current.proposed_plan.steps == ("Continue after disconnect",)
+    await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_plan_request_after_atomic_accept_still_swaps_follower() -> None:
+    repository = _BlockingAfterAcceptPlanRepository()
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository)
+    runner = LocalAgentServerRunner(repository, source)
+    runner._threads[task.task_id] = "thread_1"
+    request = asyncio.create_task(
+        runner.update_plan(
+            task,
+            interrupt_id="interrupt_1",
+            expected_revision=1,
+            steps=("Accepted before disconnect",),
+        )
+    )
+
+    await repository.accepted.wait()
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+    repository.release.set()
+    for _ in range(20):
+        if task.task_id in runner._tasks:
+            break
+        await asyncio.sleep(0)
+
+    current = await repository.get_task(task.task_id)
+    assert current.pending_interrupt_id == "interrupt_2"
+    assert task.task_id in runner._tasks
+    await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_plan_recovery_rejects_a_reused_interrupt_before_local_commit() -> None:
+    repository = InMemoryTaskRepository()
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository)
+    transition_id = "plan-transition-stale"
+    await repository.mark_source_plan_transition_pending(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+        interrupt_id="interrupt_1",
+        transition_id=transition_id,
+        expected_revision=1,
+        steps=("Edited step",),
+    )
+
+    async def stale_update_plan(*args: object, **kwargs: object) -> _PlanUpdate:
+        return _PlanUpdate(interrupt_id="interrupt_1", plan_revision=2)
+
+    source.update_plan = stale_update_plan  # type: ignore[method-assign]
+    runner = LocalAgentServerRunner(repository, source)
+
+    with pytest.raises(TaskSourceContractError):
+        await runner.recover(await repository.get_task(task.task_id))
+
+    current = await repository.get_task(task.task_id)
+    assert current.pending_interrupt_id == "interrupt_1"
+    assert current.proposed_plan is not None and current.proposed_plan.revision == 1
+    await runner.close()
 
 
 @pytest.mark.asyncio

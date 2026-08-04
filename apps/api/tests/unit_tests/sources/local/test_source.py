@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -110,6 +111,7 @@ class FakeThreads:
     call_log: list[str] | None = None
     thread_id: str = "thread-official-1"
     returned_metadata: Mapping[str, object] | None = None
+    raise_after_update: bool = False
 
     async def create(
         self,
@@ -167,6 +169,9 @@ class FakeThreads:
                     plan=cast("list[str]", plan),
                 )
             )
+        if self.raise_after_update:
+            self.raise_after_update = False
+            raise OSError("update response lost after acceptance")
         return {"checkpoint": {"checkpoint_id": "checkpoint-official-2"}}
 
 
@@ -1217,15 +1222,7 @@ async def test_plan_edit_uses_official_plan_node_and_reinvokes_for_new_interrupt
     assert client.runs.create_calls[0]["input"] is None
     assert client.runs.create_calls[0]["command"] is None
     assert client.runs.create_calls[0]["assistant_id"] == "assistant-evidence-reviewer"
-    assert client.runs.stream_calls == [
-        {
-            "thread_id": "thread-official-1",
-            "run_id": "run-official-1",
-            "cancel_on_disconnect": False,
-            "stream_mode": ("values", "updates"),
-            "last_event_id": None,
-        }
-    ]
+    assert client.runs.stream_calls == []
     with pytest.raises(LocalSourceStaleInterruptError):
         await source.resume(
             "thread-official-1",
@@ -1240,6 +1237,106 @@ async def test_plan_edit_uses_official_plan_node_and_reinvokes_for_new_interrupt
         transition_id="transition-after-plan-edit",
     )
     assert resumed.run_id == "run-official-2"
+
+
+async def test_plan_edit_recovers_when_update_state_response_is_lost() -> None:
+    client = FakeClient(threads=FakeThreads(raise_after_update=True))
+    source, _ = _source(client)
+
+    update = await source.update_plan(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        expected_revision=1,
+        steps=["Edited step"],
+        transition_id=TRANSITION_ID,
+    )
+
+    assert update.plan_revision == 2
+    assert update.interrupt_id == NEXT_OFFICIAL_INTERRUPT_ID
+    assert len(client.threads.update_calls) == 1
+    assert len(client.runs.create_calls) == 1
+
+
+async def test_plan_edit_recovers_when_run_acceptance_response_is_lost() -> None:
+    client = FakeClient(runs=FakeRuns(raise_after_accept=True))
+    source, _ = _source(client)
+
+    update = await source.update_plan(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        expected_revision=1,
+        steps=["Edited step"],
+        transition_id=TRANSITION_ID,
+    )
+
+    assert update.run_id == "run-official-1"
+    assert len(client.runs.create_calls) == 1
+    assert len(client.runs.list_calls) == 2
+
+
+async def test_plan_edit_reuses_the_same_accepted_transition_on_retry() -> None:
+    source, client = _source()
+
+    first = await source.update_plan(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        expected_revision=1,
+        steps=["Edited step"],
+        transition_id=TRANSITION_ID,
+    )
+    recovered = await source.update_plan(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        expected_revision=1,
+        steps=["Edited step"],
+        transition_id=TRANSITION_ID,
+    )
+
+    assert recovered == first
+    assert len(client.threads.update_calls) == 1
+    assert len(client.runs.create_calls) == 1
+
+
+async def test_plan_recovery_confirms_settled_state_without_waiting_for_a_silent_stream() -> None:
+    step = "Edited step"
+    encoded = step.encode()
+    digest = hashlib.sha256()
+    digest.update(len(encoded).to_bytes(8, byteorder="big"))
+    digest.update(encoded)
+    runs = FakeRuns(
+        accepted_runs=[
+            {
+                "run_id": "run-plan-accepted",
+                "metadata": {
+                    "deepwork_transition_id": TRANSITION_ID,
+                    "deepwork_transition_kind": "plan",
+                    "deepwork_interrupt_id": OFFICIAL_INTERRUPT_ID,
+                    "deepwork_plan_revision": "2",
+                    "deepwork_plan_digest": digest.hexdigest(),
+                    "deepwork_agent_id": "deep-work-local-agent",
+                },
+            }
+        ]
+    )
+    threads = FakeThreads(
+        state=_state(
+            interrupt_id=NEXT_OFFICIAL_INTERRUPT_ID,
+            revision=2,
+            plan=[step],
+        )
+    )
+    source, _ = _source(FakeClient(threads=threads, runs=runs))
+
+    recovered = await source.update_plan(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        expected_revision=1,
+        steps=[step],
+        transition_id=TRANSITION_ID,
+    )
+
+    assert recovered.run_id == "run-plan-accepted"
+    assert runs.stream_calls == []
 
 
 async def test_plan_edit_preserves_exact_valid_step_whitespace() -> None:
@@ -1297,6 +1394,7 @@ async def test_plan_edit_drains_run_before_reading_authoritative_state() -> None
         "get_state",
         "update_state",
         "runs.create",
+        "get_state",
         "join_stream",
         "stream_drained",
         "get_state",
@@ -1385,7 +1483,6 @@ async def test_plan_edit_requires_fresh_canonical_interrupt(
 
     assert len(client.threads.update_calls) == 1
     assert len(client.runs.create_calls) == 1
-    assert len(client.runs.stream_calls) == 1
     assert source._thread_locks == {}
 
 

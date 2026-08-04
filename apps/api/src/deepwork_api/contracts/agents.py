@@ -77,8 +77,8 @@ class AgentSummaryResponse(_AgentWireModel):
 class AgentListResponse(_AgentWireModel):
     """Agent registry listing with an honest availability flag.
 
-    ``available`` is false whenever no real task source is configured
-    (fixture mode), so an empty list is never confused with "zero agents".
+    ``available`` distinguishes a selectable registry (including the explicit
+    immutable local fixture agent) from a temporarily unavailable source.
     """
 
     available: bool

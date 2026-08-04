@@ -70,6 +70,21 @@ _SECRET_PATTERNS = (
 )
 _MAX_TASK_TITLE_LENGTH = 80
 _FIXTURE_REPOSITORY_ID = "fixture_repo_deepwork"
+_FIXTURE_AGENT_ID = "deepwork-fixture-planner"
+
+
+@dataclass(frozen=True, slots=True)
+class _FixtureAgent:
+    agent_id: str = _FIXTURE_AGENT_ID
+    name: str = "Deep Work Planner"
+    description: str = "Plans, pauses for review, and returns an evidence-backed local result."
+    system_prompt: str | None = None
+    is_default: bool = True
+    created_at: str = "2026-01-01T00:00:00Z"
+    updated_at: str = "2026-01-01T00:00:00Z"
+
+
+_FIXTURE_AGENT = _FixtureAgent()
 
 
 class _FixturePrCreateTimeout(Exception):
@@ -488,7 +503,7 @@ class TaskService:
         """Create a queued task and start its deterministic runner.
 
         ``agent_id`` selects a specific registered agent for a real-agent-mode
-        task; it has no effect in fixture mode, which has no agent registry.
+        task or the immutable local fixture agent in credential-free mode.
         """
 
         objective = sanitize_objective(prompt)
@@ -509,9 +524,12 @@ class TaskService:
                 agent_id=agent_id,
                 security_context=security_context,
             )
+        if agent_id is not None and agent_id != _FIXTURE_AGENT_ID:
+            raise TaskSourceUnavailableError
         task = await self.repository.create_task(
             title=title,
             objective=objective,
+            agent_id=agent_id,
             journey=journey,
             repository_id=repository_id,
             security_context=security_context,
@@ -522,12 +540,12 @@ class TaskService:
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
         """List agents registered on the configured real task source.
 
-        Fixture mode owns no agent registry, so this reports an honest
-        unavailable state instead of a fabricated empty list.
+        Fixture mode exposes one immutable, explicitly labeled local agent so
+        the same choose-agent contract is exercised without provider calls.
         """
 
         if not isinstance(self.runner, LocalAgentServerRunner):
-            raise AgentRegistryUnavailableError
+            return (_FIXTURE_AGENT,)
         return await self.runner.list_agents()
 
     async def create_agent(

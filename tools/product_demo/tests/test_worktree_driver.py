@@ -153,12 +153,17 @@ class DriverContractTests(unittest.TestCase):
             self.assertEqual(victim.read_text(encoding="utf-8"), "unchanged\n")
 
     def test_browser_report_requires_exact_observed_schema(self) -> None:
-        diagnostics = {"browserErrors": 0, "classifiedNavigationAborts": 1}
+        diagnostics = {
+            "blockedNetworkProbes": [],
+            "browserErrors": 0,
+            "classifiedNavigationAborts": [],
+        }
 
         def journey(label: str) -> dict[str, object]:
             prompt = f"Prepare isolated product-demo result for {label}"
             return {
                 "diagnostics": {"desktop": diagnostics, "phone": diagnostics},
+                "exportedBriefSha256": "a" * 64,
                 "label": label,
                 "liveProgressObserved": True,
                 "ownStorageObserved": f"owned-by-{label}",
@@ -166,7 +171,10 @@ class DriverContractTests(unittest.TestCase):
                 "portableDownload": True,
                 "prompt": prompt,
                 "resultText": f"Objective: {prompt}\nNext actions:",
+                "retainedEvidenceSha256": "b" * 64,
                 "retainedEventsText": "Retained events11",
+                "retainedResultSha256": "c" * 64,
+                "selectedAgentId": "deepwork-fixture-planner",
                 "sourceText": "local-runner evidence",
                 "states": [
                     "sign-in",
@@ -186,6 +194,14 @@ class DriverContractTests(unittest.TestCase):
         report = {
             "schemaVersion": 1,
             "journeys": [journey("stack-a"), journey("stack-b")],
+            "storageIsolation": [
+                {
+                    "sourceLabel": label,
+                    "ownStorageObserved": f"shared-context-owned-by-{label}",
+                    "peerStorageObserved": None,
+                }
+                for label in ("stack-a", "stack-b")
+            ],
         }
         self.assertTrue(driver._journey_report_is_complete(report))
         report["journeys"][0]["liveProgressObserved"] = False

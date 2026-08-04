@@ -17,6 +17,7 @@ import os
 import platform
 import re
 import secrets
+import stat
 import subprocess
 import sys
 import tempfile
@@ -96,6 +97,7 @@ RUN_NONCE_RE = re.compile(r"^[a-f0-9]{32,64}$")
 PRODUCT_EVIDENCE_KEYS = {
     "acceptance",
     "allocation_digests",
+    "browser_artifacts",
     "concurrency",
     "contract_semantic_sha256",
     "cross_observations",
@@ -110,6 +112,17 @@ PRODUCT_EVIDENCE_KEYS = {
     "schema_version",
     "status",
     "teardown",
+}
+BROWSER_REPORT_PATHS = {"browser/journeys.json", "browser/reopen.json"}
+BROWSER_SCREENSHOT_PATHS = {
+    f"browser/{label}/{name}.png"
+    for label in ("stack-a", "stack-b")
+    for name in (
+        "desktop-completed",
+        "phone-reopened",
+        "reopened-after-api-restart-desktop",
+        "reopened-after-api-restart-phone",
+    )
 }
 PUBLIC_MANIFEST_KEYS = {
     "browser",
@@ -374,6 +387,36 @@ def _product_schema_failures(evidence: Any) -> list[str]:
     )
     if not isinstance(evidence.get("namespaces"), list):
         failures.append("namespaces must be a list")
+    artifacts = evidence.get("browser_artifacts")
+    if not isinstance(artifacts, list):
+        failures.append("browser_artifacts must be a list")
+    else:
+        for index, record in enumerate(artifacts):
+            failures.extend(
+                _exact_keys(
+                    record,
+                    {"path", "sha256", "size_bytes"},
+                    f"browser_artifacts[{index}]",
+                )
+            )
+            if isinstance(record, dict):
+                failures.extend(
+                    _type_failure(
+                        record.get("path"), str, f"browser_artifacts[{index}].path"
+                    )
+                )
+                failures.extend(
+                    _type_failure(
+                        record.get("sha256"), str, f"browser_artifacts[{index}].sha256"
+                    )
+                )
+                failures.extend(
+                    _type_failure(
+                        record.get("size_bytes"),
+                        int,
+                        f"browser_artifacts[{index}].size_bytes",
+                    )
+                )
     if not isinstance(evidence.get("manifests"), list):
         failures.append("manifests must be a list")
     else:
@@ -614,6 +657,72 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: source.read(64 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _bounded_regular_digest(path: Path, *, maximum_bytes: int) -> tuple[int, str] | None:
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    try:
+        directory = os.open(path.parent, directory_flags)
+    except OSError:
+        return None
+    descriptor = -1
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path.name, flags, dir_fd=directory)
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= maximum_bytes:
+            return None
+        digest = hashlib.sha256()
+        remaining = metadata.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(64 * 1024, remaining))
+            if not chunk:
+                return None
+            digest.update(chunk)
+            remaining -= len(chunk)
+        return metadata.st_size, digest.hexdigest()
+    except OSError:
+        return None
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        os.close(directory)
+
+
+def _browser_artifact_failures(evidence_dir: Path, value: Any) -> list[str]:
+    expected = sorted(BROWSER_REPORT_PATHS | BROWSER_SCREENSHOT_PATHS)
+    if not isinstance(value, list) or len(value) != len(expected):
+        return ["browser artifact manifest is incomplete"]
+    observed_paths = [
+        record.get("path") for record in value if isinstance(record, dict)
+    ]
+    if observed_paths != expected:
+        return ["browser artifact manifest paths are not exact and ordered"]
+    failures: list[str] = []
+    for record in value:
+        if not isinstance(record, dict) or set(record) != {
+            "path",
+            "sha256",
+            "size_bytes",
+        }:
+            failures.append("browser artifact record schema is invalid")
+            continue
+        relative = record["path"]
+        maximum = 512 * 1024 if relative in BROWSER_REPORT_PATHS else 20 * 1024 * 1024
+        actual = _bounded_regular_digest(evidence_dir / relative, maximum_bytes=maximum)
+        if (
+            actual is None
+            or not isinstance(record.get("size_bytes"), int)
+            or actual[0] != record["size_bytes"]
+            or not isinstance(record.get("sha256"), str)
+            or not secrets.compare_digest(actual[1], record["sha256"])
+        ):
+            failures.append(f"browser artifact does not match receipt-bound digest: {relative}")
+    return failures
 
 
 def _reviewed_commit_is_ancestor(root: Path, reviewed_commit: str) -> bool:
@@ -1658,6 +1767,9 @@ def exercise(args: argparse.Namespace) -> int:
         require_clean_teardown=False,
     )
     failures.extend(
+        _browser_artifact_failures(evidence_dir, evidence.get("browser_artifacts"))
+    )
+    failures.extend(
         _teardown_failures(
             evidence.get("teardown"),
             [namespace_a, namespace_b],
@@ -2086,6 +2198,9 @@ def verify(args: argparse.Namespace) -> int:
         evidence,
         require_no_cross_observation=args.require_no_cross_observation,
         require_clean_teardown=args.require_clean_teardown,
+    )
+    failures.extend(
+        _browser_artifact_failures(evidence_dir, evidence.get("browser_artifacts"))
     )
     failures.extend(_receipt_failures(evidence_dir=evidence_dir, evidence=evidence))
     result = {

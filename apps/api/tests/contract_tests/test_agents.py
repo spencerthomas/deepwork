@@ -134,11 +134,26 @@ async def _fixture_app(**kwargs: Any) -> AsyncIterator[httpx.AsyncClient]:
             yield client
 
 
-async def test_fixture_mode_reports_an_honest_unavailable_registry() -> None:
+async def test_fixture_mode_lists_the_immutable_local_agent() -> None:
     async with _fixture_app() as client:
         response = await client.get("/api/v1/agents")
         assert response.status_code == 200
-        assert response.json() == {"available": False, "items": []}
+        assert response.json() == {
+            "available": True,
+            "items": [
+                {
+                    "agentId": "deepwork-fixture-planner",
+                    "name": "Deep Work Planner",
+                    "description": (
+                        "Plans, pauses for review, and returns an evidence-backed local result."
+                    ),
+                    "systemPrompt": None,
+                    "isDefault": True,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "updatedAt": "2026-01-01T00:00:00Z",
+                }
+            ],
+        }
 
 
 async def test_fixture_mode_refuses_agent_mutations() -> None:
@@ -156,12 +171,21 @@ async def test_fixture_mode_refuses_agent_mutations() -> None:
         assert delete.status_code == 409
 
 
-async def test_fixture_mode_task_creation_ignores_a_supplied_agent_id() -> None:
+async def test_fixture_mode_task_creation_binds_the_selected_local_agent() -> None:
     async with _fixture_app() as client:
         response = await client.post(
-            "/api/v1/tasks", json={"prompt": "Write a brief.", "agentId": "assistant-2"}
+            "/api/v1/tasks",
+            json={"prompt": "Write a brief.", "agentId": "deepwork-fixture-planner"},
         )
         assert response.status_code == 202
+        detail = await client.get(f"/api/v1/tasks/{response.json()['taskId']}")
+        assert detail.status_code == 200
+        assert detail.json()["agentId"] == "deepwork-fixture-planner"
+
+        rejected = await client.post(
+            "/api/v1/tasks", json={"prompt": "Write a brief.", "agentId": "assistant-2"}
+        )
+        assert rejected.status_code == 503
 
 
 async def test_real_agent_mode_lists_the_default_and_registered_agents(

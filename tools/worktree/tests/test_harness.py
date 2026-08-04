@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import subprocess
 import sys
@@ -342,6 +343,23 @@ class HarnessCommandTests(unittest.TestCase):
             }
             record["cleanup_digest"] = bound("cleanup", record)
             teardown.append(record)
+        evidence_dir = sandbox / "evidence"
+        evidence_dir.mkdir(exist_ok=True)
+        browser_artifacts = []
+        for relative in sorted(
+            harness.BROWSER_REPORT_PATHS | harness.BROWSER_SCREENSHOT_PATHS
+        ):
+            artifact = evidence_dir / relative
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            contents = f"retained artifact: {relative}\n".encode()
+            artifact.write_bytes(contents)
+            browser_artifacts.append(
+                {
+                    "path": relative,
+                    "size_bytes": len(contents),
+                    "sha256": hashlib.sha256(contents).hexdigest(),
+                }
+            )
         return {
             "schema_version": 1,
             "evidence_class": "product-demo",
@@ -355,6 +373,7 @@ class HarnessCommandTests(unittest.TestCase):
             "namespaces": namespaces,
             "manifests": manifests,
             "allocation_digests": allocation_digests,
+            "browser_artifacts": browser_artifacts,
             "concurrency": {
                 "a_started_at": "2026-07-23T01:00:00Z",
                 "b_started_at": "2026-07-23T01:00:01Z",
@@ -373,7 +392,7 @@ class HarnessCommandTests(unittest.TestCase):
             sandbox = Path(temporary).resolve()
             evidence = self._valid_evidence(sandbox)
             evidence_dir = sandbox / "evidence"
-            evidence_dir.mkdir()
+            evidence_dir.mkdir(exist_ok=True)
             (evidence_dir / "exercise.json").write_text(
                 json.dumps(evidence), encoding="utf-8"
             )
@@ -418,6 +437,25 @@ class HarnessCommandTests(unittest.TestCase):
                 )
             self.assertEqual(status, 0, output)
             self.assertEqual(output["status"], "passed")
+
+    def test_browser_artifact_manifest_detects_retained_file_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sandbox = Path(temporary).resolve()
+            evidence = self._valid_evidence(sandbox)
+            evidence_dir = sandbox / "evidence"
+            self.assertEqual(
+                harness._browser_artifact_failures(
+                    evidence_dir, evidence["browser_artifacts"]
+                ),
+                [],
+            )
+            target = evidence_dir / evidence["browser_artifacts"][0]["path"]
+            target.write_bytes(b"tampered\n")
+            self.assertTrue(
+                harness._browser_artifact_failures(
+                    evidence_dir, evidence["browser_artifacts"]
+                )
+            )
 
     def test_verify_rejects_digest_bound_evidence_tampering(self) -> None:
         mutations = {
@@ -513,7 +551,7 @@ class HarnessCommandTests(unittest.TestCase):
             sandbox = Path(temporary).resolve()
             evidence = self._valid_evidence(sandbox)
             evidence_dir = sandbox / "evidence"
-            evidence_dir.mkdir()
+            evidence_dir.mkdir(exist_ok=True)
             evidence_path = evidence_dir / "exercise.json"
             evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
             store = ReservationStore(sandbox / "state")
@@ -582,7 +620,7 @@ class HarnessCommandTests(unittest.TestCase):
             root_a.mkdir()
             root_b.mkdir()
             evidence_dir = sandbox / "evidence"
-            evidence_dir.mkdir()
+            evidence_dir.mkdir(exist_ok=True)
             store = ReservationStore(sandbox / "state")
             manifest_a = allocate_manifest(
                 root=root_a,

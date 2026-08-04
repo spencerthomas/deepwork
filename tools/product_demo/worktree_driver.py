@@ -9,6 +9,8 @@ evidence document requested by that harness.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import contextlib
 import datetime as dt
 import hashlib
@@ -72,6 +74,17 @@ COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
 STATE_FILE = "product-demo-state.json"
 ACCESS_KEYS = ("deepwork-product-demo-a", "deepwork-product-demo-b")
 NEXT_ENV_MAX_BYTES = 64 * 1024
+BROWSER_REPORT_PATHS = {"browser/journeys.json", "browser/reopen.json"}
+BROWSER_SCREENSHOT_PATHS = {
+    f"browser/{label}/{name}.png"
+    for label in ("stack-a", "stack-b")
+    for name in (
+        "desktop-completed",
+        "phone-reopened",
+        "reopened-after-api-restart-desktop",
+        "reopened-after-api-restart-phone",
+    )
+}
 
 
 class DriverError(RuntimeError):
@@ -235,9 +248,62 @@ def _write_private_json(path: Path, value: Any) -> None:
 
 
 def _read_bounded_json(path: Path, *, maximum_bytes: int) -> Any:
-    if path.is_symlink() or not path.is_file() or path.stat().st_size > maximum_bytes:
-        raise DriverError(f"JSON artifact is absent, linked, or oversized: {path.name}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(_read_regular_bytes(path, maximum_bytes=maximum_bytes))
+
+
+def _read_regular_bytes(path: Path, *, maximum_bytes: int) -> bytes:
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    directory = os.open(path.parent, directory_flags)
+    descriptor = -1
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path.name, flags, dir_fd=directory)
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or not 0 <= metadata.st_size <= maximum_bytes
+        ):
+            raise DriverError(f"artifact is not a bounded regular file: {path.name}")
+        chunks: list[bytes] = []
+        remaining = metadata.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(64 * 1024, remaining))
+            if not chunk:
+                raise DriverError(
+                    f"artifact ended before its recorded size: {path.name}"
+                )
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        os.close(directory)
+
+
+def _write_exclusive_bytes(path: Path, contents: bytes) -> None:
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    directory = os.open(path.parent, directory_flags)
+    descriptor = -1
+    try:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path.name, flags, 0o600, dir_fd=directory)
+        with os.fdopen(descriptor, "wb", closefd=False) as target:
+            target.write(contents)
+            target.flush()
+            os.fsync(descriptor)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        os.close(directory)
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -1085,15 +1151,19 @@ def _probe_isolation(
         and target_object.get("namespace") == target.namespace
         and source_status == 404
     )
+    label = "stack-a" if source.access_key == ACCESS_KEYS[0] else "stack-b"
     journey = next(
+        item for item in browser_report["journeys"] if item["label"] == label
+    )
+    storage = next(
         item
-        for item in browser_report["journeys"]
-        if item["label"]
-        == ("stack-a" if source.access_key == ACCESS_KEYS[0] else "stack-b")
+        for item in browser_report["storageIsolation"]
+        if item["sourceLabel"] == label
     )
     checks["browser_storage"] = (
-        journey.get("ownStorageObserved")
-        == f"owned-by-{'stack-a' if source.access_key == ACCESS_KEYS[0] else 'stack-b'}"
+        storage.get("ownStorageObserved") == f"shared-context-owned-by-{label}"
+        and storage.get("peerStorageObserved") is None
+        and journey.get("ownStorageObserved") == f"owned-by-{label}"
         and journey.get("peerStorageObserved") is None
     )
     own_status, own_telemetry = _request_json(
@@ -1179,6 +1249,56 @@ def _browser_command(
     return command
 
 
+def _run_browser(
+    command: list[str],
+    *,
+    root: Path,
+    report_path: Path,
+    browser_root: Path,
+    expected_screenshots: set[str],
+    timeout: int,
+) -> None:
+    result = subprocess.run(
+        command,
+        cwd=root,
+        env={"PATH": os.environ.get("PATH", ""), "LC_ALL": "C"},
+        check=False,
+        capture_output=True,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        safe_error = result.stderr.decode("utf-8", errors="replace")[-2_000:]
+        raise DriverError(f"sealed browser journey failed: {safe_error}")
+    if len(result.stdout) > 30 * 1024 * 1024:
+        raise DriverError("sealed browser journey output is oversized")
+    try:
+        envelope = json.loads(result.stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise DriverError("sealed browser journey output is invalid") from error
+    if not isinstance(envelope, dict) or set(envelope) != {"report", "screenshots"}:
+        raise DriverError("sealed browser journey output schema is invalid")
+    screenshots = envelope["screenshots"]
+    if not isinstance(screenshots, dict) or set(screenshots) != expected_screenshots:
+        raise DriverError("sealed browser screenshot set is not exact")
+    _write_exclusive_bytes(
+        report_path,
+        (json.dumps(envelope["report"], indent=2, sort_keys=True) + "\n").encode(),
+    )
+    for relative in sorted(expected_screenshots):
+        encoded = screenshots[relative]
+        if not isinstance(encoded, str) or len(encoded) > 28 * 1024 * 1024:
+            raise DriverError("sealed browser screenshot encoding is invalid")
+        try:
+            contents = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as error:
+            raise DriverError(
+                "sealed browser screenshot encoding is invalid"
+            ) from error
+        if not 0 < len(contents) <= 20 * 1024 * 1024:
+            raise DriverError("sealed browser screenshot size is invalid")
+        _write_exclusive_bytes(browser_root / relative, contents)
+
+
 def _assert_browser_digest(root: Path, peer: Path, expected_sha256: str) -> None:
     if not SHA_RE.fullmatch(expected_sha256):
         raise DriverError("browser journey digest input is invalid")
@@ -1231,22 +1351,86 @@ def _validate_browser_images(browser_root: Path) -> None:
             )
 
 
+def _browser_artifact_manifest(evidence_dir: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for relative in sorted(BROWSER_REPORT_PATHS | BROWSER_SCREENSHOT_PATHS):
+        maximum = 512 * 1024 if relative in BROWSER_REPORT_PATHS else 20 * 1024 * 1024
+        contents = _read_regular_bytes(evidence_dir / relative, maximum_bytes=maximum)
+        if not contents:
+            raise DriverError(f"browser artifact is empty: {relative}")
+        records.append(
+            {
+                "path": relative,
+                "size_bytes": len(contents),
+                "sha256": _sha256_bytes(contents),
+            }
+        )
+    return records
+
+
 def _browser_diagnostics_are_clean(value: Any) -> bool:
-    return (
-        isinstance(value, dict)
-        and set(value) == {"browserErrors", "classifiedNavigationAborts"}
-        and value.get("browserErrors") == 0
-        and isinstance(value.get("classifiedNavigationAborts"), int)
-        and value["classifiedNavigationAborts"] >= 0
-    )
+    if not isinstance(value, dict) or set(value) != {
+        "blockedNetworkProbes",
+        "browserErrors",
+        "classifiedNavigationAborts",
+    }:
+        return False
+    aborts = value.get("classifiedNavigationAborts")
+    probes = value.get("blockedNetworkProbes")
+    if (
+        value.get("browserErrors") != 0
+        or not isinstance(aborts, list)
+        or len(aborts) > 5
+    ):
+        return False
+    if not isinstance(probes, list) or len(probes) not in {0, 5}:
+        return False
+    login_aborts = 0
+    for record in aborts:
+        if not isinstance(record, dict) or set(record) != {
+            "method",
+            "path",
+            "resourceType",
+        }:
+            return False
+        if (
+            record.get("method") == "POST"
+            and record.get("path") == "/api/v1/auth/login"
+        ):
+            login_aborts += 1
+            if record.get("resourceType") not in {"fetch", "xhr"}:
+                return False
+        elif not (
+            record.get("method") == "GET"
+            and isinstance(record.get("path"), str)
+            and re.fullmatch(r"/api/v1/tasks/task_[0-9]{8}/events", record["path"])
+            and record.get("resourceType") in {"eventsource", "fetch"}
+        ):
+            return False
+    if login_aborts > 1:
+        return False
+    for record in probes:
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"method", "path", "resourceType"}
+            or not isinstance(record.get("path"), str)
+            or not record["path"].startswith("/__deepwork_policy_probe")
+        ):
+            return False
+    return True
 
 
 def _journey_report_is_complete(report: Any) -> bool:
-    if not isinstance(report, dict) or set(report) != {"schemaVersion", "journeys"}:
+    if not isinstance(report, dict) or set(report) != {
+        "schemaVersion",
+        "journeys",
+        "storageIsolation",
+    }:
         return False
     journeys = report.get("journeys")
     expected_keys = {
         "diagnostics",
+        "exportedBriefSha256",
         "label",
         "liveProgressObserved",
         "ownStorageObserved",
@@ -1254,7 +1438,10 @@ def _journey_report_is_complete(report: Any) -> bool:
         "portableDownload",
         "prompt",
         "resultText",
+        "retainedEvidenceSha256",
         "retainedEventsText",
+        "retainedResultSha256",
+        "selectedAgentId",
         "sourceText",
         "states",
         "taskPath",
@@ -1297,6 +1484,15 @@ def _journey_report_is_complete(report: Any) -> bool:
             or not re.search(r"[1-9][0-9]*", journey["retainedEventsText"])
             or journey.get("portableDownload") is not True
             or journey.get("liveProgressObserved") is not True
+            or journey.get("selectedAgentId") != "deepwork-fixture-planner"
+            or not all(
+                isinstance(journey.get(field), str) and SHA_RE.fullmatch(journey[field])
+                for field in (
+                    "exportedBriefSha256",
+                    "retainedEvidenceSha256",
+                    "retainedResultSha256",
+                )
+            )
             or journey.get("ownStorageObserved") != f"owned-by-{label}"
             or journey.get("peerStorageObserved") is not None
             or journey.get("states") != expected_states
@@ -1307,6 +1503,19 @@ def _journey_report_is_complete(report: Any) -> bool:
                 _browser_diagnostics_are_clean(diagnostics.get(viewport))
                 for viewport in ("desktop", "phone")
             )
+        ):
+            return False
+    storage = report.get("storageIsolation")
+    if not isinstance(storage, list) or len(storage) != 2:
+        return False
+    for label, record in zip(("stack-a", "stack-b"), storage, strict=True):
+        if (
+            not isinstance(record, dict)
+            or set(record)
+            != {"sourceLabel", "ownStorageObserved", "peerStorageObserved"}
+            or record.get("sourceLabel") != label
+            or record.get("ownStorageObserved") != f"shared-context-owned-by-{label}"
+            or record.get("peerStorageObserved") is not None
         ):
             return False
     return True
@@ -1382,24 +1591,12 @@ def _copy_failure_logs(stack: Stack, evidence_dir: Path) -> None:
     else:
         diagnostic_dir.mkdir(mode=0o700)
     for log in stack.logs.glob("*.log"):
-        if (
-            log.is_file()
-            and not log.is_symlink()
-            and log.stat().st_size <= 2 * 1024 * 1024
-        ):
-            destination = diagnostic_dir / log.name
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            descriptor = os.open(destination, flags, 0o600)
-            try:
-                with (
-                    log.open("rb") as source,
-                    os.fdopen(descriptor, "wb", closefd=False) as target,
-                ):
-                    shutil.copyfileobj(source, target, length=64 * 1024)
-            finally:
-                os.close(descriptor)
+        try:
+            contents = _read_regular_bytes(log, maximum_bytes=2 * 1024 * 1024)
+        except (DriverError, OSError):
+            continue
+        if contents:
+            _write_exclusive_bytes(diagnostic_dir / log.name, contents)
 
 
 def _cleanup_remaining(
@@ -1476,11 +1673,16 @@ def dual_exercise(args: argparse.Namespace) -> int:
         for stack in stacks:
             _write_proof_marker(stack, job_ids_by_namespace[stack.namespace])
         _assert_browser_digest(root, peer, args.browser_sha256)
-        subprocess.run(
+        _run_browser(
             _browser_command(root, node, browser_report_path, stacks),
-            cwd=root,
-            env={"PATH": os.environ.get("PATH", ""), "LC_ALL": "C"},
-            check=True,
+            root=root,
+            report_path=browser_report_path,
+            browser_root=browser_root,
+            expected_screenshots={
+                f"{label}/{name}.png"
+                for label in ("stack-a", "stack-b")
+                for name in ("desktop-completed", "phone-reopened")
+            },
             timeout=180,
         )
         browser_report = _read_bounded_json(
@@ -1506,11 +1708,16 @@ def dual_exercise(args: argparse.Namespace) -> int:
             raise DriverError("one or more cross-stack isolation probes failed")
         task_paths = tuple(item["taskPath"] for item in browser_report["journeys"])
         _assert_browser_digest(root, peer, args.browser_sha256)
-        subprocess.run(
+        _run_browser(
             _browser_command(root, node, reopen_report_path, stacks, reopen=task_paths),
-            cwd=root,
-            env={"PATH": os.environ.get("PATH", ""), "LC_ALL": "C"},
-            check=True,
+            root=root,
+            report_path=reopen_report_path,
+            browser_root=browser_root,
+            expected_screenshots={
+                f"{label}/reopened-after-api-restart-{viewport}.png"
+                for label in ("stack-a", "stack-b")
+                for viewport in ("desktop", "phone")
+            },
             timeout=120,
         )
         reopen_report = _read_bounded_json(reopen_report_path, maximum_bytes=512 * 1024)
@@ -1519,6 +1726,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
                 "desktop and phone fresh-browser reopen after API restart were not proven"
             )
         _validate_browser_images(browser_root)
+        browser_artifacts = _browser_artifact_manifest(evidence_dir)
 
         public = [public_manifest(manifest_a), public_manifest(manifest_b)]
         allocation_digests = {
@@ -1607,6 +1815,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
             "namespaces": [stack.namespace for stack in stacks],
             "manifests": public,
             "allocation_digests": allocation_digests,
+            "browser_artifacts": browser_artifacts,
             "concurrency": {
                 "a_started_at": stacks[0].started_at,
                 "b_started_at": stacks[1].started_at,

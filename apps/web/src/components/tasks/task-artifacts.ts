@@ -42,7 +42,12 @@ export function buildTaskArtifacts(
       description: record.summary,
       mimeType: "application/json",
       content: JSON.stringify(
-        { taskId: detail?.taskId ?? null, runId: detail?.runId ?? null, evidence: record },
+        {
+          taskId: detail?.taskId ?? null,
+          runId: detail?.runId ?? null,
+          objective: detail?.objective ?? null,
+          evidence: record,
+        },
         null,
         2,
       ),

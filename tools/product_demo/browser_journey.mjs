@@ -345,6 +345,7 @@ async function completeJourney(browser, config) {
   if (
     retainedEvidenceRecord.taskId !== new URL(taskUrl).pathname.split("/").at(-1) ||
     !/^run_[0-9]{8}$/.test(String(retainedEvidenceRecord.runId ?? "")) ||
+    retainedEvidenceRecord.objective !== prompt ||
     retainedEvidenceRecord.evidence?.source !== "deterministic-local-runner" ||
     !String(retainedEvidenceRecord.evidence?.summary ?? "").includes(
       "deterministic local runner classified",

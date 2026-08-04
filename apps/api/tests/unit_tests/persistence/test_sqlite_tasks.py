@@ -28,6 +28,7 @@ from deepwork_api.domain import (
     DecisionConflictError,
     DecisionRecord,
     DecisionValue,
+    EventData,
     EvidenceKind,
     EvidenceRecord,
     EvidenceSource,
@@ -40,8 +41,32 @@ from deepwork_api.domain import (
     TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskStatus,
 )
+
+
+def _coding_event_data() -> EventData:
+    return (
+        ("evidenceClass", "fixture"),
+        ("repositoryId", "fixture_repo_deepwork"),
+        ("repository", "deepwork-fixtures/sample-app"),
+        ("baseBranch", "main"),
+        ("baseSha", "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17"),
+        ("headSha", "bb525814d85c6e2e35233d703e0a4069dd625d75"),
+        ("environment", "Deep Work Node fixture"),
+        ("environmentVersion", 1),
+        ("snapshotDigest", "sha256:4e7d3f64f7df824d"),
+        ("sandboxState", "cleaned"),
+        ("setupStatus", "passed"),
+        ("changedFiles", ("src/session.ts", "tests/session.test.ts")),
+        ("draftPrNumber", 17),
+        ("draftPrStatus", "draft"),
+        ("prCreateAttempts", 2),
+        ("reconciledAfterTimeout", True),
+        ("checks", ("lint:passed", "tests:passed")),
+        ("mergeState", "unavailable"),
+    )
 
 
 async def test_selected_agent_identity_survives_repository_reopen(tmp_path: Path) -> None:
@@ -61,6 +86,101 @@ async def test_selected_agent_identity_survives_repository_reopen(tmp_path: Path
         assert retained.agent_id == "assistant-2"
         event = (await reopened.events_after(created.task_id, 0))[0]
         assert dict(event.data)["agentId"] == "assistant-2"
+    finally:
+        await reopened.close()
+
+
+async def test_latest_coding_query_uses_name_led_index(tmp_path: Path) -> None:
+    database = tmp_path / "tasks.sqlite"
+    repository = SQLiteTaskRepository(database)
+    await repository.initialize()
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        plan = tuple(
+            connection.execute(
+                f"EXPLAIN QUERY PLAN {sqlite_adapter._LATEST_CODING_EVENTS_QUERY}",
+                (TaskEventName.CODING_COMPLETED.value,),
+            )
+        )
+        indexed_columns = tuple(
+            (str(row[2]), int(row[3]))
+            for row in connection.execute("PRAGMA index_xinfo(events_name_task_order)")
+            if int(row[5]) == 1
+        )
+
+    assert any("events_name_task_order" in str(row[3]) for row in plan)
+    assert indexed_columns == (("name", 0), ("task_id", 0), ("event_id", 1))
+
+
+async def test_sqlite_coding_projection_requires_completion_and_survives_reopen(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "tasks.sqlite"
+    repository = SQLiteTaskRepository(database)
+
+    cancelled_task = await repository.create_task(
+        title="Cancelled coding task",
+        objective="Do not expose incomplete coding proof",
+        journey=TaskJourney.CODING,
+        repository_id="fixture_repo_deepwork",
+    )
+    await repository.append_event(
+        cancelled_task.task_id,
+        name=TaskEventName.RUN_STARTED,
+        data=(("runId", cancelled_task.run_id), ("status", TaskStatus.RUNNING.value)),
+        status=TaskStatus.RUNNING,
+    )
+    await repository.append_event(
+        cancelled_task.task_id,
+        name=TaskEventName.CODING_COMPLETED,
+        data=_coding_event_data(),
+    )
+    assert (await repository.get_task(cancelled_task.task_id)).coding is None
+    await repository.cancel_task(cancelled_task.task_id)
+    assert (await repository.get_task(cancelled_task.task_id)).coding is None
+
+    completed_task = await repository.create_task(
+        title="Completed coding task",
+        objective="Retain completed coding proof",
+        journey=TaskJourney.CODING,
+        repository_id="fixture_repo_deepwork",
+    )
+    await repository.append_event(
+        completed_task.task_id,
+        name=TaskEventName.RUN_STARTED,
+        data=(("runId", completed_task.run_id), ("status", TaskStatus.RUNNING.value)),
+        status=TaskStatus.RUNNING,
+    )
+    await repository.append_event(
+        completed_task.task_id,
+        name=TaskEventName.CODING_COMPLETED,
+        data=_coding_event_data(),
+    )
+    assert (await repository.get_task(completed_task.task_id)).coding is None
+    await repository.append_event(
+        completed_task.task_id,
+        name=TaskEventName.RUN_COMPLETED,
+        data=(
+            ("runId", completed_task.run_id),
+            ("status", TaskStatus.COMPLETED.value),
+            ("safeReason", "Completed by the deterministic local fixture runner."),
+            ("resultAvailable", True),
+        ),
+        status=TaskStatus.COMPLETED,
+        result="Completed fixture result.",
+    )
+    completed = await repository.get_task(completed_task.task_id)
+    assert completed.coding is not None
+    assert completed.coding.draft_pr_number == 17
+    await repository.close()
+
+    reopened = SQLiteTaskRepository(database)
+    try:
+        assert (await reopened.get_task(cancelled_task.task_id)).coding is None
+        retained = await reopened.get_task(completed_task.task_id)
+        assert retained.coding == completed.coding
+        assert retained.result == "Completed fixture result."
     finally:
         await reopened.close()
 
@@ -1148,15 +1268,40 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
                 task_id TEXT, interrupt_id TEXT, decision TEXT, response_digest TEXT
             );
             CREATE INDEX events_task_order ON events(task_id, event_id);
+            CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 3;
+            PRAGMA user_version = 4;
             """
         )
 
     repository = SQLiteTaskRepository(database)
     with pytest.raises(SQLiteTaskRepositorySchemaError, match="schema shape"):
         await repository.initialize()
+
+
+async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> None:
+    database = tmp_path / "schema-v3.sqlite"
+    with sqlite3.connect(database) as connection:
+        for statement in sqlite_adapter._SCHEMA_STATEMENTS:
+            if "events_name_task_order" not in statement:
+                connection.execute(statement)
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 3")
+
+    repository = SQLiteTaskRepository(database)
+    await repository.initialize()
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        indexed_columns = tuple(
+            (str(row[2]), int(row[3]))
+            for row in connection.execute("PRAGMA index_xinfo(events_name_task_order)")
+            if int(row[5]) == 1
+        )
+    assert version == 4
+    assert indexed_columns == (("name", 0), ("task_id", 0), ("event_id", 1))
 
 
 def _seed_v1_database(database: Path) -> None:
@@ -1261,7 +1406,7 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(tasks)")]
-    assert version == 3
+    assert version == 4
     assert columns[-1] == "created_at"
 
     reopened = SQLiteTaskRepository(database)
@@ -1384,7 +1529,7 @@ async def test_legacy_v2_database_upgrades_preserving_recorded_timestamps(
         notnull = {
             str(row[1]): int(row[3]) for row in connection.execute("PRAGMA table_info(tasks)")
         }
-    assert version == 3
+    assert version == 4
     assert columns[-1] == "created_at"
     assert notnull["created_at"] == 0
 

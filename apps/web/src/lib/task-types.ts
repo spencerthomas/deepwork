@@ -7,6 +7,7 @@ export const TASK_EVENT_NAMES = [
   "evidence.recorded",
   "interrupt.requested",
   "decision.recorded",
+  "coding.completed",
   "run.completed",
 ] as const;
 
@@ -41,6 +42,28 @@ export interface TaskSummary {
   createdAt?: string;
   lastEventId?: number;
   updatedAt?: string;
+  journey?: "coding";
+}
+
+export interface CodingOutcome {
+  evidenceClass: "fixture";
+  repositoryId: "fixture_repo_deepwork";
+  repository: string;
+  baseBranch: string;
+  baseSha: string;
+  headSha: string;
+  environment: string;
+  environmentVersion: number;
+  snapshotDigest: string;
+  sandboxState: "cleaned";
+  setupStatus: "passed";
+  changedFiles: string[];
+  draftPrNumber: number;
+  draftPrStatus: "draft";
+  prCreateAttempts: number;
+  reconciledAfterTimeout: boolean;
+  checks: string[];
+  mergeState: "unavailable";
 }
 
 export interface TaskDetail extends TaskSummary {
@@ -48,6 +71,7 @@ export interface TaskDetail extends TaskSummary {
   pendingInterrupt?: ActiveInterrupt;
   proposedPlan?: ProposedPlan;
   result?: string;
+  coding?: CodingOutcome;
 }
 
 export interface CreateTaskResult {
@@ -152,7 +176,14 @@ export interface TaskClient {
   readonly mode: ClientMode;
   readonly apiBaseUrl: string;
   cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult>;
-  createTask(prompt: string, agentId?: string, signal?: AbortSignal): Promise<CreateTaskResult>;
+  createTask(
+    prompt: string,
+    options?: Readonly<{
+      agentId?: string;
+      journey?: "coding";
+      signal?: AbortSignal;
+    }>,
+  ): Promise<CreateTaskResult>;
   decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<DecisionResult>;
   decideBatch(
     taskId: string,

@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   ClipboardList,
+  GitPullRequest,
   Paperclip,
   PencilLine,
   Play,
@@ -52,6 +53,7 @@ const EVENT_ICONS: Record<TaskEventName, IconComponent> = {
   "evidence.recorded": Paperclip,
   "interrupt.requested": ShieldQuestion,
   "decision.recorded": Check,
+  "coding.completed": GitPullRequest,
   "run.completed": CheckCircle2,
 };
 

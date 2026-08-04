@@ -2,6 +2,7 @@ import type {
   ActionRequest,
   ActiveInterrupt,
   CancelResult,
+  CodingOutcome,
   CreateTaskResult,
   DecisionBatchInput,
   DecisionBatchResult,
@@ -239,6 +240,9 @@ export function normalizeTaskSummary(value: unknown, context = "Task"): TaskSumm
   const prompt = optionalString(value, "prompt") ?? optionalString(value, "objective");
   const explicitTitle = optionalString(value, "title");
   const fallbackTitle = prompt ?? `Task ${taskId.slice(0, 8)}`;
+  if (value.journey !== undefined && value.journey !== "coding") {
+    throw new ContractError(`${context} contains an unsupported journey.`);
+  }
 
   return {
     taskId,
@@ -253,6 +257,70 @@ export function normalizeTaskSummary(value: unknown, context = "Task"): TaskSumm
         ? Number(value.lastEventId)
         : undefined,
     updatedAt: optionalString(value, "updatedAt"),
+    ...(value.journey === "coding" ? { journey: "coding" as const } : {}),
+  };
+}
+
+function normalizeCodingOutcome(value: unknown): CodingOutcome {
+  if (!isRecord(value)) {
+    throw new ContractError("Task detail coding outcome must be an object.");
+  }
+  const positiveInteger = (key: string): number => {
+    const candidate = value[key];
+    if (!Number.isSafeInteger(candidate) || Number(candidate) < 1) {
+      throw new ContractError(`Task detail coding outcome is missing a valid ${key}.`);
+    }
+    return Number(candidate);
+  };
+  const stringList = (key: string, maximum: number): string[] => {
+    const candidate = value[key];
+    if (
+      !Array.isArray(candidate) ||
+      candidate.length < 1 ||
+      candidate.length > maximum ||
+      candidate.some((item) => typeof item !== "string" || item.trim() === "")
+    ) {
+      throw new ContractError(`Task detail coding outcome is missing valid ${key}.`);
+    }
+    return [...candidate] as string[];
+  };
+  const baseSha = requiredString(value, "baseSha", "Task detail coding outcome");
+  const headSha = requiredString(value, "headSha", "Task detail coding outcome");
+  const snapshotDigest = requiredString(value, "snapshotDigest", "Task detail coding outcome");
+  if (
+    value.evidenceClass !== "fixture" ||
+    value.repositoryId !== "fixture_repo_deepwork" ||
+    !/^[a-f0-9]{40}$/.test(baseSha) ||
+    !/^[a-f0-9]{40}$/.test(headSha) ||
+    baseSha === headSha ||
+    !/^sha256:[a-f0-9]{16,64}$/.test(snapshotDigest) ||
+    value.sandboxState !== "cleaned" ||
+    value.setupStatus !== "passed" ||
+    value.draftPrStatus !== "draft" ||
+    value.mergeState !== "unavailable" ||
+    typeof value.reconciledAfterTimeout !== "boolean"
+  ) {
+    throw new ContractError("Task detail coding outcome state is invalid.");
+  }
+  return {
+    evidenceClass: "fixture",
+    repositoryId: "fixture_repo_deepwork",
+    repository: requiredString(value, "repository", "Task detail coding outcome"),
+    baseBranch: requiredString(value, "baseBranch", "Task detail coding outcome"),
+    baseSha,
+    headSha,
+    environment: requiredString(value, "environment", "Task detail coding outcome"),
+    environmentVersion: positiveInteger("environmentVersion"),
+    snapshotDigest,
+    sandboxState: "cleaned",
+    setupStatus: "passed",
+    changedFiles: stringList("changedFiles", 100),
+    draftPrNumber: positiveInteger("draftPrNumber"),
+    draftPrStatus: "draft",
+    prCreateAttempts: positiveInteger("prCreateAttempts"),
+    reconciledAfterTimeout: value.reconciledAfterTimeout,
+    checks: stringList("checks", 50),
+    mergeState: "unavailable",
   };
 }
 
@@ -261,8 +329,16 @@ export function normalizeTaskDetail(value: unknown): TaskDetail {
     throw new ContractError("Task detail must be an object.");
   }
 
+  const summary = normalizeTaskSummary(value, "Task detail");
+  const coding =
+    value.coding === undefined || value.coding === null
+      ? undefined
+      : normalizeCodingOutcome(value.coding);
+  if (coding !== undefined && summary.journey !== "coding") {
+    throw new ContractError("Task detail coding outcome has no coding journey.");
+  }
   return {
-    ...normalizeTaskSummary(value, "Task detail"),
+    ...summary,
     evidence:
       value.evidence === undefined
         ? undefined
@@ -277,6 +353,7 @@ export function normalizeTaskDetail(value: unknown): TaskDetail {
         : normalizeProposedPlan(value.proposedPlan, "Task detail proposedPlan"),
     result:
       getResultText(value.result) ?? getResultText(value.output) ?? getResultText(value.summary),
+    ...(coding === undefined ? {} : { coding }),
   };
 }
 

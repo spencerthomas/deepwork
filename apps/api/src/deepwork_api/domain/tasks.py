@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -76,7 +78,144 @@ class TaskEventName(StrEnum):
     EVIDENCE_RECORDED = "evidence.recorded"
     INTERRUPT_REQUESTED = "interrupt.requested"
     DECISION_RECORDED = "decision.recorded"
+    CODING_COMPLETED = "coding.completed"
     RUN_COMPLETED = "run.completed"
+
+
+class TaskJourney(StrEnum):
+    """Optional first-class journey selected at task creation."""
+
+    CODING = "coding"
+
+
+@dataclass(frozen=True, slots=True)
+class CodingOutcome:
+    """Client-safe exact-revision coding proof projected from retained events."""
+
+    evidence_class: str
+    repository_id: str
+    repository: str
+    base_branch: str
+    base_sha: str
+    head_sha: str
+    environment: str
+    environment_version: int
+    snapshot_digest: str
+    sandbox_state: str
+    setup_status: str
+    changed_files: tuple[str, ...]
+    draft_pr_number: int
+    draft_pr_status: str
+    pr_create_attempts: int
+    reconciled_after_timeout: bool
+    checks: tuple[str, ...]
+    merge_state: str
+
+
+_GIT_SHA_PATTERN = re.compile(r"^[a-f0-9]{40}$")
+_SNAPSHOT_DIGEST_PATTERN = re.compile(r"^sha256:[a-f0-9]{16,64}$")
+
+
+def coding_outcome_from_event_data(data: Mapping[str, EventDataValue]) -> CodingOutcome:
+    """Validate the normalized credential-free coding event projection."""
+
+    expected = {
+        "evidenceClass",
+        "repositoryId",
+        "repository",
+        "baseBranch",
+        "baseSha",
+        "headSha",
+        "environment",
+        "environmentVersion",
+        "snapshotDigest",
+        "sandboxState",
+        "setupStatus",
+        "changedFiles",
+        "draftPrNumber",
+        "draftPrStatus",
+        "prCreateAttempts",
+        "reconciledAfterTimeout",
+        "checks",
+        "mergeState",
+    }
+    if set(data) != expected:
+        raise ValueError("coding outcome fields are invalid")
+
+    def required_string(key: str, maximum: int = 200) -> str:
+        value = data[key]
+        if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+            raise ValueError(f"coding outcome {key} is invalid")
+        return value
+
+    def required_integer(key: str) -> int:
+        value = data[key]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ValueError(f"coding outcome {key} is invalid")
+        return value
+
+    def string_tuple(key: str, maximum: int) -> tuple[str, ...]:
+        value = data[key]
+        if (
+            not isinstance(value, tuple)
+            or not 1 <= len(value) <= maximum
+            or any(not isinstance(item, str) or not item or len(item) > 200 for item in value)
+        ):
+            raise ValueError(f"coding outcome {key} is invalid")
+        return value
+
+    evidence_class = required_string("evidenceClass")
+    repository_id = required_string("repositoryId")
+    repository = required_string("repository")
+    base_branch = required_string("baseBranch")
+    base_sha = required_string("baseSha", 40)
+    head_sha = required_string("headSha", 40)
+    environment = required_string("environment")
+    environment_version = required_integer("environmentVersion")
+    snapshot_digest = required_string("snapshotDigest", 71)
+    sandbox_state = required_string("sandboxState")
+    setup_status = required_string("setupStatus")
+    changed_files = string_tuple("changedFiles", 100)
+    draft_pr_number = required_integer("draftPrNumber")
+    draft_pr_status = required_string("draftPrStatus")
+    pr_create_attempts = required_integer("prCreateAttempts")
+    reconciled_after_timeout = data["reconciledAfterTimeout"]
+    checks = string_tuple("checks", 50)
+    merge_state = required_string("mergeState")
+    if (
+        evidence_class != "fixture"
+        or repository_id != "fixture_repo_deepwork"
+        or not _GIT_SHA_PATTERN.fullmatch(base_sha)
+        or not _GIT_SHA_PATTERN.fullmatch(head_sha)
+        or base_sha == head_sha
+        or not _SNAPSHOT_DIGEST_PATTERN.fullmatch(snapshot_digest)
+        or sandbox_state != "cleaned"
+        or setup_status != "passed"
+        or draft_pr_status != "draft"
+        or not isinstance(reconciled_after_timeout, bool)
+        or merge_state != "unavailable"
+    ):
+        raise ValueError("coding outcome state is invalid")
+    return CodingOutcome(
+        evidence_class=evidence_class,
+        repository_id=repository_id,
+        repository=repository,
+        base_branch=base_branch,
+        base_sha=base_sha,
+        head_sha=head_sha,
+        environment=environment,
+        environment_version=environment_version,
+        snapshot_digest=snapshot_digest,
+        sandbox_state=sandbox_state,
+        setup_status=setup_status,
+        changed_files=changed_files,
+        draft_pr_number=draft_pr_number,
+        draft_pr_status=draft_pr_status,
+        pr_create_attempts=pr_create_attempts,
+        reconciled_after_timeout=reconciled_after_timeout,
+        checks=checks,
+        merge_state=merge_state,
+    )
 
 
 class EvidenceKind(StrEnum):
@@ -153,6 +292,13 @@ class TaskSnapshot:
     # The source assistant selected for this run. Older fixture tasks and
     # pre-agent-registry event histories legitimately have no retained value.
     agent_id: str | None = None
+    # Absent for the original general-purpose task contract. Coding tasks bind a
+    # reviewed fixture repository at creation and retain their exact-revision
+    # outcome as a normalized event; no provider token or auth reference enters
+    # this snapshot.
+    journey: TaskJourney | None = None
+    repository_id: str | None = None
+    coding: CodingOutcome | None = None
 
 
 @dataclass(frozen=True, slots=True)

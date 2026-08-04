@@ -107,7 +107,7 @@ test("creates, approves, and completes one API-backed task", async ({
 
   await page.goto("/tasks/new");
   await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
-  await expect(page.getByRole("radio", { checked: true })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /General task/, checked: true })).toBeVisible();
 
   await page.evaluate(async (host) => {
     const webSocketProbe = new Promise<void>((resolve) => {

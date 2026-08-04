@@ -7,7 +7,10 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from deepwork_api.adapters.fixture import InMemoryTaskRepository
-from deepwork_api.application.tasks import sanitize_objective
+from deepwork_api.application.tasks import (
+    _reconcile_fixture_draft_pr_after_timeout,
+    sanitize_objective,
+)
 from deepwork_api.contracts.tasks import (
     InterruptRequestedEventData,
     PendingInterruptResponse,
@@ -24,10 +27,12 @@ from deepwork_api.domain import (
     MAX_PLAN_STEPS,
     DecisionConflictError,
     DecisionValue,
+    EventData,
     PlanRevisionConflictError,
     ProposedPlan,
     TaskAlreadyResolvedError,
     TaskEventName,
+    TaskJourney,
     TaskSnapshot,
     TaskStatus,
 )
@@ -41,6 +46,39 @@ def _plan_proposed_payload(step_count: int) -> dict[str, Any]:
         "evidenceRefs": [],
         "evidenceClass": "fixture",
     }
+
+
+def _coding_event_data() -> EventData:
+    return (
+        ("evidenceClass", "fixture"),
+        ("repositoryId", "fixture_repo_deepwork"),
+        ("repository", "deepwork-fixtures/sample-app"),
+        ("baseBranch", "main"),
+        ("baseSha", "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17"),
+        ("headSha", "bb525814d85c6e2e35233d703e0a4069dd625d75"),
+        ("environment", "Deep Work Node fixture"),
+        ("environmentVersion", 1),
+        ("snapshotDigest", "sha256:4e7d3f64f7df824d"),
+        ("sandboxState", "cleaned"),
+        ("setupStatus", "passed"),
+        ("changedFiles", ("src/session.ts", "tests/session.test.ts")),
+        ("draftPrNumber", 17),
+        ("draftPrStatus", "draft"),
+        ("prCreateAttempts", 2),
+        ("reconciledAfterTimeout", True),
+        ("checks", ("lint:passed", "tests:passed")),
+        ("mergeState", "unavailable"),
+    )
+
+
+def test_fixture_pr_timeout_reconciliation_reuses_retained_draft() -> None:
+    result = _reconcile_fixture_draft_pr_after_timeout()
+
+    assert result.draft_pr_number == 17
+    assert result.draft_pr_status == "draft"
+    assert result.pr_create_attempts == 2
+    assert result.reconciled_after_timeout is True
+    assert result.created_draft_numbers == (17,)
 
 
 def test_plan_proposed_event_steps_use_the_shared_max_plan_steps_bound() -> None:
@@ -294,6 +332,36 @@ async def test_in_memory_cancel_terminates_a_running_task_and_wakes_waiters() ->
 
     # Cancelling again is an idempotent no-op; a resolved task is refused.
     assert (await repository.cancel_task(task.task_id)).duplicate is True
+
+
+async def test_in_memory_hides_coding_before_completion_and_after_cancellation() -> None:
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(
+        title="Coding task",
+        objective="Retain coherent coding proof",
+        journey=TaskJourney.CODING,
+        repository_id="fixture_repo_deepwork",
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.RUN_STARTED,
+        data=(("runId", task.run_id), ("status", TaskStatus.RUNNING.value)),
+        status=TaskStatus.RUNNING,
+    )
+    await repository.append_event(
+        task.task_id,
+        name=TaskEventName.CODING_COMPLETED,
+        data=_coding_event_data(),
+    )
+
+    assert (await repository.get_task(task.task_id)).coding is None
+    assert (await repository.list_tasks())[0].coding is None
+
+    await repository.cancel_task(task.task_id)
+    cancelled = await repository.get_task(task.task_id)
+    assert cancelled.status is TaskStatus.CANCELLED
+    assert cancelled.result is None
+    assert cancelled.coding is None
 
 
 async def test_in_memory_cancel_refuses_a_rejected_task() -> None:

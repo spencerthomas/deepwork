@@ -21,6 +21,7 @@ from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
     CancellationRecord,
+    CodingOutcome,
     DecisionBatchRecord,
     DecisionRecord,
     DecisionType,
@@ -32,6 +33,7 @@ from deepwork_api.domain import (
     ProposedPlan,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskSnapshot,
     TaskStatus,
 )
@@ -78,6 +80,15 @@ class TaskCreateRequest(_TaskWireModel):
             "system prompt."
         ),
     )
+    journey: Literal["coding"] | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
+    repository_id: Literal["fixture_repo_deepwork"] | None = Field(
+        default=None,
+        alias="repositoryId",
+        exclude_if=lambda value: value is None,
+    )
 
     @field_validator("prompt")
     @classmethod
@@ -88,6 +99,12 @@ class TaskCreateRequest(_TaskWireModel):
         if not value.strip():
             raise ValueError("prompt must contain visible text")
         return value
+
+    @model_validator(mode="after")
+    def validate_coding_binding(self) -> TaskCreateRequest:
+        if (self.journey == "coding") != (self.repository_id is not None):
+            raise ValueError("coding journey requires the reviewed fixture repository")
+        return self
 
 
 class TaskAcceptedResponse(_TaskWireModel):
@@ -227,6 +244,10 @@ class TaskSummaryResponse(_TaskWireModel):
     objective: str = Field(min_length=1, max_length=MAX_TASK_OBJECTIVE_LENGTH)
     status: TaskWireStatus
     last_event_id: int = Field(alias="lastEventId", ge=1)
+    journey: Literal["coding"] | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
     @classmethod
     def from_domain(cls, task: TaskSnapshot) -> TaskSummaryResponse:
@@ -239,6 +260,7 @@ class TaskSummaryResponse(_TaskWireModel):
             objective=task.objective,
             status=_wire_status(task.status),
             last_event_id=task.last_event_id,
+            journey=("coding" if task.journey is TaskJourney.CODING else None),
         )
 
 
@@ -248,6 +270,52 @@ class TaskListResponse(_TaskWireModel):
     items: tuple[TaskSummaryResponse, ...]
 
 
+class CodingOutcomeResponse(_TaskWireModel):
+    """Exact-revision coding evidence with an explicit fixture truth class."""
+
+    evidence_class: Literal["fixture"] = Field(alias="evidenceClass")
+    repository_id: Literal["fixture_repo_deepwork"] = Field(alias="repositoryId")
+    repository: str = Field(min_length=1, max_length=200)
+    base_branch: str = Field(alias="baseBranch", min_length=1, max_length=100)
+    base_sha: str = Field(alias="baseSha", pattern=r"^[a-f0-9]{40}$")
+    head_sha: str = Field(alias="headSha", pattern=r"^[a-f0-9]{40}$")
+    environment: str = Field(min_length=1, max_length=200)
+    environment_version: int = Field(alias="environmentVersion", strict=True, ge=1)
+    snapshot_digest: str = Field(alias="snapshotDigest", pattern=r"^sha256:[a-f0-9]{16,64}$")
+    sandbox_state: Literal["cleaned"] = Field(alias="sandboxState")
+    setup_status: Literal["passed"] = Field(alias="setupStatus")
+    changed_files: tuple[str, ...] = Field(alias="changedFiles", min_length=1, max_length=100)
+    draft_pr_number: int = Field(alias="draftPrNumber", strict=True, ge=1)
+    draft_pr_status: Literal["draft"] = Field(alias="draftPrStatus")
+    pr_create_attempts: int = Field(alias="prCreateAttempts", strict=True, ge=1)
+    reconciled_after_timeout: bool = Field(alias="reconciledAfterTimeout")
+    checks: tuple[str, ...] = Field(min_length=1, max_length=50)
+    merge_state: Literal["unavailable"] = Field(alias="mergeState")
+
+    @classmethod
+    def from_domain(cls, coding: CodingOutcome) -> CodingOutcomeResponse:
+        return cls(
+            evidence_class=coding.evidence_class,
+            repository_id=coding.repository_id,
+            repository=coding.repository,
+            base_branch=coding.base_branch,
+            base_sha=coding.base_sha,
+            head_sha=coding.head_sha,
+            environment=coding.environment,
+            environment_version=coding.environment_version,
+            snapshot_digest=coding.snapshot_digest,
+            sandbox_state=coding.sandbox_state,
+            setup_status=coding.setup_status,
+            changed_files=coding.changed_files,
+            draft_pr_number=coding.draft_pr_number,
+            draft_pr_status=coding.draft_pr_status,
+            pr_create_attempts=coding.pr_create_attempts,
+            reconciled_after_timeout=coding.reconciled_after_timeout,
+            checks=coding.checks,
+            merge_state=coding.merge_state,
+        )
+
+
 class TaskDetailResponse(TaskSummaryResponse):
     """Task summary plus the currently actionable interrupt."""
 
@@ -255,6 +323,10 @@ class TaskDetailResponse(TaskSummaryResponse):
     proposed_plan: ProposedPlanResponse | None = Field(alias="proposedPlan")
     evidence: tuple[EvidenceResponse, ...]
     result: str | None = Field(default=None, max_length=MAX_TASK_RESULT_LENGTH)
+    coding: CodingOutcomeResponse | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
     @classmethod
     def from_domain(
@@ -307,6 +379,7 @@ class TaskDetailResponse(TaskSummaryResponse):
             objective=task.objective,
             status=_wire_status(task.status),
             last_event_id=task.last_event_id,
+            journey=("coding" if task.journey is TaskJourney.CODING else None),
             pending_interrupt=pending,
             proposed_plan=(
                 ProposedPlanResponse.from_domain(task.proposed_plan)
@@ -315,6 +388,9 @@ class TaskDetailResponse(TaskSummaryResponse):
             ),
             evidence=tuple(EvidenceResponse.from_domain(item) for item in task.evidence),
             result=task.result,
+            coding=(
+                CodingOutcomeResponse.from_domain(task.coding) if task.coding is not None else None
+            ),
         )
 
 
@@ -549,6 +625,12 @@ class TaskCreatedEventData(_TaskWireModel):
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
     agent_id: AgentId | None = Field(default=None, alias="agentId")
+    journey: Literal["coding"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    repository_id: Literal["fixture_repo_deepwork"] | None = Field(
+        default=None,
+        alias="repositoryId",
+        exclude_if=lambda value: value is None,
+    )
     status: Literal["queued"]
 
 
@@ -605,6 +687,10 @@ class RunCompletedEventData(_TaskWireModel):
     result_available: bool = Field(alias="resultAvailable")
 
 
+class CodingCompletedEventData(CodingOutcomeResponse):
+    """Replayable credential-free coding proof for the exact retained revision."""
+
+
 _EVENT_MODELS: dict[TaskEventName, type[BaseModel]] = {
     TaskEventName.TASK_CREATED: TaskCreatedEventData,
     TaskEventName.RUN_STARTED: RunStartedEventData,
@@ -614,6 +700,7 @@ _EVENT_MODELS: dict[TaskEventName, type[BaseModel]] = {
     TaskEventName.EVIDENCE_RECORDED: EvidenceRecordedEventData,
     TaskEventName.INTERRUPT_REQUESTED: InterruptRequestedEventData,
     TaskEventName.DECISION_RECORDED: DecisionRecordedEventData,
+    TaskEventName.CODING_COMPLETED: CodingCompletedEventData,
     TaskEventName.RUN_COMPLETED: RunCompletedEventData,
 }
 

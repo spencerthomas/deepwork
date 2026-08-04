@@ -38,6 +38,7 @@ from deepwork_api.domain.tasks import (
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
     CancellationRecord,
+    CodingOutcome,
     DecisionBatchRecord,
     DecisionBatchUnsupportedError,
     DecisionBatchVersionStaleError,
@@ -63,12 +64,14 @@ from deepwork_api.domain.tasks import (
     TaskCancellationUnsupportedError,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
     TaskSourceContractError,
     TaskSourceUnavailableError,
     TaskStatus,
     aggregate_batch_decision,
+    coding_outcome_from_event_data,
 )
 
 __all__ = [
@@ -87,6 +90,7 @@ __all__ = [
     "CancellationRecord",
     "Capability",
     "CapabilityState",
+    "CodingOutcome",
     "DecisionBatchRecord",
     "DecisionBatchUnsupportedError",
     "DecisionBatchVersionStaleError",
@@ -124,6 +128,7 @@ __all__ = [
     "TaskCancellationUnsupportedError",
     "TaskEvent",
     "TaskEventName",
+    "TaskJourney",
     "TaskNotFoundError",
     "TaskSnapshot",
     "TaskSourceContractError",
@@ -132,5 +137,6 @@ __all__ = [
     "WorkerDurability",
     "WorkerStatus",
     "aggregate_batch_decision",
+    "coding_outcome_from_event_data",
     "normalize_system_prompt",
 ]

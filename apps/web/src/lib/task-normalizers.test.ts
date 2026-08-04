@@ -405,6 +405,55 @@ describe("editable plan contracts", () => {
     });
   });
 
+  it("normalizes exact-revision coding proof without promoting fixture CI to live truth", () => {
+    const detail = normalizeTaskDetail({
+      taskId: "task_00000001",
+      runId: "run_00000001",
+      title: "Fix session refresh",
+      objective: "Fix session refresh",
+      status: "completed",
+      lastEventId: 10,
+      pendingInterrupt: null,
+      proposedPlan: null,
+      evidence: [],
+      result: "The bounded change is ready for review.",
+      journey: "coding",
+      coding: {
+        evidenceClass: "fixture",
+        repositoryId: "fixture_repo_deepwork",
+        repository: "deepwork-fixtures/sample-app",
+        baseBranch: "main",
+        baseSha: "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+        headSha: "bb525814d85c6e2e35233d703e0a4069dd625d75",
+        environment: "Deep Work Node fixture",
+        environmentVersion: 1,
+        snapshotDigest: "sha256:4e7d3f64f7df824d",
+        sandboxState: "cleaned",
+        setupStatus: "passed",
+        changedFiles: ["src/session.ts", "tests/session.test.ts"],
+        draftPrNumber: 17,
+        draftPrStatus: "draft",
+        prCreateAttempts: 2,
+        reconciledAfterTimeout: true,
+        checks: ["lint:passed", "tests:passed"],
+        mergeState: "unavailable",
+      },
+    });
+
+    expect(detail).toMatchObject({
+      journey: "coding",
+      coding: {
+        evidenceClass: "fixture",
+        repository: "deepwork-fixtures/sample-app",
+        baseSha: "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+        headSha: "bb525814d85c6e2e35233d703e0a4069dd625d75",
+        changedFiles: ["src/session.ts", "tests/session.test.ts"],
+        reconciledAfterTimeout: true,
+        mergeState: "unavailable",
+      },
+    });
+  });
+
   it("accepts the exact queued API detail before a plan has been proposed", () => {
     expect(
       normalizeTaskDetail({

@@ -30,10 +30,12 @@ from deepwork_api.domain import (
     TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
     TaskStatus,
     aggregate_batch_decision,
+    coding_outcome_from_event_data,
 )
 from deepwork_api.ports import Clock, system_clock
 
@@ -46,6 +48,8 @@ class _StoredTask:
     title: str
     objective: str
     agent_id: str | None
+    journey: TaskJourney | None
+    repository_id: str | None
     status: TaskStatus
     events: list[TaskEvent] = field(default_factory=list)
     pending_interrupt_id: str | None = None
@@ -55,6 +59,18 @@ class _StoredTask:
     result: str | None = None
 
     def snapshot(self) -> TaskSnapshot:
+        coding_event = (
+            next(
+                (
+                    event
+                    for event in reversed(self.events)
+                    if event.name is TaskEventName.CODING_COMPLETED
+                ),
+                None,
+            )
+            if self.status is TaskStatus.COMPLETED and self.result is not None
+            else None
+        )
         return TaskSnapshot(
             task_id=self.task_id,
             run_id=self.run_id,
@@ -68,6 +84,13 @@ class _StoredTask:
             evidence=tuple(self.evidence),
             result=self.result,
             agent_id=self.agent_id,
+            journey=self.journey,
+            repository_id=self.repository_id,
+            coding=(
+                coding_outcome_from_event_data(dict(coding_event.data))
+                if coding_event is not None
+                else None
+            ),
         )
 
 
@@ -88,6 +111,8 @@ class InMemoryTaskRepository:
         objective: str,
         run_id: str | None = None,
         agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task containing only its sanitized objective."""
 
@@ -102,18 +127,26 @@ class InMemoryTaskRepository:
                 title=title,
                 objective=objective,
                 agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
                 status=TaskStatus.QUEUED,
             )
+            created_data: EventData = (
+                ("taskId", task.task_id),
+                ("runId", task.run_id),
+                ("status", TaskStatus.QUEUED.value),
+            )
+            if journey is not None:
+                created_data = (*created_data, ("journey", journey.value))
+            if repository_id is not None:
+                created_data = (*created_data, ("repositoryId", repository_id))
+            if agent_id is not None:
+                created_data = (*created_data, ("agentId", agent_id))
             task.events.append(
                 TaskEvent(
                     event_id=1,
                     name=TaskEventName.TASK_CREATED,
-                    data=(
-                        ("taskId", task.task_id),
-                        ("runId", task.run_id),
-                        ("status", TaskStatus.QUEUED.value),
-                        *(((("agentId", agent_id),)) if agent_id is not None else ()),
-                    ),
+                    data=created_data,
                 )
             )
             self._tasks[task.task_id] = task

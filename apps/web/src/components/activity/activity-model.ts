@@ -39,6 +39,7 @@ export const EVENT_LABELS: Record<TaskEventName, string> = {
   "evidence.recorded": "Sources recorded",
   "interrupt.requested": "Approval requested",
   "decision.recorded": "Decision recorded",
+  "coding.completed": "Coding proof recorded",
   "run.completed": "Run completed",
 };
 

@@ -7,6 +7,7 @@ import {
   Bot,
   CheckCircle2,
   CircleDot,
+  FileDiff,
   ListChecks,
   PanelRight,
   ShieldCheck,
@@ -270,6 +271,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         />
       )}
       <SidebarItem icon={ShieldCheck} label="Sources" count={evidence.length} />
+      {detail?.coding ? (
+        <SidebarItem
+          icon={FileDiff}
+          label="Files changed"
+          count={detail.coding.changedFiles.length}
+        />
+      ) : null}
       <div className="my-3 h-px bg-border" />
       <SidebarLabel>Other tasks</SidebarLabel>
       {tasks

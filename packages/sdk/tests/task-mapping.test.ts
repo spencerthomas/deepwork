@@ -68,6 +68,54 @@ const waitingDetail = {
 };
 
 describe("strict accepted task mapping", () => {
+  it("maps a complete fixture coding projection with immutable revision identities", () => {
+    const mapped = mapTaskDetail(
+      {
+        ...waitingDetail,
+        status: "completed",
+        pendingInterrupt: null,
+        proposedPlan: null,
+        result: "The bounded change is ready for review.",
+        journey: "coding",
+        coding: {
+          evidenceClass: "fixture",
+          repositoryId: "fixture_repo_deepwork",
+          repository: "deepwork-fixtures/sample-app",
+          baseBranch: "main",
+          baseSha: "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+          headSha: "bb525814d85c6e2e35233d703e0a4069dd625d75",
+          environment: "Deep Work Node fixture",
+          environmentVersion: 1,
+          snapshotDigest: "sha256:4e7d3f64f7df824d",
+          sandboxState: "cleaned",
+          setupStatus: "passed",
+          changedFiles: ["src/session.ts", "tests/session.test.ts"],
+          draftPrNumber: 17,
+          draftPrStatus: "draft",
+          prCreateAttempts: 2,
+          reconciledAfterTimeout: true,
+          checks: ["lint:passed", "tests:passed"],
+          mergeState: "unavailable",
+        },
+      },
+      resolver("source-a"),
+    );
+
+    expect(mapped).toMatchObject({
+      ok: true,
+      value: {
+        journey: "coding",
+        coding: {
+          evidenceClass: "fixture",
+          repository: "deepwork-fixtures/sample-app",
+          baseSha: "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+          headSha: "bb525814d85c6e2e35233d703e0a4069dd625d75",
+          mergeState: "unavailable",
+        },
+      },
+    });
+  });
+
   it("maps exact ordered pending actions and correlates batch receipts", () => {
     const orderedDetail = {
       ...waitingDetail,

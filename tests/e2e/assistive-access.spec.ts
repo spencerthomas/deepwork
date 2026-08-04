@@ -39,7 +39,7 @@ test.describe("assistive interaction acceptance", () => {
     await blockNonLoopbackEgress(page);
     await page.goto("/tasks/new");
     await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
-    await expect(page.getByRole("radio", { checked: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: /General task/, checked: true })).toBeVisible();
 
     // Traverse from the document itself; no pointer click is needed to compose
     // or dispatch the API-backed fixture task.

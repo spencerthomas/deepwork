@@ -115,6 +115,56 @@ describe("separate task services", () => {
     expect(createTask).not.toHaveBeenCalled();
   });
 
+  it("keeps the reviewed fixture repository binding explicit for coding creation", async () => {
+    const createTask = vi.fn(async () => ({
+      taskId: "task_00000001",
+      runId: "run_00000001",
+      status: "queued",
+    }));
+    const transport: TaskMutationTransport = {
+      createTask,
+      recordDecision: vi.fn(),
+      updatePlan: vi.fn(),
+    };
+    const service = createTaskMutationService(transport, mutationBindings);
+    const options = Object.freeze({ journey: "coding" as const });
+    const result = await service.createTask("Fix the bounded regression", options);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(createTask).toHaveBeenCalledWith(
+      {
+        prompt: "Fix the bounded regression",
+        journey: "coding",
+        repositoryId: "fixture_repo_deepwork",
+      },
+      options,
+    );
+  });
+
+  it("preserves create cancellation options in the second argument", async () => {
+    const createTask = vi.fn(
+      async (_request: unknown, _options?: { readonly signal?: AbortSignal }) => ({
+        taskId: "task_00000001",
+        runId: "run_00000001",
+        status: "queued",
+      }),
+    );
+    const transport: TaskMutationTransport = {
+      createTask,
+      recordDecision: vi.fn(),
+      updatePlan: vi.fn(),
+    };
+    const service = createTaskMutationService(transport, mutationBindings);
+    const controller = new AbortController();
+    const options = Object.freeze({ signal: controller.signal });
+
+    const result = await service.createTask("Keep creation cancellable", options);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(createTask).toHaveBeenCalledWith({ prompt: "Keep creation cancellable" }, options);
+    expect(createTask.mock.calls[0]?.[1]).toBe(options);
+  });
+
   it("preserves respond semantics in the exact mutation request", async () => {
     const recordDecision = vi.fn(async (_taskId, request) => ({
       taskId: "task_00000001",

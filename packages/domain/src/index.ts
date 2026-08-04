@@ -87,6 +87,7 @@ export {
 
 export {
   createdAtTimestamp,
+  codingOutcome,
   decisionComment,
   decisionInput,
   deriveTaskStatus,
@@ -121,6 +122,8 @@ export {
   taskSummary,
   unicodeCodePointLength,
   type ContentDeltaEvent,
+  type CodingCompletedEvent,
+  type CodingOutcome,
   type DecisionComment,
   type DecisionInput,
   type DecisionReceipt,

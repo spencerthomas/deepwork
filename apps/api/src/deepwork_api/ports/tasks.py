@@ -17,6 +17,7 @@ from deepwork_api.domain import (
     ProposedPlan,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskSnapshot,
     TaskStatus,
 )
@@ -32,6 +33,8 @@ class TaskRepository(Protocol):
         objective: str,
         run_id: str | None = None,
         agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 

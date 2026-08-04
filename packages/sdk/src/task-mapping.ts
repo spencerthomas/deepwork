@@ -3,6 +3,7 @@ import {
   ACTION_DECISION_TYPES,
   batchDecisionInput,
   batchDecisionReceipt,
+  codingOutcome,
   decisionInput,
   displayText,
   evidenceId,
@@ -33,6 +34,7 @@ import {
   type ActionRequest,
   type BatchDecisionInput,
   type BatchDecisionReceipt,
+  type CodingOutcome,
   type DecisionInput,
   type DecisionReceipt,
   type EvidenceClass,
@@ -206,12 +208,29 @@ function canonicalEventContext(context: TaskEventMappingContext): TaskEventMappi
 }
 
 function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSummary {
+  const hasJourney =
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.hasOwn(value, "journey");
   const wire = record(
     value,
-    ["taskId", "runId", "createdAt", "title", "objective", "status", "lastEventId"],
+    [
+      "taskId",
+      "runId",
+      "createdAt",
+      "title",
+      "objective",
+      "status",
+      "lastEventId",
+      ...(hasJourney ? ["journey"] : []),
+    ],
     "Task summary",
   );
   const mappedTaskId = taskId(identifier(wire.taskId, "Task identifier", TASK_ID_PATTERN));
+  if (hasJourney && wire.journey !== "coding") {
+    throw new TypeError("Task journey is invalid.");
+  }
   const sourceThread = bindingFor(mappedTaskId, resolver);
   const mappedRunId = runId(
     identifier(wire.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
@@ -239,6 +258,68 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
     facts: factsForWireStatus(wireStatus(wire.status)),
     lastEvent,
     lastEventSequence,
+    ...(hasJourney && wire.journey === "coding" ? { journey: "coding" as const } : {}),
+  });
+}
+
+function mapCoding(value: unknown): CodingOutcome {
+  const wire = record(
+    value,
+    [
+      "evidenceClass",
+      "repositoryId",
+      "repository",
+      "baseBranch",
+      "baseSha",
+      "headSha",
+      "environment",
+      "environmentVersion",
+      "snapshotDigest",
+      "sandboxState",
+      "setupStatus",
+      "changedFiles",
+      "draftPrNumber",
+      "draftPrStatus",
+      "prCreateAttempts",
+      "reconciledAfterTimeout",
+      "checks",
+      "mergeState",
+    ],
+    "Coding outcome",
+  );
+  if (
+    wire.evidenceClass !== "fixture" ||
+    wire.repositoryId !== "fixture_repo_deepwork" ||
+    wire.sandboxState !== "cleaned" ||
+    wire.setupStatus !== "passed" ||
+    wire.draftPrStatus !== "draft" ||
+    wire.mergeState !== "unavailable" ||
+    !Array.isArray(wire.changedFiles) ||
+    !wire.changedFiles.every((file) => typeof file === "string") ||
+    !Array.isArray(wire.checks) ||
+    !wire.checks.every((check) => typeof check === "string")
+  ) {
+    throw new TypeError("Coding outcome is invalid.");
+  }
+  return codingOutcome({
+    evidenceClass: "fixture",
+    repositoryId: "fixture_repo_deepwork",
+    repository: string(wire.repository, "Coding repository", 200),
+    baseBranch: string(wire.baseBranch, "Coding base branch", 100),
+    baseSha: string(wire.baseSha, "Coding base SHA", 40),
+    headSha: string(wire.headSha, "Coding head SHA", 40),
+    environment: string(wire.environment, "Coding environment", 200),
+    environmentVersion: positiveInteger(wire.environmentVersion, "Environment version"),
+    snapshotDigest: string(wire.snapshotDigest, "Snapshot digest", 71),
+    sandboxState: "cleaned",
+    setupStatus: "passed",
+    changedFiles: wire.changedFiles,
+    draftPrNumber: positiveInteger(wire.draftPrNumber, "Draft PR number"),
+    draftPrStatus: "draft",
+    prCreateAttempts: positiveInteger(wire.prCreateAttempts, "PR create attempts"),
+    reconciledAfterTimeout: boolean(wire.reconciledAfterTimeout, "PR timeout reconciliation flag"),
+    checks: wire.checks,
+    mergeState: "unavailable",
   });
 }
 
@@ -462,6 +543,16 @@ export function mapTaskDetail(
   resolver: TaskBindingResolver,
 ): SdkResult<TaskDetail> {
   return attempt(() => {
+    const hasJourney =
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value) &&
+      Object.hasOwn(value, "journey");
+    const hasCoding =
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value) &&
+      Object.hasOwn(value, "coding");
     const wire = record(
       value,
       [
@@ -476,6 +567,8 @@ export function mapTaskDetail(
         "proposedPlan",
         "evidence",
         "result",
+        ...(hasJourney ? ["journey"] : []),
+        ...(hasCoding ? ["coding"] : []),
       ],
       "Task detail",
     );
@@ -488,6 +581,7 @@ export function mapTaskDetail(
         objective: wire.objective,
         status: wire.status,
         lastEventId: wire.lastEventId,
+        ...(hasJourney ? { journey: wire.journey } : {}),
       },
       resolver,
     );
@@ -503,6 +597,7 @@ export function mapTaskDetail(
       wire.proposedPlan === null
         ? undefined
         : mapPlan(wire.proposedPlan, summary.taskId, summary.sourceThread, summary.run);
+    const coding = hasCoding ? mapCoding(wire.coding) : undefined;
     if (
       (summary.status === "needs-review") !== (interrupt !== undefined) ||
       (interrupt !== undefined && plan === undefined) ||
@@ -528,6 +623,7 @@ export function mapTaskDetail(
         : {
             result: resultText(string(wire.result, "Task result", 18_048)),
           }),
+      ...(coding === undefined ? {} : { coding }),
     });
   }, "Task detail");
 }
@@ -729,6 +825,7 @@ export function mapTaskEvent(
         "evidence.recorded",
         "interrupt.requested",
         "decision.recorded",
+        "coding.completed",
         "run.completed",
       ].includes(name)
     ) {
@@ -740,11 +837,30 @@ export function mapTaskEvent(
 
     switch (eventName) {
       case "task.created": {
-        const wire = record(data, ["taskId", "runId", "status"], "task.created event");
+        const hasJourney =
+          typeof data === "object" &&
+          data !== null &&
+          !Array.isArray(data) &&
+          Object.hasOwn(data, "journey");
+        const hasRepository =
+          typeof data === "object" &&
+          data !== null &&
+          !Array.isArray(data) &&
+          Object.hasOwn(data, "repositoryId");
+        if (hasJourney !== hasRepository) {
+          throw new TypeError("task.created coding binding is incomplete.");
+        }
+        const wire = record(
+          data,
+          ["taskId", "runId", "status", ...(hasJourney ? ["journey", "repositoryId"] : [])],
+          "task.created event",
+        );
         if (
           wire.taskId !== canonical.taskId ||
           wire.runId !== canonical.run.runId ||
-          wire.status !== "queued"
+          wire.status !== "queued" ||
+          (hasJourney &&
+            (wire.journey !== "coding" || wire.repositoryId !== "fixture_repo_deepwork"))
         ) {
           throw new TypeError("task.created event correlation failed.");
         }
@@ -889,6 +1005,13 @@ export function mapTaskEvent(
             : {}),
         });
       }
+      case "coding.completed":
+        return Object.freeze({
+          ...base,
+          name: eventName,
+          run: canonical.run,
+          coding: mapCoding(data),
+        });
       case "run.completed": {
         const wire = record(
           data,

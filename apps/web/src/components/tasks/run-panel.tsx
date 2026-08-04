@@ -2,10 +2,15 @@
 
 import {
   Activity,
+  Box,
+  CircleCheck,
   Download,
   ExternalLink,
+  FileDiff,
   FileJson,
   FileText,
+  GitBranch,
+  GitPullRequest,
   ListChecks,
   Route,
   ShieldCheck,
@@ -17,6 +22,7 @@ import { StatusChip } from "@/components/shell/status-chip";
 import {
   ACTIVITY_FILTERS,
   ACTIVITY_FILTER_LABELS,
+  EVENT_LABELS,
   eventDetailText,
   eventMatchesActivityFilter,
   type ActivityFilter,
@@ -42,18 +48,6 @@ import type {
 import { taskTraceClient, type TaskTrace } from "@/lib/task-trace-client";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { cn } from "@/lib/utils";
-
-const eventLabels: Record<string, string> = {
-  "task.created": "Task created",
-  "run.started": "Run started",
-  "content.delta": "Narration",
-  "plan.proposed": "Plan proposed",
-  "plan.updated": "Plan updated",
-  "evidence.recorded": "Sources recorded",
-  "interrupt.requested": "Approval requested",
-  "decision.recorded": "Decision recorded",
-  "run.completed": "Run completed",
-};
 
 const NO_STREAM_EVENTS: readonly TaskEvent[] = [];
 
@@ -385,7 +379,7 @@ export function RunPanel({
                           {event.name}
                         </span>
                         <span className="min-w-0 truncate text-[12px] text-muted-foreground">
-                          {eventLabels[event.name] ?? event.name}
+                          {event.name === "content.delta" ? "Narration" : EVENT_LABELS[event.name]}
                         </span>
                       </div>
                       {detail !== undefined && (
@@ -549,12 +543,125 @@ export function RunPanel({
             )}
           </div>
         )}
-        {tab === "git" && (
-          <UnavailableTab
-            title="No repository attached"
-            body="Branches, commits, and draft PRs appear here when a coding task runs against a connected repository."
-          />
-        )}
+        {tab === "git" &&
+          (detail?.coding ? (
+            <div className="space-y-4 px-4 py-4" data-testid="coding-review">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <GitBranch className="size-4 text-brand-accent" />
+                    {detail.coding.repository}
+                  </p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    {detail.coding.baseBranch} · exact base-to-head review
+                  </p>
+                </div>
+                <span className="rounded-full bg-status-review-bg px-2.5 py-1 text-[11px] font-medium text-status-review">
+                  Local fixture proof
+                </span>
+              </div>
+
+              <dl className="grid gap-2 rounded-xl border border-border p-3 text-[12px] sm:grid-cols-2">
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Base SHA</dt>
+                  <dd className="mt-1 break-all font-mono">{detail.coding.baseSha}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Head SHA</dt>
+                  <dd className="mt-1 break-all font-mono">{detail.coding.headSha}</dd>
+                </div>
+              </dl>
+
+              <div className="rounded-xl border border-border p-3">
+                <p className="flex items-center gap-2 text-[13px] font-medium">
+                  <Box className="size-4 text-brand-accent" /> Sandbox provenance
+                </p>
+                <dl className="mt-2 grid gap-2 text-[12px] sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground">Environment</dt>
+                    <dd>
+                      {detail.coding.environment} v{detail.coding.environmentVersion}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Setup / cleanup</dt>
+                    <dd>
+                      {detail.coding.setupStatus} · {detail.coding.sandboxState}
+                    </dd>
+                  </div>
+                  <div className="min-w-0 sm:col-span-2">
+                    <dt className="text-muted-foreground">Snapshot</dt>
+                    <dd className="break-all font-mono">{detail.coding.snapshotDigest}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="rounded-xl border border-border p-3">
+                <p className="flex items-center gap-2 text-[13px] font-medium">
+                  <FileDiff className="size-4 text-brand-accent" /> Changed files
+                  <span className="text-muted-foreground">{detail.coding.changedFiles.length}</span>
+                </p>
+                <ul className="mt-2 space-y-1.5 font-mono text-[12px]">
+                  {detail.coding.changedFiles.map((file) => (
+                    <li key={file} className="break-all rounded-lg bg-secondary px-2.5 py-1.5">
+                      {file}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="flex items-center gap-2 text-[13px] font-medium">
+                      <GitPullRequest className="size-4 text-brand-accent" /> Draft PR #
+                      {detail.coding.draftPrNumber}
+                    </p>
+                    <p className="mt-1 text-[12px] text-muted-foreground">
+                      {detail.coding.reconciledAfterTimeout
+                        ? `Reconciled after a simulated timeout · ${detail.coding.prCreateAttempts} create attempts · one retained PR`
+                        : "Created without retry"}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-status-review-bg px-2.5 py-1 text-[11px] font-medium text-status-review">
+                    Draft
+                  </span>
+                </div>
+                <ul className="mt-3 space-y-2" aria-label="Fixture CI checks">
+                  {detail.coding.checks.map((check) => {
+                    const [name, state] = check.split(":", 2);
+                    return (
+                      <li
+                        key={check}
+                        className="flex items-center justify-between gap-3 rounded-lg bg-secondary px-2.5 py-2 text-[12px]"
+                      >
+                        <span>{name}</span>
+                        <span className="inline-flex items-center gap-1.5 font-medium text-status-done">
+                          <CircleCheck className="size-3.5" /> {state}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+                  These checks are deterministic fixture evidence, not authoritative GitHub CI. No
+                  GitHub request or credential was used.
+                </p>
+                <button
+                  type="button"
+                  disabled
+                  className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-[13px] font-medium text-muted-foreground opacity-70"
+                >
+                  Merge unavailable
+                </button>
+              </div>
+            </div>
+          ) : (
+            <UnavailableTab
+              title="No repository attached"
+              body="Branches, commits, and draft PRs appear here when a coding task runs against a connected repository."
+            />
+          ))}
         {tab === "trace" && trace.state !== "loading" && (
           <div className="space-y-4 px-4 py-4">
             <div>

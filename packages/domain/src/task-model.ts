@@ -49,6 +49,7 @@ export const TASK_EVENT_NAMES = Object.freeze([
   "evidence.recorded",
   "interrupt.requested",
   "decision.recorded",
+  "coding.completed",
   "run.completed",
 ] as const);
 
@@ -145,6 +146,28 @@ export interface TaskSummary {
   readonly status: TaskStatus;
   readonly lastEvent: SourceApplicationEventKey;
   readonly lastEventSequence: number;
+  readonly journey?: "coding";
+}
+
+export interface CodingOutcome {
+  readonly evidenceClass: "fixture";
+  readonly repositoryId: "fixture_repo_deepwork";
+  readonly repository: string;
+  readonly baseBranch: string;
+  readonly baseSha: string;
+  readonly headSha: string;
+  readonly environment: string;
+  readonly environmentVersion: number;
+  readonly snapshotDigest: string;
+  readonly sandboxState: "cleaned";
+  readonly setupStatus: "passed";
+  readonly changedFiles: readonly string[];
+  readonly draftPrNumber: number;
+  readonly draftPrStatus: "draft";
+  readonly prCreateAttempts: number;
+  readonly reconciledAfterTimeout: boolean;
+  readonly checks: readonly string[];
+  readonly mergeState: "unavailable";
 }
 
 export interface TaskDetail extends TaskSummary {
@@ -152,6 +175,7 @@ export interface TaskDetail extends TaskSummary {
   readonly proposedPlan?: ProposedPlan;
   readonly evidence: readonly EvidenceRecord[];
   readonly result?: ResultText;
+  readonly coding?: CodingOutcome;
 }
 
 export interface TaskResult {
@@ -198,6 +222,7 @@ export type TaskApplicationEvent =
   | EvidenceRecordedEvent
   | InterruptRequestedEvent
   | DecisionRecordedEvent
+  | CodingCompletedEvent
   | RunCompletedEvent;
 
 interface EventBase<Name extends TaskEventName> {
@@ -245,6 +270,11 @@ export interface DecisionRecordedEvent extends EventBase<"decision.recorded"> {
   readonly commentProvided: boolean;
   readonly responseProvided: boolean;
   readonly decisionTypes?: readonly ActionDecisionType[];
+}
+
+export interface CodingCompletedEvent extends EventBase<"coding.completed"> {
+  readonly run: SourceRunKey;
+  readonly coding: CodingOutcome;
 }
 
 export interface RunCompletedEvent extends EventBase<"run.completed"> {
@@ -622,6 +652,59 @@ export function taskSummary(
     status: deriveTaskStatus(facts),
     lastEvent: acceptedLastEvent,
     lastEventSequence,
+    ...(input.journey === undefined ? {} : { journey: input.journey }),
+  });
+}
+
+export function codingOutcome(input: CodingOutcome): CodingOutcome {
+  const sha = /^[a-f0-9]{40}$/;
+  const digest = /^sha256:[a-f0-9]{16,64}$/;
+  const text = (value: string, label: string, maximum = 200): string =>
+    displayText(value, label, maximum);
+  if (
+    input.evidenceClass !== "fixture" ||
+    input.repositoryId !== "fixture_repo_deepwork" ||
+    !sha.test(input.baseSha) ||
+    !sha.test(input.headSha) ||
+    input.baseSha === input.headSha ||
+    !digest.test(input.snapshotDigest) ||
+    input.sandboxState !== "cleaned" ||
+    input.setupStatus !== "passed" ||
+    input.draftPrStatus !== "draft" ||
+    input.mergeState !== "unavailable" ||
+    !Number.isSafeInteger(input.environmentVersion) ||
+    input.environmentVersion < 1 ||
+    !Number.isSafeInteger(input.draftPrNumber) ||
+    input.draftPrNumber < 1 ||
+    !Number.isSafeInteger(input.prCreateAttempts) ||
+    input.prCreateAttempts < 1 ||
+    typeof input.reconciledAfterTimeout !== "boolean" ||
+    input.changedFiles.length < 1 ||
+    input.changedFiles.length > 100 ||
+    input.checks.length < 1 ||
+    input.checks.length > 50
+  ) {
+    throw new TypeError("Coding outcome state is invalid.");
+  }
+  return Object.freeze({
+    evidenceClass: input.evidenceClass,
+    repositoryId: input.repositoryId,
+    repository: text(input.repository, "Coding repository"),
+    baseBranch: text(input.baseBranch, "Coding base branch", 100),
+    baseSha: input.baseSha,
+    headSha: input.headSha,
+    environment: text(input.environment, "Coding environment"),
+    environmentVersion: input.environmentVersion,
+    snapshotDigest: input.snapshotDigest,
+    sandboxState: input.sandboxState,
+    setupStatus: input.setupStatus,
+    changedFiles: Object.freeze(input.changedFiles.map((file) => text(file, "Changed file path"))),
+    draftPrNumber: input.draftPrNumber,
+    draftPrStatus: input.draftPrStatus,
+    prCreateAttempts: input.prCreateAttempts,
+    reconciledAfterTimeout: input.reconciledAfterTimeout,
+    checks: Object.freeze(input.checks.map((check) => text(check, "Coding check"))),
+    mergeState: input.mergeState,
   });
 }
 
@@ -674,6 +757,7 @@ export function taskDetail(
             ? {}
             : { question: input.pendingInterrupt.question }),
         });
+  const coding = input.coding === undefined ? undefined : codingOutcome(input.coding);
   const matchesTaskBinding = (key: SourceEvidenceKey | SourceInterruptKey): boolean =>
     key.sourceId === summary.sourceThread.sourceId &&
     key.taskId === summary.taskId &&
@@ -694,7 +778,8 @@ export function taskDetail(
         plan === undefined ||
         interrupt.planRevision !== plan.revision)) ||
     summary.facts.pendingCurrentInterrupt !== (interrupt !== undefined) ||
-    summary.facts.terminalSuccess !== (input.result !== undefined)
+    summary.facts.terminalSuccess !== (input.result !== undefined) ||
+    (coding !== undefined && (summary.journey !== "coding" || !summary.facts.terminalSuccess))
   ) {
     throw new TypeError("Task detail nested state is incoherent.");
   }
@@ -709,10 +794,12 @@ export function taskDetail(
     status: summary.status,
     lastEvent: summary.lastEvent,
     lastEventSequence: summary.lastEventSequence,
+    ...(summary.journey === undefined ? {} : { journey: summary.journey }),
     ...(interrupt === undefined ? {} : { pendingInterrupt: interrupt }),
     ...(plan === undefined ? {} : { proposedPlan: plan }),
     evidence: Object.freeze(evidence),
     ...(input.result === undefined ? {} : { result: resultText(input.result) }),
+    ...(coding === undefined ? {} : { coding }),
   });
 }
 

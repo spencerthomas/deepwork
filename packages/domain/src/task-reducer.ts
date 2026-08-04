@@ -5,6 +5,7 @@ import {
   type SourceApplicationEventKey,
 } from "./identity.js";
 import type {
+  CodingOutcome,
   EvidenceRecord,
   PendingInterrupt,
   ProposedPlan,
@@ -40,6 +41,7 @@ export interface TaskProjection {
   readonly status: TaskStatus;
   readonly facts: TaskProjectionFacts;
   readonly resultPending: boolean;
+  readonly pendingCoding?: CodingOutcome;
   readonly reconnecting: boolean;
   readonly stale: boolean;
   readonly quarantined: boolean;
@@ -69,6 +71,7 @@ function freezeProjection(input: {
   readonly task: TaskDetail;
   readonly facts: TaskProjectionFacts;
   readonly resultPending: boolean;
+  readonly pendingCoding?: CodingOutcome;
   readonly reconnecting: boolean;
   readonly stale: boolean;
   readonly quarantined: boolean;
@@ -214,6 +217,7 @@ function canonicalTaskDetail(input: TaskDetail): TaskDetail | undefined {
       lastEvent: input.lastEvent,
       lastEventSequence: input.lastEventSequence,
       evidence: input.evidence,
+      ...(input.journey === undefined ? {} : { journey: input.journey }),
       ...(input.pendingInterrupt === undefined ? {} : { pendingInterrupt: input.pendingInterrupt }),
       ...(input.proposedPlan === undefined ? {} : { proposedPlan: input.proposedPlan }),
       ...(input.result === undefined ? {} : { result: input.result }),
@@ -525,6 +529,8 @@ function eventNestedBindingsValid(
         (event.decision === "respond") === event.responseProvided &&
         (event.decision !== "respond" || (event.commentProvided && event.responseProvided))
       );
+    case "coding.completed":
+      return projection.task.journey === "coding";
     case "run.completed":
       return (event.outcome === "success") === event.resultAvailable;
     default:
@@ -546,6 +552,7 @@ function transitionAllowed(projection: TaskProjection, event: TaskApplicationEve
       event.name === "evidence.recorded" ||
       event.name === "plan.proposed" ||
       event.name === "interrupt.requested" ||
+      event.name === "coding.completed" ||
       event.name === "run.completed"
     );
   }
@@ -562,6 +569,7 @@ function sameTaskDetail(first: TaskDetail, second: TaskDetail): boolean {
     sourceRunKeyString(first.run) === sourceRunKeyString(second.run) &&
     first.title === second.title &&
     first.objective === second.objective &&
+    first.journey === second.journey &&
     first.status === second.status &&
     sameFacts(first.facts, second.facts) &&
     sourceApplicationEventKeyString(first.lastEvent) ===
@@ -576,7 +584,34 @@ function sameTaskDetail(first: TaskDetail, second: TaskDetail): boolean {
       (record, index) =>
         second.evidence[index] !== undefined && sameEvidence(record, second.evidence[index]),
     ) &&
-    first.result === second.result
+    first.result === second.result &&
+    sameCodingOutcome(first.coding, second.coding)
+  );
+}
+
+function sameCodingOutcome(first?: CodingOutcome, second?: CodingOutcome): boolean {
+  if (first === undefined || second === undefined) return first === second;
+  return (
+    first.evidenceClass === second.evidenceClass &&
+    first.repositoryId === second.repositoryId &&
+    first.repository === second.repository &&
+    first.baseBranch === second.baseBranch &&
+    first.baseSha === second.baseSha &&
+    first.headSha === second.headSha &&
+    first.environment === second.environment &&
+    first.environmentVersion === second.environmentVersion &&
+    first.snapshotDigest === second.snapshotDigest &&
+    first.sandboxState === second.sandboxState &&
+    first.setupStatus === second.setupStatus &&
+    first.changedFiles.length === second.changedFiles.length &&
+    first.changedFiles.every((file, index) => file === second.changedFiles[index]) &&
+    first.draftPrNumber === second.draftPrNumber &&
+    first.draftPrStatus === second.draftPrStatus &&
+    first.prCreateAttempts === second.prCreateAttempts &&
+    first.reconciledAfterTimeout === second.reconciledAfterTimeout &&
+    first.checks.length === second.checks.length &&
+    first.checks.every((check, index) => check === second.checks[index]) &&
+    first.mergeState === second.mergeState
   );
 }
 
@@ -587,6 +622,7 @@ function eventTask(
   readonly task: TaskDetail;
   readonly facts: TaskProjectionFacts;
   readonly resultPending: boolean;
+  readonly pendingCoding?: CodingOutcome;
   readonly planRevision?: number;
   readonly stale: boolean;
   readonly quarantined: boolean;
@@ -594,6 +630,7 @@ function eventTask(
   let task = projection.task;
   let facts = projection.facts;
   let resultPending = projection.resultPending;
+  let pendingCoding = projection.pendingCoding;
   let planRevision = projection.planRevision;
   let stale = projection.stale;
   let quarantined = projection.quarantined;
@@ -738,6 +775,9 @@ function eventTask(
       });
       break;
     }
+    case "coding.completed":
+      pendingCoding = event.coding;
+      break;
     case "run.completed":
       facts = Object.freeze({
         cancellationConfirmed: false,
@@ -749,6 +789,7 @@ function eventTask(
       });
       resultPending = event.outcome === "success";
       if (!resultPending) {
+        pendingCoding = undefined;
         const { pendingInterrupt: _removedInterrupt, ...taskWithoutInterrupt } = task;
         task = Object.freeze({
           ...taskWithoutInterrupt,
@@ -771,6 +812,7 @@ function eventTask(
     task,
     facts,
     resultPending,
+    ...(pendingCoding === undefined ? {} : { pendingCoding }),
     ...(planRevision === undefined ? {} : { planRevision }),
     stale,
     quarantined,
@@ -852,6 +894,7 @@ export function reduceTaskEvent(
     task,
     facts: applied.facts,
     resultPending: applied.resultPending,
+    ...(applied.pendingCoding === undefined ? {} : { pendingCoding: applied.pendingCoding }),
     reconnecting: projection.reconnecting,
     stale: applied.stale,
     quarantined: applied.quarantined,
@@ -966,14 +1009,17 @@ export function withTaskResult(projection: TaskProjection, result: TaskResult): 
     terminalSuccess: true,
   });
   const { pendingInterrupt: _removedInterrupt, ...taskWithoutInterrupt } = projection.task;
+  const coding = projection.pendingCoding;
+  const { pendingCoding: _pendingCoding, ...projectionWithoutPendingCoding } = projection;
   return freezeProjection({
-    ...projection,
+    ...projectionWithoutPendingCoding,
     task: taskDetail({
       ...taskWithoutInterrupt,
       facts,
       lastEvent: projection.lastAppliedEvent,
       lastEventSequence: projection.lastAppliedSequence,
       result: result.result,
+      ...(coding === undefined ? {} : { coding }),
     }),
     facts,
     resultPending: false,
@@ -991,7 +1037,8 @@ function pendingResultHydrationMatches(projection: TaskProjection, hydrated: Tas
     hydrated.facts.pendingCurrentInterrupt ||
     hydrated.pendingInterrupt !== undefined ||
     sourceApplicationEventKeyString(hydrated.lastEvent) !==
-      sourceApplicationEventKeyString(projection.lastAppliedEvent)
+      sourceApplicationEventKeyString(projection.lastAppliedEvent) ||
+    !sameCodingOutcome(projection.pendingCoding, hydrated.coding)
   ) {
     return false;
   }

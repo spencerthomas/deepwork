@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowLeft, Bot, CornerDownLeft, History, ShieldCheck, Sparkles, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Code2,
+  CornerDownLeft,
+  GitBranch,
+  History,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
@@ -41,10 +51,12 @@ export function NewTask() {
   } = useAgents();
   const [prompt, setPrompt] = useState("");
   const [agentId, setAgentId] = useState<string>("");
+  const [journey, setJourney] = useState<"general" | "coding">("general");
   const [validationError, setValidationError] = useState<string>();
   const [restoredAge, setRestoredAge] = useState<string>();
   const promptTouchedRef = useRef(false);
   const runtimeCopy = taskRuntimePresentation(mode);
+  const codingUnavailable = mode === "api" && (agentsLoading || agentsAvailable);
 
   // Seed the composer once on mount. An in-session "Edit & re-run" handoff wins
   // (an explicit action, carried through transient module state — never the URL,
@@ -74,6 +86,12 @@ export function NewTask() {
     }
   }, [agentId, agents, agentsAvailable, mode]);
 
+  useEffect(() => {
+    if (codingUnavailable && journey === "coding") {
+      setJourney("general");
+    }
+  }, [codingUnavailable, journey]);
+
   // Persist the in-progress prompt device-locally; emptying the field clears it.
   useEffect(() => {
     saveComposerDraft(mode, prompt);
@@ -101,6 +119,14 @@ export function NewTask() {
     .join(" ");
 
   async function dispatch() {
+    if (mode === "api" && agentsLoading && journey === "coding") {
+      setValidationError("Wait for the agent registry check before starting a coding review.");
+      return;
+    }
+    if (mode === "api" && agentsAvailable && journey === "coding") {
+      setValidationError("The coding demo is available only in the credential-free fixture.");
+      return;
+    }
     if (mode === "api" && agentsAvailable && !agentId) {
       setValidationError("Choose a connected agent before dispatching this task.");
       return;
@@ -114,7 +140,7 @@ export function NewTask() {
     setValidationError(undefined);
     // The fields are disabled while `creating`, so `prompt` cannot change under
     // the in-flight request — the value dispatched is the value cleared.
-    const created = await createTask(prompt, agentId || undefined);
+    const created = await createTask(prompt, agentId || undefined, journey);
     if (created) {
       // The work is now a real task; drop the local draft so a later visit
       // starts clean.
@@ -247,6 +273,76 @@ export function NewTask() {
             </button>
           </div>
         ) : null}
+
+        <fieldset className="mb-6">
+          <legend className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Choose outcome
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Choose outcome"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={journey === "general"}
+              disabled={creating}
+              onClick={() => setJourney("general")}
+              className={cn(
+                "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-60",
+                journey === "general"
+                  ? "border-brand bg-brand-soft"
+                  : "border-border bg-card hover:bg-accent/50",
+              )}
+            >
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-accent" />
+              <span>
+                <span className="block text-sm font-medium">General task</span>
+                <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
+                  Produce a supervised brief, report, plan, or analysis.
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={journey === "coding"}
+              aria-disabled={codingUnavailable}
+              disabled={creating || codingUnavailable}
+              onClick={() => setJourney("coding")}
+              className={cn(
+                "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                journey === "coding"
+                  ? "border-brand bg-brand-soft"
+                  : "border-border bg-card hover:bg-accent/50",
+              )}
+            >
+              <Code2 className="mt-0.5 size-4 shrink-0 text-brand-accent" />
+              <span>
+                <span className="block text-sm font-medium">Coding review</span>
+                <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
+                  {mode === "api" && agentsLoading
+                    ? "Checking whether this workspace has a real agent registry."
+                    : mode === "api" && agentsAvailable
+                      ? "Unavailable until the approved sandbox and GitHub proxy are connected."
+                      : "Run the exact-revision local proof, including diff, draft PR, and CI states."}
+                </span>
+              </span>
+            </button>
+          </div>
+          {journey === "coding" ? (
+            <div className="mt-2 flex items-start gap-3 rounded-2xl border border-border bg-card px-3 py-3">
+              <GitBranch className="mt-0.5 size-4 shrink-0 text-brand-accent" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">deepwork-fixtures/sample-app</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                  Local reviewed repository · main · no GitHub token or external request
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </fieldset>
 
         <label
           htmlFor="new-task-prompt"

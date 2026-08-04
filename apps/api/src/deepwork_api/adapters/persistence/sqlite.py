@@ -44,15 +44,17 @@ from deepwork_api.domain import (
     TaskAlreadyResolvedError,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
     TaskStatus,
     aggregate_batch_decision,
+    coding_outcome_from_event_data,
 )
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -150,6 +152,7 @@ CREATE TABLE decisions (
 )
 """,
     "CREATE INDEX events_task_order ON events(task_id, event_id)",
+    "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
 )
 
@@ -160,7 +163,10 @@ CREATE TABLE decisions (
 # never-recorded creation instant becomes NULL rather than a fabricated value.
 _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
     # v1 predates created_at: appending the column leaves existing rows NULL.
-    1: ("ALTER TABLE tasks ADD COLUMN created_at TEXT",),
+    1: (
+        "ALTER TABLE tasks ADD COLUMN created_at TEXT",
+        "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
+    ),
     # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
     # column. Move it last and drop NOT NULL without losing the recorded values,
     # using only column operations so child foreign keys are never disturbed.
@@ -169,7 +175,10 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "ALTER TABLE tasks ADD COLUMN created_at TEXT",
         "UPDATE tasks SET created_at = created_at_legacy",
         "ALTER TABLE tasks DROP COLUMN created_at_legacy",
+        "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
     ),
+    # v3 has the canonical task columns but predates the name-led event index.
+    3: ("CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",),
 }
 
 _EXPECTED_COLUMNS = {
@@ -253,6 +262,7 @@ _EXPECTED_INDEXES = {
         {
             (True, "pk", ("task_id", "event_id")): 1,
             (False, "c", ("task_id", "event_id")): 1,
+            (False, "c", ("name", "task_id", "event_id")): 1,
         }
     ),
     "evidence": Counter(
@@ -281,9 +291,22 @@ _EXPECTED_OBJECTS = {
     "events",
     "evidence",
     "decisions",
+    "events_name_task_order",
     "events_task_order",
     "evidence_task_order",
 }
+
+_LATEST_CODING_EVENTS_QUERY = """
+SELECT event.task_id, event.event_id, event.name, event.data
+FROM events AS event
+INNER JOIN (
+    SELECT task_id, MAX(event_id) AS event_id
+    FROM events
+    WHERE name = ?
+    GROUP BY task_id
+) AS latest
+ON latest.task_id = event.task_id AND latest.event_id = event.event_id
+"""
 
 
 class SQLiteTaskRepository:
@@ -361,11 +384,21 @@ class SQLiteTaskRepository:
         objective: str,
         run_id: str | None = None,
         agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 
         _validate_task_input(title=title, objective=objective)
-        return await self._mutate(self._create_task_sync, title, objective, run_id, agent_id)
+        return await self._mutate(
+            self._create_task_sync,
+            title,
+            objective,
+            run_id,
+            agent_id,
+            journey,
+            repository_id,
+        )
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""
@@ -768,6 +801,8 @@ class SQLiteTaskRepository:
         objective: str,
         external_run_id: str | None = None,
         agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
     ) -> TaskSnapshot:
         connection = self._connect()
         try:
@@ -800,6 +835,8 @@ class SQLiteTaskRepository:
                     ("taskId", task_id),
                     ("runId", run_id),
                     ("status", TaskStatus.QUEUED.value),
+                    *((("journey", journey.value),) if journey is not None else ()),
+                    *((("repositoryId", repository_id),) if repository_id is not None else ()),
                     *(((("agentId", agent_id),)) if agent_id is not None else ()),
                 ),
             )
@@ -824,12 +861,21 @@ class SQLiteTaskRepository:
                     "SELECT task_id, event_id, name, data FROM events WHERE event_id = 1"
                 )
             }
+            coding_events = {
+                cast(str, row["task_id"]): row
+                for row in connection.execute(
+                    _LATEST_CODING_EVENTS_QUERY,
+                    (TaskEventName.CODING_COMPLETED.value,),
+                )
+            }
             snapshots = tuple(
                 self._snapshot_sync(
                     connection,
                     cast(str, task["task_id"]),
                     task=task,
                     created_event_row=creation_events.get(cast(str, task["task_id"])),
+                    coding_event_row=coding_events.get(cast(str, task["task_id"])),
+                    coding_event_prefetched=True,
                 )
                 for task in tasks
             )
@@ -1372,6 +1418,8 @@ class SQLiteTaskRepository:
         *,
         task: sqlite3.Row | None = None,
         created_event_row: sqlite3.Row | None = None,
+        coding_event_row: sqlite3.Row | None = None,
+        coding_event_prefetched: bool = False,
     ) -> TaskSnapshot:
         if task is None:
             task = self._task_row_sync(connection, task_id)
@@ -1430,26 +1478,71 @@ class SQLiteTaskRepository:
         if created_event_row is None:
             raise SQLiteTaskRepositoryDataError("stored task is missing its creation event")
         created_event = self._event_from_row(created_event_row)
-        stored_agent_id = dict(created_event.data).get("agentId")
+        created_data = dict(created_event.data)
+        stored_agent_id = created_data.get("agentId")
         if stored_agent_id is not None and (
             not isinstance(stored_agent_id, str)
             or not stored_agent_id
             or len(stored_agent_id) > 200
         ):
             raise SQLiteTaskRepositoryDataError("stored task agent identifier is invalid")
+        stored_journey = created_data.get("journey")
+        stored_repository_id = created_data.get("repositoryId")
+        if stored_journey is None and stored_repository_id is not None:
+            raise SQLiteTaskRepositoryDataError("stored task repository has no journey")
+        if stored_journey is not None:
+            if stored_journey != TaskJourney.CODING.value:
+                raise SQLiteTaskRepositoryDataError("stored task journey is invalid")
+            if stored_repository_id != "fixture_repo_deepwork":
+                raise SQLiteTaskRepositoryDataError("stored task repository is invalid")
+        status = _decode_status(task["status"])
+        coding = None
+        if status is TaskStatus.COMPLETED and result is not None:
+            if (
+                stored_journey == TaskJourney.CODING.value
+                and coding_event_row is None
+                and not coding_event_prefetched
+            ):
+                coding_event_row = connection.execute(
+                    """
+                    SELECT event_id, name, data
+                    FROM events
+                    WHERE task_id = ? AND name = ?
+                    ORDER BY event_id DESC
+                    LIMIT 1
+                    """,
+                    (task_id, TaskEventName.CODING_COMPLETED.value),
+                ).fetchone()
+            try:
+                coding = (
+                    coding_outcome_from_event_data(
+                        dict(self._event_from_row(coding_event_row).data)
+                    )
+                    if coding_event_row is not None
+                    else None
+                )
+            except ValueError as error:
+                raise SQLiteTaskRepositoryDataError("stored coding outcome is invalid") from error
+            if coding is not None and stored_journey != TaskJourney.CODING.value:
+                raise SQLiteTaskRepositoryDataError("stored coding outcome has no coding journey")
         return TaskSnapshot(
             task_id=cast(str, task["task_id"]),
             run_id=cast(str, task["run_id"]),
             created_at=created_at,
             title=title,
             objective=objective,
-            status=_decode_status(task["status"]),
+            status=status,
             last_event_id=event_count,
             pending_interrupt_id=pending,
             proposed_plan=self._plan_from_row(task),
             evidence=evidence,
             result=result,
             agent_id=stored_agent_id,
+            journey=(TaskJourney.CODING if stored_journey is not None else None),
+            repository_id=(
+                cast(str, stored_repository_id) if stored_repository_id is not None else None
+            ),
+            coding=coding,
         )
 
     @staticmethod

@@ -270,6 +270,134 @@
         "title": "CapabilityResponse",
         "type": "object"
       },
+      "CodingOutcomeResponse": {
+        "additionalProperties": false,
+        "description": "Exact-revision coding evidence with an explicit fixture truth class.",
+        "properties": {
+          "baseBranch": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Basebranch",
+            "type": "string"
+          },
+          "baseSha": {
+            "pattern": "^[a-f0-9]{40}$",
+            "title": "Basesha",
+            "type": "string"
+          },
+          "changedFiles": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Changedfiles",
+            "type": "array"
+          },
+          "checks": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Checks",
+            "type": "array"
+          },
+          "draftPrNumber": {
+            "minimum": 1.0,
+            "title": "Draftprnumber",
+            "type": "integer"
+          },
+          "draftPrStatus": {
+            "const": "draft",
+            "title": "Draftprstatus",
+            "type": "string"
+          },
+          "environment": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Environment",
+            "type": "string"
+          },
+          "environmentVersion": {
+            "minimum": 1.0,
+            "title": "Environmentversion",
+            "type": "integer"
+          },
+          "evidenceClass": {
+            "const": "fixture",
+            "title": "Evidenceclass",
+            "type": "string"
+          },
+          "headSha": {
+            "pattern": "^[a-f0-9]{40}$",
+            "title": "Headsha",
+            "type": "string"
+          },
+          "mergeState": {
+            "const": "unavailable",
+            "title": "Mergestate",
+            "type": "string"
+          },
+          "prCreateAttempts": {
+            "minimum": 1.0,
+            "title": "Prcreateattempts",
+            "type": "integer"
+          },
+          "reconciledAfterTimeout": {
+            "title": "Reconciledaftertimeout",
+            "type": "boolean"
+          },
+          "repository": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Repository",
+            "type": "string"
+          },
+          "repositoryId": {
+            "const": "fixture_repo_deepwork",
+            "title": "Repositoryid",
+            "type": "string"
+          },
+          "sandboxState": {
+            "const": "cleaned",
+            "title": "Sandboxstate",
+            "type": "string"
+          },
+          "setupStatus": {
+            "const": "passed",
+            "title": "Setupstatus",
+            "type": "string"
+          },
+          "snapshotDigest": {
+            "pattern": "^sha256:[a-f0-9]{16,64}$",
+            "title": "Snapshotdigest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidenceClass",
+          "repositoryId",
+          "repository",
+          "baseBranch",
+          "baseSha",
+          "headSha",
+          "environment",
+          "environmentVersion",
+          "snapshotDigest",
+          "sandboxState",
+          "setupStatus",
+          "changedFiles",
+          "draftPrNumber",
+          "draftPrStatus",
+          "prCreateAttempts",
+          "reconciledAfterTimeout",
+          "checks",
+          "mergeState"
+        ],
+        "title": "CodingOutcomeResponse",
+        "type": "object"
+      },
       "DecisionAcceptedResponse": {
         "additionalProperties": false,
         "description": "Accepted or idempotently replayed decision receipt.",
@@ -1141,11 +1269,35 @@
             "description": "Optional identifier of a registered agent to run this task with. Omit to use the deployment's default assistant and the workspace system prompt.",
             "title": "Agentid"
           },
+          "journey": {
+            "anyOf": [
+              {
+                "const": "coding",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journey"
+          },
           "prompt": {
             "maxLength": 8000,
             "minLength": 1,
             "title": "Prompt",
             "type": "string"
+          },
+          "repositoryId": {
+            "anyOf": [
+              {
+                "const": "fixture_repo_deepwork",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repositoryid"
           }
         },
         "required": [
@@ -1170,6 +1322,16 @@
             ],
             "title": "Agentid"
           },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingOutcomeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "createdAt": {
             "anyOf": [
               {
@@ -1189,6 +1351,18 @@
             },
             "title": "Evidence",
             "type": "array"
+          },
+          "journey": {
+            "anyOf": [
+              {
+                "const": "coding",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journey"
           },
           "lastEventId": {
             "minimum": 1.0,
@@ -1349,6 +1523,18 @@
               }
             ],
             "title": "Createdat"
+          },
+          "journey": {
+            "anyOf": [
+              {
+                "const": "coding",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journey"
           },
           "lastEventId": {
             "minimum": 1.0,

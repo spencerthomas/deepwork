@@ -1,5 +1,6 @@
 import type {
   CancelResult,
+  CodingOutcome,
   CreateTaskResult,
   DecisionInput,
   DecisionBatchInput,
@@ -60,6 +61,32 @@ function emit(task: FixtureTask, name: TaskEvent["name"], data: TaskEvent["data"
 function updateStatus(task: FixtureTask, status: TaskStatus) {
   task.status = status;
   task.updatedAt = new Date().toISOString();
+}
+
+function installCodingOutcome(task: FixtureTask) {
+  if (task.journey !== "coding") return;
+  const coding: CodingOutcome = {
+    evidenceClass: "fixture",
+    repositoryId: "fixture_repo_deepwork",
+    repository: "deepwork-fixtures/sample-app",
+    baseBranch: "main",
+    baseSha: "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+    headSha: "bb525814d85c6e2e35233d703e0a4069dd625d75",
+    environment: "Deep Work Node fixture",
+    environmentVersion: 1,
+    snapshotDigest: "sha256:4e7d3f64f7df824d",
+    sandboxState: "cleaned",
+    setupStatus: "passed",
+    changedFiles: ["src/session.ts", "tests/session.test.ts"],
+    draftPrNumber: 17,
+    draftPrStatus: "draft",
+    prCreateAttempts: 2,
+    reconciledAfterTimeout: true,
+    checks: ["lint:passed", "tests:passed"],
+    mergeState: "unavailable",
+  };
+  task.coding = coding;
+  emit(task, "coding.completed", { ...coding });
 }
 
 function installPendingInterrupt(task: FixtureTask, title: string, question: string) {
@@ -175,6 +202,8 @@ function publicTask(task: FixtureTask): TaskDetail {
     proposedPlan: task.proposedPlan,
     evidence: task.evidence,
     pendingInterrupt: task.pendingInterrupt,
+    journey: task.journey,
+    coding: task.coding,
   };
 }
 
@@ -195,7 +224,7 @@ export function createFixtureTaskClient(): TaskClient {
       return publicTask(task);
     },
 
-    async createTask(prompt: string, _agentId?: string): Promise<CreateTaskResult> {
+    async createTask(prompt: string, options = {}): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
       const sequence = nextTaskNumber++;
       const taskId = `fixture-task-${sequence}`;
@@ -209,13 +238,21 @@ export function createFixtureTaskClient(): TaskClient {
         status: "queued",
         createdAt,
         updatedAt: createdAt,
+        ...(options.journey === "coding" ? { journey: "coding" as const } : {}),
         events: [],
         interruptId: `fixture-interrupt-${sequence}`,
         responseNumber: 0,
         batchReceipts: new Map(),
       };
       tasks.set(taskId, task);
-      emit(task, "task.created", { taskId, runId, status: "queued" });
+      emit(task, "task.created", {
+        taskId,
+        runId,
+        status: "queued",
+        ...(options.journey === "coding"
+          ? { journey: "coding", repositoryId: "fixture_repo_deepwork" }
+          : {}),
+      });
       scheduleRun(task);
       return { taskId, runId, status: "queued" };
     },
@@ -299,6 +336,7 @@ export function createFixtureTaskClient(): TaskClient {
           status === "completed"
             ? `First-pass result for “${task.prompt}”\n\nThe request was framed as a concrete outcome, divided into inspect, execute, and verify stages, and released only after reviewer approval. This fixture demonstrates the complete supervised run path; it does not claim live provider work.`
             : `The fixture run for “${task.prompt}” stopped after the proposal was rejected. No provider work was claimed or performed.`;
+        if (status === "completed") installCodingOutcome(task);
         emit(task, "run.completed", {
           runId: task.runId,
           status,
@@ -368,6 +406,7 @@ export function createFixtureTaskClient(): TaskClient {
         task.result = rejected
           ? `The fixture run for “${task.prompt}” stopped after the ordered proposal was rejected. No provider work was claimed or performed.`
           : `First-pass result for “${task.prompt}”\n\nApproved plan executed in order: ${steps}. The fixture proves the supervised batch path; it does not claim live provider work.`;
+        if (status === "completed") installCodingOutcome(task);
         emit(task, "run.completed", {
           runId: task.runId,
           status,

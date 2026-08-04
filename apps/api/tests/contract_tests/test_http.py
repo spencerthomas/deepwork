@@ -326,6 +326,90 @@ async def test_approve_completes_and_sse_replays_after_cursor() -> None:
         }
 
 
+async def test_coding_fixture_retains_exact_revision_and_truthful_draft_pr_proof() -> None:
+    async with _client() as client:
+        create = await client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Fix the bounded session refresh regression",
+                "journey": "coding",
+                "repositoryId": "fixture_repo_deepwork",
+            },
+        )
+        assert create.status_code == 202
+        created = create.json()
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        assert paused["journey"] == "coding"
+        assert paused.get("coding") is None
+
+        decision = await client.post(
+            f"/api/v1/tasks/{created['taskId']}/decisions",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "decision": "approve",
+            },
+        )
+        assert decision.status_code == 202
+        completed = await _wait_for_status(client, created["taskId"], {"completed"})
+
+        assert completed["journey"] == "coding"
+        assert completed["coding"] == {
+            "evidenceClass": "fixture",
+            "repositoryId": "fixture_repo_deepwork",
+            "repository": "deepwork-fixtures/sample-app",
+            "baseBranch": "main",
+            "baseSha": "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17",
+            "headSha": "bb525814d85c6e2e35233d703e0a4069dd625d75",
+            "environment": "Deep Work Node fixture",
+            "environmentVersion": 1,
+            "snapshotDigest": "sha256:4e7d3f64f7df824d",
+            "sandboxState": "cleaned",
+            "setupStatus": "passed",
+            "changedFiles": ["src/session.ts", "tests/session.test.ts"],
+            "draftPrNumber": 17,
+            "draftPrStatus": "draft",
+            "prCreateAttempts": 2,
+            "reconciledAfterTimeout": True,
+            "checks": ["lint:passed", "tests:passed"],
+            "mergeState": "unavailable",
+        }
+        assert completed["coding"]["baseSha"] != completed["coding"]["headSha"]
+
+        stream = await client.get(f"/api/v1/tasks/{created['taskId']}/events")
+        events = _sse_events(stream.text)
+        assert [event["event"] for event in events][-2:] == [
+            "coding.completed",
+            "run.completed",
+        ]
+        assert events[-2]["data"] == completed["coding"]
+
+        reopened = await client.get(f"/api/v1/tasks/{created['taskId']}")
+        assert reopened.json()["coding"] == completed["coding"]
+
+
+async def test_coding_creation_rejects_partial_repository_binding_without_mutation() -> None:
+    async with _client() as client:
+        rejected_payloads = (
+            {"prompt": "One-sided journey", "journey": "coding"},
+            {
+                "prompt": "One-sided repository",
+                "repositoryId": "fixture_repo_deepwork",
+            },
+        )
+        for payload in rejected_payloads:
+            response = await client.post("/api/v1/tasks", json=payload)
+            assert response.status_code == 422
+            assert response.json() == {
+                "code": "request_invalid",
+                "message": "Request validation failed.",
+            }
+            assert "One-sided" not in response.text
+
+        listing = await client.get("/api/v1/tasks")
+        assert listing.status_code == 200
+        assert listing.json() == {"items": []}
+
+
 async def test_reject_ends_truthfully_rejected() -> None:
     async with _client() as client:
         created = await _create_task(client)

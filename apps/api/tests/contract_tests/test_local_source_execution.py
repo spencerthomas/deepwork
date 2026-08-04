@@ -436,6 +436,27 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
         assert json.loads(encode_event_data(created_event))["agentId"] == LOCAL_ASSISTANT
 
 
+async def test_coding_journey_fails_closed_before_any_unreviewed_source_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = ScriptedAgentServer()
+    async with _local_app(server, monkeypatch) as harness:
+        response = await harness.client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Fix the bounded session refresh regression",
+                "journey": "coding",
+                "repositoryId": "fixture_repo_deepwork",
+                "agentId": LOCAL_ASSISTANT,
+            },
+        )
+
+        assert response.status_code == 503
+        assert response.json()["code"] == "local_source_unavailable"
+        assert server.state.task == ""
+        assert server.run_events == {}
+
+
 async def test_approval_executes_and_maps_result_into_task_api(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

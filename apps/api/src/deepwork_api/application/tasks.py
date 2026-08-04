@@ -38,7 +38,9 @@ from deepwork_api.domain import (
     TaskCancellationUnsupportedError,
     TaskEvent,
     TaskEventName,
+    TaskJourney,
     TaskSnapshot,
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 from deepwork_api.ports import TaskRepository
@@ -64,6 +66,79 @@ _SECRET_PATTERNS = (
     ),
 )
 _MAX_TASK_TITLE_LENGTH = 80
+_FIXTURE_REPOSITORY_ID = "fixture_repo_deepwork"
+
+
+class _FixturePrCreateTimeout(Exception):
+    """Signal the fixture timeout that occurs after a draft PR is retained."""
+
+
+@dataclass(frozen=True, slots=True)
+class _FixtureDraftPullRequest:
+    number: int
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class _FixturePrCreateResult:
+    draft_pr_number: int
+    draft_pr_status: str
+    pr_create_attempts: int
+    reconciled_after_timeout: bool
+    created_draft_numbers: tuple[int, ...]
+
+
+@dataclass(slots=True)
+class _FixturePrCreateState:
+    """Model one timeout followed by lookup-based reconciliation."""
+
+    attempts: int = 0
+    retained_draft: _FixtureDraftPullRequest | None = None
+    created_draft_numbers: list[int] = field(default_factory=list)
+    timed_out_after_create: bool = False
+    reconciled_after_timeout: bool = False
+
+    def create_draft(self) -> None:
+        """Retain draft PR 17, then simulate losing the create response."""
+
+        if self.retained_draft is not None:
+            raise RuntimeError("fixture draft PR was already created")
+        self.attempts += 1
+        self.retained_draft = _FixtureDraftPullRequest(number=17, status="draft")
+        self.created_draft_numbers.append(self.retained_draft.number)
+        self.timed_out_after_create = True
+        raise _FixturePrCreateTimeout
+
+    def lookup_retained_draft(self) -> _FixtureDraftPullRequest:
+        """Return the retained draft instead of creating a duplicate."""
+
+        self.attempts += 1
+        if not self.timed_out_after_create or self.retained_draft is None:
+            raise RuntimeError("fixture draft lookup has no timed-out create")
+        self.reconciled_after_timeout = True
+        return self.retained_draft
+
+    def result(self, draft: _FixtureDraftPullRequest) -> _FixturePrCreateResult:
+        if not self.reconciled_after_timeout or draft is not self.retained_draft:
+            raise RuntimeError("fixture draft PR was not reconciled")
+        return _FixturePrCreateResult(
+            draft_pr_number=draft.number,
+            draft_pr_status=draft.status,
+            pr_create_attempts=self.attempts,
+            reconciled_after_timeout=self.reconciled_after_timeout,
+            created_draft_numbers=tuple(self.created_draft_numbers),
+        )
+
+
+def _reconcile_fixture_draft_pr_after_timeout() -> _FixturePrCreateResult:
+    state = _FixturePrCreateState()
+    try:
+        state.create_draft()
+    except _FixturePrCreateTimeout:
+        retained_draft = state.lookup_retained_draft()
+    else:  # pragma: no cover - the fixture create always loses its response
+        raise RuntimeError("fixture draft create did not time out")
+    return state.result(retained_draft)
 
 
 def _digest_text(value: str) -> str:
@@ -304,6 +379,34 @@ class DeterministicFixtureRunner:
             name=TaskEventName.CONTENT_DELTA,
             data=(("text", result), ("evidenceClass", "fixture")),
         )
+        if task.journey is TaskJourney.CODING:
+            if task.repository_id != _FIXTURE_REPOSITORY_ID:
+                raise RuntimeError("coding fixture task lost its repository binding")
+            pull_request = _reconcile_fixture_draft_pr_after_timeout()
+            await self.repository.append_event(
+                task.task_id,
+                name=TaskEventName.CODING_COMPLETED,
+                data=(
+                    ("evidenceClass", "fixture"),
+                    ("repositoryId", _FIXTURE_REPOSITORY_ID),
+                    ("repository", "deepwork-fixtures/sample-app"),
+                    ("baseBranch", "main"),
+                    ("baseSha", "5d8f2de17703cb32fc4c6f6d7af0258ddf5f0f17"),
+                    ("headSha", "bb525814d85c6e2e35233d703e0a4069dd625d75"),
+                    ("environment", "Deep Work Node fixture"),
+                    ("environmentVersion", 1),
+                    ("snapshotDigest", "sha256:4e7d3f64f7df824d"),
+                    ("sandboxState", "cleaned"),
+                    ("setupStatus", "passed"),
+                    ("changedFiles", ("src/session.ts", "tests/session.test.ts")),
+                    ("draftPrNumber", pull_request.draft_pr_number),
+                    ("draftPrStatus", pull_request.draft_pr_status),
+                    ("prCreateAttempts", pull_request.pr_create_attempts),
+                    ("reconciledAfterTimeout", pull_request.reconciled_after_timeout),
+                    ("checks", ("lint:passed", "tests:passed")),
+                    ("mergeState", "unavailable"),
+                ),
+            )
         await self.repository.append_event(
             task.task_id,
             name=TaskEventName.RUN_COMPLETED,
@@ -370,7 +473,14 @@ class TaskService:
             DecisionType.REJECT,
         )
 
-    async def create_task(self, prompt: str, *, agent_id: str | None = None) -> TaskSnapshot:
+    async def create_task(
+        self,
+        prompt: str,
+        *,
+        agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
+    ) -> TaskSnapshot:
         """Create a queued task and start its deterministic runner.
 
         ``agent_id`` selects a specific registered agent for a real-agent-mode
@@ -379,9 +489,23 @@ class TaskService:
 
         objective = sanitize_objective(prompt)
         title = _build_task_title(objective)
+        if journey is TaskJourney.CODING:
+            if repository_id != _FIXTURE_REPOSITORY_ID:
+                raise TaskSourceUnavailableError
+            if isinstance(self.runner, LocalAgentServerRunner):
+                # The reviewed GitHub proxy/sandbox contracts remain gated. A
+                # real source must never fall back to a browser or host token.
+                raise TaskSourceUnavailableError
+        elif repository_id is not None:
+            raise TaskSourceUnavailableError
         if isinstance(self.runner, LocalAgentServerRunner):
             return await self.runner.create(title=title, objective=objective, agent_id=agent_id)
-        task = await self.repository.create_task(title=title, objective=objective)
+        task = await self.repository.create_task(
+            title=title,
+            objective=objective,
+            journey=journey,
+            repository_id=repository_id,
+        )
         self.runner.start(task)
         return task
 

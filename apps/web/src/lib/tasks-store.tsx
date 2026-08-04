@@ -69,7 +69,11 @@ export interface TasksStore {
 
   creating: boolean;
   createError?: string;
-  createTask: (prompt: string, agentId?: string) => Promise<TaskSummary | undefined>;
+  createTask: (
+    prompt: string,
+    agentId?: string,
+    journey?: "general" | "coding",
+  ) => Promise<TaskSummary | undefined>;
 
   detailsByTask: Record<string, TaskDetail>;
   eventsByTask: Record<string, TaskEvent[]>;
@@ -503,7 +507,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createTask = useCallback(
-    async (prompt: string, agentId?: string): Promise<TaskSummary | undefined> => {
+    async (
+      prompt: string,
+      agentId?: string,
+      journey: "general" | "coding" = "general",
+    ): Promise<TaskSummary | undefined> => {
       setCreating(true);
       setCreateError(undefined);
       try {
@@ -514,13 +522,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         // firsthand time of its own action, not a guessed value, and is replaced by
         // the server's authoritative createdAt on the next list refresh.
         const dispatchedAt = new Date().toISOString();
-        const created = await taskClient.createTask(prompt, agentId);
+        const created = await taskClient.createTask(prompt, {
+          ...(agentId ? { agentId } : {}),
+          ...(journey === "coding" ? { journey: "coding" as const } : {}),
+        });
         const optimisticTask: TaskSummary = {
           ...created,
           agentId,
           title: prompt,
           prompt,
           createdAt: dispatchedAt,
+          ...(journey === "coding" ? { journey: "coding" as const } : {}),
         };
         setDetailsByTask((current) => ({
           ...current,

@@ -51,7 +51,14 @@ export interface TaskQueryTransport {
 }
 
 export interface TaskMutationTransport {
-  createTask(request: Readonly<{ prompt: string }>, options?: OperationOptions): Promise<unknown>;
+  createTask(
+    request: Readonly<{
+      prompt: string;
+      journey?: "coding";
+      repositoryId?: "fixture_repo_deepwork";
+    }>,
+    options?: OperationOptions,
+  ): Promise<unknown>;
   recordDecision(
     taskId: string,
     request: Readonly<{
@@ -100,7 +107,10 @@ export interface TaskQueryService {
 }
 
 export interface TaskMutationService {
-  createTask(objective: string, options?: OperationOptions): Promise<SdkResult<TaskAccepted>>;
+  createTask(
+    objective: string,
+    options?: OperationOptions & Readonly<{ journey?: "coding" }>,
+  ): Promise<SdkResult<TaskAccepted>>;
   decide(
     taskId: TaskId,
     decision: DecisionInput,
@@ -302,7 +312,10 @@ export function createTaskMutationService(
   bindings: TaskMutationBindingResolver,
 ): TaskMutationService {
   return Object.freeze({
-    async createTask(objective: string, options?: OperationOptions) {
+    async createTask(
+      objective: string,
+      options?: OperationOptions & Readonly<{ journey?: "coding" }>,
+    ) {
       let prompt: string;
       try {
         prompt = objectiveText(objective);
@@ -318,7 +331,18 @@ export function createTaskMutationService(
       }
       try {
         return mapTaskAccepted(
-          await transport.createTask(Object.freeze({ prompt }), options),
+          await transport.createTask(
+            Object.freeze({
+              prompt,
+              ...(options?.journey === "coding"
+                ? {
+                    journey: "coding" as const,
+                    repositoryId: "fixture_repo_deepwork" as const,
+                  }
+                : {}),
+            }),
+            options,
+          ),
           bindings,
         );
       } catch (error) {

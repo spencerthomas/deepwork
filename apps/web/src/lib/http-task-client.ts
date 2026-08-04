@@ -172,11 +172,7 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
       return normalizeTaskDetail(body);
     },
 
-    async createTask(
-      prompt: string,
-      agentId?: string,
-      signal?: AbortSignal,
-    ): Promise<CreateTaskResult> {
+    async createTask(prompt: string, options = {}): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
       const body = await request(
         taskUrl,
@@ -185,9 +181,12 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             prompt: normalizedPrompt,
-            ...(agentId ? { agentId } : {}),
+            ...(options.journey === "coding"
+              ? { journey: "coding", repositoryId: "fixture_repo_deepwork" }
+              : {}),
+            ...(options.agentId ? { agentId: options.agentId } : {}),
           }),
-          signal,
+          signal: options.signal,
         },
         202,
       );

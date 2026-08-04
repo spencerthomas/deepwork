@@ -132,6 +132,26 @@ test("the golden journey shell reflows at 320 CSS pixels", async ({ page }) => {
   }
 });
 
+test("coding review proof remains legible at desktop and phone widths", async ({ page }) => {
+  await signIn(page);
+  await open(page, "/tasks/new");
+  await page.getByRole("radio", { name: /Coding review/ }).click();
+  await page.getByLabel("Task", { exact: true }).fill("Fix the bounded session refresh regression");
+  await page.getByRole("button", { name: "Dispatch" }).click();
+  await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
+  const batch = page.getByRole("region", { name: "Ordered approval batch" });
+  await expect(batch).toBeVisible();
+  for (const action of await batch.getByRole("listitem").all()) {
+    await action.getByRole("button", { name: "Approve", exact: true }).click();
+  }
+  await batch.getByRole("button", { name: "Submit reviewed batch" }).click();
+  await expect(page.getByText("Done", { exact: true }).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Changes" }).click();
+  await expect(page.getByTestId("coding-review").getByText("Draft PR #17")).toBeVisible();
+  await capture(page, "coding-review", "desktop");
+  await capture(page, "coding-review", "phone");
+});
+
 test("phone More opens, closes, and reaches secondary destinations", async ({ page }) => {
   await page.setViewportSize(viewports.phone);
   await signIn(page);

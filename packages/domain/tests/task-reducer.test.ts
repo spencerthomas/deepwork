@@ -1,5 +1,6 @@
 import {
   applicationEventId,
+  codingOutcome,
   createTaskProjection,
   displayText,
   evidenceId,
@@ -42,7 +43,7 @@ function eventIdentity(sequence: number) {
   return sourceApplicationEventKey(source, task, thread, run, applicationEventId(String(sequence)));
 }
 
-function initialProjection() {
+function initialProjection(journey?: "coding") {
   return createTaskProjection(
     taskDetail({
       taskId: task,
@@ -61,6 +62,7 @@ function initialProjection() {
       lastEvent: eventIdentity(1),
       lastEventSequence: 1,
       evidence: [],
+      ...(journey === undefined ? {} : { journey }),
     }),
   );
 }
@@ -75,10 +77,33 @@ function baseEvent(sequence: number) {
   };
 }
 
-function runningProjection() {
-  return reduceTaskEvent(initialProjection(), {
+function runningProjection(journey?: "coding") {
+  return reduceTaskEvent(initialProjection(journey), {
     ...baseEvent(2),
     name: "run.started",
+  });
+}
+
+function codingProof() {
+  return codingOutcome({
+    evidenceClass: "fixture",
+    repositoryId: "fixture_repo_deepwork",
+    repository: "deepwork",
+    baseBranch: "main",
+    baseSha: "1".repeat(40),
+    headSha: "2".repeat(40),
+    environment: "fixture-sandbox",
+    environmentVersion: 1,
+    snapshotDigest: `sha256:${"3".repeat(16)}`,
+    sandboxState: "cleaned",
+    setupStatus: "passed",
+    changedFiles: ["apps/web/src/app/page.tsx"],
+    draftPrNumber: 17,
+    draftPrStatus: "draft",
+    prCreateAttempts: 2,
+    reconciledAfterTimeout: true,
+    checks: ["fixture-contract"],
+    mergeState: "unavailable",
   });
 }
 
@@ -679,6 +704,46 @@ describe("deterministic task projection", () => {
     expect(withTaskResult(completed, correct).resultPending).toBe(false);
     expect(() => withTaskResult(completed, otherTask)).toThrow(TypeError);
     expect(() => withTaskResult(completed, otherRun)).toThrow(TypeError);
+  });
+
+  it("publishes coding proof only after authoritative terminal success", () => {
+    const coding = codingProof();
+    const proofRecorded = reduceTaskEvent(runningProjection("coding"), {
+      ...baseEvent(3),
+      name: "coding.completed",
+      coding,
+    });
+
+    expect(proofRecorded.task.coding).toBeUndefined();
+    expect(proofRecorded.pendingCoding).toEqual(coding);
+
+    const completed = reduceTaskEvent(proofRecorded, {
+      ...baseEvent(4),
+      name: "run.completed",
+      outcome: "success",
+      safeReason: displayText("The coding fixture completed.", "Completion safe reason", 200),
+      resultAvailable: true,
+    });
+    const hydrated = withTaskResult(
+      completed,
+      taskResult({ taskId: task, run: sourceRun, result: "Draft PR fixture ready." }),
+    );
+
+    expect(hydrated.pendingCoding).toBeUndefined();
+    expect(hydrated.task.journey).toBe("coding");
+    expect(hydrated.task.coding).toEqual(coding);
+  });
+
+  it("quarantines coding proof for a general task", () => {
+    const projection = reduceTaskEvent(runningProjection(), {
+      ...baseEvent(3),
+      name: "coding.completed",
+      coding: codingProof(),
+    });
+
+    expect(projection.quarantined).toBe(true);
+    expect(projection.pendingCoding).toBeUndefined();
+    expect(projection.task.coding).toBeUndefined();
   });
 
   it("quarantines every new mutation after a terminal event but ignores exact replay", () => {

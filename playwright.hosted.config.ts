@@ -17,8 +17,11 @@ export default defineConfig({
   workers: 1,
   forbidOnly: true,
   retries: 1,
-  timeout: 120_000,
-  expect: { timeout: 30_000 },
+  timeout: 180_000,
+  // A real hosted model may spend longer than a deterministic fixture planning
+  // or executing. Keep every product-state assertion binding while allowing a
+  // bounded minute for the provider-backed transition to become observable.
+  expect: { timeout: 60_000 },
   reporter: process.env.CI
     ? [["line"], ["html", { open: "never", outputFolder: "output/playwright/hosted-report" }]]
     : "line",

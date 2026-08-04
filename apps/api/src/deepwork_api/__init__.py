@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
     from fastapi import FastAPI
 
-    from deepwork_api.domain import SecurityContext
+    # The public facade may depend only on bootstrap; import the composition
+    # root's already-bound type instead of bypassing the architecture inward.
+    from deepwork_api.bootstrap.api import SecurityContext
 
 __all__ = ["create_app"]
 

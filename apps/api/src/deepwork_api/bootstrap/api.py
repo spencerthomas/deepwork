@@ -34,10 +34,10 @@ from deepwork_api.application import (
 from deepwork_api.application.local_runner import LocalSource
 from deepwork_api.domain import (
     DEFAULT_SECURITY_CONTEXT,
-    SecurityContext,
     TaskEventName,
     TaskStatus,
 )
+from deepwork_api.domain import SecurityContext as SecurityContext
 from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
 from deepwork_api.transport import (
     build_agents_router,

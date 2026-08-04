@@ -199,7 +199,8 @@ LangChain, Inc. (MIT); that attribution covers upstream MIT-licensed ideas and
 dependencies and does not imply ownership of this project.
 
 Deep Work is an independent open-source project built for compatibility with
-LangChain technologies. Deep Work is not affiliated with, endorsed by, or sponsored by LangChain, Inc.
+LangChain technologies. Deep Work is not affiliated with, endorsed by, or
+sponsored by LangChain, Inc.
 “LangChain” and “LangSmith” are trademarks of their respective owner and are used
 only to describe compatibility.
 

@@ -12,7 +12,7 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-04
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: 6589cb9b013a7edf716a21734e78cdadf9ae7318
+last_verified_commit: 5a89a43ad3a67cb5704fd5d419cf8d1622391ab4
 risk: high
 governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/agent/**, packages/domain/**, packages/sdk/**, packages/ui/**, tests/**, tools/architecture/**, tools/contract-spikes/**, tools/docs/**, tools/oss_audit/**, tools/product_demo/**, tools/worktree/**, ARCHITECTURE.md, dev, playwright.config.ts, playwright.hosted.config.ts, playwright.performance.config.ts, playwright.recovery.config.ts, playwright.security.config.ts, playwright.visual.config.ts, package.json, pnpm-lock.yaml, pnpm-workspace.yaml, pyproject.toml, .node-version, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
@@ -297,6 +297,12 @@ scorecard columns.
   `6589cb9`. Acceptance disables disposable webpack/TypeScript/browser caches,
   the two-tab case proves both tabs adopt one accepted task with one POST, all 18
   browser cases pass, and all seven production visual cases pass.
+- [x] 2026-08-04 — Source recovery hardening completed at `6d1acaa` and
+  `5a89a43`. Upstream event identity now terminates inside the adapter, only
+  application receipt keys cross into runner/tests/persistence, and SQLite next-
+  event allocation no longer materializes or decodes historical payloads. The
+  exact implementation head passes 476 API tests with 7 intentional skips, all
+  18 browser cases and all seven production visual cases.
 - [x] 2026-08-04 — Public hosted preflight completed without credentials. The
   documented Vercel target is a legacy bare sign-in build with no build marker;
   the Railway API has no runtime-status route and reports fixture health. This
@@ -346,6 +352,10 @@ scorecard columns.
 - 2026-08-04 — The documented public web/API pair is not this recovery build.
   Public inspection shows the pre-recovery sign-in and fixture API, so deployment
   reachability cannot be used as evidence for any hosted scorecard cell.
+- 2026-08-04 — Two exact-head browser reruns failed only because the filesystem
+  reached `ENOSPC` during Next route compilation. After removing the exact
+  regenerable pnpm registry-metadata cache, the unchanged 18-case browser and
+  seven-case visual gates passed; failed attempts earn no acceptance credit.
 
 ## Decision Log
 

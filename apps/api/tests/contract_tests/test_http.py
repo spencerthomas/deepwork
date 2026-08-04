@@ -957,6 +957,17 @@ async def test_cors_allows_only_local_next_origins() -> None:
         assert plan_edit.status_code == 200
         assert "PATCH" in plan_edit.headers["access-control-allow-methods"]
 
+        idempotent_job = await client.options(
+            "/api/v1/jobs/fixture",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "idempotency-key",
+            },
+        )
+        assert idempotent_job.status_code == 200
+        assert "idempotency-key" in idempotent_job.headers["access-control-allow-headers"].lower()
+
         loopback = await client.options(
             "/api/v1/tasks/task_00000001/events",
             headers={

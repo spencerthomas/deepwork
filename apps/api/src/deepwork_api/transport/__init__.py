@@ -3,6 +3,7 @@
 from deepwork_api.transport.agents import build_agents_router
 from deepwork_api.transport.auth import build_auth_router, build_session_guard
 from deepwork_api.transport.http import build_router
+from deepwork_api.transport.jobs import build_job_router
 from deepwork_api.transport.schedules import build_schedules_router
 from deepwork_api.transport.settings import build_settings_router
 from deepwork_api.transport.sources import build_sources_router
@@ -11,6 +12,7 @@ from deepwork_api.transport.tasks import build_task_router
 __all__ = [
     "build_agents_router",
     "build_auth_router",
+    "build_job_router",
     "build_router",
     "build_schedules_router",
     "build_session_guard",

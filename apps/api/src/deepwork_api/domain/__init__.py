@@ -19,6 +19,16 @@ from deepwork_api.domain.auth import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from deepwork_api.domain.jobs import (
+    JobAcceptance,
+    JobError,
+    JobKind,
+    JobLease,
+    JobLeaseConflictError,
+    JobNotFoundError,
+    JobRecord,
+    JobStatus,
+)
 from deepwork_api.domain.prompt import (
     MAX_SYSTEM_PROMPT_LENGTH,
     SystemPromptTooLongError,
@@ -128,6 +138,14 @@ __all__ = [
     "InvalidCredentialError",
     "InvalidDecisionBatchError",
     "InvalidEventCursorError",
+    "JobAcceptance",
+    "JobError",
+    "JobKind",
+    "JobLease",
+    "JobLeaseConflictError",
+    "JobNotFoundError",
+    "JobRecord",
+    "JobStatus",
     "OrderedDecision",
     "PlanRevisionConflictError",
     "PlanUnavailableError",

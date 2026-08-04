@@ -36,6 +36,7 @@ class WorkerDurability(StrEnum):
     """Durability available to the scaffold worker."""
 
     UNAVAILABLE = "unavailable"
+    LOCAL_SQLITE_PROOF = "local-sqlite-proof"
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,8 +8,14 @@ from deepwork_api.adapters.persistence.sqlite import (
     SQLiteTaskRepositoryPathError,
     SQLiteTaskRepositorySchemaError,
 )
+from deepwork_api.adapters.persistence.sqlite_jobs import (
+    SQLiteJobRepository,
+    SQLiteJobRepositoryError,
+)
 
 __all__ = [
+    "SQLiteJobRepository",
+    "SQLiteJobRepositoryError",
     "SQLiteTaskRepository",
     "SQLiteTaskRepositoryClosedError",
     "SQLiteTaskRepositoryDataError",

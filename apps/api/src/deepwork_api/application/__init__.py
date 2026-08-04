@@ -1,6 +1,7 @@
 """Application use cases."""
 
 from deepwork_api.application.auth import AuthService
+from deepwork_api.application.jobs import JobService, JobWorker
 from deepwork_api.application.local_runner import (
     LocalAgentServerRunner,
     LocalAgentSummary,
@@ -25,6 +26,7 @@ from deepwork_api.domain import (
     InvalidCredentialError,
     InvalidDecisionBatchError,
     InvalidEventCursorError,
+    JobNotFoundError,
     OrderedDecision,
     PlanRevisionConflictError,
     PlanUnavailableError,
@@ -66,6 +68,9 @@ __all__ = [
     "InvalidCredentialError",
     "InvalidDecisionBatchError",
     "InvalidEventCursorError",
+    "JobNotFoundError",
+    "JobService",
+    "JobWorker",
     "LocalAgentServerRunner",
     "LocalAgentSummary",
     "LocalScheduleSummary",

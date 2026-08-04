@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
-from deepwork_api.adapters.persistence import SQLiteTaskRepository
+from deepwork_api.adapters.persistence import SQLiteJobRepository, SQLiteTaskRepository
 from deepwork_api.adapters.prompt import InMemoryPromptStore, SQLitePromptStore
 from deepwork_api.adapters.sources.classic.probe import ClassicSourceProbeClient
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
@@ -29,6 +29,7 @@ from deepwork_api.adapters.trace import LangSmithTraceLocator
 from deepwork_api.application import (
     AuthService,
     DeterministicFixtureRunner,
+    JobService,
     LocalAgentServerRunner,
     SourceService,
     StatusService,
@@ -48,6 +49,7 @@ from deepwork_api.ports import SourceProbeClient as SourceProbeClient
 from deepwork_api.transport import (
     build_agents_router,
     build_auth_router,
+    build_job_router,
     build_router,
     build_schedules_router,
     build_session_guard,
@@ -108,6 +110,7 @@ def create_app(
     *,
     task_database_path: Path | None = None,
     settings_database_path: Path | None = None,
+    job_database_path: Path | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
@@ -225,6 +228,11 @@ def create_app(
     status_service = StatusService(provider=status_provider)
     task_service = TaskService(repository=task_repository, runner=task_runner)
     trace_locator = _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
+    if job_database_path is not None and access_key is None and access_key_contexts is None:
+        raise ValueError("durable jobs require configured session authentication")
+    job_repository = (
+        SQLiteJobRepository(job_database_path) if job_database_path is not None else None
+    )
 
     async def _reconcile_orphaned_tasks() -> None:
         """Fail-closed recovery for any persisted task after a process restart.
@@ -257,6 +265,8 @@ def create_app(
             if sqlite_repository is not None:
                 await sqlite_repository.initialize()
                 await _reconcile_orphaned_tasks()
+            if job_repository is not None:
+                await job_repository.initialize()
             yield
         finally:
             try:
@@ -265,6 +275,8 @@ def create_app(
                 await prompt_store.close()
                 if sqlite_repository is not None:
                     await sqlite_repository.close()
+                if job_repository is not None:
+                    await job_repository.close()
                 if local_source is not None:
                     await local_source.close()
                 if trace_locator is not None:
@@ -297,6 +309,7 @@ def create_app(
     )
     auth_guard = build_session_guard(auth_service) if auth_service else None
     task_dependencies = [Depends(auth_guard)] if auth_guard else None
+    job_service = JobService(repository=job_repository) if job_repository is not None else None
     if configured_probe_client is not None and auth_guard is None:
         raise ValueError("source qualification requires configured session authentication")
     source_service = (
@@ -315,7 +328,7 @@ def create_app(
         allow_origins=list(web_origins or _WEB_ORIGINS),
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
+        allow_headers=["Content-Type", "Idempotency-Key", "Last-Event-ID", "Authorization"],
     )
 
     @app.exception_handler(RequestValidationError)
@@ -362,12 +375,18 @@ def create_app(
     )
     app.include_router(build_agents_router(task_service, dependencies=task_dependencies))
     app.include_router(build_schedules_router(task_service, dependencies=task_dependencies))
+    if job_service is not None:
+        if auth_guard is None:
+            raise RuntimeError("durable jobs require the session guard")
+        app.include_router(build_job_router(job_service, security_context_dependency=auth_guard))
     if auth_service is not None:
         app.include_router(build_auth_router(auth_service))
     app.state.task_repository = task_repository
     app.state.task_runner = task_runner
     app.state.task_service = task_service
     app.state.auth_service = auth_service
+    app.state.job_repository = job_repository
+    app.state.job_service = job_service
     app.state.source_service = source_service
     return app
 
@@ -400,6 +419,17 @@ def _parser() -> argparse.ArgumentParser:
             "settings (the editable system prompt). Defaults to the "
             "DEEPWORK_SETTINGS_DB environment variable, or a sibling of "
             "--task-database when that is set."
+        ),
+    )
+    parser.add_argument(
+        "--job-database",
+        type=Path,
+        default=(
+            Path(os.environ["DEEPWORK_JOB_DB"]) if os.environ.get("DEEPWORK_JOB_DB") else None
+        ),
+        help=(
+            "Absolute SQLite path for the authenticated local-sqlite-proof job queue. "
+            "Requires DEEPWORK_ACCESS_KEY. Defaults to DEEPWORK_JOB_DB."
         ),
     )
     parser.add_argument(
@@ -492,6 +522,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         create_app(
             task_database_path=args.task_database,
             settings_database_path=settings_database_path,
+            job_database_path=args.job_database,
             local_agent_server_endpoint=args.local_agent_server_endpoint,
             local_agent_server_assistant=args.local_agent_server_assistant,
             allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,

@@ -28,6 +28,7 @@ def create_app(
     *,
     task_database_path: Path | None = None,
     settings_database_path: Path | None = None,
+    job_database_path: Path | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
@@ -62,6 +63,7 @@ def create_app(
         return _create_app(
             task_database_path=task_database_path,
             settings_database_path=settings_database_path,
+            job_database_path=job_database_path,
             local_agent_server_endpoint=local_agent_server_endpoint,
             local_agent_server_assistant=local_agent_server_assistant,
             allow_ungated_local_agent_source=allow_ungated_local_agent_source,
@@ -77,6 +79,7 @@ def create_app(
     return _create_app(
         task_database_path=task_database_path,
         settings_database_path=settings_database_path,
+        job_database_path=job_database_path,
         local_agent_server_endpoint=local_agent_server_endpoint,
         local_agent_server_assistant=local_agent_server_assistant,
         allow_ungated_local_agent_source=allow_ungated_local_agent_source,

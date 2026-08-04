@@ -365,6 +365,28 @@ class TaskSourceBinding:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskSourceLease:
+    """Server-only ownership of source dispatch and follower work."""
+
+    task_id: str
+    owner_id: str
+    lease_token: str
+    expires_at: int
+
+    def __post_init__(self) -> None:
+        if (
+            not self.task_id
+            or not self.owner_id
+            or not self.lease_token
+            or len(self.task_id) > 256
+            or len(self.owner_id) > 200
+            or len(self.lease_token) > 96
+            or self.expires_at < 0
+        ):
+            raise ValueError("task source lease is invalid")
+
+
+@dataclass(frozen=True, slots=True)
 class TaskSourcePlanTransition:
     """Durable application intent for one source-side plan edit."""
 

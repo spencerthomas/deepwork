@@ -52,16 +52,24 @@ from its beginning; receipt lookup suppresses duplicate normalized progress.
 Cursorless progress fails closed because it cannot satisfy this exactly-once
 contract.
 
-This is sequential local recovery, not production distributed ownership. Receipt
-rows and replay work are not yet compacted or bounded; every restart can scan the
-full provider history. Concurrent API replicas do not yet lease one source
-follower, startup recovery is serial, and transient source unavailability can
-still become a terminal local failure. An unaccepted `respond` transition cannot
-be reconstructed after restart because the review comment is deliberately not
-retained; it fails closed, while an already accepted response is rediscovered by
-transition metadata. These limitations keep `E2E-V1-03` and `E2E-V1-05` Partial
-until lease/worker, bounded replay, process-kill, provider and hosted acceptance
-gates pass.
+This remains local SQLite recovery, not production distributed ownership. Schema
+v9 adds one expiring, token-validated source lease per task. Separate API repository
+instances sharing the database cannot dispatch or follow the same task at once;
+the owner heartbeats its lease, peers wait with bounded exponential delay, and an
+expired or gracefully released owner can be taken over. Startup source outages
+are retried without changing an accepted task to false terminal failure, and the
+SQLite decision waiter performs a bounded cross-process refresh so the owner can
+observe a decision committed by another API process.
+
+Receipt rows and replay work are not yet compacted or bounded; every restart can
+scan the full provider history. Exact OS-process-kill takeover, replica/failover
+convergence, non-owner plan-edit command routing, and transient failures after an
+active stream has started remain unproven. An unaccepted `respond` transition
+cannot be reconstructed after restart because the review comment is deliberately
+not retained; it fails closed, while an already accepted response is rediscovered
+by transition metadata. These limitations keep `E2E-V1-03` and `E2E-V1-05`
+Partial until bounded replay, process-kill, provider and hosted acceptance gates
+pass.
 
 The local adapter has a stopped-application backup/restore utility for recovery
 testing and developer-owned data. Stop the API first so the task and settings

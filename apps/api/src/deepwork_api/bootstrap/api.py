@@ -276,8 +276,11 @@ def create_app(
                 try:
                     if await task_runner.recover(task):
                         continue
+                    task_runner.watch_recovery(task)
+                    continue
                 except Exception:
-                    pass
+                    task_runner.watch_recovery(task)
+                    continue
             await task_repository.append_event(
                 task.task_id,
                 name=TaskEventName.RUN_COMPLETED,

@@ -7,6 +7,7 @@ import hashlib
 import json
 import sqlite3
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -533,6 +534,42 @@ async def test_source_binding_replaces_and_survives_repository_reopen(tmp_path: 
     reopened = SQLiteTaskRepository(database)
     assert await reopened.get_source_binding(task.task_id) == advanced
     await reopened.close()
+
+
+async def test_source_lease_excludes_peers_and_allows_expired_takeover(tmp_path: Path) -> None:
+    now = [datetime(2026, 8, 4, tzinfo=UTC)]
+    database = tmp_path / "source-lease.sqlite"
+    first = SQLiteTaskRepository(database, clock=lambda: now[0])
+    second = SQLiteTaskRepository(database, clock=lambda: now[0])
+    task = await first.create_task(title="Lease", objective="Own one source follower")
+
+    original = await first.acquire_source_lease(
+        task.task_id, owner_id="api-process-a", lease_seconds=2
+    )
+    assert original is not None
+    assert (
+        await second.acquire_source_lease(task.task_id, owner_id="api-process-b", lease_seconds=2)
+        is None
+    )
+    assert (
+        await second.renew_source_lease(task.task_id, lease_token="not-the-owner", lease_seconds=2)
+        is None
+    )
+
+    now[0] += timedelta(seconds=3)
+    replacement = await second.acquire_source_lease(
+        task.task_id, owner_id="api-process-b", lease_seconds=2
+    )
+    assert replacement is not None
+    assert replacement.owner_id == "api-process-b"
+    assert replacement.lease_token != original.lease_token
+    assert await first.release_source_lease(task.task_id, lease_token=original.lease_token) is False
+    assert (
+        await second.release_source_lease(task.task_id, lease_token=replacement.lease_token) is True
+    )
+
+    await first.close()
+    await second.close()
 
 
 async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_path: Path) -> None:
@@ -1638,6 +1675,7 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
                 and "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
                 and "task_source_plan_transitions" not in statement
+                and "task_source_leases" not in statement
             ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
@@ -1674,6 +1712,7 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
                 and "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
                 and "task_source_plan_transitions" not in statement
+                and "task_source_leases" not in statement
             ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(
@@ -1714,6 +1753,7 @@ async def test_v6_database_adds_source_recovery_tables_without_rewriting_tasks(
                 "task_source_bindings" not in statement
                 and "task_source_event_receipts" not in statement
                 and "task_source_plan_transitions" not in statement
+                and "task_source_leases" not in statement
             ):
                 connection.execute(statement)
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
@@ -1747,7 +1787,10 @@ async def test_v7_database_adds_durable_plan_transition_table(tmp_path: Path) ->
     database = tmp_path / "schema-v7.sqlite"
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
-            if "task_source_plan_transitions" not in statement:
+            if (
+                "task_source_plan_transitions" not in statement
+                and "task_source_leases" not in statement
+            ):
                 connection.execute(statement)
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
         connection.execute("PRAGMA user_version = 7")
@@ -1767,6 +1810,36 @@ async def test_v7_database_adds_durable_plan_transition_table(tmp_path: Path) ->
         ).fetchone()[0]
     assert version == sqlite_adapter._SCHEMA_VERSION
     assert plan_table == 1
+
+
+async def test_v8_database_adds_source_lease_table(tmp_path: Path) -> None:
+    database = tmp_path / "schema-v8.sqlite"
+    with sqlite3.connect(database) as connection:
+        for statement in sqlite_adapter._SCHEMA_STATEMENTS:
+            if "task_source_leases" not in statement:
+                connection.execute(statement)
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 8")
+
+    repository = SQLiteTaskRepository(database)
+    task = await repository.create_task(title="Migrated", objective="Claim source work")
+    lease = await repository.acquire_source_lease(
+        task.task_id, owner_id="api-process-a", lease_seconds=15
+    )
+    assert lease is not None
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        lease_table = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'task_source_leases'
+            """
+        ).fetchone()[0]
+    assert version == sqlite_adapter._SCHEMA_VERSION
+    assert lease_table == 1
 
 
 def _seed_v1_database(database: Path) -> None:

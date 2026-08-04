@@ -57,6 +57,7 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskSourceBinding,
     TaskSourceContractError,
+    TaskSourceLease,
     TaskSourcePlanTransition,
     TaskStatus,
     aggregate_batch_decision,
@@ -65,7 +66,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 8
+_SCHEMA_VERSION = 9
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -157,6 +158,16 @@ CREATE TABLE task_source_plan_transitions (
 )
 """
 
+_SOURCE_LEASE_SCHEMA = """
+CREATE TABLE task_source_leases (
+    task_id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    lease_token TEXT NOT NULL,
+    lease_expires_at INTEGER NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+)
+"""
+
 
 _SCHEMA_STATEMENTS = (
     """
@@ -217,6 +228,7 @@ CREATE TABLE decisions (
     _SOURCE_BINDING_SCHEMA,
     _SOURCE_EVENT_RECEIPT_SCHEMA,
     _SOURCE_PLAN_TRANSITION_SCHEMA,
+    _SOURCE_LEASE_SCHEMA,
     "CREATE INDEX events_task_order ON events(task_id, event_id)",
     "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
@@ -243,6 +255,7 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
     # column. Move it last and drop NOT NULL without losing the recorded values,
@@ -258,6 +271,7 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v3 has the canonical task columns but predates the name-led event index.
     3: (
@@ -267,6 +281,7 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v4 has the canonical timestamp and event-index shape but no ownership.
     4: (
@@ -275,6 +290,7 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v5 has task ownership but predates durable task-creation idempotency.
     5: (
@@ -282,15 +298,19 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v6 has durable task-creation idempotency but no source rejoin identity.
     6: (
         _SOURCE_BINDING_SCHEMA,
         _SOURCE_EVENT_RECEIPT_SCHEMA,
         _SOURCE_PLAN_TRANSITION_SCHEMA,
+        _SOURCE_LEASE_SCHEMA,
     ),
     # v7 has source bindings and replay receipts but no durable plan-edit intent.
-    7: (_SOURCE_PLAN_TRANSITION_SCHEMA,),
+    7: (_SOURCE_PLAN_TRANSITION_SCHEMA, _SOURCE_LEASE_SCHEMA),
+    # v8 has durable plan-edit intent but no cross-process source ownership.
+    8: (_SOURCE_LEASE_SCHEMA,),
 }
 
 _EXPECTED_COLUMNS = {
@@ -349,6 +369,7 @@ _EXPECTED_COLUMNS = {
         "expected_revision",
         "steps",
     ),
+    "task_source_leases": ("task_id", "owner_id", "lease_token", "lease_expires_at"),
 }
 
 _EXPECTED_TABLE_INFO = {
@@ -422,6 +443,12 @@ _EXPECTED_TABLE_INFO = {
         ("expected_revision", "INTEGER", 1, 0),
         ("steps", "TEXT", 1, 0),
     ),
+    "task_source_leases": (
+        ("task_id", "TEXT", 0, 1),
+        ("owner_id", "TEXT", 1, 0),
+        ("lease_token", "TEXT", 1, 0),
+        ("lease_expires_at", "INTEGER", 1, 0),
+    ),
 }
 
 _EXPECTED_DEFAULTS = {
@@ -450,6 +477,7 @@ _EXPECTED_DEFAULTS = {
     "task_source_bindings": (None, None, None, None, None, None),
     "task_source_event_receipts": (None, None),
     "task_source_plan_transitions": (None, None, None, None, None, None, None),
+    "task_source_leases": (None, None, None, None),
 }
 
 _EXPECTED_INDEXES = {
@@ -499,6 +527,7 @@ _EXPECTED_INDEXES = {
             (True, "pk", ("task_id",)): 1,
         }
     ),
+    "task_source_leases": Counter({(True, "pk", ("task_id",)): 1}),
 }
 
 _EXPECTED_FOREIGN_KEYS = {
@@ -514,6 +543,7 @@ _EXPECTED_FOREIGN_KEYS = {
     "task_source_plan_transitions": (
         ("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),
     ),
+    "task_source_leases": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
 }
 
 _EXPECTED_OBJECTS = {
@@ -528,6 +558,7 @@ _EXPECTED_OBJECTS = {
     "task_source_bindings",
     "task_source_event_receipts",
     "task_source_plan_transitions",
+    "task_source_leases",
 }
 
 _LATEST_CODING_EVENTS_QUERY = """
@@ -683,6 +714,49 @@ class SQLiteTaskRepository:
             request_fingerprint,
             security_context,
         )
+
+    async def acquire_source_lease(
+        self,
+        task_id: str,
+        *,
+        owner_id: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Atomically own source work unless another unexpired lease exists."""
+
+        _validate_source_lease_input(owner_id, lease_seconds, max_length=200)
+        return await self._mutate(
+            self._acquire_source_lease_sync,
+            task_id,
+            owner_id,
+            int(self._clock().timestamp()),
+            lease_seconds,
+        )
+
+    async def renew_source_lease(
+        self,
+        task_id: str,
+        *,
+        lease_token: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Extend only a matching unexpired lease."""
+
+        _validate_source_lease_input(lease_token, lease_seconds, max_length=96)
+        return await self._mutate(
+            self._renew_source_lease_sync,
+            task_id,
+            lease_token,
+            int(self._clock().timestamp()),
+            lease_seconds,
+        )
+
+    async def release_source_lease(self, task_id: str, *, lease_token: str) -> bool:
+        """Delete only a matching source lease."""
+
+        if not lease_token or len(lease_token) > 96:
+            raise ValueError("source lease input is invalid")
+        return await self._mutate(self._release_source_lease_sync, task_id, lease_token)
 
     async def bind_source_run(
         self,
@@ -1009,7 +1083,7 @@ class SQLiteTaskRepository:
         task_id: str,
         interrupt_id: str,
     ) -> DecisionValue:
-        """Wait without polling for the exact interrupt decision."""
+        """Wait for an in-process signal or bounded cross-process refresh."""
 
         await self.initialize()
         state = self._state()
@@ -1023,7 +1097,12 @@ class SQLiteTaskRepository:
                 )
                 if decision is not None:
                     return decision
-                await state.condition.wait()
+                try:
+                    await asyncio.wait_for(state.condition.wait(), timeout=0.25)
+                except TimeoutError:
+                    # Another API process cannot notify this event-loop-local
+                    # condition; the bounded refresh observes its committed row.
+                    pass
 
     async def cancel_task(self, task_id: str) -> CancellationRecord:
         """Atomically move a live task to a terminal cancelled state."""
@@ -1356,6 +1435,100 @@ class SQLiteTaskRepository:
             task = self._snapshot_sync(connection, cast(str, existing["task_id"]))
             connection.commit()
             return task
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _acquire_source_lease_sync(
+        self, task_id: str, owner_id: str, now: int, lease_seconds: int
+    ) -> TaskSourceLease | None:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            task = self._task_row_sync(connection, task_id)
+            if _decode_status(task["status"]).is_terminal:
+                connection.commit()
+                return None
+            row = connection.execute(
+                """
+                SELECT owner_id, lease_token, lease_expires_at
+                FROM task_source_leases WHERE task_id = ?
+                """,
+                (task_id,),
+            ).fetchone()
+            if row is not None and int(row["lease_expires_at"]) > now:
+                connection.commit()
+                if cast(str, row["owner_id"]) != owner_id:
+                    return None
+                return TaskSourceLease(
+                    task_id, owner_id, cast(str, row["lease_token"]), int(row["lease_expires_at"])
+                )
+            lease = TaskSourceLease(task_id, owner_id, secrets.token_hex(24), now + lease_seconds)
+            connection.execute(
+                """
+                INSERT INTO task_source_leases (
+                    task_id, owner_id, lease_token, lease_expires_at
+                ) VALUES (?, ?, ?, ?)
+                ON CONFLICT(task_id) DO UPDATE SET
+                    owner_id = excluded.owner_id,
+                    lease_token = excluded.lease_token,
+                    lease_expires_at = excluded.lease_expires_at
+                """,
+                (task_id, owner_id, lease.lease_token, lease.expires_at),
+            )
+            connection.commit()
+            return lease
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _renew_source_lease_sync(
+        self, task_id: str, lease_token: str, now: int, lease_seconds: int
+    ) -> TaskSourceLease | None:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT owner_id, lease_token, lease_expires_at
+                FROM task_source_leases WHERE task_id = ?
+                """,
+                (task_id,),
+            ).fetchone()
+            if (
+                row is None
+                or int(row["lease_expires_at"]) <= now
+                or not secrets.compare_digest(cast(str, row["lease_token"]), lease_token)
+            ):
+                connection.commit()
+                return None
+            expires_at = now + lease_seconds
+            connection.execute(
+                "UPDATE task_source_leases SET lease_expires_at = ? WHERE task_id = ?",
+                (expires_at, task_id),
+            )
+            connection.commit()
+            return TaskSourceLease(task_id, cast(str, row["owner_id"]), lease_token, expires_at)
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _release_source_lease_sync(self, task_id: str, lease_token: str) -> bool:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "DELETE FROM task_source_leases WHERE task_id = ? AND lease_token = ?",
+                (task_id, lease_token),
+            )
+            connection.commit()
+            return cursor.rowcount == 1
         except Exception:
             connection.rollback()
             raise
@@ -2834,6 +3007,11 @@ def _validate_idempotency_input(key: str, fingerprint: str) -> None:
         raise ValueError("task idempotency key is invalid")
     if not isinstance(fingerprint, str) or _SHA256_PATTERN.fullmatch(fingerprint) is None:
         raise ValueError("task request fingerprint is invalid")
+
+
+def _validate_source_lease_input(value: str, lease_seconds: int, *, max_length: int) -> None:
+    if not value or len(value) > max_length or not 1 <= lease_seconds <= 300:
+        raise ValueError("source lease input is invalid")
 
 
 def _validate_steps(steps: tuple[str, ...], *, stored: bool = False) -> None:

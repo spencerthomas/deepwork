@@ -531,12 +531,11 @@ async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_pat
         replay_request = asyncio.create_task(
             services[1].create_task("Do the thing", idempotency_key="shared-source-key")
         )
-        await asyncio.sleep(0)
+        replay = await asyncio.wait_for(replay_request, timeout=1)
+        assert replay.created is False
         assert source.starts == 1
         source.release.set()
         created = await asyncio.wait_for(first_request, timeout=1)
-        replay = await asyncio.wait_for(replay_request, timeout=1)
-        assert replay.created is False
         assert created.created is True
         assert replay.task.task_id == created.task.task_id
         assert source.starts == 1
@@ -549,6 +548,46 @@ async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_pat
             await runner.close()
         for repository in repositories:
             await repository.close()
+
+
+async def test_startup_recovery_retries_a_transient_source_failure() -> None:
+    class FlakySource(_Source):
+        def __init__(self) -> None:
+            super().__init__()
+            self.attempts = 0
+
+        async def start(
+            self,
+            objective: str,
+            *,
+            dispatch_id: str,
+            system_prompt: str | None = None,
+            agent_id: str | None = None,
+        ) -> _Run:
+            self.attempts += 1
+            if self.attempts == 1:
+                raise OSError("temporary source outage")
+            return await super().start(
+                objective,
+                dispatch_id=dispatch_id,
+                system_prompt=system_prompt,
+                agent_id=agent_id,
+            )
+
+    repository = InMemoryTaskRepository()
+    task = await repository.create_task(title="Recover", objective="Retry accepted work")
+    source = FlakySource()
+    runner = LocalAgentServerRunner(repository, source)
+    runner.watch_recovery(task)
+    try:
+        for _ in range(20):
+            if await repository.get_source_binding(task.task_id) is not None:
+                break
+            await asyncio.sleep(0.05)
+        assert await repository.get_source_binding(task.task_id) is not None
+        assert source.attempts == 2
+    finally:
+        await runner.close()
 
 
 async def test_independent_task_keys_can_start_the_source_concurrently() -> None:

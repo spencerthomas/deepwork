@@ -25,6 +25,7 @@ from deepwork_api.domain import (
     TaskEventName,
     TaskSnapshot,
     TaskSourceContractError,
+    TaskSourceLease,
     TaskSourceUnavailableError,
     TaskStatus,
 )
@@ -37,6 +38,8 @@ _TERMINAL_REASON = "Local Agent Server run reached a terminal state."
 _RESUME_SHUTDOWN_GRACE_SECONDS = 1.0
 _SOURCE_STATE_RECONCILIATION_SECONDS = 1.0
 _SOURCE_STATE_RECONCILIATION_MAX_SECONDS = 8.0
+_SOURCE_LEASE_SECONDS = 15
+_SOURCE_RECOVERY_MAX_DELAY_SECONDS = 2.0
 
 
 class _SourceHandoffPersistenceError(Exception):
@@ -244,6 +247,13 @@ class LocalAgentServerRunner:
         default_factory=dict,
         init=False,
     )
+    _owner_id: str = field(
+        default_factory=lambda: f"source-owner-{uuid.uuid4().hex}",
+        init=False,
+    )
+    _source_leases: dict[str, TaskSourceLease] = field(default_factory=dict, init=False)
+    _lease_heartbeats: dict[str, asyncio.Task[None]] = field(default_factory=dict, init=False)
+    _recovery_tasks: dict[str, asyncio.Task[None]] = field(default_factory=dict, init=False)
     _closing: bool = field(default=False, init=False)
 
     async def create(
@@ -280,7 +290,8 @@ class LocalAgentServerRunner:
                 async with self._command_lock(task.task_id):
                     current = await self.repository.get_task(task.task_id)
                     if not current.status.is_terminal and task.task_id not in self._tasks:
-                        await self.recover(current)
+                        if not await self.recover(current):
+                            self.watch_recovery(current)
                         current = await self.repository.get_task(task.task_id)
                     return TaskCreation(task=current, created=False)
         else:
@@ -292,6 +303,8 @@ class LocalAgentServerRunner:
                 security_context=security_context,
             )
 
+        if not await self._acquire_source_lease(task.task_id):
+            raise TaskSourceUnavailableError
         system_prompt = await self._current_system_prompt(security_context)
         try:
             run = await self.source.start(
@@ -303,10 +316,12 @@ class LocalAgentServerRunner:
         except TaskSourceContractError:
             if task is not None:
                 await self._fail(task, _SOURCE_CONTRACT_REASON)
+                await self._release_source_lease(task.task_id)
             raise
         except Exception:
             if task is not None:
                 await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
+                await self._release_source_lease(task.task_id)
             raise TaskSourceUnavailableError from None
         try:
             await self.repository.bind_source_run(
@@ -314,7 +329,11 @@ class LocalAgentServerRunner:
                 thread_id=run.thread_id,
                 run_id=run.run_id,
             )
+        except asyncio.CancelledError:
+            await self._release_source_lease(task.task_id)
+            raise
         except Exception:
+            await self._release_source_lease(task.task_id)
             raise TaskSourceUnavailableError from None
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)
@@ -368,6 +387,8 @@ class LocalAgentServerRunner:
     async def recover(self, task: TaskSnapshot) -> bool:
         """Rejoin one persisted non-terminal source task after API startup."""
 
+        if not await self._acquire_source_lease(task.task_id):
+            return False
         binding = await self.repository.get_source_binding(task.task_id)
         if binding is None:
             system_prompt = await self._current_system_prompt(
@@ -460,6 +481,109 @@ class LocalAgentServerRunner:
                 self._accept_resume((task.task_id, task.pending_interrupt_id))
         return True
 
+    def watch_recovery(self, task: TaskSnapshot) -> None:
+        """Poll a peer-owned task until its lease expires or it finishes."""
+
+        self._watch_recovery_id(task.task_id)
+
+    def _watch_recovery_id(self, task_id: str) -> None:
+        if self._closing or task_id in self._recovery_tasks:
+            return
+        recovery = asyncio.create_task(
+            self._recover_when_available(task_id),
+            name=f"deepwork-local-recovery-{task_id}",
+        )
+        self._recovery_tasks[task_id] = recovery
+        recovery.add_done_callback(lambda finished: self._discard_recovery(task_id, finished))
+
+    async def _recover_when_available(self, task_id: str) -> None:
+        delay = 0.25
+        while not self._closing:
+            task: TaskSnapshot | None = None
+            try:
+                task = await self.repository.get_task(task_id)
+                if task.status.is_terminal or await self.recover(task):
+                    return
+            except TaskSourceContractError:
+                if task is not None:
+                    await self._fail(task, _SOURCE_CONTRACT_REASON)
+                return
+            except Exception:
+                # A bounded retry preserves accepted work through a transient
+                # source or persistence outage without publishing false failure.
+                pass
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
+
+    def _discard_recovery(self, task_id: str, recovery: asyncio.Task[None]) -> None:
+        if self._recovery_tasks.get(task_id) is recovery:
+            self._recovery_tasks.pop(task_id, None)
+        if not recovery.cancelled():
+            recovery.exception()
+
+    async def _acquire_source_lease(self, task_id: str) -> bool:
+        if task_id in self._source_leases:
+            return True
+        lease = await self.repository.acquire_source_lease(
+            task_id,
+            owner_id=self._owner_id,
+            lease_seconds=_SOURCE_LEASE_SECONDS,
+        )
+        if lease is None:
+            return False
+        self._source_leases[task_id] = lease
+        heartbeat = asyncio.create_task(
+            self._renew_source_lease(task_id),
+            name=f"deepwork-local-lease-{task_id}",
+        )
+        self._lease_heartbeats[task_id] = heartbeat
+        heartbeat.add_done_callback(lambda finished: self._discard_heartbeat(task_id, finished))
+        return True
+
+    async def _renew_source_lease(self, task_id: str) -> None:
+        while not self._closing:
+            await asyncio.sleep(_SOURCE_LEASE_SECONDS / 3)
+            lease = self._source_leases.get(task_id)
+            if lease is None:
+                return
+            try:
+                task = await self.repository.get_task(task_id)
+                if task.status.is_terminal:
+                    await self._release_source_lease(task_id)
+                    return
+                renewed = await self.repository.renew_source_lease(
+                    task_id,
+                    lease_token=lease.lease_token,
+                    lease_seconds=_SOURCE_LEASE_SECONDS,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                renewed = None
+            if renewed is None:
+                self._source_leases.pop(task_id, None)
+                follower = self._tasks.get(task_id)
+                if follower is not None:
+                    follower.cancel()
+                self._watch_recovery_id(task_id)
+                return
+            self._source_leases[task_id] = renewed
+
+    def _discard_heartbeat(self, task_id: str, heartbeat: asyncio.Task[None]) -> None:
+        if self._lease_heartbeats.get(task_id) is heartbeat:
+            self._lease_heartbeats.pop(task_id, None)
+        if not heartbeat.cancelled():
+            heartbeat.exception()
+
+    async def _release_source_lease(self, task_id: str) -> None:
+        lease = self._source_leases.pop(task_id, None)
+        if lease is None:
+            return
+        await self.repository.release_source_lease(
+            task_id,
+            lease_token=lease.lease_token,
+        )
+
     def start(
         self,
         task: TaskSnapshot,
@@ -486,6 +610,11 @@ class LocalAgentServerRunner:
         self._closing = True
         active = dict(self._tasks)
         active_plan_updates = tuple(self._plan_updates.values())
+        ownership_tasks = tuple(
+            set(self._lease_heartbeats.values()) | set(self._recovery_tasks.values())
+        )
+        for ownership_task in ownership_tasks:
+            ownership_task.cancel()
         resuming_task_ids = {task_id for task_id, _ in self._resumes_in_flight}
         draining = tuple(
             background for task_id, background in active.items() if task_id in resuming_task_ids
@@ -507,12 +636,18 @@ class LocalAgentServerRunner:
         tracked = tuple(set(active.values()) | set(self._tasks.values()) | set(active_plan_updates))
         if tracked:
             await asyncio.gather(*tracked, return_exceptions=True)
+        if ownership_tasks:
+            await asyncio.gather(*ownership_tasks, return_exceptions=True)
+        for task_id in tuple(self._source_leases):
+            await self._release_source_lease(task_id)
         for acknowledgement in self._resume_acknowledgements.values():
             if not acknowledgement.done():
                 acknowledgement.set_exception(TaskSourceUnavailableError())
         self._tasks.clear()
         self._plan_updates.clear()
         self._plan_update_requests.clear()
+        self._lease_heartbeats.clear()
+        self._recovery_tasks.clear()
 
     async def update_plan(
         self,

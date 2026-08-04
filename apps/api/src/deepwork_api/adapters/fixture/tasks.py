@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
 from dataclasses import dataclass, field
 
 from deepwork_api.domain import (
@@ -39,6 +40,7 @@ from deepwork_api.domain import (
     TaskSnapshot,
     TaskSourceBinding,
     TaskSourceContractError,
+    TaskSourceLease,
     TaskSourcePlanTransition,
     TaskStatus,
     aggregate_batch_decision,
@@ -116,6 +118,7 @@ class InMemoryTaskRepository:
         self._tasks: dict[str, _StoredTask] = {}
         self._idempotency: dict[tuple[str, str, str, str], tuple[str, str]] = {}
         self._source_bindings: dict[str, TaskSourceBinding] = {}
+        self._source_leases: dict[str, TaskSourceLease] = {}
         self._source_plan_transitions: dict[str, TaskSourcePlanTransition] = {}
         self._source_event_receipts: dict[str, set[str]] = {}
         self._next_task_number = 1
@@ -201,6 +204,78 @@ class InMemoryTaskRepository:
             if fingerprint != request_fingerprint:
                 raise TaskIdempotencyConflictError
             return self._get(task_id).snapshot()
+
+    async def acquire_source_lease(
+        self,
+        task_id: str,
+        *,
+        owner_id: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Atomically own source work unless another live owner holds it."""
+
+        if not owner_id or len(owner_id) > 200 or not 1 <= lease_seconds <= 300:
+            raise ValueError("source lease input is invalid")
+        async with self._condition:
+            task = self._get(task_id)
+            if task.status.is_terminal:
+                return None
+            now = int(self._clock().timestamp())
+            current = self._source_leases.get(task_id)
+            if current is not None and current.expires_at > now:
+                return current if current.owner_id == owner_id else None
+            lease = TaskSourceLease(
+                task_id=task_id,
+                owner_id=owner_id,
+                lease_token=secrets.token_hex(24),
+                expires_at=now + lease_seconds,
+            )
+            self._source_leases[task_id] = lease
+            self._condition.notify_all()
+            return lease
+
+    async def renew_source_lease(
+        self,
+        task_id: str,
+        *,
+        lease_token: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Extend only a matching unexpired lease."""
+
+        if not lease_token or len(lease_token) > 96 or not 1 <= lease_seconds <= 300:
+            raise ValueError("source lease input is invalid")
+        async with self._condition:
+            now = int(self._clock().timestamp())
+            current = self._source_leases.get(task_id)
+            if (
+                current is None
+                or current.expires_at <= now
+                or not secrets.compare_digest(current.lease_token, lease_token)
+            ):
+                return None
+            lease = TaskSourceLease(
+                task_id=task_id,
+                owner_id=current.owner_id,
+                lease_token=current.lease_token,
+                expires_at=now + lease_seconds,
+            )
+            self._source_leases[task_id] = lease
+            self._condition.notify_all()
+            return lease
+
+    async def release_source_lease(self, task_id: str, *, lease_token: str) -> bool:
+        """Delete only a matching lease."""
+
+        if not lease_token or len(lease_token) > 96:
+            raise ValueError("source lease input is invalid")
+        async with self._condition:
+            current = self._source_leases.get(task_id)
+            if current is None or not secrets.compare_digest(current.lease_token, lease_token):
+                return False
+            del self._source_leases[task_id]
+            self._condition.notify_all()
+            return True
 
     async def bind_source_run(
         self,

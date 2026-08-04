@@ -23,6 +23,7 @@ from deepwork_api.domain import (
     TaskJourney,
     TaskSnapshot,
     TaskSourceBinding,
+    TaskSourceLease,
     TaskSourcePlanTransition,
     TaskStatus,
 )
@@ -67,6 +68,27 @@ class TaskRepository(Protocol):
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot | None:
         """Resolve an existing scoped request or reject a changed replay."""
+
+    async def acquire_source_lease(
+        self,
+        task_id: str,
+        *,
+        owner_id: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Acquire expired/unowned source work for one non-terminal task."""
+
+    async def renew_source_lease(
+        self,
+        task_id: str,
+        *,
+        lease_token: str,
+        lease_seconds: int,
+    ) -> TaskSourceLease | None:
+        """Extend only the caller's current, unexpired source lease."""
+
+    async def release_source_lease(self, task_id: str, *, lease_token: str) -> bool:
+        """Release only the caller's current source lease."""
 
     async def bind_source_run(
         self,

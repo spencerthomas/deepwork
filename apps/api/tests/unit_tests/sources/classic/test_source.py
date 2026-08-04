@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from types import SimpleNamespace
 
 import pytest
+from langgraph_sdk import get_client
 
 from deepwork_api.adapters.sources.classic import (
     LIVE_CONTRACT_CAPABILITIES,
@@ -85,6 +86,20 @@ def _client(
         ),
         close_error=close_error,
     )
+
+
+@pytest.mark.asyncio
+async def test_pinned_official_sdk_disables_http_redirect_following() -> None:
+    client = get_client(
+        url="https://approved.example.test/mount",
+        api_key="server-held-key",
+        headers={},
+        timeout=(5.0, 20.0, 20.0, 5.0),
+    )
+    try:
+        assert client.http.client.follow_redirects is False
+    finally:
+        await client.aclose()
 
 
 @pytest.mark.parametrize(

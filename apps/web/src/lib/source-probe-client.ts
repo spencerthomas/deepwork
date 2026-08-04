@@ -6,9 +6,11 @@ import {
   type SourceProbeTransport,
 } from "@deepwork/sdk";
 
-import { isRecord } from "./task-normalizers";
+import { isRecord } from "./wire-utils";
 
 export type { SourceProbeResult, SourceProbeState } from "@deepwork/domain";
+
+const SOURCE_PROBE_TIMEOUT_MS = 15_000;
 
 async function responseValue(response: Response): Promise<unknown> {
   const text = await response.text();
@@ -43,13 +45,28 @@ function createHttpSourceProbeTransport(apiBaseUrl: string): SourceProbeTranspor
 
 export async function probeClassicSource(
   apiBaseUrl: string,
-  input: { endpoint: string; assistantId: string },
+  input: { assistantId: string },
   signal?: AbortSignal,
 ): Promise<SourceProbeResult> {
-  const result = await createSourceProbeService(createHttpSourceProbeTransport(apiBaseUrl)).check(
-    input,
-    { signal },
-  );
-  if (!result.ok) throw new Error(result.error.safeMessage);
-  return result.value;
+  const deadline = new AbortController();
+  let timedOut = false;
+  const timeout = globalThis.setTimeout(() => {
+    timedOut = true;
+    deadline.abort();
+  }, SOURCE_PROBE_TIMEOUT_MS);
+  const abortFromCaller = () => deadline.abort();
+  signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (signal?.aborted) deadline.abort();
+  try {
+    const result = await createSourceProbeService(createHttpSourceProbeTransport(apiBaseUrl)).check(
+      input,
+      { signal: deadline.signal },
+    );
+    if (timedOut) throw new Error("The source check timed out. Try again.");
+    if (!result.ok) throw new Error(result.error.safeMessage);
+    return result.value;
+  } finally {
+    globalThis.clearTimeout(timeout);
+    signal?.removeEventListener("abort", abortFromCaller);
+  }
 }

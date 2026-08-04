@@ -12,6 +12,7 @@ from deepwork_api.application import (
     SecurityContext,
     SourceEndpointInvalidError,
     SourceService,
+    SourceTargetUnavailableError,
 )
 from deepwork_api.contracts import ProblemResponse, SourceProbeRequest, SourceProbeResponse
 
@@ -32,10 +33,19 @@ def build_sources_router(
     router = APIRouter(prefix="/api/v1/sources", tags=["sources"])
     security_context_marker = Depends(security_context_dependency)
 
-    @router.post("/probes", response_model=SourceProbeResponse)
+    @router.post(
+        "/probes",
+        response_model=SourceProbeResponse,
+        responses={
+            401: {"model": ProblemResponse},
+            404: {"model": ProblemResponse},
+            422: {"model": ProblemResponse},
+            503: {"model": ProblemResponse},
+        },
+    )
     async def probe_source(
         request: SourceProbeRequest,
-        _security_context: SecurityContext = security_context_marker,
+        security_context: SecurityContext = security_context_marker,
     ) -> SourceProbeResponse | JSONResponse:
         if service is None:
             problem = ProblemResponse(
@@ -47,7 +57,17 @@ def build_sources_router(
                 content=problem.model_dump(),
             )
         try:
-            result = await service.probe_classic(request.deployment_url, request.assistant_id)
+            result = await service.probe_classic(
+                security_context,
+                request.source_target_id,
+                request.assistant_id,
+            )
+        except SourceTargetUnavailableError:
+            problem = ProblemResponse(
+                code="source_target_unavailable",
+                message="The source target is not available in this workspace.",
+            )
+            return JSONResponse(status_code=404, content=problem.model_dump())
         except SourceEndpointInvalidError:
             problem = ProblemResponse(
                 code="source_endpoint_invalid",

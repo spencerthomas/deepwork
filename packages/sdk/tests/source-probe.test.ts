@@ -14,8 +14,23 @@ const response = {
   reason: "assistant-qualified-read-only",
   saveAllowed: false,
   capabilities: [
-    { name: "assistants-read", state: "available", reason: "assistant-qualified" },
-    { name: "runs-create", state: "gated", reason: "invocation-not-authorized" },
+    {
+      name: "assistants-read",
+      state: "available",
+      observedAt: "2026-08-04T00:00:00.000Z",
+      adapterVersion: "classic-source-probe-v1",
+      contractVersion: "langgraph-assistants-get-v1",
+      evidenceClass: "live-contract",
+    },
+    {
+      name: "runs-create",
+      state: "gated",
+      safeReason: "adapter-disabled",
+      observedAt: "2026-08-04T00:00:00.000Z",
+      adapterVersion: "classic-source-probe-v1",
+      contractVersion: "langgraph-assistants-get-v1",
+      evidenceClass: "documented",
+    },
   ],
 };
 
@@ -25,7 +40,7 @@ describe("source probe service", () => {
     const service = createSourceProbeService({ check });
 
     const result = await service.check(
-      { endpoint: "https://agent.example.test", assistantId: "assistant-1" },
+      { assistantId: "assistant-1" },
       { signal: new AbortController().signal },
     );
 
@@ -33,7 +48,7 @@ describe("source probe service", () => {
     expect(check).toHaveBeenCalledWith(
       {
         kind: "langsmith_deployment",
-        deploymentUrl: "https://agent.example.test",
+        sourceTargetId: "classic-default",
         assistantId: "assistant-1",
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
@@ -74,7 +89,6 @@ describe("source probe service", () => {
       };
       await expect(
         createSourceProbeService(transport).check({
-          endpoint: "https://agent.example.test",
           assistantId: "assistant-1",
         }),
       ).resolves.toMatchObject({
@@ -95,7 +109,6 @@ describe("source probe service", () => {
     };
     await expect(
       createSourceProbeService(transport).check({
-        endpoint: "https://agent.example.test",
         assistantId: "assistant-1",
       }),
     ).resolves.toEqual({
@@ -103,8 +116,61 @@ describe("source probe service", () => {
       error: {
         category: "unknown",
         safeMessage: "Deep Work could not reach the API to check this source.",
-        retryable: true,
+        retryable: false,
       },
     });
+  });
+
+  it("rejects invalid candidates without calling transport", async () => {
+    const check = vi.fn();
+    const service = createSourceProbeService({ check });
+
+    await expect(service.check({ assistantId: "bad assistant" })).resolves.toMatchObject({
+      ok: false,
+      error: { category: "contract", retryable: false },
+    });
+    await expect(service.check({ assistantId: `a${"x".repeat(256)}` })).resolves.toMatchObject({
+      ok: false,
+      error: { category: "contract", retryable: false },
+    });
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it("maps authentication and workspace denial without retry", async () => {
+    const cases: readonly [number, string, string][] = [
+      [401, "unauthorized", "Authentication is required"],
+      [404, "source_target_unavailable", "not available in the current workspace"],
+      [422, "request_invalid", "request is invalid"],
+    ];
+    for (const [status, code, message] of cases) {
+      const service = createSourceProbeService({
+        async check() {
+          throw sourceProbeTransportProblem(status, code);
+        },
+      });
+      await expect(service.check({ assistantId: "assistant-1" })).resolves.toMatchObject({
+        ok: false,
+        error: { safeMessage: expect.stringContaining(message), retryable: false },
+      });
+    }
+  });
+
+  it("enforces response bounds and capability evidence coherence", () => {
+    expect(mapSourceProbeResult({ ...response, reason: "x".repeat(129) })).toMatchObject({
+      ok: false,
+      error: { category: "contract" },
+    });
+    expect(
+      mapSourceProbeResult({
+        ...response,
+        capabilities: [{ ...response.capabilities[1], safeReason: "source-unavailable" }],
+      }),
+    ).toMatchObject({ ok: false, error: { category: "contract" } });
+    expect(
+      mapSourceProbeResult({
+        ...response,
+        capabilities: [{ ...response.capabilities[0], name: "x".repeat(65) }],
+      }),
+    ).toMatchObject({ ok: false, error: { category: "contract" } });
   });
 });

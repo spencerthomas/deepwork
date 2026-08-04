@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,15 +15,13 @@ if TYPE_CHECKING:
     # root's already-bound type instead of bypassing the architecture inward.
     from deepwork_api.bootstrap.api import SecurityContext
 
+from deepwork_api.bootstrap.source_probe_config import SourceProbeConfig
+
+# Preserve the deliberate public facade identity while sharing one definition
+# with bootstrap. This keeps reprs and generated API documentation stable.
+SourceProbeConfig.__module__ = __name__
+
 __all__ = ["SourceProbeConfig", "create_app"]
-
-
-@dataclass(frozen=True, slots=True)
-class SourceProbeConfig:
-    """Server-held qualification settings; never serialize this value."""
-
-    credential: str = field(repr=False)
-    allowed_endpoints: tuple[str, ...]
 
 
 def create_app(
@@ -57,17 +54,7 @@ def create_app(
     ``web_origins`` overrides the allowed CORS origins for a hosted frontend.
     """
 
-    from deepwork_api.bootstrap.api import SourceProbeConfig as _BootstrapSourceProbeConfig
     from deepwork_api.bootstrap.api import create_app as _create_app
-
-    bootstrap_source_probe_config = (
-        _BootstrapSourceProbeConfig(
-            credential=source_probe_config.credential,
-            allowed_endpoints=source_probe_config.allowed_endpoints,
-        )
-        if source_probe_config is not None
-        else None
-    )
 
     # Forward an explicit clock only when supplied; otherwise the bootstrap
     # default (system_clock) applies, so this facade never imports it directly.
@@ -81,7 +68,7 @@ def create_app(
             classic_deployment_endpoint=classic_deployment_endpoint,
             classic_deployment_assistant=classic_deployment_assistant,
             classic_deployment_credential=classic_deployment_credential,
-            source_probe_config=bootstrap_source_probe_config,
+            source_probe_config=source_probe_config,
             access_key=access_key,
             access_key_contexts=access_key_contexts,
             web_origins=web_origins,
@@ -96,7 +83,7 @@ def create_app(
         classic_deployment_endpoint=classic_deployment_endpoint,
         classic_deployment_assistant=classic_deployment_assistant,
         classic_deployment_credential=classic_deployment_credential,
-        source_probe_config=bootstrap_source_probe_config,
+        source_probe_config=source_probe_config,
         access_key=access_key,
         access_key_contexts=access_key_contexts,
         web_origins=web_origins,

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -136,30 +136,19 @@ export function Toggle({
 export function TextInput({
   value,
   onChange,
-  placeholder,
-  type = "text",
   className,
   mono,
-  required,
-  autoComplete,
-}: {
+  ...inputProps
+}: Omit<ComponentPropsWithoutRef<"input">, "onChange" | "value"> & {
   value: string | number;
   onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-  className?: string;
   mono?: boolean;
-  required?: boolean;
-  autoComplete?: string;
 }) {
   return (
     <input
-      type={type}
+      {...inputProps}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      required={required}
-      autoComplete={autoComplete}
       className={cn(
         "rounded-lg border border-border bg-background px-3 py-1.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50",
         mono && "font-mono",

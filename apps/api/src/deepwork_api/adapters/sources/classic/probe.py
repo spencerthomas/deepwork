@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from deepwork_api.adapters.sources.classic.source import (
     ClassicSourceConfigurationError,
     ClassicSourceSettings,
@@ -13,9 +15,22 @@ from deepwork_api.domain import (
     SourceEndpointInvalidError,
     SourceProbeResult,
 )
+from deepwork_api.domain.sources import SourceCapabilitySafeReason, SourceProbeState
 
 _AUTH_REF = "server:classic-source-probe"
 _SOURCE_ID = "classic-source-candidate"
+_ADAPTER_VERSION = "classic-source-probe-v1"
+_CONTRACT_VERSION = "langgraph-assistants-get-v1"
+
+
+def _safe_capability_state(
+    state: str,
+) -> tuple[SourceProbeState, SourceCapabilitySafeReason]:
+    if state == "permission-denied":
+        return "permission-denied", "permission-required"
+    if state == "unavailable":
+        return "unavailable", "source-unavailable"
+    return "unknown", "contract-not-verified"
 
 
 class ClassicSourceProbeClient:
@@ -61,21 +76,27 @@ class ClassicSourceProbeClient:
             enabled=True,
         )
         assistant = qualification.assistant
+        observed_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        assistant_state, assistant_safe_reason = _safe_capability_state(qualification.state)
         capabilities = (
             SourceCapabilityObservation(
                 name="assistants-read",
-                state="available" if assistant is not None else qualification.state,
-                reason=(
-                    "assistant-qualified"
-                    if assistant is not None
-                    else qualification.reason or "qualification-failed"
-                ),
+                state="available" if assistant is not None else assistant_state,
+                safe_reason=None if assistant is not None else assistant_safe_reason,
+                observed_at=observed_at,
+                adapter_version=_ADAPTER_VERSION,
+                contract_version=_CONTRACT_VERSION,
+                evidence_class="live-contract",
             ),
             *(
                 SourceCapabilityObservation(
                     name=observation.name,
-                    state=observation.state,
-                    reason=observation.reason,
+                    state="gated",
+                    safe_reason="adapter-disabled",
+                    observed_at=observed_at,
+                    adapter_version=_ADAPTER_VERSION,
+                    contract_version=_CONTRACT_VERSION,
+                    evidence_class="documented",
                 )
                 for observation in qualification.capabilities
             ),

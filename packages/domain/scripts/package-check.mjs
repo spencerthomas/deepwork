@@ -113,11 +113,14 @@ if (typeof domain.sourceId !== "function") {
   run(process.execPath, ["verify.mjs"], consumer);
   await writeFile(
     join(consumer, "verify.ts"),
-    `import { sourceId, type SourceRunKey } from "@deepwork/domain";
+    `import { SOURCE_PROBE_STATES, sourceId, type SourceProbeResult, type SourceRunKey } from "@deepwork/domain";
 const id = sourceId("consumer-source");
 const key: SourceRunKey | undefined = undefined;
+const probe: SourceProbeResult | undefined = undefined;
+void SOURCE_PROBE_STATES;
 void id;
 void key;
+void probe;
 `,
   );
   await writeFile(

@@ -951,6 +951,26 @@
         "title": "PlanUpdateResponse",
         "type": "object"
       },
+      "ProblemResponse": {
+        "additionalProperties": false,
+        "description": "Stable safe application problem.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ProblemResponse",
+        "type": "object"
+      },
       "ProcessState": {
         "description": "Process-only liveness state.",
         "enum": [
@@ -1175,66 +1195,82 @@
         "title": "ScheduleSummaryResponse",
         "type": "object"
       },
-      "SourceCapabilityResponse": {
+      "SourceAvailableCapabilityResponse": {
         "additionalProperties": false,
-        "description": "One sanitized, independently observed capability state.",
         "properties": {
+          "adapterVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Adapterversion",
+            "type": "string"
+          },
+          "contractVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Contractversion",
+            "type": "string"
+          },
+          "evidenceClass": {
+            "enum": [
+              "documented",
+              "live-contract",
+              "fixture"
+            ],
+            "title": "Evidenceclass",
+            "type": "string"
+          },
           "name": {
             "maxLength": 64,
             "minLength": 1,
             "title": "Name",
             "type": "string"
           },
-          "reason": {
-            "maxLength": 128,
+          "observedAt": {
+            "maxLength": 64,
             "minLength": 1,
-            "title": "Reason",
+            "title": "Observedat",
             "type": "string"
           },
           "state": {
-            "enum": [
-              "available",
-              "unavailable",
-              "gated",
-              "permission-denied",
-              "unknown"
-            ],
+            "const": "available",
             "title": "State",
             "type": "string"
           }
         },
         "required": [
           "name",
-          "state",
-          "reason"
+          "observedAt",
+          "adapterVersion",
+          "contractVersion",
+          "evidenceClass",
+          "state"
         ],
-        "title": "SourceCapabilityResponse",
+        "title": "SourceAvailableCapabilityResponse",
         "type": "object"
       },
       "SourceProbeRequest": {
         "additionalProperties": false,
-        "description": "A hosted classic candidate; credentials are intentionally absent.",
+        "description": "A server-owned classic target; credentials and provider URLs are absent.",
         "properties": {
           "assistantId": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Assistantid",
             "type": "string"
           },
-          "deploymentUrl": {
-            "maxLength": 2048,
-            "minLength": 1,
-            "title": "Deploymenturl",
-            "type": "string"
-          },
           "kind": {
             "const": "langsmith_deployment",
             "title": "Kind",
+            "type": "string"
+          },
+          "sourceTargetId": {
+            "const": "classic-default",
+            "title": "Sourcetargetid",
             "type": "string"
           }
         },
         "required": [
           "kind",
-          "deploymentUrl",
+          "sourceTargetId",
           "assistantId"
         ],
         "title": "SourceProbeRequest",
@@ -1258,7 +1294,24 @@
           },
           "capabilities": {
             "items": {
-              "$ref": "#/components/schemas/SourceCapabilityResponse"
+              "discriminator": {
+                "mapping": {
+                  "available": "#/components/schemas/SourceAvailableCapabilityResponse",
+                  "gated": "#/components/schemas/SourceUnavailableCapabilityResponse",
+                  "permission-denied": "#/components/schemas/SourceUnavailableCapabilityResponse",
+                  "unavailable": "#/components/schemas/SourceUnavailableCapabilityResponse",
+                  "unknown": "#/components/schemas/SourceUnavailableCapabilityResponse"
+                },
+                "propertyName": "state"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SourceAvailableCapabilityResponse"
+                },
+                {
+                  "$ref": "#/components/schemas/SourceUnavailableCapabilityResponse"
+                }
+              ]
             },
             "title": "Capabilities",
             "type": "array"
@@ -1277,7 +1330,6 @@
           },
           "kind": {
             "const": "langsmith_deployment",
-            "default": "langsmith_deployment",
             "title": "Kind",
             "type": "string"
           },
@@ -1289,7 +1341,6 @@
           },
           "saveAllowed": {
             "const": false,
-            "default": false,
             "title": "Saveallowed",
             "type": "boolean"
           },
@@ -1306,11 +1357,85 @@
           }
         },
         "required": [
+          "kind",
           "state",
+          "assistantId",
+          "graphId",
           "reason",
+          "saveAllowed",
           "capabilities"
         ],
         "title": "SourceProbeResponse",
+        "type": "object"
+      },
+      "SourceUnavailableCapabilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "adapterVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Adapterversion",
+            "type": "string"
+          },
+          "contractVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Contractversion",
+            "type": "string"
+          },
+          "evidenceClass": {
+            "enum": [
+              "documented",
+              "live-contract",
+              "fixture"
+            ],
+            "title": "Evidenceclass",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "observedAt": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Observedat",
+            "type": "string"
+          },
+          "safeReason": {
+            "enum": [
+              "contract-not-verified",
+              "not-supported",
+              "permission-required",
+              "source-unavailable",
+              "adapter-disabled"
+            ],
+            "title": "Safereason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "unavailable",
+              "gated",
+              "permission-denied",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "observedAt",
+          "adapterVersion",
+          "contractVersion",
+          "evidenceClass",
+          "state",
+          "safeReason"
+        ],
+        "title": "SourceUnavailableCapabilityResponse",
         "type": "object"
       },
       "SystemPromptResponse": {
@@ -2049,15 +2174,45 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ProblemResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "summary": "Probe Source",

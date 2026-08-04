@@ -26,16 +26,15 @@ import {
   PLAN_STEP_MAX_LENGTH,
   PROMPT_MAX_LENGTH,
 } from "./task-types";
+import { isRecord } from "./wire-utils";
+
+export { isRecord };
 
 export class ContractError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ContractError";
   }
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function validatePrompt(prompt: string): string {

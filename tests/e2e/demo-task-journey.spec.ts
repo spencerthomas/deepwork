@@ -249,7 +249,6 @@ test("checks a classic source without saving or accepting browser credentials", 
   await expect(page.getByRole("heading", { name: "Runtime" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Check a source" })).toBeVisible();
 
-  await page.getByLabel("Deployment URL").fill("https://agent.example.test/api");
   await page.getByLabel("Assistant ID").fill("assistant-1");
   const unavailableResponse = page.waitForResponse(
     (response) =>
@@ -261,7 +260,7 @@ test("checks a classic source without saving or accepting browser credentials", 
   expect(unavailable.status()).toBe(503);
   expect(unavailable.request().postDataJSON()).toEqual({
     kind: "langsmith_deployment",
-    deploymentUrl: "https://agent.example.test/api",
+    sourceTargetId: "classic-default",
     assistantId: "assistant-1",
   });
   expect(unavailable.request().postData()?.toLowerCase()).not.toContain("credential");
@@ -269,7 +268,14 @@ test("checks a classic source without saving or accepting browser credentials", 
     page.getByText("No server-held source credential is configured for connection checks."),
   ).toBeVisible();
 
+  let qualifiedRequests = 0;
+  let releaseQualifiedRequest: (() => void) | undefined;
+  const qualifiedRequestHeld = new Promise<void>((resolve) => {
+    releaseQualifiedRequest = resolve;
+  });
   await page.route("**/api/v1/sources/probes", async (route) => {
+    qualifiedRequests += 1;
+    await qualifiedRequestHeld;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -281,20 +287,46 @@ test("checks a classic source without saving or accepting browser credentials", 
         reason: "assistant-qualified-read-only",
         saveAllowed: false,
         capabilities: [
-          { name: "assistants-read", state: "available", reason: "assistant-qualified" },
-          { name: "runs-create", state: "gated", reason: "invocation-not-authorized" },
+          {
+            name: "assistants-read",
+            state: "available",
+            observedAt: "2026-08-04T00:00:00.000Z",
+            adapterVersion: "classic-source-probe-v1",
+            contractVersion: "langgraph-assistants-get-v1",
+            evidenceClass: "live-contract",
+          },
+          {
+            name: "runs-create",
+            state: "gated",
+            safeReason: "adapter-disabled",
+            observedAt: "2026-08-04T00:00:00.000Z",
+            adapterVersion: "classic-source-probe-v1",
+            contractVersion: "langgraph-assistants-get-v1",
+            evidenceClass: "documented",
+          },
         ],
       }),
     });
   });
-  await page.getByRole("button", { name: "Run read-only check" }).click();
+  const probeForm = page
+    .getByRole("button", { name: "Run read-only check" })
+    .locator("xpath=ancestor::form");
+  await probeForm.evaluate((form: HTMLFormElement) => {
+    form.requestSubmit();
+    form.requestSubmit();
+  });
+  await expect.poll(() => qualifiedRequests).toBe(1);
+  releaseQualifiedRequest?.();
 
   const result = page.getByLabel("Source check result");
   await expect(result.getByText("Assistant found", { exact: true })).toBeVisible();
   await expect(result.getByText("assistant-1 · graph deep-work", { exact: false })).toBeVisible();
   await expect(result.getByText("assistants-read", { exact: true })).toBeVisible();
   await expect(result.getByText("runs-create", { exact: true })).toBeVisible();
-  await expect(result.getByText("invocation-not-authorized", { exact: true })).toBeVisible();
+  await expect(result.getByText("adapter-disabled", { exact: true })).toBeVisible();
   await expect(result.getByText(/Saving and selecting this source stay blocked/)).toBeVisible();
   await expect(page.getByRole("button", { name: /save/i })).toHaveCount(0);
+
+  await page.getByLabel("Assistant ID").fill("assistant-2");
+  await expect(result).toHaveCount(0);
 });

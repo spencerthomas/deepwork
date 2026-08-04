@@ -4,7 +4,6 @@ import argparse
 import os
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -35,6 +34,7 @@ from deepwork_api.application import (
     TaskService,
 )
 from deepwork_api.application.local_runner import LocalSource
+from deepwork_api.bootstrap.source_probe_config import SourceProbeConfig
 from deepwork_api.domain import (
     DEFAULT_SECURITY_CONTEXT,
     TaskEventName,
@@ -62,14 +62,6 @@ _LOCAL_SOURCE_GATED_MESSAGE = (
     "(CLI: --allow-ungated-local-agent-source). The default runtime makes no "
     "provider/service calls."
 )
-
-
-@dataclass(frozen=True, slots=True)
-class SourceProbeConfig:
-    """Immutable server-owned settings for bounded source qualification."""
-
-    credential: str = field(repr=False)
-    allowed_endpoints: tuple[str, ...]
 
 
 def _open_security_context() -> SecurityContext:
@@ -140,17 +132,16 @@ def create_app(
     """
 
     status_service = StatusService(provider=FixtureStatusProvider())
-    if source_probe_client is not None and source_probe_config is not None:
-        raise ValueError("configure either a source probe client or source probe settings")
+    if source_probe_client is not None and source_probe_config is None:
+        raise ValueError("a source probe client requires server-owned source probe settings")
+    if source_probe_config is not None and len(source_probe_config.allowed_endpoints) != 1:
+        raise ValueError("classic source qualification requires exactly one configured target")
     configured_probe_client = source_probe_client
     if configured_probe_client is None and source_probe_config is not None:
         configured_probe_client = ClassicSourceProbeClient(
             source_probe_config.credential,
             allowed_endpoints=source_probe_config.allowed_endpoints,
         )
-    source_service = (
-        SourceService(configured_probe_client) if configured_probe_client is not None else None
-    )
     task_repository: TaskRepository
     task_runner: DeterministicFixtureRunner | LocalAgentServerRunner
     sqlite_repository: SQLiteTaskRepository | None
@@ -295,6 +286,18 @@ def create_app(
     )
     auth_guard = build_session_guard(auth_service) if auth_service else None
     task_dependencies = [Depends(auth_guard)] if auth_guard else None
+    if configured_probe_client is not None and auth_guard is None:
+        raise ValueError("source qualification requires configured session authentication")
+    source_service = (
+        SourceService(
+            configured_probe_client,
+            endpoint=source_probe_config.allowed_endpoints[0],
+            tenant_id=source_probe_config.tenant_id,
+            workspace_id=source_probe_config.workspace_id,
+        )
+        if configured_probe_client is not None and source_probe_config is not None
+        else None
+    )
 
     app.add_middleware(
         CORSMiddleware,

@@ -16,6 +16,7 @@ from deepwork_api.adapters.sources.classic import (
     qualify_classic_sources,
     validate_deployment_endpoint,
 )
+from deepwork_api.adapters.sources.classic.probe import ClassicSourceProbeClient
 
 
 @dataclass
@@ -359,6 +360,42 @@ async def test_dynamic_official_factory_uses_installed_get_contract(
     assert client.assistants.calls == ["assistant-one"]
     assert factory.calls[0]["headers"] == {}
     assert client.close_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_probe_client_uses_exact_allowlisted_target_and_server_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sdk_client = _client(assistant_id="assistant-one", graph_id="graph-one")
+    factory = RecordingFactory([sdk_client])
+    monkeypatch.setitem(sys.modules, "langgraph_sdk", SimpleNamespace(get_client=factory))
+    probe = ClassicSourceProbeClient(
+        "server-held-key",
+        allowed_endpoints=("https://Example.us.langgraph.app/team/mount/",),
+    )
+
+    result = await probe.probe(
+        "https://example.us.langgraph.app/team/mount",
+        "assistant-one",
+    )
+
+    assert factory.calls == [
+        {
+            "url": "https://example.us.langgraph.app/team/mount",
+            "api_key": "server-held-key",
+            "headers": {},
+            "timeout": (5.0, 20.0, 20.0, 5.0),
+        }
+    ]
+    assert sdk_client.assistants.calls == ["assistant-one"]
+    assert sdk_client.close_calls == 1
+    assert result.assistant_id == "assistant-one"
+    assert result.graph_id == "graph-one"
+    assert result.capabilities[0].state == "available"
+    assert result.capabilities[0].evidence_class == "live-contract"
+    assert result.capabilities[0].safe_reason is None
+    assert all(item.safe_reason == "adapter-disabled" for item in result.capabilities[1:])
+    assert "server-held-key" not in repr(result)
 
 
 @pytest.mark.asyncio

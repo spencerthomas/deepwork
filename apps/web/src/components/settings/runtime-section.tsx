@@ -42,7 +42,6 @@ function sourceAnnouncement(checking: boolean, result: SourceProbeResult | null)
 }
 
 function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
-  const [endpoint, setEndpoint] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<SourceProbeResult | null>(null);
@@ -54,8 +53,17 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
       activeRequest.current?.abort();
       activeRequest.current = null;
     },
-    [],
+    [apiBaseUrl],
   );
+
+  function changeAssistantId(value: string) {
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setChecking(false);
+    setResult(null);
+    setError(null);
+    setAssistantId(value);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,7 +78,6 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
       const nextResult = await probeClassicSource(
         apiBaseUrl,
         {
-          endpoint: endpoint.trim(),
           assistantId: assistantId.trim(),
         },
         controller.signal,
@@ -98,32 +105,24 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
           <div>
             <h3 className="text-[13px] font-medium text-crisp">Classic LangSmith deployment</h3>
             <p className="mt-1 text-pretty text-[12px] leading-relaxed text-muted-foreground">
-              Check an operator-approved hosted deployment URL and assistant ID with the credential
-              held by this workspace server. Browser input cannot probe arbitrary hosts. This check
-              reads assistant identity only; it does not create a run or save a connection.
+              Check the operator-configured hosted deployment target with an assistant ID and the
+              credential held by this workspace server. No provider URL or credential enters the
+              browser. This check reads assistant identity only; it does not create a run or save a
+              connection.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="min-w-0 text-[12px] font-medium text-foreground">
-              Deployment URL
-              <TextInput
-                type="url"
-                required
-                value={endpoint}
-                onChange={setEndpoint}
-                placeholder="https://deployment.example.com"
-                autoComplete="url"
-                mono
-                className="mt-1.5 w-full py-2 text-[12px]"
-              />
-            </label>
+            <div className="min-w-0 text-[12px] font-medium text-foreground">
+              Source target
+              <MonoValue>Operator-approved classic deployment</MonoValue>
+            </div>
             <label className="min-w-0 text-[12px] font-medium text-foreground">
               Assistant ID
               <TextInput
                 type="text"
                 required
                 value={assistantId}
-                onChange={setAssistantId}
+                onChange={changeAssistantId}
                 placeholder="deep-work-agent"
                 autoComplete="off"
                 mono
@@ -133,7 +132,7 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
           </div>
           <button
             type="submit"
-            disabled={checking || endpoint.trim() === "" || assistantId.trim() === ""}
+            disabled={checking || assistantId.trim() === ""}
             className="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-[13px] font-semibold text-brand-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-55"
           >
             <ShieldCheck aria-hidden className="size-4" />
@@ -173,7 +172,9 @@ function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
                       {capability.name}
                     </span>
                     <span className="block text-[11px] text-muted-foreground">
-                      {capability.reason}
+                      {capability.state === "available"
+                        ? `${capability.evidenceClass} evidence at ${capability.observedAt}`
+                        : capability.safeReason}
                     </span>
                   </span>
                   <CapabilityChip

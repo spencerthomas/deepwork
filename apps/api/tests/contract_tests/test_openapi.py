@@ -51,3 +51,25 @@ def test_openapi_documents_the_versioned_surface() -> None:
         "/api/v1/settings/prompt",
         "/api/v1/sources/probes",
     }
+
+
+def test_source_probe_openapi_matches_strict_sdk_contract() -> None:
+    """Every stable source response and required success field is published."""
+
+    import json
+
+    document = json.loads(OPENAPI_PATH.read_text(encoding="utf-8"))
+    operation = document["paths"]["/api/v1/sources/probes"]["post"]
+    assert set(operation["responses"]) == {"200", "401", "404", "422", "503"}
+    for status in ("401", "404", "422", "503"):
+        schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert schema == {"$ref": "#/components/schemas/ProblemResponse"}
+    assert set(document["components"]["schemas"]["SourceProbeResponse"]["required"]) == {
+        "kind",
+        "state",
+        "assistantId",
+        "graphId",
+        "reason",
+        "saveAllowed",
+        "capabilities",
+    }

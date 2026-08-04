@@ -1,14 +1,20 @@
-import { CAPABILITY_STATES, type CapabilityState } from "./capability.js";
+import {
+  CAPABILITY_STATES,
+  type AvailableCapabilitySummary,
+  type CapabilityState,
+  type UnavailableCapabilitySummary,
+} from "./capability.js";
 
 export const SOURCE_PROBE_STATES = CAPABILITY_STATES;
 
 export type SourceProbeState = CapabilityState;
 
-export interface SourceCapabilityObservation {
+interface SourceCapabilityIdentity {
   readonly name: string;
-  readonly state: SourceProbeState;
-  readonly reason: string;
 }
+
+export type SourceCapabilityObservation = SourceCapabilityIdentity &
+  (AvailableCapabilitySummary | UnavailableCapabilitySummary);
 
 export interface SourceProbeResult {
   readonly kind: "langsmith_deployment";

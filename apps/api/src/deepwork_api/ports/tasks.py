@@ -22,6 +22,7 @@ from deepwork_api.domain import (
     TaskEventName,
     TaskJourney,
     TaskSnapshot,
+    TaskSourceBinding,
     TaskStatus,
 )
 
@@ -65,6 +66,51 @@ class TaskRepository(Protocol):
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot | None:
         """Resolve an existing scoped request or reject a changed replay."""
+
+    async def bind_source_run(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+    ) -> TaskSourceBinding:
+        """Persist the opaque source identity used to rejoin accepted work."""
+
+    async def mark_source_transition_pending(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        interrupt_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Durably claim one interrupt transition before source I/O."""
+
+    async def accept_source_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Atomically replace a source run and acknowledge its transition."""
+
+    async def get_source_binding(self, task_id: str) -> TaskSourceBinding | None:
+        """Return the server-only source identity for a task when one exists."""
+
+    async def append_source_progress(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        source_event_key: str,
+        data: EventData,
+    ) -> TaskEvent | None:
+        """Atomically retain one application-receipted source progress event."""
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 
 import pytest
 
@@ -33,7 +34,11 @@ async def test_explicit_loopback_agent_server_round_trip() -> None:
         assert status.available is True
         assert status.code == "ready"
 
-        initial_run = await source.start("Prepare a two-step local plan, then wait for review.")
+        dispatch_id = f"live-{uuid.uuid4().hex}"
+        initial_run = await source.start(
+            "Prepare a two-step local plan, then wait for review.",
+            dispatch_id=dispatch_id,
+        )
         async with asyncio.timeout(60):
             initial_events = [event async for event in source.stream(initial_run)]
         assert initial_events
@@ -62,12 +67,14 @@ async def test_explicit_loopback_agent_server_round_trip() -> None:
                 initial_run.thread_id,
                 interrupt_id=paused.interrupt.interrupt_id,
                 decision="reject",
+                transition_id=f"live-stale-{uuid.uuid4().hex}",
             )
 
         rejected_run = await source.resume(
             initial_run.thread_id,
             interrupt_id=edited.interrupt_id,
             decision="reject",
+            transition_id=f"live-reject-{uuid.uuid4().hex}",
         )
         async with asyncio.timeout(60):
             rejected_events = [event async for event in source.stream(rejected_run)]

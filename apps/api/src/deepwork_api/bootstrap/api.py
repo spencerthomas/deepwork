@@ -262,17 +262,22 @@ def create_app(
     )
 
     async def _reconcile_orphaned_tasks() -> None:
-        """Fail-closed recovery for any persisted task after a process restart.
+        """Rejoin source-backed work or fail tasks that cannot be reconciled.
 
-        Persisted history and results survive as-is. A task that was still in
-        flight when the process died has lost its in-memory follower and thread
-        binding, so it is marked failed with an honest reason instead of being
-        shown as running forever. The deterministic fixture runner also owns
-        process-local waiters, so it follows the same honest recovery rule.
+        Classic/local tasks rejoin a binding or rediscover an accepted dispatch
+        from the durable application task ID. Fixture tasks and source tasks
+        whose upstream state cannot be reconciled still fail honestly instead
+        of remaining in a false running state.
         """
         for task in await task_repository.list_tasks():
             if task.status.is_terminal:
                 continue
+            if isinstance(task_runner, LocalAgentServerRunner):
+                try:
+                    if await task_runner.recover(task):
+                        continue
+                except Exception:
+                    pass
             await task_repository.append_event(
                 task.task_id,
                 name=TaskEventName.RUN_COMPLETED,

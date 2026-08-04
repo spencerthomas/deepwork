@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib
 import re
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
@@ -32,6 +33,8 @@ Decision = Literal["approve", "reject", "respond"]
 StreamEventKind = Literal["run", "state", "progress", "error"]
 _MAX_REVIEW_COMMENT_LENGTH = 1_000
 _MAX_IDENTIFIER_LENGTH = 256
+_RUN_DISCOVERY_PAGE_SIZE = 100
+_MAX_RUN_DISCOVERY_ITEMS = 10_000
 _MAX_AGENT_LIST = 100
 _MAX_SCHEDULE_LIST = 100
 _LOCAL_SDK_TIMEOUT = (5.0, 300.0, 30.0, 5.0)
@@ -48,6 +51,8 @@ class _ThreadsClient(Protocol):
         self,
         *,
         metadata: Mapping[str, object] | None = None,
+        thread_id: str | None = None,
+        if_exists: str | None = None,
     ) -> object: ...
 
     async def get_state(self, thread_id: str) -> object: ...
@@ -62,6 +67,15 @@ class _ThreadsClient(Protocol):
 
 
 class _RunsClient(Protocol):
+    async def list(
+        self,
+        thread_id: str,
+        *,
+        limit: int = 10,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> object: ...
+
     async def create(
         self,
         thread_id: str | None,
@@ -74,6 +88,7 @@ class _RunsClient(Protocol):
         stream_resumable: bool = False,
         multitask_strategy: str | None = None,
         durability: str | None = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> object: ...
 
     def join_stream(
@@ -386,9 +401,9 @@ class LocalAgentServerSource:
         repr=False,
         compare=False,
     )
-    # Threads are bound to whichever assistant started them; resume and plan
-    # updates must keep replaying that exact assistant, not silently fall
-    # back to the source's configured default.
+    # Keep direct adapter calls backward-compatible within one process. Durable
+    # application recovery does not depend on this cache: the runner always
+    # supplies the persisted task agent explicitly on resume and plan edit.
     _thread_assistants: dict[str, str] = field(
         default_factory=dict,
         init=False,
@@ -447,6 +462,7 @@ class LocalAgentServerSource:
         self,
         objective: str,
         *,
+        dispatch_id: str,
         system_prompt: str | None = None,
         agent_id: str | None = None,
     ) -> LocalRunReference:
@@ -466,6 +482,8 @@ class LocalAgentServerSource:
             field="task objective",
             maximum=MAX_TASK_OBJECTIVE_LENGTH,
         )
+        safe_dispatch_id = _validate_identifier(dispatch_id, field="dispatch identifier")
+        thread_id = _dispatch_thread_id(safe_dispatch_id)
         default_assistant_id = await self._resolve_default_assistant_id()
         resolved_assistant = (
             _validate_assistant_identifier(agent_id)
@@ -480,24 +498,77 @@ class LocalAgentServerSource:
             # graph) and in the config (belt-and-suspenders for local runs).
             run_input["system_prompt"] = prompt_override
         run_config = _run_config(effective_prompt)
+        objective_digest = hashlib.sha256(normalized.encode()).hexdigest()
         try:
-            thread = _as_mapping(
-                await self.client.threads.create(
-                    metadata={"deepwork_source": "local-agent-server"},
+            async with self._thread_guard(thread_id):
+                thread = _as_mapping(
+                    await self.client.threads.create(
+                        thread_id=thread_id,
+                        if_exists="do_nothing",
+                        metadata={
+                            "deepwork_source": "local-agent-server",
+                            "deepwork_dispatch_id": safe_dispatch_id,
+                        },
+                    )
                 )
-            )
-            thread_id = _required_identifier(thread, "thread_id")
-            run = await self.client.runs.create(
-                thread_id,
-                resolved_assistant,
-                input=run_input,
-                config=run_config,
-                stream_mode=("values", "updates"),
-                stream_resumable=True,
-                multitask_strategy="reject",
-                durability="sync",
-            )
-            run_id = _required_identifier(_as_mapping(run), "run_id")
+                if _required_identifier(thread, "thread_id") != thread_id:
+                    raise LocalSourceContractError("local Agent Server returned the wrong thread")
+                thread_metadata = thread.get("metadata")
+                if not isinstance(thread_metadata, Mapping) or (
+                    thread_metadata.get("deepwork_source") != "local-agent-server"
+                    or thread_metadata.get("deepwork_dispatch_id") != safe_dispatch_id
+                ):
+                    raise LocalSourceContractError(
+                        "local Agent Server thread ownership metadata changed"
+                    )
+                existing_run_id = await self._find_run_by_metadata(
+                    thread_id,
+                    key="deepwork_dispatch_id",
+                    value=safe_dispatch_id,
+                    expected={
+                        "deepwork_transition_kind": "initial",
+                        "deepwork_objective_digest": objective_digest,
+                        "deepwork_agent_id": resolved_assistant,
+                    },
+                )
+                if existing_run_id is None:
+                    try:
+                        run = await self.client.runs.create(
+                            thread_id,
+                            resolved_assistant,
+                            input=run_input,
+                            config=run_config,
+                            stream_mode=("values", "updates"),
+                            stream_resumable=True,
+                            multitask_strategy="reject",
+                            durability="sync",
+                            metadata={
+                                "deepwork_dispatch_id": safe_dispatch_id,
+                                "deepwork_transition_kind": "initial",
+                                "deepwork_objective_digest": objective_digest,
+                                "deepwork_agent_id": resolved_assistant,
+                            },
+                        )
+                    except Exception:
+                        accepted_run_id = await self._find_run_by_metadata(
+                            thread_id,
+                            key="deepwork_dispatch_id",
+                            value=safe_dispatch_id,
+                            expected={
+                                "deepwork_transition_kind": "initial",
+                                "deepwork_objective_digest": objective_digest,
+                                "deepwork_agent_id": resolved_assistant,
+                            },
+                        )
+                        if accepted_run_id is None:
+                            raise LocalSourceUnavailableError(
+                                "local Agent Server start failed"
+                            ) from None
+                        run_id = accepted_run_id
+                    else:
+                        run_id = _required_identifier(_as_mapping(run), "run_id")
+                else:
+                    run_id = existing_run_id
         except LocalSourceContractError:
             raise
         except Exception:
@@ -558,17 +629,39 @@ class LocalAgentServerSource:
         *,
         interrupt_id: str,
         decision: Decision,
+        transition_id: str,
         comment: str | None = None,
+        agent_id: str | None = None,
     ) -> LocalRunReference:
         """Resume the exact current official interrupt with a public Command payload."""
 
         safe_thread_id = _validate_identifier(thread_id, field="thread identifier")
         safe_interrupt_id = _validate_identifier(interrupt_id, field="interrupt identifier")
+        safe_transition_id = _validate_identifier(transition_id, field="transition identifier")
+        resolved_assistant = (
+            _validate_assistant_identifier(agent_id) if agent_id is not None else None
+        )
+        if resolved_assistant is None:
+            resolved_assistant = self._thread_assistants.get(safe_thread_id)
+        if resolved_assistant is None:
+            resolved_assistant = await self._resolve_default_assistant_id()
         if decision not in _SAFE_DECISIONS:
             message = "decision must be approve, reject, or respond"
             raise LocalSourceContractError(message)
-        normalized_comment = _review_comment(decision, comment)
         async with self._thread_guard(safe_thread_id):
+            existing_run_id = await self._find_run_by_metadata(
+                safe_thread_id,
+                key="deepwork_transition_id",
+                value=safe_transition_id,
+                expected={
+                    "deepwork_interrupt_id": safe_interrupt_id,
+                    "deepwork_decision": decision,
+                    "deepwork_agent_id": resolved_assistant,
+                },
+            )
+            if existing_run_id is not None:
+                return LocalRunReference(thread_id=safe_thread_id, run_id=existing_run_id)
+            normalized_comment = _review_comment(decision, comment)
             current = await self.get_state(safe_thread_id)
             if current.interrupt is None or current.interrupt.interrupt_id != safe_interrupt_id:
                 message = "interrupt is no longer current"
@@ -582,20 +675,82 @@ class LocalAgentServerSource:
             try:
                 run = await self.client.runs.create(
                     safe_thread_id,
-                    self._thread_assistants.get(safe_thread_id, self.assistant_id),
+                    resolved_assistant,
                     command={"resume": {safe_interrupt_id: response}},
                     stream_mode=("values", "updates"),
                     stream_resumable=True,
                     multitask_strategy="reject",
                     durability="sync",
+                    metadata={
+                        "deepwork_transition_id": safe_transition_id,
+                        "deepwork_interrupt_id": safe_interrupt_id,
+                        "deepwork_decision": decision,
+                        "deepwork_agent_id": resolved_assistant,
+                    },
                 )
-                run_id = _required_identifier(_as_mapping(run), "run_id")
-            except LocalSourceContractError:
-                raise
             except Exception:
-                message = "local Agent Server resume failed"
-                raise LocalSourceUnavailableError(message) from None
+                accepted_run_id = await self._find_run_by_metadata(
+                    safe_thread_id,
+                    key="deepwork_transition_id",
+                    value=safe_transition_id,
+                    expected={
+                        "deepwork_interrupt_id": safe_interrupt_id,
+                        "deepwork_decision": decision,
+                        "deepwork_agent_id": resolved_assistant,
+                    },
+                )
+                if accepted_run_id is None:
+                    raise LocalSourceUnavailableError("local Agent Server resume failed") from None
+                run_id = accepted_run_id
+            else:
+                run_id = _required_identifier(_as_mapping(run), "run_id")
         return LocalRunReference(thread_id=safe_thread_id, run_id=run_id)
+
+    async def _find_run_by_metadata(
+        self,
+        thread_id: str,
+        *,
+        key: str,
+        value: str,
+        expected: Mapping[str, str],
+    ) -> str | None:
+        """Find exactly one accepted application dispatch without provider cursors."""
+
+        matches: list[str] = []
+        for offset in range(0, _MAX_RUN_DISCOVERY_ITEMS, _RUN_DISCOVERY_PAGE_SIZE):
+            try:
+                raw = await self.client.runs.list(
+                    thread_id,
+                    limit=_RUN_DISCOVERY_PAGE_SIZE,
+                    offset=offset,
+                )
+            except Exception:
+                raise LocalSourceUnavailableError(
+                    "local Agent Server run discovery failed"
+                ) from None
+            if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+                raise LocalSourceContractError("local Agent Server run list shape is unsupported")
+            if len(raw) > _RUN_DISCOVERY_PAGE_SIZE:
+                raise LocalSourceContractError("local Agent Server run page is oversized")
+            for item in raw:
+                run = _as_mapping(item)
+                metadata = run.get("metadata")
+                if isinstance(metadata, Mapping) and metadata.get(key) == value:
+                    if any(
+                        metadata.get(name) != expected_value
+                        for name, expected_value in expected.items()
+                    ):
+                        raise LocalSourceContractError(
+                            "local Agent Server dispatch metadata changed"
+                        )
+                    matches.append(_required_identifier(run, "run_id"))
+            if len(raw) < _RUN_DISCOVERY_PAGE_SIZE:
+                break
+        else:
+            raise LocalSourceContractError("local Agent Server run discovery limit exceeded")
+        if len(matches) > 1:
+            raise LocalSourceContractError("local Agent Server dispatch is ambiguous")
+        return matches[0] if matches else None
 
     async def update_plan(
         self,
@@ -604,11 +759,19 @@ class LocalAgentServerSource:
         interrupt_id: str,
         expected_revision: int,
         steps: Sequence[str],
+        agent_id: str | None = None,
     ) -> LocalPlanUpdate:
         """Edit state as the plan node, then run forward to a fresh official interrupt."""
 
         safe_thread_id = _validate_identifier(thread_id, field="thread identifier")
         safe_interrupt_id = _validate_identifier(interrupt_id, field="interrupt identifier")
+        resolved_assistant = (
+            _validate_assistant_identifier(agent_id) if agent_id is not None else None
+        )
+        if resolved_assistant is None:
+            resolved_assistant = self._thread_assistants.get(safe_thread_id)
+        if resolved_assistant is None:
+            resolved_assistant = await self._resolve_default_assistant_id()
         validated_steps = _plan_steps(steps)
         expected = _plan_revision(expected_revision, field="expected plan revision")
         if expected == MAX_PLAN_REVISION:
@@ -639,7 +802,7 @@ class LocalAgentServerSource:
                 )
                 run = await self.client.runs.create(
                     safe_thread_id,
-                    self._thread_assistants.get(safe_thread_id, self.assistant_id),
+                    resolved_assistant,
                     stream_mode=("values", "updates"),
                     stream_resumable=True,
                     multitask_strategy="reject",
@@ -969,6 +1132,13 @@ def _validate_identifier(value: str, *, field: str) -> str:
         message = f"{field} is invalid"
         raise LocalSourceContractError(message)
     return value
+
+
+def _dispatch_thread_id(dispatch_id: str) -> str:
+    """Map one bounded app identity to a stable UUID-shaped source thread ID."""
+
+    digest = hashlib.sha256(f"deepwork-source-thread:{dispatch_id}".encode()).hexdigest()
+    return f"{digest[:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"
 
 
 def _required_identifier(value: Mapping[str, object], key: str) -> str:

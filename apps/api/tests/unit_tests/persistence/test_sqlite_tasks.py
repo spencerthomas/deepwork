@@ -48,6 +48,7 @@ from deepwork_api.domain import (
     TaskEventName,
     TaskIdempotencyConflictError,
     TaskJourney,
+    TaskSourceContractError,
     TaskStatus,
 )
 
@@ -507,6 +508,137 @@ async def test_create_list_and_detail_survive_repository_reopen(tmp_path: Path) 
     assert detail.last_event_id == 1
     assert (await second.events_after(task_a.task_id, 0))[0].name is TaskEventName.TASK_CREATED
     await second.close()
+
+
+async def test_source_binding_replaces_and_survives_repository_reopen(tmp_path: Path) -> None:
+    database = tmp_path / "tasks.sqlite"
+    first = SQLiteTaskRepository(database)
+    task = await first.create_task(title="Source task", objective="Rejoin accepted work")
+
+    initial = await first.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+    advanced = await first.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-2",
+    )
+
+    assert initial.thread_id == advanced.thread_id
+    assert advanced.run_id == "source-run-2"
+    await first.close()
+
+    reopened = SQLiteTaskRepository(database)
+    assert await reopened.get_source_binding(task.task_id) == advanced
+    await reopened.close()
+
+
+async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_path: Path) -> None:
+    database = tmp_path / "tasks.sqlite"
+    first = SQLiteTaskRepository(database)
+    task = await first.create_task(title="Source task", objective="Resume accepted work")
+    await first.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+
+    pending = await first.mark_source_transition_pending(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+        interrupt_id="interrupt-1",
+        transition_id="transition-1",
+    )
+    assert pending.pending_interrupt_id == "interrupt-1"
+    assert pending.pending_transition_id == "transition-1"
+    await first.close()
+
+    reopened = SQLiteTaskRepository(database)
+    assert await reopened.get_source_binding(task.task_id) == pending
+    accepted = await reopened.accept_source_transition(
+        task.task_id,
+        thread_id="source-thread-1",
+        previous_run_id="source-run-1",
+        run_id="source-run-2",
+        transition_id="transition-1",
+    )
+    assert accepted.pending_interrupt_id is None
+    assert accepted.pending_transition_id is None
+    assert accepted.accepted_transition_id == "transition-1"
+    assert accepted.run_id == "source-run-2"
+    await reopened.close()
+
+    final = SQLiteTaskRepository(database)
+    assert await final.get_source_binding(task.task_id) == accepted
+    with pytest.raises(TaskSourceContractError):
+        await final.accept_source_transition(
+            task.task_id,
+            thread_id="source-thread-1",
+            previous_run_id="source-run-1",
+            run_id="source-run-3",
+            transition_id="transition-1",
+        )
+    with pytest.raises(TaskSourceContractError):
+        await final.bind_source_run(
+            task.task_id,
+            thread_id="source-thread-1",
+            run_id="source-run-late",
+        )
+    assert await final.get_source_binding(task.task_id) == accepted
+    await final.close()
+
+
+async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_path: Path) -> None:
+    repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
+    task = await repository.create_task(title="Streaming", objective="Retain exact progress")
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+    data: EventData = (
+        ("text", "Source progress received."),
+        ("evidenceClass", "local-source"),
+    )
+
+    first = await repository.append_source_progress(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+        source_event_key="a" * 64,
+        data=data,
+    )
+    await repository.close()
+
+    reopened = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
+    duplicate = await reopened.append_source_progress(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+        source_event_key="a" * 64,
+        data=data,
+    )
+
+    assert first is not None and first.name is TaskEventName.CONTENT_DELTA
+    assert duplicate is None
+    binding = await reopened.get_source_binding(task.task_id)
+    assert binding is not None and binding.run_id == "source-run-1"
+    assert [event.name for event in await reopened.events_after(task.task_id, 0)] == [
+        TaskEventName.TASK_CREATED,
+        TaskEventName.CONTENT_DELTA,
+    ]
+    with pytest.raises(TaskSourceContractError):
+        await reopened.append_source_progress(
+            task.task_id,
+            thread_id="source-thread-1",
+            run_id="source-run-other",
+            source_event_key="b" * 64,
+            data=data,
+        )
+    await reopened.close()
 
 
 async def test_waiting_approval_snapshot_and_waiters_survive_reopen(tmp_path: Path) -> None:
@@ -1415,10 +1547,12 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
             CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 6;
+            PRAGMA user_version = 7;
             """
         )
         connection.execute(sqlite_adapter._IDEMPOTENCY_SCHEMA)
+        connection.execute(sqlite_adapter._SOURCE_BINDING_SCHEMA)
+        connection.execute(sqlite_adapter._SOURCE_EVENT_RECEIPT_SCHEMA)
 
     repository = SQLiteTaskRepository(database)
     with pytest.raises(SQLiteTaskRepositorySchemaError, match="schema shape"):
@@ -1439,7 +1573,12 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
     database = tmp_path / "schema-v3.sqlite"
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
-            if "events_name_task_order" not in statement and "task_idempotency" not in statement:
+            if (
+                "events_name_task_order" not in statement
+                and "task_idempotency" not in statement
+                and "task_source_bindings" not in statement
+                and "task_source_event_receipts" not in statement
+            ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
         connection.execute("PRAGMA user_version = 3")
@@ -1470,7 +1609,11 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
     )
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
-            if "task_idempotency" not in statement:
+            if (
+                "task_idempotency" not in statement
+                and "task_source_bindings" not in statement
+                and "task_source_event_receipts" not in statement
+            ):
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(
             """
@@ -1498,6 +1641,44 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
     assert version == sqlite_adapter._SCHEMA_VERSION
+
+
+async def test_v6_database_adds_source_recovery_tables_without_rewriting_tasks(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "schema-v6.sqlite"
+    with sqlite3.connect(database) as connection:
+        for statement in sqlite_adapter._SCHEMA_STATEMENTS:
+            if (
+                "task_source_bindings" not in statement
+                and "task_source_event_receipts" not in statement
+            ):
+                connection.execute(statement)
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 6")
+
+    repository = SQLiteTaskRepository(database)
+    task = await repository.create_task(title="Migrated", objective="Retain task schema")
+    binding = await repository.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-migrated",
+        run_id="source-run-migrated",
+    )
+    assert await repository.get_source_binding(task.task_id) == binding
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        source_tables = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name IN ('task_source_bindings', 'task_source_event_receipts')
+            """
+        ).fetchone()[0]
+    assert version == sqlite_adapter._SCHEMA_VERSION
+    assert source_tables == 2
 
 
 def _seed_v1_database(database: Path) -> None:

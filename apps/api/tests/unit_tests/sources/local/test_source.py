@@ -30,6 +30,8 @@ from deepwork_api.domain import MAX_PLAN_REVISION
 
 OFFICIAL_INTERRUPT_ID = "bb51bb4b9474b86e0c58ac08fa85d3fa"
 NEXT_OFFICIAL_INTERRUPT_ID = "cc51bb4b9474b86e0c58ac08fa85d3fc"
+DISPATCH_ID = "task-source-contract"
+TRANSITION_ID = "transition-source-contract"
 
 
 def _interrupt(
@@ -106,17 +108,28 @@ class FakeThreads:
     advance_after_update: bool = True
     state_after_update: object | None = None
     call_log: list[str] | None = None
+    thread_id: str = "thread-official-1"
+    returned_metadata: Mapping[str, object] | None = None
 
     async def create(
         self,
         *,
         metadata: Mapping[str, object] | None = None,
+        thread_id: str | None = None,
+        if_exists: str | None = None,
     ) -> object:
-        self.create_calls.append({"metadata": metadata})
-        return {"thread_id": "thread-official-1"}
+        if thread_id is not None:
+            self.thread_id = thread_id
+        self.create_calls.append(
+            {"metadata": metadata, "thread_id": thread_id, "if_exists": if_exists}
+        )
+        return {
+            "thread_id": self.thread_id,
+            "metadata": metadata if self.returned_metadata is None else self.returned_metadata,
+        }
 
     async def get_state(self, thread_id: str) -> object:
-        assert thread_id == "thread-official-1"
+        assert thread_id == self.thread_id
         if self.call_log is not None:
             self.call_log.append("get_state")
         return self.state
@@ -179,6 +192,22 @@ class FakeRuns:
     create_error: Exception | None = None
     call_log: list[str] | None = None
     on_stream_drained: Callable[[], None] | None = None
+    list_calls: list[dict[str, object]] = field(default_factory=list)
+    accepted_runs: list[dict[str, object]] = field(default_factory=list)
+    raise_after_accept: bool = False
+
+    async def list(
+        self,
+        thread_id: str,
+        *,
+        limit: int = 10,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> object:
+        self.list_calls.append(
+            {"thread_id": thread_id, "limit": limit, "offset": offset, "status": status}
+        )
+        return list(self.accepted_runs[offset : offset + limit])
 
     async def create(
         self,
@@ -192,6 +221,7 @@ class FakeRuns:
         stream_resumable: bool = False,
         multitask_strategy: str | None = None,
         durability: str | None = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> object:
         if self.create_error is not None:
             raise self.create_error
@@ -208,9 +238,18 @@ class FakeRuns:
                 "stream_resumable": stream_resumable,
                 "multitask_strategy": multitask_strategy,
                 "durability": durability,
+                "metadata": metadata,
             }
         )
-        return {"run_id": f"run-official-{len(self.create_calls)}"}
+        result: dict[str, object] = {
+            "run_id": f"run-official-{len(self.create_calls)}",
+            "metadata": metadata,
+        }
+        self.accepted_runs.append(result)
+        if self.raise_after_accept:
+            self.raise_after_accept = False
+            raise OSError("response lost after acceptance")
+        return result
 
     def join_stream(
         self,
@@ -431,20 +470,22 @@ def test_official_client_explicitly_suppresses_ambient_credentials(
 async def test_start_uses_official_thread_and_resumable_run_calls() -> None:
     source, client = _source()
 
-    run = await source.start("Prepare a release brief")
+    run = await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
 
-    assert run == LocalRunReference(
-        thread_id="thread-official-1",
-        run_id="run-official-1",
-    )
+    assert run == LocalRunReference(thread_id=client.threads.thread_id, run_id="run-official-1")
     assert client.threads.create_calls == [
         {
-            "metadata": {"deepwork_source": "local-agent-server"},
+            "metadata": {
+                "deepwork_source": "local-agent-server",
+                "deepwork_dispatch_id": DISPATCH_ID,
+            },
+            "thread_id": client.threads.thread_id,
+            "if_exists": "do_nothing",
         }
     ]
     assert client.runs.create_calls == [
         {
-            "thread_id": "thread-official-1",
+            "thread_id": client.threads.thread_id,
             "assistant_id": "deep-work-local-agent",
             "input": {"task": "Prepare a release brief"},
             "config": None,
@@ -453,6 +494,14 @@ async def test_start_uses_official_thread_and_resumable_run_calls() -> None:
             "stream_resumable": True,
             "multitask_strategy": "reject",
             "durability": "sync",
+            "metadata": {
+                "deepwork_dispatch_id": DISPATCH_ID,
+                "deepwork_transition_kind": "initial",
+                "deepwork_objective_digest": (
+                    "d580a514c19e3c658b72a9e3d29a67d38ab69fdbde94a445d066ae91b5e6d95f"
+                ),
+                "deepwork_agent_id": "deep-work-local-agent",
+            },
         }
     ]
 
@@ -461,7 +510,11 @@ async def test_start_forwards_system_prompt_as_run_config() -> None:
     """A supplied workspace prompt reaches the run as configurable.system_prompt."""
     source, client = _source()
 
-    await source.start("Prepare a release brief", system_prompt="  Always be terse.  ")
+    await source.start(
+        "Prepare a release brief",
+        dispatch_id=DISPATCH_ID,
+        system_prompt="  Always be terse.  ",
+    )
 
     call = client.runs.create_calls[0]
     # Delivered in the input (reaches a hosted graph) and the config (local runs).
@@ -473,9 +526,72 @@ async def test_start_without_system_prompt_sends_no_run_config() -> None:
     """No override keeps the request shape identical to before (config=None)."""
     source, client = _source()
 
-    await source.start("Prepare a release brief")
+    await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
 
     assert client.runs.create_calls[0]["config"] is None
+
+
+async def test_start_reuses_an_already_accepted_dispatch_run() -> None:
+    source, client = _source()
+
+    first = await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
+    recovered = await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
+
+    assert recovered == first
+    assert len(client.threads.create_calls) == 2
+    assert len(client.runs.create_calls) == 1
+    assert len(client.runs.list_calls) == 2
+
+
+async def test_start_recovers_when_acceptance_response_is_lost() -> None:
+    source, client = _source()
+    client.runs.raise_after_accept = True
+
+    recovered = await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
+
+    assert recovered.run_id == "run-official-1"
+    assert len(client.runs.create_calls) == 1
+    assert len(client.runs.list_calls) == 2
+
+
+async def test_start_rejects_a_thread_owned_by_another_dispatch() -> None:
+    source, client = _source()
+    client.threads.returned_metadata = {
+        "deepwork_source": "local-agent-server",
+        "deepwork_dispatch_id": "run_someone-else",
+    }
+
+    with pytest.raises(LocalSourceContractError, match="ownership metadata"):
+        await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
+
+    assert client.runs.create_calls == []
+
+
+async def test_start_discovers_an_accepted_dispatch_after_the_first_run_page() -> None:
+    source, client = _source()
+    accepted_runs: list[dict[str, object]] = [
+        {"run_id": f"unrelated-{position}", "metadata": {}} for position in range(100)
+    ]
+    accepted_runs.append(
+        {
+            "run_id": "run-accepted-later",
+            "metadata": {
+                "deepwork_dispatch_id": DISPATCH_ID,
+                "deepwork_transition_kind": "initial",
+                "deepwork_objective_digest": (
+                    "d580a514c19e3c658b72a9e3d29a67d38ab69fdbde94a445d066ae91b5e6d95f"
+                ),
+                "deepwork_agent_id": "deep-work-local-agent",
+            },
+        }
+    )
+    client.runs.accepted_runs = accepted_runs
+
+    recovered = await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
+
+    assert recovered.run_id == "run-accepted-later"
+    assert client.runs.create_calls == []
+    assert [call["offset"] for call in client.runs.list_calls] == [0, 100]
 
 
 async def test_close_releases_official_client_transport() -> None:
@@ -524,6 +640,7 @@ async def test_graph_alias_resolves_the_system_default_uuid_for_runs() -> None:
 
     await source.start(
         "Prepare a release brief",
+        dispatch_id=DISPATCH_ID,
         system_prompt="Always be terse.",
         agent_id=default_uuid,
     )
@@ -546,7 +663,7 @@ async def test_uuid_default_uses_direct_lookup_without_graph_search() -> None:
         assistant_id=default_uuid,
     )
 
-    await source.start("Prepare a release brief")
+    await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID)
 
     assert assistants.get_calls == [default_uuid]
     assert assistants.search_calls == []
@@ -569,9 +686,11 @@ async def test_graph_alias_fails_closed_when_the_default_is_ambiguous() -> None:
 async def test_start_with_agent_id_overrides_the_default_assistant() -> None:
     source, client = _source()
 
-    run = await source.start("Prepare a release brief", agent_id="assistant-2")
+    run = await source.start(
+        "Prepare a release brief", dispatch_id=DISPATCH_ID, agent_id="assistant-2"
+    )
 
-    assert run == LocalRunReference(thread_id="thread-official-1", run_id="run-official-1")
+    assert run == LocalRunReference(thread_id=client.threads.thread_id, run_id="run-official-1")
     assert client.runs.create_calls[0]["assistant_id"] == "assistant-2"
 
 
@@ -580,7 +699,10 @@ async def test_start_with_agent_id_ignores_the_workspace_prompt_override() -> No
     source, client = _source()
 
     await source.start(
-        "Prepare a release brief", system_prompt="Always be terse.", agent_id="assistant-2"
+        "Prepare a release brief",
+        dispatch_id=DISPATCH_ID,
+        system_prompt="Always be terse.",
+        agent_id="assistant-2",
     )
 
     call = client.runs.create_calls[0]
@@ -593,6 +715,7 @@ async def test_start_with_explicit_default_agent_keeps_workspace_prompt_override
 
     await source.start(
         "Prepare a release brief",
+        dispatch_id=DISPATCH_ID,
         system_prompt="Always be terse.",
         agent_id="deep-work-local-agent",
     )
@@ -609,9 +732,14 @@ async def test_start_with_explicit_default_agent_keeps_workspace_prompt_override
 async def test_resume_and_update_plan_replay_the_thread_bound_assistant() -> None:
     """A thread started with a non-default agent keeps using that exact agent."""
     source, client = _source()
-    await source.start("Prepare a release brief", agent_id="assistant-2")
+    await source.start("Prepare a release brief", dispatch_id=DISPATCH_ID, agent_id="assistant-2")
 
-    await source.resume("thread-official-1", interrupt_id=OFFICIAL_INTERRUPT_ID, decision="approve")
+    await source.resume(
+        client.threads.thread_id,
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        decision="approve",
+        transition_id=TRANSITION_ID,
+    )
 
     assert client.runs.create_calls[-1]["assistant_id"] == "assistant-2"
 
@@ -909,7 +1037,9 @@ async def test_resume_uses_public_command_for_exact_current_interrupt(
         "thread-official-1",
         interrupt_id=OFFICIAL_INTERRUPT_ID,
         decision=cast("Decision", decision),
+        transition_id=TRANSITION_ID,
         comment=comment,
+        agent_id="assistant-evidence-reviewer",
     )
 
     assert run.run_id == "run-official-1"
@@ -919,7 +1049,52 @@ async def test_resume_uses_public_command_for_exact_current_interrupt(
     assert client.runs.create_calls[0]["command"] == {
         "resume": {OFFICIAL_INTERRUPT_ID: resume_value}
     }
+    assert client.runs.create_calls[0]["assistant_id"] == "assistant-evidence-reviewer"
     assert source._thread_locks == {}
+
+
+async def test_resume_reuses_an_accepted_transition_without_the_lost_comment() -> None:
+    source, client = _source()
+    client.runs.accepted_runs.append(
+        {
+            "run_id": "run-resume-accepted",
+            "metadata": {
+                "deepwork_transition_id": TRANSITION_ID,
+                "deepwork_interrupt_id": OFFICIAL_INTERRUPT_ID,
+                "deepwork_decision": "respond",
+                "deepwork_agent_id": "assistant-evidence-reviewer",
+            },
+        }
+    )
+
+    recovered = await source.resume(
+        "thread-official-1",
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        decision="respond",
+        transition_id=TRANSITION_ID,
+        comment=None,
+        agent_id="assistant-evidence-reviewer",
+    )
+
+    assert recovered.run_id == "run-resume-accepted"
+    assert client.runs.create_calls == []
+
+
+async def test_resume_recovers_when_acceptance_response_is_lost() -> None:
+    source, client = _source()
+    client.runs.raise_after_accept = True
+
+    recovered = await source.resume(
+        client.threads.thread_id,
+        interrupt_id=OFFICIAL_INTERRUPT_ID,
+        decision="approve",
+        transition_id=TRANSITION_ID,
+        agent_id="assistant-evidence-reviewer",
+    )
+
+    assert recovered.run_id == "run-official-1"
+    assert len(client.runs.create_calls) == 1
+    assert len(client.runs.list_calls) == 2
 
 
 async def test_resume_rejects_stale_interrupt_and_bounded_response_before_command() -> None:
@@ -930,12 +1105,14 @@ async def test_resume_rejects_stale_interrupt_and_bounded_response_before_comman
             "thread-official-1",
             interrupt_id="interrupt-other",
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
     with pytest.raises(LocalSourceContractError, match="requires"):
         await source.resume(
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="respond",
+            transition_id=TRANSITION_ID,
         )
     private_note = "private-" + "x" * 1_001
     with pytest.raises(LocalSourceContractError) as error:
@@ -943,6 +1120,7 @@ async def test_resume_rejects_stale_interrupt_and_bounded_response_before_comman
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="respond",
+            transition_id=TRANSITION_ID,
             comment=private_note,
         )
     assert private_note not in str(error.value)
@@ -1002,6 +1180,7 @@ async def test_resume_keeps_ambiguous_source_errors_generic(status_code: int) ->
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
 
     assert "private upstream" not in str(error.value)
@@ -1016,6 +1195,7 @@ async def test_plan_edit_uses_official_plan_node_and_reinvokes_for_new_interrupt
         interrupt_id=OFFICIAL_INTERRUPT_ID,
         expected_revision=1,
         steps=["Inspect exact inputs", "Produce evidenced result"],
+        agent_id="assistant-evidence-reviewer",
     )
 
     assert update.plan_revision == 2
@@ -1036,6 +1216,7 @@ async def test_plan_edit_uses_official_plan_node_and_reinvokes_for_new_interrupt
     ]
     assert client.runs.create_calls[0]["input"] is None
     assert client.runs.create_calls[0]["command"] is None
+    assert client.runs.create_calls[0]["assistant_id"] == "assistant-evidence-reviewer"
     assert client.runs.stream_calls == [
         {
             "thread_id": "thread-official-1",
@@ -1050,11 +1231,13 @@ async def test_plan_edit_uses_official_plan_node_and_reinvokes_for_new_interrupt
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
     resumed = await source.resume(
         "thread-official-1",
         interrupt_id=update.interrupt_id,
         decision="approve",
+        transition_id="transition-after-plan-edit",
     )
     assert resumed.run_id == "run-official-2"
 
@@ -1312,6 +1495,7 @@ async def test_thread_lock_registry_evicts_cancelled_waiter_and_final_holder() -
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
     )
     await threads.entered.wait()
@@ -1320,6 +1504,7 @@ async def test_thread_lock_registry_evicts_cancelled_waiter_and_final_holder() -
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
     )
     for _ in range(10):
@@ -1348,6 +1533,7 @@ async def test_thread_lock_registry_evicts_cancelled_holder() -> None:
             "thread-official-1",
             interrupt_id=OFFICIAL_INTERRUPT_ID,
             decision="approve",
+            transition_id=TRANSITION_ID,
         )
     )
     await threads.entered.wait()

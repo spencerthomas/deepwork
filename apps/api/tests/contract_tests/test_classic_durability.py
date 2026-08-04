@@ -1,9 +1,8 @@
 """Durability contract for real-agent (classic) mode across process restarts.
 
-Completed work must survive an API restart byte-for-byte. A task that was still
-in flight when the process died has lost its in-memory follower and upstream
-thread binding, so on startup it is honestly failed rather than shown running
-forever.
+Completed work must survive an API restart byte-for-byte. An in-flight task keeps
+its source-owned thread/run binding so a fresh API process can rejoin the same
+upstream work without creating a second run.
 """
 
 from __future__ import annotations
@@ -28,6 +27,7 @@ from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSourc
 
 CLASSIC_ENDPOINT = "https://my-deployment.smith.langchain.com"
 CLASSIC_ASSISTANT = "deep-work-local-agent"
+NAMED_ASSISTANT = "assistant-evidence-reviewer"
 CLASSIC_CREDENTIAL = "lsv2-SECRET-DEPLOYMENT-KEY"
 
 
@@ -97,35 +97,54 @@ async def test_completed_task_survives_restart(
         assert names[-1] == "run.completed"
 
 
-async def test_inflight_task_is_failed_honestly_on_restart(
+async def test_inflight_task_rejoins_the_same_source_run_after_restart(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     database = tmp_path / "tasks.db"
     server = ScriptedAgentServer()
 
     async with _classic_app(server, monkeypatch, database) as client:
-        created = await _create_task(client, "Summarize the supplied notes")
+        created = await _create_task(
+            client,
+            "Summarize the supplied notes",
+            agent_id=NAMED_ASSISTANT,
+        )
         task_id = created["taskId"]
         # Leave the task waiting for approval — in flight — and "crash".
         await _wait_for_status(client, task_id, {"waiting-approval"})
 
-    # A real LangGraph server issues UUID run ids that never collide across
-    # restarts; offset the double's counter to mirror that.
-    restarted = ScriptedAgentServer()
-    restarted._counter = 100
-    async with _classic_app(restarted, monkeypatch, database) as client:
-        failed = await _wait_for_status(client, task_id, {"failed"})
-        assert failed["pendingInterrupt"] is None
-        assert failed["result"] is None
+    # The classic source is an external service and remains authoritative while
+    # the API process restarts. Reuse the same double to model that boundary.
+    async with _classic_app(server, monkeypatch, database) as client:
+        recovered = await _wait_for_status(client, task_id, {"waiting-approval"})
+        assert recovered["agentId"] == NAMED_ASSISTANT
+        interrupt_id = recovered["pendingInterrupt"]["interruptId"]
+        decision = await client.post(
+            f"/api/v1/tasks/{task_id}/decisions",
+            json={"interruptId": interrupt_id, "decision": "approve"},
+        )
+        assert decision.status_code == 202
+        completed = await _wait_for_status(client, task_id, {"completed"})
+        assert completed["result"]
 
         replay = await client.get(f"/api/v1/tasks/{task_id}/events")
-        last = _sse_events(replay.text)[-1]
-        assert last["event"] == "run.completed"
-        assert last["data"]["status"] == "failed"
-        assert last["data"]["safeReason"] == (
-            "The service restarted while this task was in progress."
+        events = _sse_events(replay.text)
+        names = [event["event"] for event in events]
+        progress = [event for event in events if event["event"] == "content.delta"]
+        assert names.count("task.created") == 1
+        assert names.count("run.started") == 2
+        assert names.count("interrupt.requested") == 1
+        assert names.count("decision.recorded") == 1
+        assert names.count("run.completed") == 1
+        assert len(progress) == 4
+        assert all(
+            event["data"]
+            == {
+                "text": "Local Agent Server progress received.",
+                "evidenceClass": "local-source",
+            }
+            for event in progress
         )
-
-        # The failed task is history; new work proceeds normally.
-        fresh = await _create_task(client, "Summarize the new notes")
-        await _wait_for_status(client, fresh["taskId"], {"waiting-approval"})
+        assert server._counter == 3
+        assert server.join_without_cursor_count == 3
+        assert server.run_assistant_ids == [NAMED_ASSISTANT, NAMED_ASSISTANT]

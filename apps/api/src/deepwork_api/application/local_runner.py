@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -34,12 +36,43 @@ _RUNNER_FAILURE_REASON = "The local source task runner failed safely."
 _TERMINAL_REASON = "Local Agent Server run reached a terminal state."
 _RESUME_SHUTDOWN_GRACE_SECONDS = 1.0
 _SOURCE_STATE_RECONCILIATION_SECONDS = 1.0
+_SOURCE_STATE_RECONCILIATION_MAX_SECONDS = 8.0
+
+
+class _SourceHandoffPersistenceError(Exception):
+    """An accepted upstream transition still needs durable local reconciliation."""
 
 
 async def _next_source_event(stream: AsyncIterator[object]) -> object:
     """Present ``anext`` as a coroutine accepted by ``asyncio.create_task``."""
 
     return await anext(stream)
+
+
+def _source_event_key(thread_id: str, run_id: str, provider_cursor: object) -> str:
+    """Derive a bounded application receipt without retaining provider data."""
+
+    if not isinstance(provider_cursor, str) or not provider_cursor:
+        raise TaskSourceContractError
+    digest = hashlib.sha256()
+    for value in (thread_id, run_id, provider_cursor):
+        encoded = value.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()
+
+
+def _source_transition_id(task_id: str, interrupt_id: str) -> str:
+    """Derive a stable bounded acknowledgement identity from application IDs."""
+
+    digest = hashlib.sha256(f"{task_id}:{interrupt_id}".encode()).hexdigest()
+    return f"transition-{digest}"
+
+
+def _local_task_run_id() -> str:
+    """Create a globally unique, public-safe application run identity."""
+
+    return f"run_{uuid.uuid4().hex}"
 
 
 class LocalRun(Protocol):
@@ -125,17 +158,36 @@ class LocalSource(Protocol):
         self,
         objective: str,
         *,
+        dispatch_id: str,
         system_prompt: str | None = None,
         agent_id: str | None = None,
     ) -> LocalRun: ...
     async def get_state(self, thread_id: str) -> LocalState: ...
     async def resume(
-        self, thread_id: str, *, interrupt_id: str, decision: str, comment: str | None = None
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        decision: str,
+        transition_id: str,
+        comment: str | None = None,
+        agent_id: str | None = None,
     ) -> LocalRun: ...
     async def update_plan(
-        self, thread_id: str, *, interrupt_id: str, expected_revision: int, steps: Sequence[str]
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        steps: Sequence[str],
+        agent_id: str | None = None,
     ) -> LocalPlanUpdate: ...
-    def stream(self, run: LocalRun) -> AsyncIterator[object]: ...
+    def stream(
+        self,
+        run: LocalRun,
+        *,
+        after_cursor: str | None = None,
+    ) -> AsyncIterator[object]: ...
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]: ...
     async def create_agent(
         self, *, name: str, description: str | None, system_prompt: str | None
@@ -182,7 +234,6 @@ class LocalAgentServerRunner:
         # The source owns assistant identity and suppresses this workspace
         # override when a different named agent is selected. Keeping that
         # decision at the adapter boundary avoids a second registry lookup.
-        task: TaskSnapshot | None = None
         if idempotency_key is not None:
             if request_fingerprint is None:
                 raise ValueError("idempotent task creation requires a request fingerprint")
@@ -193,6 +244,7 @@ class LocalAgentServerRunner:
             creation = await self.repository.create_task_idempotently(
                 title=title,
                 objective=objective,
+                run_id=_local_task_run_id(),
                 agent_id=agent_id,
                 idempotency_key=idempotency_key,
                 request_fingerprint=request_fingerprint,
@@ -200,11 +252,29 @@ class LocalAgentServerRunner:
             )
             task = creation.task
             if not creation.created:
-                return creation
+                async with self._command_lock(task.task_id):
+                    current = await self.repository.get_task(task.task_id)
+                    if not current.status.is_terminal and task.task_id not in self._tasks:
+                        await self.recover(current)
+                        current = await self.repository.get_task(task.task_id)
+                    return TaskCreation(task=current, created=False)
+        else:
+            task = await self.repository.create_task(
+                title=title,
+                objective=objective,
+                run_id=_local_task_run_id(),
+                agent_id=agent_id,
+                security_context=security_context,
+            )
 
         system_prompt = await self._current_system_prompt(security_context)
         try:
-            run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
+            run = await self.source.start(
+                objective,
+                dispatch_id=task.run_id,
+                system_prompt=system_prompt,
+                agent_id=agent_id,
+            )
         except TaskSourceContractError:
             if task is not None:
                 await self._fail(task, _SOURCE_CONTRACT_REASON)
@@ -213,14 +283,14 @@ class LocalAgentServerRunner:
             if task is not None:
                 await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
             raise TaskSourceUnavailableError from None
-        if task is None:
-            task = await self.repository.create_task(
-                title=title,
-                objective=objective,
+        try:
+            await self.repository.bind_source_run(
+                task.task_id,
+                thread_id=run.thread_id,
                 run_id=run.run_id,
-                agent_id=agent_id,
-                security_context=security_context,
             )
+        except Exception:
+            raise TaskSourceUnavailableError from None
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)
         return TaskCreation(task=task, created=True)
@@ -270,13 +340,87 @@ class LocalAgentServerRunner:
         except Exception:
             return None
 
-    def start(self, task: TaskSnapshot, run: LocalRun) -> None:
+    async def recover(self, task: TaskSnapshot) -> bool:
+        """Rejoin one persisted non-terminal source task after API startup."""
+
+        binding = await self.repository.get_source_binding(task.task_id)
+        if binding is None:
+            system_prompt = await self._current_system_prompt(
+                SecurityContext(
+                    tenant_id=task.tenant_id,
+                    workspace_id=task.workspace_id,
+                    actor_id=task.created_by_actor_id,
+                )
+            )
+            run = await self.source.start(
+                task.objective,
+                dispatch_id=task.run_id,
+                system_prompt=system_prompt,
+                agent_id=task.agent_id,
+            )
+            binding = await self.repository.bind_source_run(
+                task.task_id,
+                thread_id=run.thread_id,
+                run_id=run.run_id,
+            )
+        if binding.pending_transition_id is not None:
+            if binding.pending_interrupt_id is None:
+                raise TaskSourceContractError
+            transition_id = _source_transition_id(task.task_id, binding.pending_interrupt_id)
+            if binding.pending_transition_id != transition_id:
+                raise TaskSourceContractError
+            decision = await self.repository.wait_for_decision(
+                task.task_id,
+                binding.pending_interrupt_id,
+            )
+            next_run = await self.source.resume(
+                binding.thread_id,
+                interrupt_id=binding.pending_interrupt_id,
+                decision=decision.value,
+                transition_id=transition_id,
+                # Review comments are deliberately not retained. The source
+                # can rediscover an already accepted response transition, but
+                # a lost, unaccepted response must fail closed.
+                comment=None,
+                agent_id=task.agent_id,
+            )
+            binding = await self.repository.accept_source_transition(
+                task.task_id,
+                thread_id=next_run.thread_id,
+                previous_run_id=binding.run_id,
+                run_id=next_run.run_id,
+                transition_id=transition_id,
+            )
+        self._threads[task.task_id] = binding.thread_id
+        self.start(
+            task,
+            binding,
+            announce_started=task.status is TaskStatus.QUEUED,
+        )
+        if task.pending_interrupt_id is not None:
+            transition_id = _source_transition_id(task.task_id, task.pending_interrupt_id)
+            if binding.accepted_transition_id == transition_id:
+                self._accept_resume((task.task_id, task.pending_interrupt_id))
+        return True
+
+    def start(
+        self,
+        task: TaskSnapshot,
+        run: LocalRun,
+        *,
+        announce_started: bool = True,
+    ) -> None:
         if self._closing or task.task_id in self._tasks:
             return
         if task.pending_interrupt_id is not None:
             self._register_resume_acknowledgement((task.task_id, task.pending_interrupt_id))
         background = asyncio.create_task(
-            self._follow(task, run), name=f"deepwork-local-{task.task_id}"
+            self._follow(
+                task,
+                run,
+                announce_started=announce_started,
+            ),
+            name=f"deepwork-local-{task.task_id}",
         )
         self._tasks[task.task_id] = background
         background.add_done_callback(lambda finished: self._discard(task.task_id, finished))
@@ -354,6 +498,7 @@ class LocalAgentServerRunner:
                 interrupt_id=interrupt_id,
                 expected_revision=expected_revision,
                 steps=steps,
+                agent_id=current.agent_id,
             )
         except (StaleInterruptError, TaskSourceContractError):
             raise
@@ -376,6 +521,12 @@ class LocalAgentServerRunner:
             acknowledgement.set_exception(StaleInterruptError())
         if record.plan.revision != updated.plan_revision:
             raise TaskSourceContractError
+        await self.repository.bind_source_run(
+            task.task_id,
+            thread_id=updated.thread_id,
+            run_id=updated.run_id,
+        )
+        self._threads[task.task_id] = updated.thread_id
         self._register_resume_acknowledgement((task.task_id, updated.interrupt_id))
         await self.repository.append_event(
             task.task_id,
@@ -448,8 +599,14 @@ class LocalAgentServerRunner:
             )
             acknowledgement = self._resume_acknowledgements.get(key)
             if acknowledgement is None:
-                raise TaskSourceContractError
-            await asyncio.shield(acknowledgement)
+                binding = await self.repository.get_source_binding(task_id)
+                if not record.duplicate or binding is None:
+                    raise TaskSourceContractError
+                transition_id = _source_transition_id(task_id, interrupt_id)
+                if binding.accepted_transition_id != transition_id:
+                    raise TaskSourceContractError
+            else:
+                await asyncio.shield(acknowledgement)
         except Exception:
             if inserted_comment and self._review_comments.get(key) == comment:
                 self._review_comments.pop(key, None)
@@ -464,7 +621,13 @@ class LocalAgentServerRunner:
         if self._tasks.get(task_id) is background:
             del self._tasks[task_id]
 
-    async def _follow(self, task: TaskSnapshot, run: LocalRun) -> None:
+    async def _follow(
+        self,
+        task: TaskSnapshot,
+        run: LocalRun,
+        *,
+        announce_started: bool = True,
+    ) -> None:
         resume_key: tuple[str, str] | None = None
         try:
             # A follower restarted after a source-confirmed plan edit already
@@ -474,13 +637,13 @@ class LocalAgentServerRunner:
             # the exact new decision. Followers started for initial execution
             # or after an accepted decision have no pending interrupt and do
             # publish the normal running transition.
-            if task.pending_interrupt_id is None:
+            if task.pending_interrupt_id is None and announce_started:
                 await self.repository.append_event(
                     task.task_id,
                     name=TaskEventName.RUN_STARTED,
                     # The API owns a stable run identity that is durably claimed
-                    # before the source starts. The source run remains an
-                    # adapter-private cursor used to join/resume that execution.
+                    # before the source starts. The source execution identity is
+                    # server-only and used to join/resume that execution.
                     data=(("runId", task.run_id), ("status", "running")),
                     status=TaskStatus.RUNNING,
                 )
@@ -496,16 +659,39 @@ class LocalAgentServerRunner:
                     task.task_id, state.interrupt.interrupt_id
                 )
                 key = (task.task_id, state.interrupt.interrupt_id)
+                transition_id = _source_transition_id(*key)
                 self._resumes_in_flight.add(key)
                 try:
+                    await self.repository.mark_source_transition_pending(
+                        task.task_id,
+                        thread_id=run.thread_id,
+                        run_id=run.run_id,
+                        interrupt_id=state.interrupt.interrupt_id,
+                        transition_id=transition_id,
+                    )
                     next_run = await self.source.resume(
                         run.thread_id,
                         interrupt_id=state.interrupt.interrupt_id,
                         decision=decision.value,
+                        transition_id=transition_id,
                         comment=self._review_comments.pop(key, None),
+                        agent_id=task.agent_id,
                     )
                 finally:
                     self._resumes_in_flight.discard(key)
+                try:
+                    await self.repository.accept_source_transition(
+                        task.task_id,
+                        thread_id=next_run.thread_id,
+                        previous_run_id=run.run_id,
+                        run_id=next_run.run_id,
+                        transition_id=transition_id,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as error:
+                    raise _SourceHandoffPersistenceError from error
+                self._threads[task.task_id] = next_run.thread_id
                 self._accept_resume(resume_key)
                 self._tasks.pop(task.task_id, None)
                 self.start(await self.repository.get_task(task.task_id), next_run)
@@ -522,6 +708,11 @@ class LocalAgentServerRunner:
         except TaskSourceUnavailableError as error:
             self._reject_resume(resume_key, error)
             await self._fail(task, _SOURCE_UNAVAILABLE_REASON)
+        except _SourceHandoffPersistenceError:
+            # The durable pending marker lets startup rediscover this accepted
+            # transition. Do not turn recoverable upstream work into a false
+            # terminal failure merely because the replacement write failed.
+            self._reject_resume(resume_key, TaskSourceUnavailableError())
         except Exception:
             self._reject_resume(resume_key, TaskSourceUnavailableError())
             await self._fail(task, _RUNNER_FAILURE_REASON)
@@ -542,16 +733,21 @@ class LocalAgentServerRunner:
 
         stream = self.source.stream(run)
         pending: asyncio.Task[object] = asyncio.create_task(_next_source_event(stream))
+        reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
         try:
             while True:
                 done, _ = await asyncio.wait(
                     {pending},
-                    timeout=_SOURCE_STATE_RECONCILIATION_SECONDS,
+                    timeout=reconciliation_seconds,
                 )
                 if pending not in done:
                     state = await self.source.get_state(run.thread_id)
                     if state.interrupt is not None or state.status in {"completed", "rejected"}:
                         return state
+                    reconciliation_seconds = min(
+                        reconciliation_seconds * 2,
+                        _SOURCE_STATE_RECONCILIATION_MAX_SECONDS,
+                    )
                     continue
                 try:
                     event = pending.result()
@@ -560,15 +756,26 @@ class LocalAgentServerRunner:
                 kind = getattr(event, "kind", None)
                 if kind == "error":
                     raise TaskSourceContractError
+                cursor = getattr(event, "cursor", None)
                 if kind == "progress":
-                    await self.repository.append_event(
-                        task.task_id,
-                        name=TaskEventName.CONTENT_DELTA,
-                        data=(
-                            ("text", "Local Agent Server progress received."),
-                            ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
-                        ),
+                    if cursor is None:
+                        raise TaskSourceContractError
+                    data = (
+                        ("text", "Local Agent Server progress received."),
+                        ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
                     )
+                    await self.repository.append_source_progress(
+                        task.task_id,
+                        thread_id=run.thread_id,
+                        run_id=run.run_id,
+                        source_event_key=_source_event_key(
+                            run.thread_id,
+                            run.run_id,
+                            cursor,
+                        ),
+                        data=data,
+                    )
+                reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
                 pending = asyncio.create_task(_next_source_event(stream))
         finally:
             stream_was_waiting = not pending.done()

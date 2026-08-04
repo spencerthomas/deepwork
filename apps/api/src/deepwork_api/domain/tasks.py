@@ -331,6 +331,40 @@ class TaskCreation:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskSourceBinding:
+    """Server-only source identity required to rejoin accepted upstream work."""
+
+    task_id: str
+    thread_id: str
+    run_id: str
+    pending_interrupt_id: str | None = None
+    pending_transition_id: str | None = None
+    accepted_transition_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.task_id or not self.thread_id or not self.run_id:
+            raise ValueError("task source binding is incomplete")
+        values = (
+            self.task_id,
+            self.thread_id,
+            self.run_id,
+            self.pending_interrupt_id,
+            self.pending_transition_id,
+            self.accepted_transition_id,
+        )
+        if any(value is not None and len(value) > 256 for value in values):
+            raise ValueError("task source binding is invalid")
+        if self.pending_transition_id is not None and not self.pending_transition_id:
+            raise ValueError("task source pending transition is invalid")
+        if self.pending_interrupt_id is not None and not self.pending_interrupt_id:
+            raise ValueError("task source pending interrupt is invalid")
+        if (self.pending_interrupt_id is None) != (self.pending_transition_id is None):
+            raise ValueError("task source pending transition is incomplete")
+        if self.accepted_transition_id is not None and not self.accepted_transition_id:
+            raise ValueError("task source accepted transition is invalid")
+
+
+@dataclass(frozen=True, slots=True)
 class DecisionRecord:
     """Accepted decision result, including idempotent replay state."""
 

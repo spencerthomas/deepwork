@@ -13,6 +13,7 @@ import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 import httpx
@@ -47,6 +48,7 @@ class ScriptedAgentServer:
     def __init__(self) -> None:
         self.state = _ServerState()
         self.failures: set[str] = set()
+        self.failures_after_accept: set[str] = set()
         self.omit_final_answer = False
         self.closed = False
         self.block_resume = False
@@ -61,7 +63,11 @@ class ScriptedAgentServer:
         self.resume_decisions: list[str] = []
         self.resume_comments: list[str | None] = []
         self.update_state_calls: list[Mapping[str, object]] = []
+        self.run_assistant_ids: list[str] = []
+        self.join_without_cursor_count = 0
         self.run_events: dict[str, list[object]] = {}
+        self.thread_id = "thread-local-1"
+        self.accepted_runs: list[dict[str, object]] = []
         self._counter = 0
         self.threads = _FakeThreads(self)
         self.runs = _FakeRuns(self)
@@ -73,6 +79,11 @@ class ScriptedAgentServer:
 
     def fail(self, operation: str) -> None:
         if operation in self.failures:
+            raise RuntimeError(UPSTREAM_MARKER)
+
+    def fail_after_accept(self, operation: str) -> None:
+        if operation in self.failures_after_accept:
+            self.failures_after_accept.remove(operation)
             raise RuntimeError(UPSTREAM_MARKER)
 
     def next_id(self, prefix: str) -> str:
@@ -136,14 +147,20 @@ class _FakeThreads:
         self,
         *,
         metadata: Mapping[str, object] | None = None,
+        thread_id: str | None = None,
+        if_exists: str | None = None,
     ) -> object:
         self.server.fail("threads.create")
-        assert metadata == {"deepwork_source": "local-agent-server"}
-        return {"thread_id": "thread-local-1"}
+        assert metadata is not None
+        assert metadata["deepwork_source"] == "local-agent-server"
+        assert if_exists == "do_nothing"
+        if thread_id is not None:
+            self.server.thread_id = thread_id
+        return {"thread_id": self.server.thread_id, "metadata": metadata}
 
     async def get_state(self, thread_id: str) -> object:
         self.server.fail("threads.get_state")
-        assert thread_id == "thread-local-1"
+        assert thread_id == self.server.thread_id
         return self.server.snapshot()
 
     async def update_state(
@@ -175,6 +192,17 @@ class _FakeThreads:
 class _FakeRuns:
     server: ScriptedAgentServer
 
+    async def list(
+        self,
+        thread_id: str,
+        *,
+        limit: int = 10,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> object:
+        assert thread_id == self.server.thread_id
+        return list(self.server.accepted_runs[offset : offset + limit])
+
     async def create(
         self,
         thread_id: str | None,
@@ -187,13 +215,15 @@ class _FakeRuns:
         stream_resumable: bool = False,
         multitask_strategy: str | None = None,
         durability: str | None = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> object:
         server = self.server
         server.fail("runs.create")
-        assert assistant_id == LOCAL_ASSISTANT
+        server.run_assistant_ids.append(assistant_id)
         assert stream_resumable is True
         assert multitask_strategy == "reject"
         run_id = server.next_id("run-local")
+        server.accepted_runs.append({"run_id": run_id, "metadata": metadata})
         if input is not None:
             task = input["task"]
             assert isinstance(task, str)
@@ -252,7 +282,8 @@ class _FakeRuns:
                 raise RuntimeError(UPSTREAM_MARKER)
             server.new_interrupt()
             server.record_run(run_id, ("approve",))
-        return {"run_id": run_id}
+        server.fail_after_accept("runs.create")
+        return {"run_id": run_id, "metadata": metadata}
 
     def join_stream(
         self,
@@ -264,11 +295,13 @@ class _FakeRuns:
         last_event_id: str | None = None,
     ) -> AsyncIterator[object]:
         assert cancel_on_disconnect is False
+        assert last_event_id is None
+        self.server.join_without_cursor_count += 1
         return self._replay(run_id)
 
     async def _replay(self, run_id: str) -> AsyncIterator[object]:
         self.server.fail("runs.join_stream")
-        for event in self.server.run_events.pop(run_id, []):
+        for event in self.server.run_events.get(run_id, ()):
             yield event
 
 
@@ -340,6 +373,7 @@ class _Harness:
 async def _local_app(
     server: ScriptedAgentServer,
     monkeypatch: pytest.MonkeyPatch,
+    task_database_path: Path | None = None,
 ) -> AsyncIterator[_Harness]:
     def _fake_builder(*, endpoint: str, assistant_id: str) -> LocalAgentServerSource:
         return LocalAgentServerSource(
@@ -350,6 +384,7 @@ async def _local_app(
 
     monkeypatch.setattr(bootstrap_api, "_build_local_agent_server_source", _fake_builder)
     app = create_app(
+        task_database_path=task_database_path,
         local_agent_server_endpoint=LOCAL_ENDPOINT,
         local_agent_server_assistant=LOCAL_ASSISTANT,
         allow_ungated_local_agent_source=True,
@@ -432,7 +467,8 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
             agent_id=LOCAL_ASSISTANT,
         )
         assert created["taskId"] == "task_00000001"
-        assert created["runId"] == "run-local-1"
+        assert created["runId"].startswith("run_")
+        assert len(created["runId"]) == 36
         assert created["status"] == "queued"
         assert server.state.task == "Summarize the supplied notes"
         source_interrupt = server.state.interrupt_id
@@ -459,6 +495,27 @@ async def test_start_creates_authoritative_thread_run_and_pauses_for_review(
         )[0]
         assert created_event.name.value == "task.created"
         assert json.loads(encode_event_data(created_event))["agentId"] == LOCAL_ASSISTANT
+
+
+async def test_start_recovers_an_accepted_run_after_its_response_is_lost(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    server = ScriptedAgentServer()
+    server.failures_after_accept.add("runs.create")
+
+    async with _local_app(server, monkeypatch, tmp_path / "tasks.sqlite") as harness:
+        created = await _create_task(harness.client, "Summarize the supplied notes")
+        paused = await _wait_for_status(
+            harness.client,
+            created["taskId"],
+            {"waiting-approval"},
+        )
+        binding = await harness.app.state.task_repository.get_source_binding(created["taskId"])
+
+        assert paused["status"] == "waiting-approval"
+        assert binding is not None and binding.run_id == "run-local-1"
+        assert len(server.accepted_runs) == 1
 
 
 async def test_coding_journey_fails_closed_before_any_unreviewed_source_request(
@@ -528,6 +585,32 @@ async def test_approval_executes_and_maps_result_into_task_api(
         assert all(delta["data"]["evidenceClass"] == "local-source" for delta in deltas)
         assert UPSTREAM_MARKER not in replay.text
         assert "thread-local-1" not in replay.text
+
+
+async def test_approval_recovers_an_accepted_resume_after_its_response_is_lost(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    server = ScriptedAgentServer()
+    async with _local_app(server, monkeypatch, tmp_path / "tasks.sqlite") as harness:
+        client = harness.client
+        created = await _create_task(client, "Summarize the supplied notes")
+        paused = await _wait_for_status(client, created["taskId"], {"waiting-approval"})
+        server.failures_after_accept.add("runs.create")
+
+        decided = await client.post(
+            f"/api/v1/tasks/{created['taskId']}/decisions",
+            json={
+                "interruptId": paused["pendingInterrupt"]["interruptId"],
+                "decision": "approve",
+            },
+        )
+        completed = await _wait_for_status(client, created["taskId"], {"completed"})
+
+        assert decided.status_code == 202
+        assert completed["status"] == "completed"
+        assert server.resume_decisions == ["approve"]
+        assert len(server.accepted_runs) == 2
 
 
 async def test_plan_edit_binds_to_source_revision_and_reaches_execution(
@@ -866,7 +949,7 @@ async def test_decision_with_unknown_interrupt_is_rejected_without_source_io(
         assert still_paused["pendingInterrupt"] == paused["pendingInterrupt"]
 
 
-async def test_unreachable_source_rejects_creation_without_a_ghost_task(
+async def test_unreachable_source_retains_the_failed_durable_dispatch_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     server = ScriptedAgentServer()
@@ -886,7 +969,10 @@ async def test_unreachable_source_rejects_creation_without_a_ghost_task(
 
         listing = await client.get("/api/v1/tasks")
         assert listing.status_code == 200
-        assert listing.json() == {"items": []}
+        items = listing.json()["items"]
+        assert len(items) == 1
+        assert items[0]["taskId"] == "task_00000001"
+        assert items[0]["status"] == "failed"
 
 
 async def test_source_outage_after_decision_fails_the_task_safely(

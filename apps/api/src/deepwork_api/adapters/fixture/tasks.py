@@ -37,6 +37,8 @@ from deepwork_api.domain import (
     TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
+    TaskSourceBinding,
+    TaskSourceContractError,
     TaskStatus,
     aggregate_batch_decision,
     coding_outcome_from_event_data,
@@ -112,6 +114,8 @@ class InMemoryTaskRepository:
         self._condition = asyncio.Condition(self._lock)
         self._tasks: dict[str, _StoredTask] = {}
         self._idempotency: dict[tuple[str, str, str, str], tuple[str, str]] = {}
+        self._source_bindings: dict[str, TaskSourceBinding] = {}
+        self._source_event_receipts: dict[str, set[str]] = {}
         self._next_task_number = 1
         self._clock = clock
 
@@ -195,6 +199,140 @@ class InMemoryTaskRepository:
             if fingerprint != request_fingerprint:
                 raise TaskIdempotencyConflictError
             return self._get(task_id).snapshot()
+
+    async def bind_source_run(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+    ) -> TaskSourceBinding:
+        """Create or replace one task's source execution identity."""
+
+        binding = TaskSourceBinding(
+            task_id=task_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
+        async with self._condition:
+            self._get(task_id)
+            current = self._source_bindings.get(task_id)
+            if current is not None:
+                if (current.thread_id, current.run_id) == (thread_id, run_id):
+                    return current
+                if (
+                    current.pending_transition_id is not None
+                    or current.accepted_transition_id is not None
+                ):
+                    raise TaskSourceContractError
+            self._source_bindings[task_id] = binding
+            self._condition.notify_all()
+            return binding
+
+    async def get_source_binding(self, task_id: str) -> TaskSourceBinding | None:
+        """Return a task's source identity without projecting it to clients."""
+
+        async with self._lock:
+            self._get(task_id)
+            return self._source_bindings.get(task_id)
+
+    async def mark_source_transition_pending(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        interrupt_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Persist a transition claim only against the current source run."""
+
+        async with self._condition:
+            self._get(task_id)
+            current = self._source_bindings.get(task_id)
+            if current is None or (current.thread_id, current.run_id) != (thread_id, run_id):
+                raise TaskSourceContractError
+            if current.pending_transition_id is not None and (
+                current.pending_interrupt_id,
+                current.pending_transition_id,
+            ) != (interrupt_id, transition_id):
+                raise TaskSourceContractError
+            binding = TaskSourceBinding(
+                task_id=task_id,
+                thread_id=thread_id,
+                run_id=run_id,
+                pending_interrupt_id=interrupt_id,
+                pending_transition_id=transition_id,
+                accepted_transition_id=current.accepted_transition_id,
+            )
+            self._source_bindings[task_id] = binding
+            self._condition.notify_all()
+            return binding
+
+    async def accept_source_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Replace a claimed run and retain its durable acknowledgement."""
+
+        async with self._condition:
+            self._get(task_id)
+            current = self._source_bindings.get(task_id)
+            if current is None or (
+                current.thread_id,
+                current.run_id,
+                current.pending_transition_id,
+            ) != (thread_id, previous_run_id, transition_id):
+                raise TaskSourceContractError
+            binding = TaskSourceBinding(
+                task_id=task_id,
+                thread_id=thread_id,
+                run_id=run_id,
+                accepted_transition_id=transition_id,
+            )
+            self._source_bindings[task_id] = binding
+            self._condition.notify_all()
+            return binding
+
+    async def append_source_progress(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        source_event_key: str,
+        data: EventData,
+    ) -> TaskEvent | None:
+        """Append progress once for an application-owned receipt key."""
+
+        if len(source_event_key) != 64 or any(
+            character not in "0123456789abcdef" for character in source_event_key
+        ):
+            raise TaskSourceContractError
+        async with self._condition:
+            task = self._get(task_id)
+            current = self._source_bindings.get(task_id)
+            if current is None or (current.thread_id, current.run_id) != (thread_id, run_id):
+                raise TaskSourceContractError
+            receipts = self._source_event_receipts.setdefault(task_id, set())
+            if source_event_key in receipts:
+                return None
+            if task.status.is_terminal:
+                raise StaleInterruptError
+            event = TaskEvent(
+                event_id=len(task.events) + 1,
+                name=TaskEventName.CONTENT_DELTA,
+                data=data,
+            )
+            task.events.append(event)
+            receipts.add(source_event_key)
+            self._condition.notify_all()
+            return event
 
     @staticmethod
     def _idempotency_scope(

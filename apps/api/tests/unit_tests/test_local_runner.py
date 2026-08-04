@@ -24,6 +24,8 @@ from deepwork_api.domain import (
     TaskCancellationUnsupportedError,
     TaskEventName,
     TaskSnapshot,
+    TaskSourceBinding,
+    TaskSourceUnavailableError,
     TaskStatus,
 )
 
@@ -82,10 +84,20 @@ class _Source:
         self.state_reads = 0
         self.start_system_prompts: list[str | None] = []
         self.start_agent_ids: list[str | None] = []
+        self.update_plan_agent_ids: list[str | None] = []
+        self.resume_agent_ids: list[str | None] = []
+        self.dispatch_ids: list[str] = []
+        self.transition_ids: list[str] = []
 
     async def start(
-        self, objective: str, *, system_prompt: str | None = None, agent_id: str | None = None
+        self,
+        objective: str,
+        *,
+        dispatch_id: str,
+        system_prompt: str | None = None,
+        agent_id: str | None = None,
     ) -> _Run:
+        self.dispatch_ids.append(dispatch_id)
         effective_prompt = (
             system_prompt if agent_id is None or agent_id == self.default_agent_id else None
         )
@@ -104,7 +116,9 @@ class _Source:
         interrupt_id: str,
         expected_revision: int,
         steps: Sequence[str],
+        agent_id: str | None = None,
     ) -> _PlanUpdate:
+        self.update_plan_agent_ids.append(agent_id)
         return _PlanUpdate()
 
     async def resume(
@@ -113,13 +127,22 @@ class _Source:
         *,
         interrupt_id: str,
         decision: str,
+        transition_id: str,
         comment: str | None = None,
+        agent_id: str | None = None,
     ) -> _Run:
+        self.transition_ids.append(transition_id)
+        self.resume_agent_ids.append(agent_id)
         if comment is not None:
             self.resume_comment = comment
         return _Run(run_id="run_2")
 
-    async def stream(self, run: LocalRun) -> AsyncIterator[object]:
+    async def stream(
+        self,
+        run: LocalRun,
+        *,
+        after_cursor: str | None = None,
+    ) -> AsyncIterator[object]:
         for event in self.events:
             yield event
 
@@ -151,13 +174,141 @@ class _Source:
 
 
 class _HangingStreamSource(_Source):
-    async def stream(self, run: LocalRun) -> AsyncIterator[object]:
+    async def stream(
+        self,
+        run: LocalRun,
+        *,
+        after_cursor: str | None = None,
+    ) -> AsyncIterator[object]:
         pending = asyncio.get_running_loop().create_future()
         yield await pending
 
 
-async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
-    task = await repository.create_task(title="Task", objective="Objective")
+class _IdempotentRecoverySource(_Source):
+    def __init__(self) -> None:
+        super().__init__()
+        self.accepted_dispatches: dict[str, _Run] = {}
+        self.accepted_transitions: dict[str, _Run] = {}
+        self.upstream_starts = 0
+        self.upstream_resumes = 0
+
+    async def start(
+        self,
+        objective: str,
+        *,
+        dispatch_id: str,
+        system_prompt: str | None = None,
+        agent_id: str | None = None,
+    ) -> _Run:
+        self.dispatch_ids.append(dispatch_id)
+        existing = self.accepted_dispatches.get(dispatch_id)
+        if existing is not None:
+            return existing
+        self.upstream_starts += 1
+        run = _Run()
+        self.accepted_dispatches[dispatch_id] = run
+        return run
+
+    async def resume(
+        self,
+        thread_id: str,
+        *,
+        interrupt_id: str,
+        decision: str,
+        transition_id: str,
+        comment: str | None = None,
+        agent_id: str | None = None,
+    ) -> _Run:
+        self.transition_ids.append(transition_id)
+        existing = self.accepted_transitions.get(transition_id)
+        if existing is not None:
+            return existing
+        if decision == "respond" and comment is None:
+            raise RuntimeError("lost response comment")
+        self.upstream_resumes += 1
+        run = _Run(run_id="run_2")
+        self.accepted_transitions[transition_id] = run
+        self.state = _State(
+            status="completed",
+            plan=("First step",),
+            plan_revision=1,
+            final_answer="Recovered result",
+            interrupt=None,
+        )
+        return run
+
+
+class _CrashBeforeBindingRepository(InMemoryTaskRepository):
+    crash_before_binding = True
+
+    async def bind_source_run(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+    ) -> TaskSourceBinding:
+        if self.crash_before_binding:
+            self.crash_before_binding = False
+            raise asyncio.CancelledError
+        return await super().bind_source_run(
+            task_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
+
+
+class _CrashOnAcceptRepository(InMemoryTaskRepository):
+    def __init__(self, *, after_commit: bool) -> None:
+        super().__init__()
+        self.after_commit = after_commit
+        self.crash_once = True
+
+    async def accept_source_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        if self.crash_once:
+            self.crash_once = False
+            if not self.after_commit:
+                raise asyncio.CancelledError
+            await super().accept_source_transition(
+                task_id,
+                thread_id=thread_id,
+                previous_run_id=previous_run_id,
+                run_id=run_id,
+                transition_id=transition_id,
+            )
+            raise asyncio.CancelledError
+        return await super().accept_source_transition(
+            task_id,
+            thread_id=thread_id,
+            previous_run_id=previous_run_id,
+            run_id=run_id,
+            transition_id=transition_id,
+        )
+
+
+async def _paused_task(
+    repository: InMemoryTaskRepository,
+    *,
+    agent_id: str | None = None,
+) -> TaskSnapshot:
+    task = await repository.create_task(
+        title="Task",
+        objective="Objective",
+        agent_id=agent_id,
+    )
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+    )
     await repository.set_plan(
         task.task_id,
         plan=ProposedPlan(1, "Plan", ("First step",), ()),
@@ -228,6 +379,7 @@ async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_pat
             self,
             objective: str,
             *,
+            dispatch_id: str,
             system_prompt: str | None = None,
             agent_id: str | None = None,
         ) -> _Run:
@@ -236,6 +388,7 @@ async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_pat
             await self.release.wait()
             return await super().start(
                 objective,
+                dispatch_id=dispatch_id,
                 system_prompt=system_prompt,
                 agent_id=agent_id,
             )
@@ -255,14 +408,15 @@ async def test_shared_sqlite_claim_precedes_source_start_across_services(tmp_pat
     )
     try:
         await asyncio.wait_for(source.entered.wait(), timeout=1)
-        replay = await asyncio.wait_for(
-            services[1].create_task("Do the thing", idempotency_key="shared-source-key"),
-            timeout=1,
+        replay_request = asyncio.create_task(
+            services[1].create_task("Do the thing", idempotency_key="shared-source-key")
         )
-        assert replay.created is False
+        await asyncio.sleep(0)
         assert source.starts == 1
         source.release.set()
         created = await asyncio.wait_for(first_request, timeout=1)
+        replay = await asyncio.wait_for(replay_request, timeout=1)
+        assert replay.created is False
         assert created.created is True
         assert replay.task.task_id == created.task.task_id
         assert source.starts == 1
@@ -289,6 +443,7 @@ async def test_independent_task_keys_can_start_the_source_concurrently() -> None
             self,
             objective: str,
             *,
+            dispatch_id: str,
             system_prompt: str | None = None,
             agent_id: str | None = None,
         ) -> _Run:
@@ -298,6 +453,7 @@ async def test_independent_task_keys_can_start_the_source_concurrently() -> None
             await self.release.wait()
             return await super().start(
                 objective,
+                dispatch_id=dispatch_id,
                 system_prompt=system_prompt,
                 agent_id=agent_id,
             )
@@ -479,6 +635,59 @@ async def test_confirmed_plan_update_reconciles_without_second_state_read() -> N
 
 
 @pytest.mark.asyncio
+async def test_plan_update_keeps_the_durable_selected_agent() -> None:
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(repository, source)
+    task = await _paused_task(repository, agent_id="assistant-reviewer")
+    runner._threads[task.task_id] = "thread_1"
+
+    await runner.update_plan(
+        task,
+        interrupt_id="interrupt_1",
+        expected_revision=1,
+        steps=("Updated step",),
+    )
+
+    assert source.update_plan_agent_ids == ["assistant-reviewer"]
+    await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_queued_binding_recovery_announces_run_started_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_STATE_RECONCILIATION_SECONDS",
+        0.01,
+    )
+    repository = InMemoryTaskRepository()
+    source = _HangingStreamSource()
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(
+        title="Task",
+        objective="Objective",
+        run_id="run_1",
+    )
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+    )
+
+    assert await runner.recover(task) is True
+    for _ in range(20):
+        if (await repository.get_task(task.task_id)).status is TaskStatus.WAITING_APPROVAL:
+            break
+        await asyncio.sleep(0.01)
+
+    assert (await repository.get_task(task.task_id)).status is TaskStatus.WAITING_APPROVAL
+    events = await repository.events_after(task.task_id, 0)
+    assert [event.name for event in events].count(TaskEventName.RUN_STARTED) == 1
+    await runner.close()
+
+
+@pytest.mark.asyncio
 async def test_error_stream_event_fails_instead_of_completing() -> None:
     repository = InMemoryTaskRepository()
     runner = LocalAgentServerRunner(repository, _Source(events=(SimpleNamespace(kind="error"),)))
@@ -487,6 +696,26 @@ async def test_error_stream_event_fails_instead_of_completing() -> None:
     await runner._follow(task, _Run())
 
     assert (await repository.get_task(task.task_id)).status is TaskStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_cursorless_progress_fails_without_persisting_an_undedupeable_event() -> None:
+    repository = InMemoryTaskRepository()
+    source = _Source(events=(SimpleNamespace(kind="progress", cursor=None),))
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+    )
+
+    await runner._follow(task, _Run())
+
+    current = await repository.get_task(task.task_id)
+    events = await repository.events_after(task.task_id, 0)
+    assert current.status is TaskStatus.FAILED
+    assert TaskEventName.CONTENT_DELTA not in [event.name for event in events]
 
 
 @pytest.mark.asyncio
@@ -600,4 +829,152 @@ async def test_response_comment_is_forwarded_to_source_resume() -> None:
     await follower
 
     assert source.resume_comment == "Please make the plan more concise."
+    assert source.resume_agent_ids == [None]
     await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_recovery_reuses_start_accepted_before_binding() -> None:
+    repository = _CrashBeforeBindingRepository()
+    source = _IdempotentRecoverySource()
+    first_runner = LocalAgentServerRunner(repository, source)
+
+    with pytest.raises(asyncio.CancelledError):
+        await first_runner.create(title="Task", objective="Objective")
+    task = (await repository.list_tasks())[0]
+    assert await repository.get_source_binding(task.task_id) is None
+
+    recovered_runner = LocalAgentServerRunner(repository, source)
+    assert await recovered_runner.recover(task) is True
+    binding = await repository.get_source_binding(task.task_id)
+    assert binding is not None
+    assert binding.run_id == "run_1"
+    assert source.dispatch_ids == [task.run_id, task.run_id]
+    assert source.upstream_starts == 1
+
+    await recovered_runner.close()
+    await first_runner.close()
+
+
+@pytest.mark.asyncio
+async def test_idempotent_retry_repairs_an_accepted_start_missing_its_binding() -> None:
+    repository = _CrashBeforeBindingRepository()
+    source = _IdempotentRecoverySource()
+    runner = LocalAgentServerRunner(repository, source)
+
+    with pytest.raises(asyncio.CancelledError):
+        await runner.create(
+            title="Task",
+            objective="Objective",
+            idempotency_key="recover-live-retry",
+            request_fingerprint="same-request",
+        )
+
+    replay = await runner.create(
+        title="Task",
+        objective="Objective",
+        idempotency_key="recover-live-retry",
+        request_fingerprint="same-request",
+    )
+
+    binding = await repository.get_source_binding(replay.task.task_id)
+    assert replay.created is False
+    assert binding is not None and binding.run_id == "run_1"
+    assert source.upstream_starts == 1
+    await runner.close()
+
+
+async def _wait_for_repository_status(
+    repository: InMemoryTaskRepository,
+    task_id: str,
+    status: TaskStatus,
+) -> TaskSnapshot:
+    for _ in range(100):
+        task = await repository.get_task(task_id)
+        if task.status is status:
+            return task
+        await asyncio.sleep(0)
+    raise AssertionError(f"task did not reach {status}")
+
+
+@pytest.mark.asyncio
+async def test_recovery_discovers_resume_accepted_before_replacement_binding() -> None:
+    repository = _CrashOnAcceptRepository(after_commit=False)
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository)
+    first_runner = LocalAgentServerRunner(repository, source)
+    first_runner.start(task, _Run(), announce_started=False)
+
+    decision = asyncio.create_task(
+        first_runner.record_decision(
+            task.task_id,
+            interrupt_id="interrupt_1",
+            decision=DecisionValue.APPROVE,
+            comment=None,
+            comment_provided=False,
+            response_digest=None,
+        )
+    )
+    with pytest.raises(TaskSourceUnavailableError):
+        await decision
+    pending = await repository.get_source_binding(task.task_id)
+    assert pending is not None
+    assert pending.pending_transition_id is not None
+
+    recovered_runner = LocalAgentServerRunner(repository, source)
+    current = await repository.get_task(task.task_id)
+    assert await recovered_runner.recover(current) is True
+    completed = await _wait_for_repository_status(
+        repository,
+        task.task_id,
+        TaskStatus.COMPLETED,
+    )
+    assert completed.result == "Recovered result"
+    assert source.upstream_resumes == 1
+    assert len(source.transition_ids) == 2
+
+    await recovered_runner.close()
+    await first_runner.close()
+
+
+@pytest.mark.asyncio
+async def test_duplicate_decision_succeeds_after_binding_commit_before_memory_ack() -> None:
+    repository = _CrashOnAcceptRepository(after_commit=True)
+    source = _IdempotentRecoverySource()
+    task = await _paused_task(repository)
+    first_runner = LocalAgentServerRunner(repository, source)
+    first_runner.start(task, _Run(), announce_started=False)
+
+    first = asyncio.create_task(
+        first_runner.record_decision(
+            task.task_id,
+            interrupt_id="interrupt_1",
+            decision=DecisionValue.APPROVE,
+            comment=None,
+            comment_provided=False,
+            response_digest=None,
+        )
+    )
+    with pytest.raises(TaskSourceUnavailableError):
+        await first
+    accepted = await repository.get_source_binding(task.task_id)
+    assert accepted is not None
+    assert accepted.accepted_transition_id is not None
+
+    recovered_runner = LocalAgentServerRunner(repository, source)
+    current = await repository.get_task(task.task_id)
+    assert await recovered_runner.recover(current) is True
+    duplicate = await recovered_runner.record_decision(
+        task.task_id,
+        interrupt_id="interrupt_1",
+        decision=DecisionValue.APPROVE,
+        comment=None,
+        comment_provided=False,
+        response_digest=None,
+    )
+    assert duplicate.duplicate is True
+    assert source.upstream_resumes == 1
+    assert len(source.transition_ids) == 1
+
+    await recovered_runner.close()
+    await first_runner.close()

@@ -55,6 +55,8 @@ from deepwork_api.domain import (
     TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
+    TaskSourceBinding,
+    TaskSourceContractError,
     TaskStatus,
     aggregate_batch_decision,
     coding_outcome_from_event_data,
@@ -62,7 +64,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 6
+_SCHEMA_VERSION = 7
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -116,6 +118,27 @@ CREATE TABLE task_idempotency (
     request_fingerprint TEXT NOT NULL,
     task_id TEXT NOT NULL UNIQUE,
     PRIMARY KEY (tenant_id, workspace_id, actor_id, idempotency_key),
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+)
+"""
+
+_SOURCE_BINDING_SCHEMA = """
+CREATE TABLE task_source_bindings (
+    task_id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    pending_interrupt_id TEXT,
+    pending_transition_id TEXT,
+    accepted_transition_id TEXT,
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+)
+"""
+
+_SOURCE_EVENT_RECEIPT_SCHEMA = """
+CREATE TABLE task_source_event_receipts (
+    task_id TEXT NOT NULL,
+    source_event_key TEXT NOT NULL,
+    PRIMARY KEY (task_id, source_event_key),
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
 )
 """
@@ -177,6 +200,8 @@ CREATE TABLE decisions (
 )
 """,
     _IDEMPOTENCY_SCHEMA,
+    _SOURCE_BINDING_SCHEMA,
+    _SOURCE_EVENT_RECEIPT_SCHEMA,
     "CREATE INDEX events_task_order ON events(task_id, event_id)",
     "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
@@ -200,6 +225,8 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
         _IDEMPOTENCY_SCHEMA,
+        _SOURCE_BINDING_SCHEMA,
+        _SOURCE_EVENT_RECEIPT_SCHEMA,
     ),
     # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
     # column. Move it last and drop NOT NULL without losing the recorded values,
@@ -212,17 +239,28 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
         _IDEMPOTENCY_SCHEMA,
+        _SOURCE_BINDING_SCHEMA,
+        _SOURCE_EVENT_RECEIPT_SCHEMA,
     ),
     # v3 has the canonical task columns but predates the name-led event index.
     3: (
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
         _IDEMPOTENCY_SCHEMA,
+        _SOURCE_BINDING_SCHEMA,
+        _SOURCE_EVENT_RECEIPT_SCHEMA,
     ),
     # v4 has the canonical timestamp and event-index shape but no ownership.
-    4: (*_OWNERSHIP_UPGRADE, _IDEMPOTENCY_SCHEMA),
+    4: (
+        *_OWNERSHIP_UPGRADE,
+        _IDEMPOTENCY_SCHEMA,
+        _SOURCE_BINDING_SCHEMA,
+        _SOURCE_EVENT_RECEIPT_SCHEMA,
+    ),
     # v5 has task ownership but predates durable task-creation idempotency.
-    5: (_IDEMPOTENCY_SCHEMA,),
+    5: (_IDEMPOTENCY_SCHEMA, _SOURCE_BINDING_SCHEMA, _SOURCE_EVENT_RECEIPT_SCHEMA),
+    # v6 has durable task-creation idempotency but no source rejoin identity.
+    6: (_SOURCE_BINDING_SCHEMA, _SOURCE_EVENT_RECEIPT_SCHEMA),
 }
 
 _EXPECTED_COLUMNS = {
@@ -263,6 +301,15 @@ _EXPECTED_COLUMNS = {
         "request_fingerprint",
         "task_id",
     ),
+    "task_source_bindings": (
+        "task_id",
+        "thread_id",
+        "run_id",
+        "pending_interrupt_id",
+        "pending_transition_id",
+        "accepted_transition_id",
+    ),
+    "task_source_event_receipts": ("task_id", "source_event_key"),
 }
 
 _EXPECTED_TABLE_INFO = {
@@ -315,6 +362,18 @@ _EXPECTED_TABLE_INFO = {
         ("request_fingerprint", "TEXT", 1, 0),
         ("task_id", "TEXT", 1, 0),
     ),
+    "task_source_bindings": (
+        ("task_id", "TEXT", 0, 1),
+        ("thread_id", "TEXT", 1, 0),
+        ("run_id", "TEXT", 1, 0),
+        ("pending_interrupt_id", "TEXT", 0, 0),
+        ("pending_transition_id", "TEXT", 0, 0),
+        ("accepted_transition_id", "TEXT", 0, 0),
+    ),
+    "task_source_event_receipts": (
+        ("task_id", "TEXT", 1, 1),
+        ("source_event_key", "TEXT", 1, 2),
+    ),
 }
 
 _EXPECTED_DEFAULTS = {
@@ -340,6 +399,8 @@ _EXPECTED_DEFAULTS = {
     "evidence": (None, None, None, None, None, None, None),
     "decisions": (None, None, None, None),
     "task_idempotency": (None, None, None, None, None, None),
+    "task_source_bindings": (None, None, None, None, None, None),
+    "task_source_event_receipts": (None, None),
 }
 
 _EXPECTED_INDEXES = {
@@ -374,6 +435,16 @@ _EXPECTED_INDEXES = {
             (True, "u", ("task_id",)): 1,
         }
     ),
+    "task_source_bindings": Counter(
+        {
+            (True, "pk", ("task_id",)): 1,
+        }
+    ),
+    "task_source_event_receipts": Counter(
+        {
+            (True, "pk", ("task_id", "source_event_key")): 1,
+        }
+    ),
 }
 
 _EXPECTED_FOREIGN_KEYS = {
@@ -382,6 +453,10 @@ _EXPECTED_FOREIGN_KEYS = {
     "evidence": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
     "decisions": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
     "task_idempotency": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
+    "task_source_bindings": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
+    "task_source_event_receipts": (
+        ("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),
+    ),
 }
 
 _EXPECTED_OBJECTS = {
@@ -393,6 +468,8 @@ _EXPECTED_OBJECTS = {
     "events_task_order",
     "evidence_task_order",
     "task_idempotency",
+    "task_source_bindings",
+    "task_source_event_receipts",
 }
 
 _LATEST_CODING_EVENTS_QUERY = """
@@ -547,6 +624,95 @@ class SQLiteTaskRepository:
             idempotency_key,
             request_fingerprint,
             security_context,
+        )
+
+    async def bind_source_run(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+    ) -> TaskSourceBinding:
+        """Persist the current source execution identity."""
+
+        binding = TaskSourceBinding(
+            task_id=task_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
+        return await self._mutate(self._bind_source_run_sync, binding)
+
+    async def get_source_binding(self, task_id: str) -> TaskSourceBinding | None:
+        """Read source rejoin identity without exposing it through HTTP."""
+
+        await self.initialize()
+        return await self._run_sync(self._get_source_binding_sync, task_id)
+
+    async def mark_source_transition_pending(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        interrupt_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Persist a transition claim against the exact current source run."""
+
+        binding = TaskSourceBinding(task_id=task_id, thread_id=thread_id, run_id=run_id)
+        if not transition_id or len(transition_id) > 256:
+            raise TaskSourceContractError
+        return await self._mutate(
+            self._mark_source_transition_pending_sync,
+            binding,
+            interrupt_id,
+            transition_id,
+        )
+
+    async def accept_source_transition(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        previous_run_id: str,
+        run_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        """Atomically replace one claimed run and acknowledge its transition."""
+
+        binding = TaskSourceBinding(task_id=task_id, thread_id=thread_id, run_id=run_id)
+        if not previous_run_id or len(previous_run_id) > 256:
+            raise TaskSourceContractError
+        if not transition_id or len(transition_id) > 256:
+            raise TaskSourceContractError
+        return await self._mutate(
+            self._accept_source_transition_sync,
+            binding,
+            previous_run_id,
+            transition_id,
+        )
+
+    async def append_source_progress(
+        self,
+        task_id: str,
+        *,
+        thread_id: str,
+        run_id: str,
+        source_event_key: str,
+        data: EventData,
+    ) -> TaskEvent | None:
+        """Atomically append progress once for an application-owned receipt."""
+
+        binding = TaskSourceBinding(
+            task_id=task_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
+        return await self._mutate(
+            self._append_source_progress_sync,
+            binding,
+            source_event_key,
+            _encode_event_data(data),
         )
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
@@ -1063,6 +1229,256 @@ class SQLiteTaskRepository:
             task = self._snapshot_sync(connection, cast(str, existing["task_id"]))
             connection.commit()
             return task
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _bind_source_run_sync(self, binding: TaskSourceBinding) -> TaskSourceBinding:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._task_row_sync(connection, binding.task_id)
+            row = connection.execute(
+                """
+                SELECT task_id, thread_id, run_id,
+                       pending_interrupt_id, pending_transition_id, accepted_transition_id
+                FROM task_source_bindings
+                WHERE task_id = ?
+                """,
+                (binding.task_id,),
+            ).fetchone()
+            if row is not None:
+                current = TaskSourceBinding(
+                    task_id=cast(str, row["task_id"]),
+                    thread_id=cast(str, row["thread_id"]),
+                    run_id=cast(str, row["run_id"]),
+                    pending_interrupt_id=cast(str | None, row["pending_interrupt_id"]),
+                    pending_transition_id=cast(str | None, row["pending_transition_id"]),
+                    accepted_transition_id=cast(str | None, row["accepted_transition_id"]),
+                )
+                if (current.thread_id, current.run_id) == (
+                    binding.thread_id,
+                    binding.run_id,
+                ):
+                    connection.commit()
+                    return current
+                if (
+                    current.pending_transition_id is not None
+                    or current.accepted_transition_id is not None
+                ):
+                    raise TaskSourceContractError
+            connection.execute(
+                """
+                INSERT INTO task_source_bindings (
+                    task_id, thread_id, run_id, pending_interrupt_id,
+                    pending_transition_id, accepted_transition_id
+                )
+                VALUES (?, ?, ?, NULL, NULL, NULL)
+                ON CONFLICT(task_id) DO UPDATE SET
+                    thread_id = excluded.thread_id,
+                    run_id = excluded.run_id,
+                    pending_interrupt_id = NULL,
+                    pending_transition_id = NULL,
+                    accepted_transition_id = NULL
+                """,
+                (binding.task_id, binding.thread_id, binding.run_id),
+            )
+            connection.commit()
+            return binding
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _get_source_binding_sync(self, task_id: str) -> TaskSourceBinding | None:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN")
+            self._task_row_sync(connection, task_id)
+            row = connection.execute(
+                """
+                SELECT task_id, thread_id, run_id,
+                       pending_interrupt_id, pending_transition_id, accepted_transition_id
+                FROM task_source_bindings
+                WHERE task_id = ?
+                """,
+                (task_id,),
+            ).fetchone()
+            connection.commit()
+            if row is None:
+                return None
+            return TaskSourceBinding(
+                task_id=cast(str, row["task_id"]),
+                thread_id=cast(str, row["thread_id"]),
+                run_id=cast(str, row["run_id"]),
+                pending_interrupt_id=cast(str | None, row["pending_interrupt_id"]),
+                pending_transition_id=cast(str | None, row["pending_transition_id"]),
+                accepted_transition_id=cast(str | None, row["accepted_transition_id"]),
+            )
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _mark_source_transition_pending_sync(
+        self,
+        binding: TaskSourceBinding,
+        interrupt_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._task_row_sync(connection, binding.task_id)
+            changed = connection.execute(
+                """
+                UPDATE task_source_bindings
+                SET pending_interrupt_id = ?, pending_transition_id = ?
+                WHERE task_id = ? AND thread_id = ? AND run_id = ?
+                  AND (
+                    (pending_interrupt_id IS NULL AND pending_transition_id IS NULL)
+                    OR (pending_interrupt_id = ? AND pending_transition_id = ?)
+                  )
+                """,
+                (
+                    interrupt_id,
+                    transition_id,
+                    binding.task_id,
+                    binding.thread_id,
+                    binding.run_id,
+                    interrupt_id,
+                    transition_id,
+                ),
+            )
+            if changed.rowcount != 1:
+                raise TaskSourceContractError
+            row = connection.execute(
+                """
+                SELECT accepted_transition_id
+                FROM task_source_bindings
+                WHERE task_id = ?
+                """,
+                (binding.task_id,),
+            ).fetchone()
+            assert row is not None
+            result = TaskSourceBinding(
+                task_id=binding.task_id,
+                thread_id=binding.thread_id,
+                run_id=binding.run_id,
+                pending_interrupt_id=interrupt_id,
+                pending_transition_id=transition_id,
+                accepted_transition_id=cast(str | None, row["accepted_transition_id"]),
+            )
+            connection.commit()
+            return result
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _accept_source_transition_sync(
+        self,
+        binding: TaskSourceBinding,
+        previous_run_id: str,
+        transition_id: str,
+    ) -> TaskSourceBinding:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._task_row_sync(connection, binding.task_id)
+            changed = connection.execute(
+                """
+                UPDATE task_source_bindings
+                SET run_id = ?, pending_interrupt_id = NULL,
+                    pending_transition_id = NULL, accepted_transition_id = ?
+                WHERE task_id = ? AND thread_id = ? AND run_id = ?
+                  AND pending_transition_id = ?
+                """,
+                (
+                    binding.run_id,
+                    transition_id,
+                    binding.task_id,
+                    binding.thread_id,
+                    previous_run_id,
+                    transition_id,
+                ),
+            )
+            if changed.rowcount != 1:
+                raise TaskSourceContractError
+            result = TaskSourceBinding(
+                task_id=binding.task_id,
+                thread_id=binding.thread_id,
+                run_id=binding.run_id,
+                accepted_transition_id=transition_id,
+            )
+            connection.commit()
+            return result
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _append_source_progress_sync(
+        self,
+        binding: TaskSourceBinding,
+        source_event_key: str,
+        encoded_data: str,
+    ) -> TaskEvent | None:
+        if len(source_event_key) != 64 or any(
+            character not in "0123456789abcdef" for character in source_event_key
+        ):
+            raise TaskSourceContractError
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            task = self._task_row_sync(connection, binding.task_id)
+            row = connection.execute(
+                """
+                SELECT thread_id, run_id
+                FROM task_source_bindings
+                WHERE task_id = ?
+                """,
+                (binding.task_id,),
+            ).fetchone()
+            if row is None or (row["thread_id"], row["run_id"]) != (
+                binding.thread_id,
+                binding.run_id,
+            ):
+                raise TaskSourceContractError
+            if _decode_status(task["status"]).is_terminal:
+                raise StaleInterruptError
+            receipt = connection.execute(
+                """
+                INSERT OR IGNORE INTO task_source_event_receipts (task_id, source_event_key)
+                VALUES (?, ?)
+                """,
+                (binding.task_id, source_event_key),
+            )
+            if receipt.rowcount == 0:
+                connection.commit()
+                return None
+            event = TaskEvent(
+                event_id=self._next_event_id_sync(connection, binding.task_id),
+                name=TaskEventName.CONTENT_DELTA,
+                data=_decode_event_data(encoded_data),
+            )
+            connection.execute(
+                "INSERT INTO events (task_id, event_id, name, data) VALUES (?, ?, ?, ?)",
+                (
+                    binding.task_id,
+                    event.event_id,
+                    event.name.value,
+                    encoded_data,
+                ),
+            )
+            connection.commit()
+            return event
         except Exception:
             connection.rollback()
             raise

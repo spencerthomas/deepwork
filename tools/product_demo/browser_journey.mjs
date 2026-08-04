@@ -6,12 +6,22 @@ import { dirname } from "node:path";
 
 function monitorPage(page, label, origin) {
   const failures = [];
+  const navigationAborts = [];
   page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
     if (message.type() === "error") failures.push(`console: ${message.text()}`);
   });
   page.on("requestfailed", (request) => {
-    failures.push(`requestfailed: ${request.method()} ${request.url()}`);
+    const reason = request.failure()?.errorText ?? "unknown";
+    // Next can abort an in-flight route-handler request after its client router
+    // has already completed the authenticated navigation. The destination URL
+    // and rendered state are asserted by login(); retain that classification
+    // separately while still failing every other network error.
+    if (reason === "net::ERR_ABORTED") {
+      navigationAborts.push(`${request.method()} ${request.url()}`);
+    } else {
+      failures.push(`requestfailed (${reason}): ${request.method()} ${request.url()}`);
+    }
   });
   page.on("response", (response) => {
     if (response.url().startsWith(`${origin}/api/`) && response.status() >= 400) {
@@ -20,6 +30,7 @@ function monitorPage(page, label, origin) {
   });
   return () => {
     if (failures.length > 0) throw new Error(`${label} browser failures: ${failures.join("; ")}`);
+    return { browserErrors: 0, classifiedNavigationAborts: navigationAborts.length };
   };
 }
 
@@ -180,9 +191,9 @@ async function completeJourney(browser, config) {
     path: `${config.artifactDir}/phone-reopened.png`,
     fullPage: true,
   });
-  assertPhoneHealthy();
+  const phoneDiagnostics = assertPhoneHealthy();
   await phone.close();
-  assertDesktopHealthy();
+  const desktopDiagnostics = assertDesktopHealthy();
   await context.close();
   return {
     label: config.label,
@@ -193,6 +204,7 @@ async function completeJourney(browser, config) {
     retainedEventsText,
     portableDownload: true,
     liveProgressObserved: true,
+    diagnostics: { desktop: desktopDiagnostics, phone: phoneDiagnostics },
     peerStorageObserved,
     states: [
       "sign-in",
@@ -227,13 +239,14 @@ async function reopenJourney(browser, config) {
   await page.getByRole("tab", { name: "Files" }).click();
   await page.getByText("result.md", { exact: true }).waitFor();
   await page.screenshot({ path: config.screenshot, fullPage: true });
-  assertHealthy();
+  const diagnostics = assertHealthy();
   await context.close();
   return {
     label: config.label,
     taskPath: config.taskPath,
     viewport: `${config.viewport.width}x${config.viewport.height}`,
     reopenedAfterApiRestart: true,
+    diagnostics,
   };
 }
 

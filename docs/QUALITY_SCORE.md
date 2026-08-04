@@ -20,7 +20,7 @@ evidence.
 | Canonical knowledge and navigation | 4/4 | 4/4 | Root map, topical docs, indexes, 39 stable specs; `tools/docs/check.py` green and CI-enforced | Keep docs checks green |
 | Product scope and acceptance | 4/4 | 4/4 | 179 feature scenarios and 12 v1 program scenarios; the live [`RELEASE_SCORECARD.md`](RELEASE_SCORECARD.md) tracks four independent evidence states | Complete and accept each scenario proof packet |
 | Architecture boundaries | 3/4 | 3/4 | Executable import checker `tools/architecture/check.py` and all implemented package boundary checks pass in the root `make check`; negative fixtures must fail. The dependency-gated desktop zone is not implemented. | Add the desktop zone after `DW-M1-TS-SCAFFOLD`; broaden coverage and promote remaining report-mode rules to blocking |
-| External runtime contracts | 1/4 | 1/4 | Pinned evidence and deterministic fallbacks; named live-contract spikes still open | Complete named live-contract spikes |
+| External runtime contracts | 1/4 | 1/4 | Pinned evidence and deterministic fallbacks; a production-mode local browser run now completes the golden journey through the real local LangGraph Agent Server with a deterministic keyless model stand-in at `a326c84b6ecf0cf7c08e6d07735f5a96701626cb`. Provider-backed execution, named live-contract spikes and hosted proof remain open. | Complete named live-contract spikes and protected hosted acceptance |
 | Fixture/demo proof | 0/4 | 4/4 | `make test-e2e-demo` proves branded sign-in → agent/journey choice → compose → plan review → approve → progress → useful result → evidence/files/trace → reopen through the real application API contract. Commit `8acd3db9dce29ee9b8a20de5363b604315a17ca5` adds the explicitly labelled coding fixture path with exact-revision, sandbox-provenance, retry-reconciled draft PR, non-authoritative CI, phone review and reopen proof. | Keep the browser journey and API fixture parity gates green |
 | Application implementation | 0/4 | 3/4 | The API-backed task lifecycle and designed web shell are implemented; `make test-visual` binds the immutable prototype reference plus reviewed desktop/phone journey and coding-review screenshots through `8acd3db9dce29ee9b8a20de5363b604315a17ca5`. | Complete the partial and absent release scenarios named in the live scorecard |
 | Accessibility/security/reliability proof | 1/4 | 3/4 | Light/dark axe-core scans and `tests/e2e/assistive-access.spec.ts` now mechanically prove keyboard dispatch/approval/inspection, truthful lifecycle announcements, completion and modal focus behavior, reduced motion, forced colors, and a fresh 320x800 protocol-touch journey with Files inspection, reopen, no overflow and measured targets at `16d79c2268132e9a6f737b1b543e33d29b46e806`. The synthetic credential boundary, endpoint/loopback/CORS checks, SSE replay and SQLite recovery also pass; `make test-recovery` proves completed-task API restart and fresh-browser reopen at `8b4b8c9ca404e9e08369440bce4a88fed24d964d`. Actual assistive technology, browser zoom, real devices, Windows High Contrast, active-work/Postgres recovery and the tenant/SSRF abuse pack remain unaccepted. | Complete `E2E-V1-05`, `E2E-V1-08`, and `E2E-V1-09` retained proof |
@@ -33,8 +33,10 @@ drifts.
 
 Release readiness is not yet demonstrated. The credential-free local product
 lifecycle and blocking visual contract are delivered and executed. The hosted
-acceptance command was invoked and failed closed because no reviewed hosted URL or
-access key was configured; the protected hosted journey has not run, and no
+acceptance test also passes locally against the production web bundle and real
+local LangGraph Agent Server with a deterministic keyless model stand-in. Its
+protected hosted invocation still fails closed because no reviewed hosted URL or
+access key is configured; the protected hosted journey has not run, and no
 canonical v1 scenario is release-accepted.
 [`RELEASE_SCORECARD.md`](RELEASE_SCORECARD.md) is the source of truth for the
 remaining behavior and proof gaps.

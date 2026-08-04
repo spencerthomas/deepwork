@@ -30,7 +30,10 @@ credential-free product runtime and one locally browser-proven golden journey:
 branded sign-in, agent choice, compose, plan review, ordered approval, visible
 progress, useful result, evidence/files/trace inspection, inbox return and reopen.
 The accepted frontend is bound as desktop and phone reference evidence and the
-reviewed canonical screenshots are blocking in CI.
+reviewed canonical screenshots are blocking in CI. The same journey now passes
+locally through the production web bundle and real local LangGraph Agent Server
+with a deterministic keyless model stand-in; this is source-integration proof,
+not hosted or provider-backed proof.
 
 That delivered slice is not the same as v1 release readiness. The live
 [v1 release scorecard](RELEASE_SCORECARD.md) owns current status for all twelve

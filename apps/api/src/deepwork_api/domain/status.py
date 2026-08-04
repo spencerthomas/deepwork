@@ -37,6 +37,7 @@ class WorkerDurability(StrEnum):
 
     UNAVAILABLE = "unavailable"
     LOCAL_SQLITE_PROOF = "local-sqlite-proof"
+    POSTGRES_OUTBOX = "postgres-outbox"
 
 
 @dataclass(frozen=True, slots=True)

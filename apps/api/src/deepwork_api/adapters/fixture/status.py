@@ -1,5 +1,7 @@
 """Deterministic fixture status adapter."""
 
+from dataclasses import dataclass
+
 from deepwork_api.domain import (
     Capability,
     CapabilityState,
@@ -14,12 +16,16 @@ from deepwork_api.domain import (
 
 _SAFE_REASON = (
     "Credential-free local task and SSE fixtures are available; "
-    "external providers, authentication, and durability are unavailable."
+    "external providers are unavailable; authentication and durable job "
+    "availability are reported separately."
 )
 
 
+@dataclass(frozen=True, slots=True)
 class FixtureStatusProvider:
     """Provide fixed local evidence and no external behavior."""
+
+    authentication_enabled: bool = False
 
     def health(self) -> HealthStatus:
         """Return process-only liveness."""
@@ -32,7 +38,14 @@ class FixtureStatusProvider:
         capabilities = (
             Capability(name="local_task_loop", state=CapabilityState.AVAILABLE),
             Capability(name="task_stream", state=CapabilityState.AVAILABLE),
-            Capability(name="authentication", state=CapabilityState.UNAVAILABLE),
+            Capability(
+                name="authentication",
+                state=(
+                    CapabilityState.AVAILABLE
+                    if self.authentication_enabled
+                    else CapabilityState.UNAVAILABLE
+                ),
+            ),
             Capability(name="durable_jobs", state=CapabilityState.UNAVAILABLE),
             Capability(name="sources", state=CapabilityState.UNAVAILABLE),
             Capability(name="external_providers", state=CapabilityState.UNAVAILABLE),

@@ -5,9 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pytest import CaptureFixture
+import pytest
+from pytest import CaptureFixture, MonkeyPatch
 
+from deepwork_api.adapters.persistence import PostgresJobRepositoryError
 from deepwork_api.bootstrap.worker import main, worker_status
+from deepwork_api.domain import WorkerDurability
 
 
 def test_worker_reports_unavailable_durability() -> None:
@@ -18,11 +21,26 @@ def test_worker_reports_unavailable_durability() -> None:
 
 
 def test_configured_worker_reports_local_sqlite_proof_only() -> None:
-    status = worker_status(durable=True)
+    status = worker_status(durability=WorkerDurability.LOCAL_SQLITE_PROOF)
 
     assert status.mode.value == "fixture"
     assert status.durability == "local-sqlite-proof"
     assert "not production" in status.safe_reason
+
+
+def test_postgres_worker_check_rejects_invalid_configuration_without_echoing_it(
+    monkeypatch: MonkeyPatch,
+    capsys: CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv(
+        "DEEPWORK_DATABASE_URL",
+        "sqlite:///do-not-print",
+    )
+
+    with pytest.raises(PostgresJobRepositoryError, match=r"postgresql\+psycopg"):
+        main(["--check"])
+    output = capsys.readouterr().out
+    assert "do-not-print" not in output
 
 
 def test_worker_check_prints_safe_json(capsys: CaptureFixture[str]) -> None:

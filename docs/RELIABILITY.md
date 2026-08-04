@@ -1,7 +1,7 @@
 ---
 title: Deep Work reliability model
 status: canonical
-last_reviewed: 2026-08-03
+last_reviewed: 2026-08-04
 owners: [platform, reliability]
 ---
 
@@ -61,3 +61,21 @@ retention, remote storage, PostgreSQL/outbox recovery, object restoration,
 migration rollback, disaster recovery objectives or production acceptance. Those
 remain release gates under `E2E-V1-09-SECURITY-RECOVERY` and
 `E2E-V1-12-OPERATIONAL-RELEASE`.
+
+## PostgreSQL job/outbox boundary
+
+The application now has an Alembic-managed PostgreSQL job/outbox implementation.
+An authenticated API transaction inserts exactly one tenant/workspace-scoped job
+and one unique outbox row. Separate worker processes claim pending effects with
+`FOR UPDATE SKIP LOCKED`; job and outbox lease, completion, retry, lease-expiry
+recovery, and dead-letter state move in the same transaction. The repository
+fails startup when the schema is absent or not at the packaged head revision.
+
+`make test-postgres` is an explicit opt-in acceptance gate requiring
+`DEEPWORK_TEST_DATABASE_URL` to identify a disposable local database. It applies
+the migration, rejects metadata drift, proves idempotency and scope, runs
+concurrent workers, exercises lease recovery/dead-lettering, and stops/restarts
+separate API and worker processes before read-back. This is real local PostgreSQL
+mechanism proof. It does not yet prove a replica failover, production backup and
+restore, object recovery, real job handlers, hosted operation, or once-only
+external side effects.

@@ -25,6 +25,13 @@ class JobStatus(StrEnum):
         return self in {self.SUCCEEDED, self.DEAD}
 
 
+class JobDurability(StrEnum):
+    """Truthful persistence class exposed by the configured job repository."""
+
+    LOCAL_SQLITE_PROOF = "local-sqlite-proof"
+    POSTGRES_OUTBOX = "postgres-outbox"
+
+
 @dataclass(frozen=True, slots=True)
 class JobRecord:
     """Internal tenant-scoped durable job record."""

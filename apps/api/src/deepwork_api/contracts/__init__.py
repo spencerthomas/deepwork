@@ -6,7 +6,7 @@ from deepwork_api.contracts.agents import (
     AgentSummaryResponse,
     AgentUpdateRequest,
 )
-from deepwork_api.contracts.jobs import JobResponse
+from deepwork_api.contracts.jobs import DurableJobResponse, JobResponse
 from deepwork_api.contracts.schedules import ScheduleListResponse, ScheduleSummaryResponse
 from deepwork_api.contracts.settings import SystemPromptResponse, SystemPromptUpdateRequest
 from deepwork_api.contracts.sources import SourceProbeRequest, SourceProbeResponse
@@ -40,6 +40,7 @@ __all__ = [
     "DecisionBatchRequest",
     "DecisionRequest",
     "DemoStatusResponse",
+    "DurableJobResponse",
     "HealthResponse",
     "JobResponse",
     "PlanUpdateRequest",

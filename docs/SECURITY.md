@@ -1,7 +1,7 @@
 ---
 title: Deep Work security architecture
 status: canonical
-last_reviewed: 2026-07-23
+last_reviewed: 2026-08-04
 owners: [security, platform]
 ---
 
@@ -32,3 +32,10 @@ Security-sensitive capability claims remain unavailable while their named spike 
 open. Architecture exceptions cannot waive secret, tenant, browser credential, or
 authorization boundaries. Detailed abuse and release scenarios live in
 `DW-QUAL-001` and each owning product spec.
+
+The PostgreSQL job/outbox adapter derives tenant, workspace, and actor identity
+only from the established server session. Its idempotency key is unique inside
+tenant plus workspace, reads apply the same scope, worker lease tokens never cross
+HTTP, and public failures redact internal database/worker detail. Database URLs are
+server environment only and are excluded from responses, worker output, retained
+test evidence, and normal logs.

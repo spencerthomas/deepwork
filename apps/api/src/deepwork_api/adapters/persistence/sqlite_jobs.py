@@ -9,6 +9,7 @@ from pathlib import Path
 
 from deepwork_api.domain import (
     JobAcceptance,
+    JobDurability,
     JobKind,
     JobLease,
     JobLeaseConflictError,
@@ -72,6 +73,10 @@ class SQLiteJobRepository:
         self._lock = asyncio.Lock()
 
     @property
+    def durability(self) -> JobDurability:
+        return JobDurability.LOCAL_SQLITE_PROOF
+
+    @property
     def database_path(self) -> Path:
         return self._path
 
@@ -129,7 +134,7 @@ class SQLiteJobRepository:
         now: int,
         lease_seconds: int,
     ) -> JobLease | None:
-        if not worker_id or not 1 <= lease_seconds <= 300 or now < 0:
+        if not worker_id or len(worker_id) > 200 or not 1 <= lease_seconds <= 300 or now < 0:
             raise ValueError("worker lease input is invalid")
         await self.initialize()
         return await asyncio.to_thread(self._lease_next_sync, worker_id, now, lease_seconds)
@@ -444,6 +449,8 @@ class SQLiteJobRepository:
     ) -> None:
         if not all((tenant_id, workspace_id, actor_id)):
             raise ValueError("job identity context is incomplete")
+        if any(len(value) > 200 for value in (tenant_id, workspace_id, actor_id)):
+            raise ValueError("job identity context is invalid")
         if (
             not idempotency_key
             or len(idempotency_key) > _MAX_IDEMPOTENCY_KEY_LENGTH

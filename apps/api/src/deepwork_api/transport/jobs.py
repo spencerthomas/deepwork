@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Header, Path
 from fastapi.responses import JSONResponse
 
 from deepwork_api.application import JobNotFoundError, JobService, SecurityContext
-from deepwork_api.contracts import JobResponse, ProblemResponse
+from deepwork_api.contracts import DurableJobResponse, JobResponse, ProblemResponse
 
 IdempotencyKey = Annotated[
     str,
@@ -30,12 +30,15 @@ def build_job_router(
 ) -> APIRouter:
     """Build jobs on the application's existing opaque-session guard."""
 
-    router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
+    postgres = service.uses_postgres_outbox
+    response_type = DurableJobResponse if postgres else JobResponse
+    prefix = "/api/v1/durable-jobs" if postgres else "/api/v1/jobs"
+    router = APIRouter(prefix=prefix, tags=["durable-jobs" if postgres else "jobs"])
     security_context_marker = Depends(security_context_dependency)
 
     @router.post(
         "/fixture",
-        response_model=JobResponse,
+        response_model=response_type,
         status_code=202,
         responses={
             401: {"model": ProblemResponse},
@@ -45,16 +48,16 @@ def build_job_router(
     async def accept_fixture_job(
         idempotency_key: IdempotencyKey,
         security_context: SecurityContext = security_context_marker,
-    ) -> JobResponse:
+    ) -> DurableJobResponse | JobResponse:
         acceptance = await service.accept_fixture_job(
             security_context=security_context,
             idempotency_key=idempotency_key,
         )
-        return JobResponse.from_acceptance(acceptance)
+        return response_type.from_acceptance(acceptance)
 
     @router.get(
         "/{job_id}",
-        response_model=JobResponse,
+        response_model=response_type,
         responses={
             401: {"model": ProblemResponse},
             404: {"model": ProblemResponse},
@@ -64,7 +67,7 @@ def build_job_router(
     async def get_job(
         job_id: JobPath,
         security_context: SecurityContext = security_context_marker,
-    ) -> JobResponse | JSONResponse:
+    ) -> DurableJobResponse | JobResponse | JSONResponse:
         try:
             job = await service.get(security_context=security_context, job_id=job_id)
         except JobNotFoundError:
@@ -73,6 +76,6 @@ def build_job_router(
                 status_code=404,
                 content=problem.model_dump(),
             )
-        return JobResponse.from_record(job)
+        return response_type.from_record(job)
 
     return router

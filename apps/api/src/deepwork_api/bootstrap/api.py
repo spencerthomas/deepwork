@@ -16,7 +16,11 @@ from fastapi.responses import JSONResponse
 
 from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
-from deepwork_api.adapters.persistence import SQLiteJobRepository, SQLiteTaskRepository
+from deepwork_api.adapters.persistence import (
+    PostgresJobRepository,
+    SQLiteJobRepository,
+    SQLiteTaskRepository,
+)
 from deepwork_api.adapters.prompt import InMemoryPromptStore, SQLitePromptStore
 from deepwork_api.adapters.sources.classic.probe import ClassicSourceProbeClient
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
@@ -44,7 +48,14 @@ from deepwork_api.domain import (
     TaskStatus,
 )
 from deepwork_api.domain import SecurityContext as SecurityContext
-from deepwork_api.ports import Clock, PromptStore, StatusProvider, TaskRepository, system_clock
+from deepwork_api.ports import (
+    Clock,
+    JobRepository,
+    PromptStore,
+    StatusProvider,
+    TaskRepository,
+    system_clock,
+)
 from deepwork_api.ports import SourceProbeClient as SourceProbeClient
 from deepwork_api.transport import (
     build_agents_router,
@@ -111,6 +122,7 @@ def create_app(
     task_database_path: Path | None = None,
     settings_database_path: Path | None = None,
     job_database_path: Path | None = None,
+    job_database_url: str | None = None,
     local_agent_server_endpoint: str | None = None,
     local_agent_server_assistant: str | None = None,
     allow_ungated_local_agent_source: bool = False,
@@ -136,7 +148,9 @@ def create_app(
     configuration is refused before any source object is constructed.
     """
 
-    status_provider: StatusProvider = FixtureStatusProvider()
+    status_provider: StatusProvider = FixtureStatusProvider(
+        authentication_enabled=access_key is not None or access_key_contexts is not None
+    )
     if source_probe_client is not None and source_probe_config is None:
         raise ValueError("a source probe client requires server-owned source probe settings")
     if source_probe_config is not None and len(source_probe_config.allowed_endpoints) != 1:
@@ -225,13 +239,26 @@ def create_app(
             runtime_kind=RuntimeKind.LOCAL_AGENT_SERVER,
             authentication_enabled=access_key is not None or access_key_contexts is not None,
         )
-    status_service = StatusService(provider=status_provider)
     task_service = TaskService(repository=task_repository, runner=task_runner)
     trace_locator = _build_trace_locator(api_key=trace_api_key) if trace_api_key else None
-    if job_database_path is not None and access_key is None and access_key_contexts is None:
+    if job_database_path is not None and job_database_url is not None:
+        raise ValueError("configure either SQLite job proof or PostgreSQL jobs, not both")
+    if (
+        (job_database_path is not None or job_database_url is not None)
+        and access_key is None
+        and access_key_contexts is None
+    ):
         raise ValueError("durable jobs require configured session authentication")
-    job_repository = (
-        SQLiteJobRepository(job_database_path) if job_database_path is not None else None
+    job_repository: JobRepository | None
+    if job_database_url is not None:
+        job_repository = PostgresJobRepository(job_database_url)
+    elif job_database_path is not None:
+        job_repository = SQLiteJobRepository(job_database_path)
+    else:
+        job_repository = None
+    status_service = StatusService(
+        provider=status_provider,
+        job_durability=(job_repository.durability if job_repository is not None else None),
     )
 
     async def _reconcile_orphaned_tasks() -> None:
@@ -523,6 +550,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             task_database_path=args.task_database,
             settings_database_path=settings_database_path,
             job_database_path=args.job_database,
+            job_database_url=os.environ.get("DEEPWORK_DATABASE_URL"),
             local_agent_server_endpoint=args.local_agent_server_endpoint,
             local_agent_server_assistant=args.local_agent_server_assistant,
             allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,

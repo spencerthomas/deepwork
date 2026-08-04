@@ -5,7 +5,13 @@ import pytest
 from deepwork_api.adapters.fixture import FixtureStatusProvider
 from deepwork_api.adapters.sources.status import SourceStatusProvider
 from deepwork_api.application import StatusService
-from deepwork_api.domain import CapabilityState, EvidenceClass, RuntimeKind, WorkerDurability
+from deepwork_api.domain import (
+    CapabilityState,
+    EvidenceClass,
+    JobDurability,
+    RuntimeKind,
+    WorkerDurability,
+)
 
 
 def test_fixture_status_is_explicitly_unavailable() -> None:
@@ -59,3 +65,17 @@ def test_source_status_rejects_the_fixture_runtime_kind() -> None:
             runtime_kind=RuntimeKind.FIXTURE,
             authentication_enabled=False,
         )
+
+
+def test_postgres_outbox_upgrades_only_the_durable_job_capability() -> None:
+    service = StatusService(
+        provider=FixtureStatusProvider(authentication_enabled=True),
+        job_durability=JobDurability.POSTGRES_OUTBOX,
+    )
+
+    demo = service.demo()
+    states = {capability.name: capability.state for capability in demo.capabilities}
+    assert states["durable_jobs"] is CapabilityState.AVAILABLE
+    assert states["authentication"] is CapabilityState.AVAILABLE
+    assert states["external_providers"] is CapabilityState.UNAVAILABLE
+    assert "PostgreSQL transactional job/outbox" in demo.safe_reason

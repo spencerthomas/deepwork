@@ -21,6 +21,7 @@ from deepwork_api.domain.auth import (
 )
 from deepwork_api.domain.jobs import (
     JobAcceptance,
+    JobDurability,
     JobError,
     JobKind,
     JobLease,
@@ -139,6 +140,7 @@ __all__ = [
     "InvalidDecisionBatchError",
     "InvalidEventCursorError",
     "JobAcceptance",
+    "JobDurability",
     "JobError",
     "JobKind",
     "JobLease",

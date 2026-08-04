@@ -10,11 +10,11 @@ primary_feature_id: DW-QUAL-001
 supporting_feature_ids: [DW-FND-002, DW-ONB-001, DW-TASK-002, DW-TASK-003, DW-HITL-001, DW-CODE-001, DW-CODE-002, DW-CODE-003, DW-SURF-001]
 issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
-last_updated: 2026-08-03
+last_updated: 2026-08-04
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
 last_verified_commit: 8acd3db9dce29ee9b8a20de5363b604315a17ca5
 risk: high
-governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
+governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, tools/product_demo/**, tools/worktree/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
 decision_gates: [DEC-033]
 gate_review_status: reviewed-with-gates
@@ -193,6 +193,35 @@ coding choice, ordered approval, progress, exact-SHA inspection, unavailable mer
 and reopen. Real GitHub, authoritative CI, hosted proof and release acceptance stay
 explicitly gated.
 
+### Milestone 8 — PostgreSQL job/outbox durability
+
+Replace the local-only SQLite job proof at the production boundary with an
+Alembic-managed PostgreSQL repository using SQLAlchemy 2 and Psycopg 3. Preserve
+the existing application port and HTTP/session contract while adding atomic
+job/outbox acceptance, tenant/workspace idempotency, lease expiry, bounded retry,
+dead-letter behavior, and `FOR UPDATE SKIP LOCKED` worker concurrency. SQLite
+remains labelled local proof and may not satisfy this milestone.
+
+Acceptance: an isolated local PostgreSQL cluster applies migrations from zero;
+API and worker use separate processes; accepted work survives either process
+stopping; duplicate intake produces one job and one outbox effect; expired leases
+recover; concurrent workers do not double-complete; cross-tenant and cross-
+workspace reads fail closed; downgrade/upgrade and clean reinstall checks pass.
+
+### Milestone 9 — Sealed dual-stack product-demo proof
+
+Rebase the archived product-demo draft onto the current runtime and implement the
+reviewed worktree driver contract with two concurrent isolated stacks. Each stack
+must contain the real web, API, worker, PostgreSQL, object and telemetry services;
+the driver may not relabel SQLite or an in-process stub as PostgreSQL. Seal the
+reviewed driver blob in an ancestor commit before binding its contract digest.
+
+Acceptance: the harness proves collision-free namespaces and ports, eight
+bidirectional isolation probes, process restart/read-back, browser golden journey,
+evidence digest binding, teardown and reservation release for both stacks. This
+is local product-demo proof only and does not populate hosted or release-accepted
+scorecard columns.
+
 ## Progress
 
 - [x] 2026-08-03 00:00 PDT — Product-owner recovery directive accepted and clean
@@ -232,6 +261,15 @@ explicitly gated.
   simulated timeout, persists through SQLite reopen, blocks creation until the
   agent registry resolves, completes and reopens on a phone, and keeps real GitHub,
   authoritative CI, hosted execution, merge and release acceptance fail-closed.
+- [x] 2026-08-04 — The source-backed local golden journey was repaired and
+  re-proven through the production web bundle at `a326c84`; canonical status was
+  reconciled at `a2c4b41`.
+- [x] 2026-08-04 — Session-scoped SQLite job/API/worker recovery proof completed
+  at `c28ef9b`; scorecard truth was reconciled at `e7a8ef9`. This is explicitly
+  not PostgreSQL/outbox or product-demo proof.
+- [ ] PostgreSQL job/outbox runtime, migration and recovery proof.
+- [ ] Sealed dual-stack product-demo driver and local browser acceptance.
+- [ ] Protected hosted browser proof and release-owner acceptance.
 
 ## Surprises & Discoveries
 
@@ -262,6 +300,12 @@ explicitly gated.
   API string version end to end, maps positional audit types, emits `plan.updated`
   atomically, invalidates stale controls and requires an explicit choice for every
   action.
+- 2026-08-04 — The archived product-demo packets are draft, unreviewed,
+  non-dispatchable and pinned to obsolete dependencies. The current API lock has
+  no SQLAlchemy, Alembic or Psycopg, while canonical architecture requires real
+  PostgreSQL and a transactional outbox. Consequence: implement and prove the
+  PostgreSQL boundary before sealing the dual-stack driver; do not manufacture a
+  product-demo pass around SQLite.
 
 ## Decision Log
 
@@ -276,6 +320,11 @@ explicitly gated.
   provider batch resume. The provider adapter keeps its bounded fallback until a
   live transcript proves stale, duplicate, authorization, transport-failure and
   post-resume behavior. Approved by: product-owner.
+- 2026-08-04 — Rebase the product-demo outcome into this active recovery plan and
+  use the current application port/session contracts. Pin stable SQLAlchemy 2,
+  Alembic and Psycopg 3 releases from official package metadata, retain exact
+  package locks, and require real local PostgreSQL before product-demo acceptance.
+  Approved by: product-owner directive to execute the roadmap through completion.
 
 ## Detailed implementation approach
 

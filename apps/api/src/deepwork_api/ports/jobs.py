@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from deepwork_api.domain import JobAcceptance, JobKind, JobLease, JobRecord
+from deepwork_api.domain import JobAcceptance, JobDurability, JobKind, JobLease, JobRecord
 
 
 class JobRepository(Protocol):
     """Persist tenant-scoped jobs and worker leases."""
+
+    @property
+    def durability(self) -> JobDurability: ...
 
     async def initialize(self) -> None: ...
 

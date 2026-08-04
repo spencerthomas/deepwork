@@ -1,7 +1,7 @@
-# Deep Work API scaffold
+# Deep Work application API
 
 This independently locked Python 3.12 project is the application-service package
-boundary for Deep Work. The Wave 1 scaffold provides:
+boundary for Deep Work. It provides:
 
 - a side-effect-free `deepwork_api.create_app()` factory;
 - optional, explicit local SQLite fixture persistence;
@@ -13,7 +13,11 @@ boundary for Deep Work. The Wave 1 scaffold provides:
 - in-memory task create/list/detail endpoints with a sanitized, prompt-specific result;
 - replayable normalized SSE and real local approve/reject/respond pauses;
 - inspectable fixture evidence and an editable, revision-checked pending plan;
-- separate `deepwork-api` and `deepwork-worker` entry points from one artifact; and
+- separate `deepwork-api`, `deepwork-worker`, and `deepwork-migrate` entry points
+  from one artifact;
+- authenticated, tenant/workspace-scoped durable job intake with either explicitly
+  labelled local SQLite proof or an Alembic-managed PostgreSQL transactional
+  outbox; and
 - package-local format, lint, type, no-network test, build, and clean-wheel checks.
 
 By default, task state survives list/detail/result requests only for the lifetime of
@@ -36,7 +40,32 @@ browser never supplies their provider endpoint or credential. The opt-in SQLite
 adapter is not PostgreSQL, migrations, an outbox, or production durability, and
 active execution is not reconstructed or resumed after restart. Fixture stream
 output is explicitly local fixture evidence, never a provider/model claim. The
-worker supports `--check` only and reports durability unavailable.
+worker reports durability unavailable unless one explicit job backend is
+configured.
+
+## PostgreSQL job/outbox boundary
+
+The production durability boundary uses SQLAlchemy 2 async, Psycopg 3, PostgreSQL,
+and packaged Alembic migrations. Configuration is server-owned and requires
+session authentication. A local operator can exercise it with a disposable
+database as follows (replace every placeholder locally; do not commit values):
+
+```bash
+export DEEPWORK_DATABASE_URL='postgresql+psycopg://<role>@127.0.0.1:<port>/<database>'
+export DEEPWORK_ACCESS_KEY='<test-owned-access-key>'
+deepwork-migrate upgrade
+deepwork-api --port 8000
+deepwork-worker --once
+```
+
+Job acceptance inserts the scoped job and its unique outbox effect in one
+transaction. Workers claim with `FOR UPDATE SKIP LOCKED`; lease expiry, retry,
+dead-letter, completion, and outbox delivery are updated atomically. Public reads
+use the existing opaque session, return safe not-found across tenant/workspace
+boundaries, and never return identity, lease material, database configuration, or
+internal exceptions. The currently enabled `fixture.noop` handler proves the
+durability mechanism; real notification, object, webhook, and reconciliation
+handlers remain separate release work.
 
 ## Local task loop
 
@@ -88,6 +117,7 @@ make test
 make contract
 make build
 make package-check
+DEEPWORK_TEST_DATABASE_URL='postgresql+psycopg://<role>@127.0.0.1:<port>/<database>' make test-postgres
 make check
 ```
 

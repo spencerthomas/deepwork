@@ -6,7 +6,7 @@ import ast
 from pathlib import Path
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src" / "deepwork_api"
-PACKAGE_FORBIDDEN = {"apps", "deepagents", "langchain", "langgraph", "packages", "sqlalchemy"}
+PACKAGE_FORBIDDEN = {"apps", "deepagents", "langchain", "langgraph", "packages"}
 DOMAIN_ALLOWED = {
     "__future__",
     "collections",

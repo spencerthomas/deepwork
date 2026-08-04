@@ -7,7 +7,7 @@ SHELL := /bin/sh
 
 .PHONY: help doctor bootstrap dev-demo check check-toolchain check-architecture check-docs check-oss \
 	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted \
-	test-performance
+	test-performance test-postgres
 
 help:
 	@echo "Deep Work command contract:"
@@ -22,6 +22,7 @@ help:
 	@echo "  make test-contract      Run the API contract suite"
 	@echo "  make test-e2e-demo      Run the credential-free browser task journey"
 	@echo "  make test-recovery      Prove a completed local task survives an API restart"
+	@echo "  make test-postgres      Prove PostgreSQL migration, outbox, restart, concurrency, and scope"
 	@echo "  make test-security-boundary Prove reusable credentials stay outside client/sandbox artifacts"
 	@echo "  make test-visual        Run blocking desktop/phone screenshot comparisons"
 	@echo "  make test-hosted        Run the fail-closed hosted golden journey"
@@ -77,6 +78,9 @@ test-e2e-demo:
 test-recovery:
 	$(MAKE) -C apps/api test-local-backup
 	pnpm test:recovery
+
+test-postgres:
+	$(MAKE) -C apps/api test-postgres
 
 test-security-boundary:
 	pnpm test:security-boundary

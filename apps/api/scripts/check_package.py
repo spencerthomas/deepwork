@@ -17,6 +17,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_ENTRY_POINTS = {
     "deepwork-api": "deepwork_api.bootstrap.api:main",
+    "deepwork-migrate": "deepwork_api.bootstrap.migrations:main",
     "deepwork-worker": "deepwork_api.bootstrap.worker:main",
 }
 
@@ -70,6 +71,14 @@ def _inspect_wheel(wheel: Path) -> None:
 
     if "deepwork_api/py.typed" not in names:
         raise RuntimeError("wheel does not contain deepwork_api/py.typed")
+    migration_paths = {
+        "deepwork_api/bootstrap/alembic/env.py",
+        "deepwork_api/bootstrap/alembic/script.py.mako",
+        "deepwork_api/bootstrap/alembic/versions/20260804_0001_jobs_outbox.py",
+    }
+    missing_migrations = sorted(migration_paths - names)
+    if missing_migrations:
+        raise RuntimeError(f"wheel is missing migration resources: {missing_migrations}")
     entry_points = _parse_entry_points(entry_points_text)
     if entry_points != EXPECTED_ENTRY_POINTS:
         message = f"unexpected console entry-point mappings: {entry_points}"
@@ -203,8 +212,9 @@ def _verify_installed_wheel(wheel: Path) -> None:
 
         api_launcher = environment / "bin" / "deepwork-api"
         worker_launcher = environment / "bin" / "deepwork-worker"
-        if not api_launcher.is_file() or not worker_launcher.is_file():
-            raise RuntimeError("wheel install did not create both console launchers")
+        migrate_launcher = environment / "bin" / "deepwork-migrate"
+        if not all(path.is_file() for path in (api_launcher, migrate_launcher, worker_launcher)):
+            raise RuntimeError("wheel install did not create all console launchers")
 
         api_help = _run(
             [str(api_launcher), "--help"],
@@ -215,6 +225,16 @@ def _verify_installed_wheel(wheel: Path) -> None:
         if "Run the fixture-only Deep Work API on loopback." not in api_help.stdout:
             raise RuntimeError("installed API launcher help is not the declared fixture command")
         print("verified installed API launcher: --help")
+
+        migration_help = _run(
+            [str(migrate_launcher), "--help"],
+            cwd=consumer,
+            env=launcher_env,
+            capture_output=True,
+        )
+        if "Manage the Deep Work PostgreSQL schema." not in migration_help.stdout:
+            raise RuntimeError("installed migration launcher help is not the declared command")
+        print("verified installed migration launcher: --help")
 
         worker = _run(
             [str(worker_launcher), "--check"],

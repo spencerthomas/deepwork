@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from deepwork_api.domain import JobAcceptance, JobKind, JobRecord, SecurityContext
+from deepwork_api.domain import JobAcceptance, JobDurability, JobKind, JobRecord, SecurityContext
 from deepwork_api.ports import JobRepository
 
 
@@ -20,6 +20,14 @@ class JobService:
 
     repository: JobRepository
     now: Callable[[], int] = field(default=_epoch_seconds)
+
+    @property
+    def durability(self) -> JobDurability:
+        return self.repository.durability
+
+    @property
+    def uses_postgres_outbox(self) -> bool:
+        return self.durability is JobDurability.POSTGRES_OUTBOX
 
     async def accept_fixture_job(
         self,

@@ -32,6 +32,7 @@ import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { PROMPT_MAX_LENGTH } from "@/lib/task-types";
 import { useAgents } from "@/lib/use-agents";
+import { useDemoStatus } from "@/lib/use-demo-status";
 import { cn } from "@/lib/utils";
 
 const templates = [
@@ -51,6 +52,7 @@ export function NewTask() {
     error: agentsError,
     refetch: refetchAgents,
   } = useAgents();
+  const { status: runtimeStatus, loading: runtimeLoading } = useDemoStatus(mode === "api");
   const [prompt, setPrompt] = useState("");
   const [agentId, setAgentId] = useState<string>("");
   const [journey, setJourney] = useState<"general" | "coding">("general");
@@ -64,7 +66,10 @@ export function NewTask() {
   const editRerunCheckedRef = useRef(false);
   const editRerunWonRef = useRef(false);
   const runtimeCopy = taskRuntimePresentation(mode);
-  const codingUnavailable = mode === "api" && (agentsLoading || agentsAvailable);
+  const codingFixtureAvailable =
+    mode === "fixture" || (mode === "api" && runtimeStatus?.runtimeKind === "fixture");
+  const codingUnavailable =
+    mode === "api" && (agentsLoading || runtimeLoading || !codingFixtureAvailable);
 
   // Consume the transient Edit & re-run handoff immediately. It wins over any
   // persisted draft, including while an API session is still resolving.
@@ -169,11 +174,11 @@ export function NewTask() {
     .join(" ");
 
   async function dispatch() {
-    if (mode === "api" && agentsLoading && journey === "coding") {
-      setValidationError("Wait for the agent registry check before starting a coding review.");
+    if (mode === "api" && (agentsLoading || runtimeLoading) && journey === "coding") {
+      setValidationError("Wait for the runtime checks before starting a coding review.");
       return;
     }
-    if (mode === "api" && agentsAvailable && journey === "coding") {
+    if (mode === "api" && !codingFixtureAvailable && journey === "coding") {
       setValidationError("The coding demo is available only in the credential-free fixture.");
       return;
     }
@@ -377,11 +382,11 @@ export function NewTask() {
               <span>
                 <span className="block text-sm font-medium">Coding review</span>
                 <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
-                  {mode === "api" && agentsLoading
-                    ? "Checking whether this workspace has a real agent registry."
-                    : mode === "api" && agentsAvailable
-                      ? "Unavailable until the approved sandbox and GitHub proxy are connected."
-                      : "Run the exact-revision local proof, including diff, draft PR, and CI states."}
+                  {mode === "api" && (agentsLoading || runtimeLoading)
+                    ? "Checking whether this workspace exposes the local reviewed coding fixture."
+                    : codingFixtureAvailable
+                      ? "Run the exact-revision local proof, including diff, draft PR, and CI states."
+                      : "Unavailable until the approved sandbox and GitHub proxy are connected."}
                 </span>
               </span>
             </button>

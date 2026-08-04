@@ -7,7 +7,43 @@ import { createHash } from "node:crypto";
 const POLICY_PROBE_PREFIX = "/__deepwork_policy_probe";
 
 async function captureScreenshot(page, screenshots, relativePath) {
-  const buffer = await page.screenshot({ fullPage: true });
+  const viewport = page.viewportSize();
+  const phone = viewport !== null && viewport.width <= 390;
+  if (phone) {
+    await page.getByText("result.md", { exact: true }).scrollIntoViewIfNeeded();
+    const layout = await page.evaluate(() => {
+      const navigations = [...document.querySelectorAll('nav[aria-label="Primary navigation"]')];
+      const visibleNavigation = navigations.find((element) => {
+        const style = window.getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden";
+      });
+      const navigation = visibleNavigation?.getBoundingClientRect();
+      const header = document.querySelector("header")?.getBoundingClientRect();
+      return {
+        headerBottom: header?.bottom,
+        headerTop: header?.top,
+        navigationBottom: navigation?.bottom,
+        navigationTop: navigation?.top,
+        scrollWidth: document.documentElement.scrollWidth,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    if (
+      layout.scrollWidth > layout.viewportWidth ||
+      layout.headerTop === undefined ||
+      layout.headerTop < -1 ||
+      layout.headerBottom === undefined ||
+      layout.headerBottom > layout.viewportHeight ||
+      layout.navigationTop === undefined ||
+      layout.navigationTop < 0 ||
+      layout.navigationBottom === undefined ||
+      Math.abs(layout.navigationBottom - layout.viewportHeight) > 1
+    ) {
+      throw new Error(`phone shell overlaps or overflows its viewport: ${JSON.stringify(layout)}`);
+    }
+  }
+  const buffer = await page.screenshot({ fullPage: !phone });
   screenshots[relativePath] = buffer.toString("base64");
 }
 
@@ -307,10 +343,14 @@ async function completeJourney(browser, config) {
   );
   const retainedEvidenceRecord = JSON.parse(retainedEvidence);
   if (
-    retainedEvidenceRecord.source !== "deterministic-local-runner" ||
-    !String(retainedEvidenceRecord.summary ?? "").includes("deterministic local runner classified")
+    retainedEvidenceRecord.taskId !== new URL(taskUrl).pathname.split("/").at(-1) ||
+    !/^run_[0-9]{8}$/.test(String(retainedEvidenceRecord.runId ?? "")) ||
+    retainedEvidenceRecord.evidence?.source !== "deterministic-local-runner" ||
+    !String(retainedEvidenceRecord.evidence?.summary ?? "").includes(
+      "deterministic local runner classified",
+    )
   ) {
-    throw new Error("retained evidence JSON does not match the rendered source record");
+    throw new Error("retained evidence JSON is not bound to this task, run, and source record");
   }
   await page.getByRole("tab", { name: "Details" }).click();
   await page.getByText("Execution trace", { exact: true }).waitFor();

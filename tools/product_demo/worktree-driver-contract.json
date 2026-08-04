@@ -1,12 +1,12 @@
 {
   "components": ["api", "object", "postgres", "telemetry", "web", "worker"],
   "browser_path": "tools/product_demo/browser_journey.mjs",
-  "browser_sha256": "3ff734360992680b96ddbc6cb3b699107db1ec1dcae0098718e72816d68d9262",
+  "browser_sha256": "82be73ee63ff10463272487fb49e13183e806abf4dc9c5eac159d1aff21b52d4",
   "contract_version": 1,
   "credential_free": true,
   "driver_path": "tools/product_demo/worktree_driver.py",
-  "driver_sha256": "6db5e1df2e8be12c60e83e0a70af06667af62993acde6669df724c325e58c64b",
-  "loopback_only": true,
+  "driver_sha256": "531af35be975760a28bb4a36dedb9da09f200944147aba70cc1d0ab663f02266",
+  "loopback_bindings_only": true,
   "protocol": "deepwork-dual-product-demo-v1",
   "reviewed_repository_commit": "844649afbb8175c48d507e5d81c4bb6e7c5f8561"
 }

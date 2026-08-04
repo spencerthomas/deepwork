@@ -17,11 +17,44 @@ async function capture(page: Page, name: string, viewport: keyof typeof viewport
         animation-delay: 0s !important;
         transition-duration: 0s !important;
       }
-    `,
+  `,
   });
+  if (viewport === "phone") {
+    if (name === "task-files") {
+      await page.getByText("result.md", { exact: true }).scrollIntoViewIfNeeded();
+    } else if (name === "coding-review") {
+      await page.getByTestId("coding-review").scrollIntoViewIfNeeded();
+    } else {
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+    }
+  }
+  if (viewport === "phone" && name !== "login") {
+    const shell = await page.evaluate(() => {
+      const navigation = [...document.querySelectorAll('nav[aria-label="Primary navigation"]')]
+        .find((element) => window.getComputedStyle(element).display !== "none")
+        ?.getBoundingClientRect();
+      const header = document.querySelector("header")?.getBoundingClientRect();
+      return {
+        headerBottom: header?.bottom,
+        headerTop: header?.top,
+        navigationBottom: navigation?.bottom,
+        navigationTop: navigation?.top,
+        scrollWidth: document.documentElement.scrollWidth,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(shell.scrollWidth).toBeLessThanOrEqual(shell.viewportWidth);
+    if (!["settings", "config", "observability"].includes(name)) {
+      expect(shell.headerTop).toBeGreaterThanOrEqual(-1);
+      expect(shell.headerBottom).toBeLessThanOrEqual(shell.viewportHeight);
+      expect(shell.navigationTop).toBeGreaterThanOrEqual(0);
+      expect(shell.navigationBottom).toBeCloseTo(shell.viewportHeight, 0);
+    }
+  }
   await page.mouse.move(2, 2);
   await expect(page).toHaveScreenshot(`${viewport}/${name}.png`, {
-    fullPage: true,
+    fullPage: viewport !== "phone",
     animations: "disabled",
     caret: "hide",
     maxDiffPixelRatio: 0.005,

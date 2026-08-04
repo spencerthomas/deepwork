@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run two credential-free, loopback-only Deep Work product-demo cells.
+"""Run two credential-free, loopback-bound Deep Work product-demo cells.
 
 The repository harness owns allocation, reservations, receipt authority and final
 verification. This driver owns the real processes and writes only the strict
@@ -507,25 +507,25 @@ class Stack:
     def prepare(self) -> None:
         if self.workspace.exists():
             raise DriverError(f"allocated workspace already exists: {self.namespace}")
-        self.workspace.mkdir(parents=True, mode=0o700)
-        (self.workspace / "home").mkdir(mode=0o700)
-        self.logs.mkdir(mode=0o700)
-        ownership_log = self.logs / "ownership.log"
-        ownership_log.write_text(f"namespace={self.namespace}\n", encoding="utf-8")
-        ownership_log.chmod(0o600)
         if self.socket_dir.exists() or self.socket_dir.is_symlink():
             raise DriverError(
                 f"PostgreSQL socket allocation already exists: {self.namespace}"
             )
-        self.socket_dir.mkdir(mode=0o700)
         for port in self.ports.values():
             if not _port_closed(port):
                 raise DriverError(f"allocated port is already in use: {self.namespace}")
         next_executable = self.root / "apps/web/node_modules/next/dist/bin/next"
         if not next_executable.is_file():
             raise DriverError(f"web dependencies are absent in {self.namespace} root")
+        self.workspace.mkdir(parents=True, mode=0o700)
+        (self.workspace / "home").mkdir(mode=0o700)
+        self.logs.mkdir(mode=0o700)
+        ownership_log = self.logs / "ownership.log"
+        ownership_log.write_text(f"namespace={self.namespace}\n", encoding="utf-8")
+        ownership_log.chmod(0o600)
         self.next_env_snapshot = _capture_next_env(self.root, self.workspace)
         self._persist_state()
+        self.socket_dir.mkdir(mode=0o700)
         self._init_postgres()
         self._migrate()
 
@@ -820,7 +820,8 @@ class Stack:
         _stop_postgres(
             self.postgres_bins["pg_ctl"], self.pg_data, self.socket_dir, self._env()
         )
-        _restore_next_env(self.root, self.workspace, self.next_env_snapshot)
+        if self.next_env_snapshot is not None:
+            _restore_next_env(self.root, self.workspace, self.next_env_snapshot)
         proof = Path(self.manifest["proof_path"])
         if proof.exists() and proof.parent == Path(self.manifest["evidence_root"]):
             shutil.rmtree(proof)
@@ -1341,13 +1342,23 @@ def _validate_browser_images(browser_root: Path) -> None:
     }
     for relative in expected:
         image = browser_root / relative
-        if (
-            image.is_symlink()
-            or not image.is_file()
-            or not 0 < image.stat().st_size <= 20 * 1024 * 1024
-        ):
+        try:
+            contents = _read_regular_bytes(image, maximum_bytes=20 * 1024 * 1024)
+        except (DriverError, OSError):
             raise DriverError(
                 f"browser screenshot is absent, linked, or invalid: {relative}"
+            ) from None
+        if len(contents) < 24 or contents[:8] != b"\x89PNG\r\n\x1a\n":
+            raise DriverError(f"browser screenshot is not PNG: {relative}")
+        width = int.from_bytes(contents[16:20], "big")
+        height = int.from_bytes(contents[20:24], "big")
+        if "phone" in relative:
+            valid_dimensions = (width, height) == (390, 844)
+        else:
+            valid_dimensions = width == 1440 and height >= 900
+        if not valid_dimensions:
+            raise DriverError(
+                f"browser screenshot has invalid viewport dimensions: {relative}"
             )
 
 
@@ -1806,7 +1817,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
             "schema_version": 1,
             "evidence_class": "product-demo",
             "status": "passed",
-            "acceptance": "accepted",
+            "acceptance": "pending-receipt",
             "exercise_id": f"product-demo-{args.run_nonce[:16]}",
             "run_nonce": args.run_nonce,
             "driver_revision": args.driver_revision,

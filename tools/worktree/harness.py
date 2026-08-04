@@ -57,7 +57,7 @@ CONTRACT_KEYS = {
     "credential_free",
     "driver_path",
     "driver_sha256",
-    "loopback_only",
+    "loopback_bindings_only",
     "protocol",
     "reviewed_repository_commit",
 }
@@ -652,14 +652,65 @@ def _ensure_schema(value: Any, keys: set[str], context: str) -> None:
 
 
 def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(64 * 1024), b""):
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    directory = os.open(path.parent, directory_flags)
+    descriptor = -1
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path.name, flags, dir_fd=directory)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise OSError("digest source is not a regular file")
+        digest = hashlib.sha256()
+        while chunk := os.read(descriptor, 64 * 1024):
             digest.update(chunk)
-    return digest.hexdigest()
+        return digest.hexdigest()
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        os.close(directory)
 
 
-def _bounded_regular_digest(path: Path, *, maximum_bytes: int) -> tuple[int, str] | None:
+def _read_bounded_regular_bytes(path: Path, *, maximum_bytes: int) -> bytes:
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    directory = os.open(path.parent, directory_flags)
+    descriptor = -1
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path.name, flags, dir_fd=directory)
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or not 0 < metadata.st_size <= maximum_bytes
+        ):
+            raise OSError("bounded source is empty, oversized, or not regular")
+        contents = bytearray()
+        while len(contents) < metadata.st_size:
+            chunk = os.read(
+                descriptor, min(64 * 1024, metadata.st_size - len(contents))
+            )
+            if not chunk:
+                raise OSError("bounded source ended before its recorded size")
+            contents.extend(chunk)
+        if os.read(descriptor, 1) or os.fstat(descriptor).st_size != metadata.st_size:
+            raise OSError("bounded source changed while it was read")
+        return bytes(contents)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        os.close(directory)
+
+
+def _bounded_regular_digest(
+    path: Path, *, maximum_bytes: int
+) -> tuple[int, str] | None:
     directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
     if hasattr(os, "O_NOFOLLOW"):
         directory_flags |= os.O_NOFOLLOW
@@ -674,7 +725,10 @@ def _bounded_regular_digest(path: Path, *, maximum_bytes: int) -> tuple[int, str
             flags |= os.O_NOFOLLOW
         descriptor = os.open(path.name, flags, dir_fd=directory)
         metadata = os.fstat(descriptor)
-        if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= maximum_bytes:
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or not 0 < metadata.st_size <= maximum_bytes
+        ):
             return None
         digest = hashlib.sha256()
         remaining = metadata.st_size
@@ -721,7 +775,9 @@ def _browser_artifact_failures(evidence_dir: Path, value: Any) -> list[str]:
             or not isinstance(record.get("sha256"), str)
             or not secrets.compare_digest(actual[1], record["sha256"])
         ):
-            failures.append(f"browser artifact does not match receipt-bound digest: {relative}")
+            failures.append(
+                f"browser artifact does not match receipt-bound digest: {relative}"
+            )
     return failures
 
 
@@ -864,8 +920,8 @@ def _driver_status(root: Path) -> dict[str, Any]:
         }
     if contract.get("credential_free") is not True:
         return {"available": False, "reason": "driver is not credential-free"}
-    if contract.get("loopback_only") is not True:
-        return {"available": False, "reason": "driver is not loopback-only"}
+    if contract.get("loopback_bindings_only") is not True:
+        return {"available": False, "reason": "driver services are not loopback-bound"}
     driver_sha256 = contract.get("driver_sha256")
     if not isinstance(driver_sha256, str) or not SHA256_RE.fullmatch(driver_sha256):
         return {"available": False, "reason": "driver SHA-256 pin is invalid"}
@@ -992,7 +1048,7 @@ def _load_scenarios(fixtures: Path) -> dict[str, Any]:
 
 
 def self_test(args: argparse.Namespace) -> int:
-    root = canonical_root(args.root)
+    canonical_root(args.root)
     fixtures = Path(args.fixtures).expanduser().resolve(strict=True)
     evidence_dir = Path(args.evidence_dir).expanduser().resolve(strict=False)
     scenario = _load_scenarios(fixtures)
@@ -1723,17 +1779,15 @@ def exercise(args: argparse.Namespace) -> int:
 
     evidence_path = evidence_dir / "exercise.json"
     try:
-        if (
-            evidence_path.is_symlink()
-            or not evidence_path.is_file()
-            or evidence_path.stat().st_size > 3 * 1024 * 1024
-        ):
-            raise EvidenceError("driver evidence is absent, symlinked, or oversized")
-        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence = json.loads(
+            _read_bounded_regular_bytes(
+                evidence_path, maximum_bytes=3 * 1024 * 1024
+            ).decode("utf-8")
+        )
         if not isinstance(evidence, dict):
             raise EvidenceError("driver evidence is not an object")
         validate_evidence(evidence)
-    except (OSError, json.JSONDecodeError, EvidenceError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, EvidenceError) as error:
         reason = f"reviewed driver evidence failed validation: {type(error).__name__}"
         return _finish_failed_exercise(
             reason=reason,
@@ -1765,6 +1819,7 @@ def exercise(args: argparse.Namespace) -> int:
         evidence,
         require_no_cross_observation=True,
         require_clean_teardown=False,
+        require_accepted=False,
     )
     failures.extend(
         _browser_artifact_failures(evidence_dir, evidence.get("browser_artifacts"))
@@ -1841,6 +1896,7 @@ def exercise(args: argparse.Namespace) -> int:
             driver_revision=driver_revision,
             driver_sha256=driver_sha256,
         )
+    evidence["acceptance"] = "accepted"
     final_failures = _product_demo_failures(
         evidence,
         require_no_cross_observation=True,
@@ -2055,15 +2111,13 @@ def _receipt_failures(
 ) -> list[str]:
     receipt_path = evidence_dir / "receipt.json"
     try:
-        if (
-            receipt_path.is_symlink()
-            or not receipt_path.is_file()
-            or receipt_path.stat().st_size > 128 * 1024
-        ):
-            return ["independent harness receipt is absent, symlinked, or oversized"]
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ["independent harness receipt is unreadable"]
+        receipt = json.loads(
+            _read_bounded_regular_bytes(receipt_path, maximum_bytes=128 * 1024).decode(
+                "utf-8"
+            )
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return ["harness receipt is absent, unsafe, oversized, or unreadable"]
     failures = _exact_keys(receipt, RECEIPT_KEYS, "harness receipt")
     if failures or not isinstance(receipt, dict):
         return failures
@@ -2188,10 +2242,12 @@ def verify(args: argparse.Namespace) -> int:
     evidence_dir = Path(args.evidence_dir).expanduser().resolve(strict=True)
     path = evidence_dir / "exercise.json"
     try:
-        if path.is_symlink() or path.stat().st_size > 3 * 1024 * 1024:
-            raise EvidenceError("exercise evidence is symlinked or oversized")
-        evidence = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        evidence = json.loads(
+            _read_bounded_regular_bytes(path, maximum_bytes=3 * 1024 * 1024).decode(
+                "utf-8"
+            )
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvidenceError(f"cannot read exercise evidence: {path}") from error
     validate_evidence(evidence)
     failures = _product_demo_failures(
@@ -2217,6 +2273,7 @@ def _product_demo_failures(
     *,
     require_no_cross_observation: bool,
     require_clean_teardown: bool,
+    require_accepted: bool = True,
 ) -> list[str]:
     failures = _product_schema_failures(evidence)
     if failures:
@@ -2227,8 +2284,9 @@ def _product_demo_failures(
         failures.append("evidence is not a real product-demo exercise")
     if evidence.get("status") != "passed":
         failures.append("exercise status is not passed")
-    if evidence.get("acceptance") != "accepted":
-        failures.append("exercise is not accepted")
+    expected_acceptance = "accepted" if require_accepted else "pending-receipt"
+    if evidence.get("acceptance") != expected_acceptance:
+        failures.append(f"exercise acceptance is not {expected_acceptance}")
     exercise_id = evidence.get("exercise_id")
     if not isinstance(exercise_id, str) or not SYNTHETIC_ID_RE.fullmatch(exercise_id):
         failures.append("synthetic exercise id is absent or invalid")

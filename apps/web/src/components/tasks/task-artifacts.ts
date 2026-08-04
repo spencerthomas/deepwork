@@ -41,7 +41,11 @@ export function buildTaskArtifacts(
       kind: "evidence",
       description: record.summary,
       mimeType: "application/json",
-      content: JSON.stringify(record, null, 2),
+      content: JSON.stringify(
+        { taskId: detail?.taskId ?? null, runId: detail?.runId ?? null, evidence: record },
+        null,
+        2,
+      ),
     });
   }
   return artifacts;

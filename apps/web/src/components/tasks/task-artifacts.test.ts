@@ -28,6 +28,8 @@ describe("task artifacts", () => {
       "evidence-evidence_00000001.json",
     ]);
     expect(artifactDownloadHref(artifacts[0])).toContain("%23%20Useful%20result");
+    expect(artifacts[1].content).toContain('"taskId": "task_00000001"');
+    expect(artifacts[1].content).toContain('"runId": "run_00000001"');
     expect(artifacts[1].content).toContain('"verified": false');
   });
 });

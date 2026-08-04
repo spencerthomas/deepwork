@@ -95,7 +95,7 @@ class HarnessCommandTests(unittest.TestCase):
                 "reviewed_repository_commit": "a" * 40,
                 "components": sorted(harness.REQUIRED_PRODUCT_DEMO_COMPONENTS),
                 "credential_free": True,
-                "loopback_only": True,
+                "loopback_bindings_only": True,
             }
             contract_path = root / harness.PRODUCT_DEMO_CONTRACT
             contract_path.write_text(json.dumps(contract), encoding="utf-8")

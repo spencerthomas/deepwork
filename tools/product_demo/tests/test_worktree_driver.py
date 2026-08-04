@@ -123,6 +123,62 @@ class DriverContractTests(unittest.TestCase):
                     {"LC_ALL": "C"},
                 )
 
+    def test_prepare_validates_web_dependency_before_creating_runtime_state(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            manifest = allocate_manifest(
+                root=root,
+                namespace="dw-test-prepare",
+                evidence_dir=root / "proof",
+            )
+            stack = driver.Stack(
+                root=root,
+                manifest=manifest,
+                access_key="fixture-key",
+                node=Path("node"),
+                api_bin=root / "apps/api/.venv/bin",
+                postgres_bins={"pg_ctl": Path("pg_ctl")},
+            )
+            with mock.patch.object(driver, "_port_closed", return_value=True):
+                with self.assertRaisesRegex(
+                    driver.DriverError, "web dependencies are absent"
+                ):
+                    stack.prepare()
+            self.assertFalse(stack.workspace.exists())
+            self.assertFalse(stack.socket_dir.exists())
+
+    def test_stop_cleans_pre_snapshot_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            manifest = allocate_manifest(
+                root=root,
+                namespace="dw-test-pre-snapshot",
+                evidence_dir=root / "proof",
+            )
+            stack = driver.Stack(
+                root=root,
+                manifest=manifest,
+                access_key="fixture-key",
+                node=Path("node"),
+                api_bin=root / "apps/api/.venv/bin",
+                postgres_bins={"pg_ctl": Path("pg_ctl")},
+            )
+            stack.workspace.mkdir(parents=True)
+            stack.socket_dir.mkdir(mode=0o700)
+            try:
+                with (
+                    mock.patch.object(driver, "_stop_postgres"),
+                    mock.patch.object(driver, "_port_closed", return_value=True),
+                ):
+                    stack.stop()
+            finally:
+                if stack.socket_dir.is_dir():
+                    stack.socket_dir.rmdir()
+            self.assertFalse(stack.workspace.exists())
+            self.assertFalse(stack.socket_dir.exists())
+
     def test_diagnostic_failure_does_not_prevent_any_stack_stop(self) -> None:
         first = mock.Mock(namespace="dw-test-a")
         second = mock.Mock(namespace="dw-test-b")
@@ -206,6 +262,33 @@ class DriverContractTests(unittest.TestCase):
         self.assertTrue(driver._journey_report_is_complete(report))
         report["journeys"][0]["liveProgressObserved"] = False
         self.assertFalse(driver._journey_report_is_complete(report))
+
+    def test_browser_image_validation_requires_true_phone_viewport(self) -> None:
+        def png_header(width: int, height: int) -> bytes:
+            return (
+                b"\x89PNG\r\n\x1a\n"
+                + b"\x00\x00\x00\rIHDR"
+                + width.to_bytes(4, "big")
+                + height.to_bytes(4, "big")
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            browser_root = Path(temporary)
+            for label in ("stack-a", "stack-b"):
+                cell = browser_root / label
+                cell.mkdir()
+                for name in ("desktop-completed", "reopened-after-api-restart-desktop"):
+                    (cell / f"{name}.png").write_bytes(png_header(1440, 900))
+                for name in ("phone-reopened", "reopened-after-api-restart-phone"):
+                    (cell / f"{name}.png").write_bytes(png_header(390, 844))
+            driver._validate_browser_images(browser_root)
+            (browser_root / "stack-a/phone-reopened.png").write_bytes(
+                png_header(390, 1389)
+            )
+            with self.assertRaisesRegex(
+                driver.DriverError, "invalid viewport dimensions"
+            ):
+                driver._validate_browser_images(browser_root)
 
 
 if __name__ == "__main__":

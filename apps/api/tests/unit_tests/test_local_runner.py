@@ -446,6 +446,14 @@ async def _paused_task(
     return await repository.get_task(task.task_id)
 
 
+async def _claim_source_ownership(
+    runner: LocalAgentServerRunner,
+    task: TaskSnapshot,
+) -> None:
+    runner._threads[task.task_id] = "thread_1"
+    assert await runner._acquire_source_lease(task.task_id) is True
+
+
 @pytest.mark.asyncio
 async def test_create_forwards_the_workspace_prompt_to_source_start() -> None:
     # The editable workspace prompt must flow into the source's start call so the
@@ -904,8 +912,7 @@ async def test_confirmed_plan_update_reconciles_without_second_state_read() -> N
     source = _Source()
     runner = LocalAgentServerRunner(repository, source)
     task = await _paused_task(repository)
-    runner._threads[task.task_id] = "thread_1"
-    assert await runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(runner, task)
 
     update = await runner.update_plan(
         task,
@@ -928,8 +935,7 @@ async def test_plan_update_keeps_the_durable_selected_agent() -> None:
     source = _Source()
     runner = LocalAgentServerRunner(repository, source)
     task = await _paused_task(repository, agent_id="assistant-reviewer")
-    runner._threads[task.task_id] = "thread_1"
-    assert await runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(runner, task)
 
     await runner.update_plan(
         task,
@@ -1058,7 +1064,16 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
     )
 
     class FlakyActiveStreamSource(_Source):
-        attempts = 0
+        def __init__(self) -> None:
+            super().__init__(
+                state=_State(
+                    status="completed",
+                    final_answer="Recovered result",
+                    interrupt=None,
+                )
+            )
+            self.attempts = 0
+            self.after_cursors: list[str | None] = []
 
         async def stream(
             self,
@@ -1067,15 +1082,14 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
             after_cursor: str | None = None,
         ) -> AsyncIterator[object]:
             self.attempts += 1
+            self.after_cursors.append(after_cursor)
             yield SimpleNamespace(kind="progress", cursor="cursor-1")
             if self.attempts == 1:
                 raise TaskSourceUnavailableError
             yield SimpleNamespace(kind="progress", cursor="cursor-2")
 
     repository = InMemoryTaskRepository()
-    source = FlakyActiveStreamSource(
-        state=_State(status="completed", final_answer="Recovered result", interrupt=None)
-    )
+    source = FlakyActiveStreamSource()
     runner = LocalAgentServerRunner(repository, source)
     task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
     await repository.bind_source_run(
@@ -1089,6 +1103,7 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
     current = await repository.get_task(task.task_id)
     events = await repository.events_after(task.task_id, 0)
     assert source.attempts == 2
+    assert source.after_cursors == [None, "cursor-1"]
     assert current.status is TaskStatus.COMPLETED
     assert current.result == "Recovered result"
     assert [event.name for event in events].count(TaskEventName.CONTENT_DELTA) == 2
@@ -1099,7 +1114,7 @@ async def test_source_replay_scan_fails_closed_at_the_application_bound(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "deepwork_api.application.local_runner.MAX_SOURCE_EVENT_RECEIPTS",
+        "deepwork_api.application.local_runner._SOURCE_REPLAY_EVENT_LIMIT",
         2,
     )
     source = _Source(
@@ -1346,8 +1361,7 @@ async def test_recovery_discovers_plan_edit_accepted_before_atomic_local_commit(
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository, agent_id="assistant-reviewer")
     first_runner = LocalAgentServerRunner(repository, source)
-    first_runner._threads[task.task_id] = "thread_1"
-    assert await first_runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(first_runner, task)
 
     with pytest.raises(RuntimeError, match="plan binding crash"):
         await first_runner.update_plan(
@@ -1384,8 +1398,7 @@ async def test_plan_edit_recovery_survives_a_real_sqlite_repository_reopen(
     source = _IdempotentRecoverySource()
     task = await _paused_task(first_repository, agent_id="assistant-reviewer")
     first_runner = LocalAgentServerRunner(first_repository, source)
-    first_runner._threads[task.task_id] = "thread_1"
-    assert await first_runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(first_runner, task)
 
     with pytest.raises(RuntimeError, match="SQLite plan binding crash"):
         await first_runner.update_plan(
@@ -1418,8 +1431,7 @@ async def test_cancelled_plan_request_keeps_task_owned_operation_running() -> No
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository)
     runner = LocalAgentServerRunner(repository, source)
-    runner._threads[task.task_id] = "thread_1"
-    assert await runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(runner, task)
     entered = asyncio.Event()
     release = asyncio.Event()
     original = source.update_plan
@@ -1477,8 +1489,7 @@ async def test_cancelled_plan_request_after_atomic_accept_still_swaps_follower()
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository)
     runner = LocalAgentServerRunner(repository, source)
-    runner._threads[task.task_id] = "thread_1"
-    assert await runner._acquire_source_lease(task.task_id) is True
+    await _claim_source_ownership(runner, task)
     request = asyncio.create_task(
         runner.update_plan(
             task,

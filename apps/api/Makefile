@@ -5,6 +5,7 @@ PYTHON_VERSION := 3.12
 OFFLINE_UV := $(UV) --offline --no-python-downloads
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
+LOCAL_BACKUP_TESTS := tests/unit_tests/test_sqlite_backup.py tests/contract_tests/test_sqlite_backup_restore.py
 
 .PHONY: bootstrap build check contract doctor format format-check lint offline-ready openapi package-check test test-local-backup test-local-recovery test-postgres typecheck
 
@@ -39,14 +40,11 @@ test: offline-ready
 	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket
 
 test-local-backup: offline-ready
-	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket \
-		tests/unit_tests/test_sqlite_backup.py \
-		tests/contract_tests/test_sqlite_backup_restore.py
+	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket $(LOCAL_BACKUP_TESTS)
 
 test-local-recovery: offline-ready
 	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket \
-		tests/unit_tests/test_sqlite_backup.py \
-		tests/contract_tests/test_sqlite_backup_restore.py \
+		$(LOCAL_BACKUP_TESTS) \
 		tests/unit_tests/test_local_runner.py::test_expired_source_lease_is_taken_over_after_owner_process_is_killed
 
 test-postgres: offline-ready

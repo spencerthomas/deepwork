@@ -11,7 +11,6 @@ from typing import Protocol
 
 from deepwork_api.domain import (
     DEFAULT_SECURITY_CONTEXT,
-    MAX_SOURCE_EVENT_RECEIPTS,
     DecisionRecord,
     DecisionValue,
     EvidenceClass,
@@ -42,10 +41,31 @@ _SOURCE_STATE_RECONCILIATION_SECONDS = 1.0
 _SOURCE_STATE_RECONCILIATION_MAX_SECONDS = 8.0
 _SOURCE_LEASE_SECONDS = 15
 _SOURCE_RECOVERY_MAX_DELAY_SECONDS = 2.0
+_SOURCE_REPLAY_EVENT_LIMIT = 20_000
 
 
 class _SourceHandoffPersistenceError(Exception):
     """An accepted upstream transition still needs durable local reconciliation."""
+
+
+@dataclass(slots=True)
+class _SourceReplayState:
+    """Bound one follower's source reads and retain only its in-memory cursor."""
+
+    remaining_events: int
+    after_cursor: str | None = None
+
+    def consume_event(self) -> None:
+        self.remaining_events -= 1
+        if self.remaining_events < 0:
+            raise TaskSourceContractError
+
+    def advance(self, cursor: object) -> None:
+        if cursor is None:
+            return
+        if not isinstance(cursor, str) or not cursor:
+            raise TaskSourceContractError
+        self.after_cursor = cursor
 
 
 async def _next_source_event(stream: AsyncIterator[object]) -> object:
@@ -420,19 +440,7 @@ class LocalAgentServerRunner:
                 != (plan_transition.thread_id, plan_transition.run_id)
             ):
                 raise TaskSourceContractError
-            updated = await self.source.update_plan(
-                binding.thread_id,
-                interrupt_id=plan_transition.interrupt_id,
-                expected_revision=plan_transition.expected_revision,
-                steps=plan_transition.steps,
-                transition_id=plan_transition.transition_id,
-                agent_id=task.agent_id,
-            )
-            if (
-                updated.interrupt_id == plan_transition.interrupt_id
-                or updated.plan_revision != plan_transition.expected_revision + 1
-            ):
-                raise TaskSourceContractError
+            updated = await self._request_source_plan_update(task, plan_transition)
             binding = await self.repository.accept_source_plan_transition(
                 task.task_id,
                 thread_id=updated.thread_id,
@@ -777,23 +785,11 @@ class LocalAgentServerRunner:
         ):
             raise TaskSourceContractError
         try:
-            updated = await self.source.update_plan(
-                transition.thread_id,
-                interrupt_id=transition.interrupt_id,
-                expected_revision=transition.expected_revision,
-                steps=transition.steps,
-                transition_id=transition.transition_id,
-                agent_id=task.agent_id,
-            )
+            updated = await self._request_source_plan_update(task, transition)
         except (StaleInterruptError, TaskSourceContractError):
             raise
         except Exception:
             raise TaskSourceUnavailableError from None
-        if (
-            updated.interrupt_id == transition.interrupt_id
-            or updated.plan_revision != transition.expected_revision + 1
-        ):
-            raise TaskSourceContractError
         await self.repository.accept_source_plan_transition(
             task.task_id,
             thread_id=updated.thread_id,
@@ -819,6 +815,28 @@ class LocalAgentServerRunner:
         ):
             raise TaskSourceContractError
         return updated, refreshed
+
+    async def _request_source_plan_update(
+        self,
+        task: TaskSnapshot,
+        transition: TaskSourcePlanTransition,
+    ) -> LocalPlanUpdate:
+        """Request and validate the source checkpoint for one durable plan intent."""
+
+        updated = await self.source.update_plan(
+            transition.thread_id,
+            interrupt_id=transition.interrupt_id,
+            expected_revision=transition.expected_revision,
+            steps=transition.steps,
+            transition_id=transition.transition_id,
+            agent_id=task.agent_id,
+        )
+        if (
+            updated.interrupt_id == transition.interrupt_id
+            or updated.plan_revision != transition.expected_revision + 1
+        ):
+            raise TaskSourceContractError
+        return updated
 
     async def _wait_for_plan_transition_commit(
         self,
@@ -1075,10 +1093,10 @@ class LocalAgentServerRunner:
         """Rejoin a transiently unavailable active stream without losing the task."""
 
         delay = min(0.25, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
-        remaining_events = [MAX_SOURCE_EVENT_RECEIPTS]
+        replay = _SourceReplayState(_SOURCE_REPLAY_EVENT_LIMIT)
         while True:
             try:
-                return await self._follow_stream_once(task, run, remaining_events)
+                return await self._follow_stream_once(task, run, replay)
             except TaskSourceUnavailableError:
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
@@ -1087,7 +1105,7 @@ class LocalAgentServerRunner:
         self,
         task: TaskSnapshot,
         run: LocalRun,
-        remaining_events: list[int],
+        replay: _SourceReplayState,
     ) -> LocalState:
         """Consume progress while reconciling a source run that settled before join.
 
@@ -1098,7 +1116,7 @@ class LocalAgentServerRunner:
         in ``running`` while preserving the same fail-closed state validation.
         """
 
-        stream = self.source.stream(run)
+        stream = self.source.stream(run, after_cursor=replay.after_cursor)
         pending: asyncio.Task[object] = asyncio.create_task(_next_source_event(stream))
         reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
         try:
@@ -1120,9 +1138,7 @@ class LocalAgentServerRunner:
                     event = pending.result()
                 except StopAsyncIteration:
                     return await self.source.get_state(run.thread_id)
-                remaining_events[0] -= 1
-                if remaining_events[0] < 0:
-                    raise TaskSourceContractError
+                replay.consume_event()
                 kind = getattr(event, "kind", None)
                 if kind == "error":
                     raise TaskSourceContractError
@@ -1145,6 +1161,7 @@ class LocalAgentServerRunner:
                         ),
                         data=data,
                     )
+                replay.advance(cursor)
                 reconciliation_seconds = _SOURCE_STATE_RECONCILIATION_SECONDS
                 pending = asyncio.create_task(_next_source_event(stream))
         finally:

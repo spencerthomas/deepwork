@@ -14,6 +14,16 @@ interface HostedTaskDetail {
   result: string | null;
 }
 
+interface HostedRuntimeStatus {
+  runtime_kind: "fixture" | "local-agent-server" | "classic-deployment";
+  evidence_class: string;
+  capabilities: Array<{ name: string; state: string }>;
+}
+
+function isApiUrl(value: string): boolean {
+  return new URL(value).pathname.startsWith("/api/");
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -21,13 +31,49 @@ function escapeRegex(value: string): string {
 test("hosted golden journey reaches a retained inspectable result", async ({ page }) => {
   if (!accessKey) throw new Error("DEEPWORK_E2E_ACCESS_KEY is required.");
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const failedApiRequests: string[] = [];
+  const failedApiResponses: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("requestfailed", (request) => {
+    if (isApiUrl(request.url())) {
+      failedApiRequests.push(
+        `${request.method()} ${new URL(request.url()).pathname}: ${request.failure()?.errorText ?? "unknown"}`,
+      );
+    }
+  });
+  page.on("response", (response) => {
+    if (isApiUrl(response.url()) && !response.ok()) {
+      failedApiResponses.push(
+        `${response.request().method()} ${new URL(response.url()).pathname}: HTTP ${response.status()}`,
+      );
+    }
+  });
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Connect to Deep Work" })).toBeVisible();
   await page.getByLabel("Workspace access key").fill(accessKey);
   await page.getByRole("button", { name: "Connect workspace" }).click();
   await expect(page).toHaveURL(/\/tasks$/);
+
+  const runtime = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/runtime/status", { credentials: "include" });
+    return {
+      status: response.status,
+      body: (await response.json()) as HostedRuntimeStatus,
+    };
+  });
+  expect(runtime.status).toBe(200);
+  expect(runtime.body.runtime_kind).not.toBe("fixture");
+  expect(runtime.body.evidence_class).toBe("local-source");
+  const runtimeCapabilities = Object.fromEntries(
+    runtime.body.capabilities.map((capability) => [capability.name, capability.state]),
+  );
+  expect(runtimeCapabilities["local_task_loop"]).toBe("available");
+  expect(runtimeCapabilities["sources"]).toBe("available");
 
   await page.goto("/tasks/new");
   await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
@@ -92,4 +138,7 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   await expect(page.getByText("result.md", { exact: true })).toBeVisible();
 
   expect(pageErrors).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+  expect(failedApiRequests).toEqual([]);
+  expect(failedApiResponses).toEqual([]);
 });

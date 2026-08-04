@@ -1,7 +1,7 @@
 ---
 title: Deep Work reliability model
 status: canonical
-last_reviewed: 2026-07-23
+last_reviewed: 2026-08-03
 owners: [platform, reliability]
 ---
 
@@ -31,3 +31,33 @@ Release acceptance requires the 12 program scenarios plus enabled feature
 scenarios, sanitized diagnostics, rollback compatibility, and recovery proof.
 Open runtime contract questions remain in the
 [decision and spike register](design-docs/decisions/index.md).
+
+## Local SQLite recovery boundary
+
+The local adapter has a stopped-application backup/restore utility for recovery
+testing and developer-owned data. Stop the API first so the task and settings
+databases represent one application point in time, then use absolute paths:
+
+```bash
+make -C apps/api test-local-backup
+uv --directory apps/api run python scripts/sqlite_backup.py backup \
+  --tasks /absolute/path/tasks.sqlite \
+  --settings /absolute/path/settings.sqlite3 \
+  --output /absolute/path/new-backup-directory
+uv --directory apps/api run python scripts/sqlite_backup.py restore \
+  --bundle /absolute/path/new-backup-directory \
+  --output /absolute/path/new-restored-directory
+```
+
+The bundle records file and logical-content hashes, row counts, schema objects and
+SQLite application/user versions. Restore checks the manifest, both databases and
+SQLite integrity before atomically exposing a new output directory; it refuses
+existing destinations and symbolic-link inputs. The retained manifest detects
+accidental or one-sided data changes, but is not signed and therefore does not
+authenticate a bundle from an untrusted party.
+
+This utility does not supply cross-database online snapshots, encryption,
+retention, remote storage, PostgreSQL/outbox recovery, object restoration,
+migration rollback, disaster recovery objectives or production acceptance. Those
+remain release gates under `E2E-V1-09-SECURITY-RECOVERY` and
+`E2E-V1-12-OPERATIONAL-RELEASE`.

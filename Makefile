@@ -75,6 +75,7 @@ test-e2e-demo:
 	pnpm test:e2e-demo
 
 test-recovery:
+	$(MAKE) -C apps/api test-local-backup
 	pnpm test:recovery
 
 test-security-boundary:

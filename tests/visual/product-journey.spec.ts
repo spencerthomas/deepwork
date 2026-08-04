@@ -24,6 +24,8 @@ async function capture(page: Page, name: string, viewport: keyof typeof viewport
       await page.getByText("result.md", { exact: true }).scrollIntoViewIfNeeded();
     } else if (name === "coding-review") {
       await page.getByTestId("coding-review").scrollIntoViewIfNeeded();
+    } else if (name === "new-task-start-unknown") {
+      await page.getByText("Task start not confirmed.", { exact: true }).scrollIntoViewIfNeeded();
     } else {
       await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
     }
@@ -45,7 +47,7 @@ async function capture(page: Page, name: string, viewport: keyof typeof viewport
       };
     });
     expect(shell.scrollWidth).toBeLessThanOrEqual(shell.viewportWidth);
-    if (!["settings", "config", "observability"].includes(name)) {
+    if (!["settings", "config", "observability", "new-task-start-unknown"].includes(name)) {
       expect(shell.headerTop).toBeGreaterThanOrEqual(-1);
       expect(shell.headerBottom).toBeLessThanOrEqual(shell.viewportHeight);
       expect(shell.navigationTop).toBeGreaterThanOrEqual(0);
@@ -203,6 +205,32 @@ test("the golden journey shell reflows at 320 CSS pixels", async ({ page }) => {
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
       .toBeLessThanOrEqual(320);
   }
+});
+
+test("an uncertain dispatch has a blocking desktop and phone visual contract", async ({ page }) => {
+  let createRequests = 0;
+  await page.route("**/api/v1/tasks", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    createRequests += 1;
+    await route.abort("connectionfailed");
+  });
+
+  await signIn(page);
+  await open(page, "/tasks/new");
+  await page
+    .getByLabel("Task", { exact: true })
+    .fill("Recover this request without starting the same task twice");
+  await page.getByRole("button", { name: "Dispatch" }).click();
+  await expect(page.getByText("Task start not confirmed.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check task" })).toBeEnabled();
+  await expect(page.getByLabel("Task", { exact: true })).toBeDisabled();
+  expect(createRequests).toBe(2);
+
+  await capture(page, "new-task-start-unknown", "desktop");
+  await capture(page, "new-task-start-unknown", "phone");
 });
 
 test("coding review proof remains legible at desktop and phone widths", async ({ page }) => {

@@ -367,6 +367,124 @@ test("completed fixture task survives an API restart and reopens without duplica
   await recoveredContext.close();
 });
 
+test("a lost create response replays the original task identity after an API restart", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ baseURL: webOrigin, serviceWorkers: "block" });
+  const page = await context.newPage();
+  const unexpectedOrigins = await installLoopbackOnlyGuard(page);
+  const requests: Array<{ body: string | null; key: string | undefined }> = [];
+  let taskId = "";
+  let runId = "";
+  let replayWasDuplicate = false;
+  let requestCount = 0;
+
+  await signIn(page);
+  await page.route("**/api/v1/tasks", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    requestCount += 1;
+    requests.push({
+      body: request.postData(),
+      key: request.headers()["idempotency-key"],
+    });
+    if (requestCount === 1) {
+      const response = await route.fetch();
+      expect(response.status()).toBe(202);
+      const receipt = (await response.json()) as Record<string, unknown>;
+      expect(receipt["duplicate"]).toBe(false);
+      taskId = String(receipt["taskId"]);
+      runId = String(receipt["runId"]);
+      await route.abort("connectionfailed");
+      return;
+    }
+    if (requestCount === 2) {
+      await route.abort("connectionfailed");
+      return;
+    }
+    const response = await route.fetch();
+    expect(response.status()).toBe(202);
+    const receipt = (await response.json()) as Record<string, unknown>;
+    expect(receipt["taskId"]).toBe(taskId);
+    expect(receipt["runId"]).toBe(runId);
+    replayWasDuplicate = receipt["duplicate"] === true;
+    await route.fulfill({ response });
+  });
+
+  await page.goto("/tasks/new");
+  const objective = "Recover the original dispatch after a durable API restart";
+  await page.getByLabel("Task", { exact: true }).fill(objective);
+  await page.getByRole("button", { name: "Dispatch" }).click();
+  await expect(page.getByText("Task start not confirmed.", { exact: true })).toBeVisible();
+  expect(requestCount).toBe(2);
+  expect(requests[0]?.key).toBeTruthy();
+  expect(requests[1]).toEqual(requests[0]);
+
+  await expect
+    .poll(() =>
+      page.evaluate(async (id) => {
+        const response = await fetch(`/api/v1/tasks/${encodeURIComponent(id)}`, {
+          credentials: "include",
+        });
+        if (!response.ok) return `http-${response.status}`;
+        const detail = (await response.json()) as { status: string };
+        return detail.status;
+      }, taskId),
+    )
+    .toBe("waiting-approval");
+
+  await stopApi();
+  await withHostileAmbientEnvironment(startApi);
+  // The local API intentionally rotates its in-memory session signer on
+  // restart. Reconnect the same browser context, preserving origin-scoped
+  // dispatch storage, before reopening the composer.
+  await context.clearCookies();
+  await signIn(page);
+  await page.goto("/tasks/new");
+  await expect(page.getByText("Task start not confirmed.", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Task", { exact: true })).toHaveValue(objective);
+  expect(requestCount).toBe(2);
+
+  await page.getByRole("button", { name: "Check task" }).click();
+  await expect(page).toHaveURL(new RegExp(`/tasks/${taskId}$`));
+  // Startup reconciliation marks the interrupted run terminal rather than
+  // pretending it can resume. The dispatch receipt must still resolve to that
+  // one durable task instead of launching another run.
+  await expect(page.getByText("Failed", { exact: true }).first()).toBeVisible();
+  expect(replayWasDuplicate).toBe(true);
+  expect(requests).toHaveLength(3);
+  expect(requests[2]).toEqual(requests[0]);
+
+  const retained = await page.evaluate(async (id) => {
+    const [detailResponse, listingResponse, eventsResponse] = await Promise.all([
+      fetch(`/api/v1/tasks/${encodeURIComponent(id)}`, { credentials: "include" }),
+      fetch("/api/v1/tasks", { credentials: "include" }),
+      fetch(`/api/v1/tasks/${encodeURIComponent(id)}/events`, { credentials: "include" }),
+    ]);
+    if (!detailResponse.ok || !listingResponse.ok || !eventsResponse.ok) {
+      throw new Error("The restarted task proof could not be read.");
+    }
+    return {
+      detail: (await detailResponse.json()) as Record<string, unknown>,
+      listing: (await listingResponse.json()) as Record<string, unknown>,
+      events: await eventsResponse.text(),
+    };
+  }, taskId);
+  const retainedEvents = parseEventStream(retained.events);
+  expect(retained.detail).toMatchObject({ taskId, runId, status: "failed" });
+  expect(retainedEvents.filter((event) => event.name === "task.created")).toHaveLength(1);
+  expect(
+    (retained.listing["items"] as Array<{ taskId: string }>).filter(
+      (item) => item.taskId === taskId,
+    ),
+  ).toHaveLength(1);
+  expect(unexpectedOrigins).toEqual(new Set());
+  await context.close();
+});
+
 test("reconnect episodes recover once, ignore a late initial read, and suppress duplicate events", async ({
   browser,
 }) => {

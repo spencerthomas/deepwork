@@ -921,6 +921,52 @@ async def test_cursorless_progress_fails_without_persisting_an_undedupeable_even
 
 
 @pytest.mark.asyncio
+async def test_active_stream_retries_a_transient_outage_without_duplicate_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_RECOVERY_MAX_DELAY_SECONDS",
+        0.01,
+    )
+
+    class FlakyActiveStreamSource(_Source):
+        attempts = 0
+
+        async def stream(
+            self,
+            run: LocalRun,
+            *,
+            after_cursor: str | None = None,
+        ) -> AsyncIterator[object]:
+            self.attempts += 1
+            yield SimpleNamespace(kind="progress", cursor="cursor-1")
+            if self.attempts == 1:
+                raise TaskSourceUnavailableError
+            yield SimpleNamespace(kind="progress", cursor="cursor-2")
+
+    repository = InMemoryTaskRepository()
+    source = FlakyActiveStreamSource(
+        state=_State(status="completed", final_answer="Recovered result", interrupt=None)
+    )
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="thread_1",
+        run_id="run_1",
+    )
+
+    await runner._follow(task, _Run())
+
+    current = await repository.get_task(task.task_id)
+    events = await repository.events_after(task.task_id, 0)
+    assert source.attempts == 2
+    assert current.status is TaskStatus.COMPLETED
+    assert current.result == "Recovered result"
+    assert [event.name for event in events].count(TaskEventName.CONTENT_DELTA) == 2
+
+
+@pytest.mark.asyncio
 async def test_nonterminal_source_state_fails_instead_of_completing() -> None:
     repository = InMemoryTaskRepository()
     source = _Source()

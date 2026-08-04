@@ -498,7 +498,7 @@ class LocalAgentServerRunner:
         recovery.add_done_callback(lambda finished: self._discard_recovery(task_id, finished))
 
     async def _recover_when_available(self, task_id: str) -> None:
-        delay = 0.25
+        delay = min(0.25, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
         while not self._closing:
             task: TaskSnapshot | None = None
             try:
@@ -1067,6 +1067,21 @@ class LocalAgentServerRunner:
             await self._fail(task, _RUNNER_FAILURE_REASON)
 
     async def _follow_stream_to_source_state(
+        self,
+        task: TaskSnapshot,
+        run: LocalRun,
+    ) -> LocalState:
+        """Rejoin a transiently unavailable active stream without losing the task."""
+
+        delay = 0.25
+        while True:
+            try:
+                return await self._follow_stream_once(task, run)
+            except TaskSourceUnavailableError:
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
+
+    async def _follow_stream_once(
         self,
         task: TaskSnapshot,
         run: LocalRun,

@@ -55,9 +55,16 @@ async function createIsolatedContext(browser, { origin, viewport }) {
 function monitorPage(page, label, origin, networkPolicy) {
   const failures = [];
   const navigationAborts = [];
+  const policyProbeConsoleErrors = [];
   page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") failures.push(`console: ${message.text()}`);
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (text === "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector") {
+      policyProbeConsoleErrors.push(text);
+    } else {
+      failures.push(`console: ${text}`);
+    }
   });
   page.on("requestfailed", (request) => {
     const reason = request.failure()?.errorText ?? "unknown";
@@ -83,6 +90,14 @@ function monitorPage(page, label, origin, networkPolicy) {
     }
   });
   return () => {
+    const expectedPolicyConsoleErrors = networkPolicy.blockedNetworkProbes.filter(
+      (record) => record.resourceType !== "websocket",
+    ).length;
+    if (policyProbeConsoleErrors.length !== expectedPolicyConsoleErrors) {
+      failures.push(
+        `policy-probe-console: expected ${expectedPolicyConsoleErrors}, observed ${policyProbeConsoleErrors.length}`,
+      );
+    }
     if (networkPolicy.networkPolicyViolations.length > 0) {
       failures.push(`network-policy: ${JSON.stringify(networkPolicy.networkPolicyViolations)}`);
     }
@@ -282,9 +297,9 @@ async function completeJourney(browser, config) {
   if (
     !retainedResult.includes(prompt) ||
     !retainedResult.includes(`Objective: ${prompt}`) ||
-    !retainedResult.includes("local-runner")
+    !retainedResult.includes("Next actions:")
   ) {
-    throw new Error("retained result.md is not bound to prompt, result, and evidence");
+    throw new Error("retained result.md is not bound to the prompt-specific result");
   }
   const retainedEvidence = await downloadText(
     page,
@@ -292,7 +307,7 @@ async function completeJourney(browser, config) {
   );
   const retainedEvidenceRecord = JSON.parse(retainedEvidence);
   if (
-    retainedEvidenceRecord.source !== "local-runner" ||
+    retainedEvidenceRecord.source !== "deterministic-local-runner" ||
     !String(retainedEvidenceRecord.summary ?? "").includes("deterministic local runner classified")
   ) {
     throw new Error("retained evidence JSON does not match the rendered source record");
@@ -317,7 +332,6 @@ async function completeJourney(browser, config) {
     (peerKey) => localStorage.getItem(peerKey),
     config.peerStorageKey,
   );
-  await mkdir(config.artifactDir, { recursive: true });
   await captureScreenshot(page, config.screenshots, `${config.label}/desktop-completed.png`);
 
   await page.goto(`${config.origin}/tasks`);

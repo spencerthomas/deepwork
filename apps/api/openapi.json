@@ -76,7 +76,7 @@
       },
       "AgentListResponse": {
         "additionalProperties": false,
-        "description": "Agent registry listing with an honest availability flag.\n\n``available`` is false whenever no real task source is configured\n(fixture mode), so an empty list is never confused with \"zero agents\".",
+        "description": "Agent registry listing with an honest availability flag.\n\n``available`` distinguishes a selectable registry (including the explicit\nimmutable local fixture agent) from a temporarily unavailable source.",
         "properties": {
           "available": {
             "title": "Available",

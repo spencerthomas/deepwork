@@ -498,10 +498,16 @@ class ReservationStore:
                 raise OwnershipError(
                     "release transaction does not match exact namespaces and roots"
                 )
-            for entry in entries:
+            for entry, (_, expected_root) in zip(entries, expected, strict=True):
                 manifest_path = self._path(entry["namespace"])
                 if manifest_path.exists():
-                    raise OwnershipError("released reservation is still active")
+                    active = self._read_private_json(manifest_path)
+                    active_token = str(active.get("teardown_token", ""))
+                    _require_owner(active, active_token, expected_root)
+                    if secrets.compare_digest(active_token, entry["teardown_token"]):
+                        raise OwnershipError(
+                            "released reservation generation is still active"
+                        )
         return (
             TeardownResult(expected[0][0], "released"),
             TeardownResult(expected[1][0], "released"),

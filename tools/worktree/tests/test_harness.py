@@ -526,6 +526,10 @@ class HarnessCommandTests(unittest.TestCase):
                 teardown_token_b=manifest_b["teardown_token"],
                 root_b=root_b,
             )
+            # A newer run may legitimately reserve the same namespaces before
+            # an older released run resumes receipt finalization.
+            store.reserve({**manifest_a, "teardown_token": "c" * 43})
+            store.reserve({**manifest_b, "teardown_token": "d" * 43})
             driver_status = {
                 "available": True,
                 "reviewed_repository_commit": evidence["driver_revision"],
@@ -564,6 +568,7 @@ class HarnessCommandTests(unittest.TestCase):
                 all(item["reservation_absent"] for item in accepted["teardown"])
             )
             self.assertTrue((evidence_dir / "receipt.json").is_file())
+            self.assertEqual(store.active_namespaces(), ("dw-iso-a", "dw-iso-b"))
 
     def test_browser_artifact_manifest_detects_retained_file_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

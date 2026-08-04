@@ -45,7 +45,7 @@ export function buildTaskArtifacts(
         {
           taskId: detail?.taskId ?? null,
           runId: detail?.runId ?? null,
-          objective: detail?.objective ?? null,
+          objective: detail?.prompt ?? null,
           evidence: record,
         },
         null,

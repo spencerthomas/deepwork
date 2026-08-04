@@ -9,7 +9,7 @@ describe("task artifacts", () => {
         taskId: "task_00000001",
         runId: "run_00000001",
         title: "Prepare a brief",
-        objective: "Prepare a brief",
+        prompt: "Prepare a brief",
         status: "completed",
         result: "# Useful result",
       },

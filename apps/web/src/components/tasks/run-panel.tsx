@@ -162,7 +162,7 @@ export function RunPanel({
             downloadHref: artifactDownloadHref(artifact),
           }))
         : [],
-    [detail?.result, detail?.taskId, evidence, tab],
+    [detail?.prompt, detail?.result, detail?.runId, detail?.taskId, evidence, tab],
   );
 
   // Reflect the active tab in the URL so a task's Evidence, Stream, or Trace

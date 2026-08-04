@@ -351,7 +351,15 @@ async function completeJourney(browser, config) {
       "deterministic local runner classified",
     )
   ) {
-    throw new Error("retained evidence JSON is not bound to this task, run, and source record");
+    throw new Error(
+      `retained evidence JSON is not bound to this task, run, and source record: ${JSON.stringify({
+        expectedTaskId: new URL(taskUrl).pathname.split("/").at(-1),
+        observedTaskId: retainedEvidenceRecord.taskId,
+        observedRunId: retainedEvidenceRecord.runId,
+        expectedObjective: prompt,
+        observedObjective: retainedEvidenceRecord.objective,
+      })}`,
+    );
   }
   await page.getByRole("tab", { name: "Details" }).click();
   await page.getByText("Execution trace", { exact: true }).waitFor();

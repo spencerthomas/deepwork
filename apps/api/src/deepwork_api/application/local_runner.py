@@ -174,7 +174,9 @@ class LocalAgentServerRunner:
         # it was implicit or explicitly selected. A different named agent's
         # registered config governs its persona.
         uses_default_agent = agent_id is None or self.source.is_default_agent(agent_id)
-        system_prompt = await self._current_system_prompt() if uses_default_agent else None
+        system_prompt = (
+            await self._current_system_prompt(security_context) if uses_default_agent else None
+        )
         try:
             run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
         except TaskSourceContractError:
@@ -220,7 +222,7 @@ class LocalAgentServerRunner:
     async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
         return await self.source.list_schedules()
 
-    async def _current_system_prompt(self) -> str | None:
+    async def _current_system_prompt(self, security_context: SecurityContext) -> str | None:
         """Read the workspace's editable prompt; never let it block task start.
 
         A missing store means no override. A store that errors is treated as
@@ -230,7 +232,10 @@ class LocalAgentServerRunner:
         if self.prompt_store is None:
             return None
         try:
-            return await self.prompt_store.get_system_prompt()
+            return await self.prompt_store.get_system_prompt(
+                tenant_id=security_context.tenant_id,
+                workspace_id=security_context.workspace_id,
+            )
         except Exception:
             return None
 

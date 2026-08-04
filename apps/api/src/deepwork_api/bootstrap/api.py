@@ -306,7 +306,12 @@ def create_app(
             trace_locator=trace_locator,
         )
     )
-    app.include_router(build_settings_router(prompt_store, dependencies=task_dependencies))
+    app.include_router(
+        build_settings_router(
+            prompt_store,
+            security_context_dependency=(auth_guard if auth_guard else _open_security_context),
+        )
+    )
     app.include_router(build_agents_router(task_service, dependencies=task_dependencies))
     app.include_router(build_schedules_router(task_service, dependencies=task_dependencies))
     if auth_service is not None:

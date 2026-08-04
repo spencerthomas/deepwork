@@ -9,10 +9,16 @@ run off the event loop; reads are cheap.
 from __future__ import annotations
 
 import asyncio
+import base64
 import sqlite3
 from pathlib import Path
 
-from deepwork_api.domain import normalize_system_prompt
+from deepwork_api.domain import (
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
+    SecurityContext,
+    normalize_system_prompt,
+)
 
 _SETTINGS_KEY = "system_prompt"
 _SCHEMA = """
@@ -24,7 +30,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 
 class SQLitePromptStore:
-    """Single-row settings storage for the workspace system prompt."""
+    """Tenant/workspace settings storage without expanding the legacy schema."""
 
     def __init__(self, database_path: str | Path) -> None:
         self._path = Path(database_path)
@@ -47,34 +53,60 @@ class SQLitePromptStore:
             connection.execute(_SCHEMA)
             connection.commit()
 
-    async def get_system_prompt(self) -> str | None:
-        await self._ensure()
-        return await asyncio.to_thread(self._get_sync)
+    @staticmethod
+    def _settings_key(tenant_id: str, workspace_id: str) -> str:
+        context = SecurityContext(tenant_id=tenant_id, workspace_id=workspace_id)
+        if context.tenant_id == DEFAULT_TENANT_ID and context.workspace_id == DEFAULT_WORKSPACE_ID:
+            # Preserve the exact legacy row for the open local/default context.
+            return _SETTINGS_KEY
 
-    def _get_sync(self) -> str | None:
+        # URL-safe base64 is an injective encoding. Delimiting the independently
+        # encoded values keeps similarly prefixed tenant/workspace pairs distinct.
+        encoded_tenant = base64.urlsafe_b64encode(context.tenant_id.encode()).decode().rstrip("=")
+        encoded_workspace = (
+            base64.urlsafe_b64encode(context.workspace_id.encode()).decode().rstrip("=")
+        )
+        return f"{_SETTINGS_KEY}:v1:{encoded_tenant}:{encoded_workspace}"
+
+    async def get_system_prompt(
+        self,
+        *,
+        tenant_id: str = DEFAULT_TENANT_ID,
+        workspace_id: str = DEFAULT_WORKSPACE_ID,
+    ) -> str | None:
+        key = self._settings_key(tenant_id, workspace_id)
+        await self._ensure()
+        return await asyncio.to_thread(self._get_sync, key)
+
+    def _get_sync(self, key: str) -> str | None:
         with sqlite3.connect(self._path) as connection:
-            row = connection.execute(
-                "SELECT value FROM settings WHERE key = ?", (_SETTINGS_KEY,)
-            ).fetchone()
+            row = connection.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
         if row is None:
             return None
         return normalize_system_prompt(row[0])
 
-    async def set_system_prompt(self, prompt: str | None) -> None:
+    async def set_system_prompt(
+        self,
+        prompt: str | None,
+        *,
+        tenant_id: str = DEFAULT_TENANT_ID,
+        workspace_id: str = DEFAULT_WORKSPACE_ID,
+    ) -> None:
+        key = self._settings_key(tenant_id, workspace_id)
         normalized = normalize_system_prompt(prompt)
         await self._ensure()
         async with self._lock:
-            await asyncio.to_thread(self._set_sync, normalized)
+            await asyncio.to_thread(self._set_sync, key, normalized)
 
-    def _set_sync(self, normalized: str | None) -> None:
+    def _set_sync(self, key: str, normalized: str | None) -> None:
         with sqlite3.connect(self._path) as connection:
             if normalized is None:
-                connection.execute("DELETE FROM settings WHERE key = ?", (_SETTINGS_KEY,))
+                connection.execute("DELETE FROM settings WHERE key = ?", (key,))
             else:
                 connection.execute(
                     "INSERT INTO settings (key, value) VALUES (?, ?) "
                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                    (_SETTINGS_KEY, normalized),
+                    (key, normalized),
                 )
             connection.commit()
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from deepwork_api.domain import DEFAULT_TENANT_ID, DEFAULT_WORKSPACE_ID
+
 
 class PromptStore(Protocol):
     """Read and write the workspace-level system prompt that governs execution.
@@ -13,11 +15,22 @@ class PromptStore(Protocol):
     new run as its system prompt without redeploying the agent.
     """
 
-    async def get_system_prompt(self) -> str | None:
+    async def get_system_prompt(
+        self,
+        *,
+        tenant_id: str = DEFAULT_TENANT_ID,
+        workspace_id: str = DEFAULT_WORKSPACE_ID,
+    ) -> str | None:
         """Return the current workspace system prompt, or ``None`` if unset."""
         ...
 
-    async def set_system_prompt(self, prompt: str | None) -> None:
+    async def set_system_prompt(
+        self,
+        prompt: str | None,
+        *,
+        tenant_id: str = DEFAULT_TENANT_ID,
+        workspace_id: str = DEFAULT_WORKSPACE_ID,
+    ) -> None:
         """Persist ``prompt`` as the workspace system prompt; ``None`` clears it."""
         ...
 

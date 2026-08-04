@@ -179,6 +179,45 @@ async def test_create_forwards_the_workspace_prompt_to_source_start() -> None:
     assert source.start_system_prompts == ["Always be terse."]
 
 
+@pytest.mark.asyncio
+async def test_create_reads_prompt_from_the_task_security_context() -> None:
+    from deepwork_api.adapters.prompt import InMemoryPromptStore
+    from deepwork_api.domain import SecurityContext
+
+    context_a = SecurityContext("tenant-a", "workspace-shared", "actor-a")
+    context_b = SecurityContext("tenant-b", "workspace-shared", "actor-b")
+    prompt_store = InMemoryPromptStore("Default persona.")
+    await prompt_store.set_system_prompt(
+        "Tenant A persona.",
+        tenant_id=context_a.tenant_id,
+        workspace_id=context_a.workspace_id,
+    )
+    await prompt_store.set_system_prompt(
+        "Tenant B persona.",
+        tenant_id=context_b.tenant_id,
+        workspace_id=context_b.workspace_id,
+    )
+
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(repository, source, prompt_store=prompt_store)
+    try:
+        await runner.create(
+            title="a",
+            objective="Use A",
+            security_context=context_a,
+        )
+        await runner.create(
+            title="b",
+            objective="Use B",
+            security_context=context_b,
+        )
+    finally:
+        await runner.close()
+
+    assert source.start_system_prompts == ["Tenant A persona.", "Tenant B persona."]
+
+
 async def test_create_without_a_prompt_store_sends_no_override() -> None:
     repository = InMemoryTaskRepository()
     source = _Source()

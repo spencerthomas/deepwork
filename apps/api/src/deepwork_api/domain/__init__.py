@@ -8,8 +8,12 @@ from deepwork_api.domain.agents import (
     DefaultAgentImmutableError,
 )
 from deepwork_api.domain.auth import (
+    DEFAULT_ACTOR_ID,
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
     AuthError,
     InvalidCredentialError,
+    SecurityContext,
     Session,
     SessionExpiredError,
     SessionNotFoundError,
@@ -76,6 +80,9 @@ from deepwork_api.domain.tasks import (
 
 __all__ = [
     "CANCELLATION_SAFE_REASON",
+    "DEFAULT_ACTOR_ID",
+    "DEFAULT_TENANT_ID",
+    "DEFAULT_WORKSPACE_ID",
     "MAX_AGENT_DESCRIPTION_LENGTH",
     "MAX_AGENT_NAME_LENGTH",
     "MAX_PLAN_REVISION",
@@ -119,6 +126,7 @@ __all__ = [
     "ProposedPlan",
     "ScheduleDomainError",
     "ScheduleRegistryUnavailableError",
+    "SecurityContext",
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",

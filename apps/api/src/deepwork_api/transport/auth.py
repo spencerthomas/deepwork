@@ -35,11 +35,16 @@ class SessionResponse(BaseModel):
     """Non-secret session projection returned to the client."""
 
     actorId: str
+    workspaceId: str
     expiresAt: float
 
     @classmethod
     def from_domain(cls, session: Session) -> SessionResponse:
-        return cls(actorId=session.actor_id, expiresAt=session.expires_at)
+        return cls(
+            actorId=session.actor_id,
+            workspaceId=session.security_context.workspace_id,
+            expiresAt=session.expires_at,
+        )
 
 
 def _extract_token(request: Request, authorization: str | None) -> str:

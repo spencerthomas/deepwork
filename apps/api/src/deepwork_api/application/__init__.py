@@ -9,6 +9,9 @@ from deepwork_api.application.local_runner import (
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
+    DEFAULT_ACTOR_ID,
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
     AgentRegistryUnavailableError,
     CancellationRecord,
     DecisionBatchUnsupportedError,
@@ -24,6 +27,7 @@ from deepwork_api.domain import (
     PlanRevisionConflictError,
     PlanUnavailableError,
     ScheduleRegistryUnavailableError,
+    SecurityContext,
     Session,
     SessionExpiredError,
     SessionNotFoundError,
@@ -41,6 +45,9 @@ from deepwork_api.domain import (
 from deepwork_api.ports import PromptStore, TraceLocator
 
 __all__ = [
+    "DEFAULT_ACTOR_ID",
+    "DEFAULT_TENANT_ID",
+    "DEFAULT_WORKSPACE_ID",
     "AgentRegistryUnavailableError",
     "AuthService",
     "CancellationRecord",
@@ -62,6 +69,7 @@ __all__ = [
     "PlanUnavailableError",
     "PromptStore",
     "ScheduleRegistryUnavailableError",
+    "SecurityContext",
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",

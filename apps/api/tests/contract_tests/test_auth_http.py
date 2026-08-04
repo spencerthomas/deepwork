@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI
 
 from deepwork_api import create_app
+from deepwork_api.adapters.auth import InMemorySessionStore
+from deepwork_api.application import AuthService
+from deepwork_api.domain import DEFAULT_WORKSPACE_ID, SecurityContext
+from deepwork_api.transport import build_auth_router
 
 ACCESS_KEY = "s3cret-operator-key"
 
@@ -21,6 +25,23 @@ async def _app(*, access_key: str | None = None) -> AsyncIterator[httpx.AsyncCli
         # https base URL so the Secure session cookie is sent back by the client.
         async with httpx.AsyncClient(transport=transport, base_url="https://auth.test") as client:
             yield client
+
+
+@asynccontextmanager
+async def _mapped_auth_app(
+    access_key_contexts: Mapping[str, SecurityContext],
+) -> AsyncIterator[httpx.AsyncClient]:
+    app = FastAPI()
+    auth = AuthService(
+        store=InMemorySessionStore(),
+        access_key_contexts=access_key_contexts,
+        now=lambda: 1000.0,
+        token_factory=lambda: "mapped-token",
+    )
+    app.include_router(build_auth_router(auth))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="https://auth.test") as client:
+        yield client
 
 
 async def test_no_access_key_leaves_tasks_open() -> None:
@@ -46,7 +67,12 @@ async def test_login_returns_only_session_projection_and_supports_cookie_auth() 
         ok = await client.post("/api/v1/auth/login", json={"accessKey": ACCESS_KEY})
         assert ok.status_code == 200
         body = ok.json()
-        assert body == {"actorId": "operator", "expiresAt": body["expiresAt"]}
+        assert body == {
+            "actorId": "operator",
+            "workspaceId": DEFAULT_WORKSPACE_ID,
+            "expiresAt": body["expiresAt"],
+        }
+        assert "tenantId" not in body
         assert "token" not in body
         assert "deepwork_session" in ok.headers.get("set-cookie", "")
 
@@ -58,6 +84,33 @@ async def test_login_returns_only_session_projection_and_supports_cookie_auth() 
         whoami = await client.get("/api/v1/auth/session")
         assert whoami.status_code == 200
         assert whoami.json()["actorId"] == "operator"
+        assert whoami.json()["workspaceId"] == DEFAULT_WORKSPACE_ID
+        assert "tenantId" not in whoami.json()
+
+
+async def test_mapped_access_keys_project_only_their_actor_and_workspace() -> None:
+    contexts = {
+        "key-a": SecurityContext("tenant-secret-a", "workspace-a", "actor-a"),
+        "key-b": SecurityContext("tenant-secret-b", "workspace-b", "actor-b"),
+    }
+
+    async with _mapped_auth_app(contexts) as client:
+        response = await client.post("/api/v1/auth/login", json={"accessKey": "key-b"})
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "actorId": "actor-b",
+            "workspaceId": "workspace-b",
+            "expiresAt": 44200.0,
+        }
+        serialized = response.text
+        assert "tenant-secret-a" not in serialized
+        assert "tenant-secret-b" not in serialized
+        assert "key-a" not in serialized
+        assert "key-b" not in serialized
+
+        session = await client.get("/api/v1/auth/session")
+        assert session.json() == response.json()
 
 
 async def test_logout_revokes_the_session() -> None:

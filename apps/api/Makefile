@@ -6,7 +6,7 @@ OFFLINE_UV := $(UV) --offline --no-python-downloads
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
 
-.PHONY: bootstrap build check contract doctor format format-check lint offline-ready openapi package-check test test-local-backup test-postgres typecheck
+.PHONY: bootstrap build check contract doctor format format-check lint offline-ready openapi package-check test test-local-backup test-local-recovery test-postgres typecheck
 
 offline-ready:
 	@test -x "$(UV_PROJECT_ENVIRONMENT)/bin/python" -a -d "$(UV_CACHE_DIR)" || { \
@@ -42,6 +42,12 @@ test-local-backup: offline-ready
 	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket \
 		tests/unit_tests/test_sqlite_backup.py \
 		tests/contract_tests/test_sqlite_backup_restore.py
+
+test-local-recovery: offline-ready
+	$(OFFLINE_UV) run --frozen pytest --disable-socket --allow-unix-socket \
+		tests/unit_tests/test_sqlite_backup.py \
+		tests/contract_tests/test_sqlite_backup_restore.py \
+		tests/unit_tests/test_local_runner.py::test_expired_source_lease_is_taken_over_after_owner_process_is_killed
 
 test-postgres: offline-ready
 	@test -n "$(DEEPWORK_TEST_DATABASE_URL)" || { \

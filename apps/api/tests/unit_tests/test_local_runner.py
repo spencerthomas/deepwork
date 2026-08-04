@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+import textwrap
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -588,6 +590,132 @@ async def test_startup_recovery_retries_a_transient_source_failure() -> None:
         assert source.attempts == 2
     finally:
         await runner.close()
+
+
+@pytest.mark.asyncio
+async def test_expired_source_lease_is_taken_over_after_owner_process_is_killed(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "process-kill-takeover.sqlite"
+    repository = SQLiteTaskRepository(database)
+    task = await _paused_task(repository)
+    await repository.close()
+    child_program = textwrap.dedent(
+        """
+        import asyncio
+        import sys
+        from types import SimpleNamespace
+
+        from deepwork_api.adapters.persistence.sqlite import SQLiteTaskRepository
+        from deepwork_api.application import local_runner
+        from deepwork_api.application.local_runner import LocalAgentServerRunner
+        from deepwork_api.domain import TaskStatus
+
+        local_runner._SOURCE_LEASE_SECONDS = 1
+        local_runner._SOURCE_RECOVERY_MAX_DELAY_SECONDS = 0.05
+
+        class Source:
+            async def get_state(self, thread_id):
+                if sys.argv[2] == "owner":
+                    interrupt = SimpleNamespace(
+                        interrupt_id="interrupt_1",
+                        plan=("First step",),
+                        plan_revision=1,
+                    )
+                    return SimpleNamespace(
+                        status="planned",
+                        plan=("First step",),
+                        plan_revision=1,
+                        final_answer=None,
+                        interrupt=interrupt,
+                    )
+                return SimpleNamespace(
+                    status="completed",
+                    plan=("First step",),
+                    plan_revision=1,
+                    final_answer="Recovered after process kill",
+                    interrupt=None,
+                )
+
+            async def stream(self, run, *, after_cursor=None):
+                if sys.argv[2] == "owner":
+                    await asyncio.Event().wait()
+                if False:
+                    yield None
+
+        async def main():
+            repository = SQLiteTaskRepository(sys.argv[1])
+            task = await repository.get_task(sys.argv[3])
+            runner = LocalAgentServerRunner(repository, Source())
+            if sys.argv[2] == "owner":
+                assert await runner.recover(task) is True
+                print("OWNER_READY", flush=True)
+                await asyncio.Event().wait()
+            else:
+                runner.watch_recovery(task)
+                for _ in range(200):
+                    current = await repository.get_task(task.task_id)
+                    if current.status is TaskStatus.COMPLETED:
+                        print("TAKEOVER_COMPLETED", flush=True)
+                        await runner.close()
+                        await repository.close()
+                        return
+                    await asyncio.sleep(0.05)
+                raise RuntimeError("takeover did not complete")
+
+        asyncio.run(main())
+        """
+    )
+
+    async def start_child(mode: str) -> asyncio.subprocess.Process:
+        return await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-c",
+            child_program,
+            str(database),
+            mode,
+            task.task_id,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+    owner = await start_child("owner")
+    takeover: asyncio.subprocess.Process | None = None
+    try:
+        assert owner.stdout is not None
+        assert await asyncio.wait_for(owner.stdout.readline(), timeout=5) == b"OWNER_READY\n"
+        contender_repository = SQLiteTaskRepository(database)
+        assert (
+            await contender_repository.acquire_source_lease(
+                task.task_id,
+                owner_id="pre-kill-contender",
+                lease_seconds=1,
+            )
+            is None
+        )
+        await contender_repository.close()
+
+        owner.kill()
+        assert await asyncio.wait_for(owner.wait(), timeout=5) < 0
+        takeover = await start_child("takeover")
+        assert takeover.stdout is not None
+        assert (
+            await asyncio.wait_for(takeover.stdout.readline(), timeout=8) == b"TAKEOVER_COMPLETED\n"
+        )
+        assert await asyncio.wait_for(takeover.wait(), timeout=5) == 0
+
+        recovered_repository = SQLiteTaskRepository(database)
+        recovered = await recovered_repository.get_task(task.task_id)
+        events = await recovered_repository.events_after(task.task_id, 0)
+        assert recovered.status is TaskStatus.COMPLETED
+        assert recovered.result == "Recovered after process kill"
+        assert [event.name for event in events].count(TaskEventName.RUN_COMPLETED) == 1
+        await recovered_repository.close()
+    finally:
+        for process in (takeover, owner):
+            if process is not None and process.returncode is None:
+                process.kill()
+                await process.wait()
 
 
 async def test_independent_task_keys_can_start_the_source_concurrently() -> None:

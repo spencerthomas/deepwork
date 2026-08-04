@@ -79,7 +79,7 @@ test-e2e-demo:
 	pnpm test:e2e-demo
 
 test-recovery:
-	$(MAKE) -C apps/api test-local-backup
+	$(MAKE) -C apps/api test-local-recovery
 	pnpm test:recovery
 
 test-postgres:

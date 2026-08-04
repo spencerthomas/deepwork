@@ -515,11 +515,7 @@ export function mapTaskAccepted(
   resolver: TaskBindingResolver,
 ): SdkResult<TaskAccepted> {
   return attempt(() => {
-    const wire = record(
-      value,
-      ["taskId", "runId", "status", "duplicate"],
-      "Create-task receipt",
-    );
+    const wire = record(value, ["taskId", "runId", "status", "duplicate"], "Create-task receipt");
     if (wire.status !== "queued") {
       throw new TypeError("Create-task status must be queued.");
     }

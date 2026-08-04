@@ -11,6 +11,7 @@ import {
   validatePrompt,
 } from "./task-normalizers";
 import { subscribeToTaskEvents } from "./sse";
+import { TaskCreateFailure } from "./task-create-outcome";
 import type {
   CancelResult,
   CreateTaskResult,
@@ -153,6 +154,7 @@ async function request(url: string, init: RequestInit, expectedStatus: number): 
 export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
   const apiBaseUrl = normalizeBaseUrl(configuredBaseUrl);
   const taskUrl = `${apiBaseUrl}/api/v1/tasks`;
+  const createReceipts = new Map<string, CreateTaskResult>();
 
   return {
     mode: "api",
@@ -172,13 +174,20 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
       return normalizeTaskDetail(body);
     },
 
-    async createTask(prompt: string, options = {}): Promise<CreateTaskResult> {
+    async createTask(prompt: string, options): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
-      const body = await request(
-        taskUrl,
-        {
+      if (options.idempotencyKey.trim() === "") {
+        throw new TaskCreateFailure("rejected", "A task dispatch identity is required.");
+      }
+      let response: Response;
+      try {
+        response = await fetch(taskUrl, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "Idempotency-Key": options.idempotencyKey,
+          },
           body: JSON.stringify({
             prompt: normalizedPrompt,
             ...(options.journey === "coding"
@@ -187,10 +196,54 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
             ...(options.agentId ? { agentId: options.agentId } : {}),
           }),
           signal: options.signal,
-        },
-        202,
-      );
-      return normalizeCreateTaskResult(body);
+        });
+      } catch {
+        throw new TaskCreateFailure(
+          "unknown",
+          "Deep Work could not confirm whether the task started.",
+        );
+      }
+
+      let body: unknown;
+      try {
+        body = await readResponseBody(response);
+      } catch {
+        if (response.status >= 400 && response.status < 500) {
+          throw new TaskCreateFailure(
+            "rejected",
+            `The API rejected the task request with HTTP ${response.status}.`,
+          );
+        }
+        throw new TaskCreateFailure("unknown", "Deep Work received an unreadable task receipt.");
+      }
+      const code = errorCode(body);
+      if (response.status !== 202) {
+        const kind =
+          response.status === 409 && code === "task_idempotency_conflict"
+            ? "conflict"
+            : response.status >= 400 && response.status < 500
+              ? "rejected"
+              : "unknown";
+        throw new TaskCreateFailure(kind, errorMessage(response.status, body), code);
+      }
+      try {
+        const receipt = normalizeCreateTaskResult(body);
+        const previous = createReceipts.get(options.idempotencyKey);
+        if (previous && (previous.taskId !== receipt.taskId || previous.runId !== receipt.runId)) {
+          throw new TaskCreateFailure(
+            "unknown",
+            "Deep Work received conflicting task receipts for the original request.",
+          );
+        }
+        createReceipts.set(options.idempotencyKey, receipt);
+        return receipt;
+      } catch {
+        // Every accepted response must satisfy and preserve the receipt contract.
+        throw new TaskCreateFailure(
+          "unknown",
+          "Deep Work received a task receipt that did not match the create contract.",
+        );
+      }
     },
 
     async decide(

@@ -23,6 +23,7 @@ import {
   validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
+import { TaskCreateFailure } from "./task-create-outcome";
 
 const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
   "completed",
@@ -45,6 +46,7 @@ interface FixtureTask extends Omit<TaskDetail, "runId"> {
 
 const tasks = new Map<string, FixtureTask>();
 const subscribers = new Map<string, Set<TaskEventHandlers>>();
+const createReceipts = new Map<string, { digest: string; receipt: CreateTaskResult }>();
 let nextTaskNumber = 1;
 
 function emit(task: FixtureTask, name: TaskEvent["name"], data: TaskEvent["data"]) {
@@ -196,6 +198,7 @@ function publicTask(task: FixtureTask): TaskDetail {
   return {
     taskId: task.taskId,
     runId: task.runId,
+    agentId: task.agentId,
     title: task.title,
     prompt: task.prompt,
     status: task.status,
@@ -227,8 +230,28 @@ export function createFixtureTaskClient(): TaskClient {
       return publicTask(task);
     },
 
-    async createTask(prompt: string, options = {}): Promise<CreateTaskResult> {
+    async createTask(prompt: string, options): Promise<CreateTaskResult> {
       const normalizedPrompt = validatePrompt(prompt);
+      const idempotencyKey = options.idempotencyKey.trim();
+      if (idempotencyKey === "") {
+        throw new TaskCreateFailure("rejected", "A task dispatch identity is required.");
+      }
+      const digest = JSON.stringify({
+        prompt: normalizedPrompt,
+        agentId: options.agentId ?? null,
+        journey: options.journey ?? "general",
+      });
+      const previous = createReceipts.get(idempotencyKey);
+      if (previous) {
+        if (previous.digest !== digest) {
+          throw new TaskCreateFailure(
+            "conflict",
+            "This task dispatch identity already belongs to a different request.",
+            "task_idempotency_conflict",
+          );
+        }
+        return { ...previous.receipt, duplicate: true };
+      }
       const sequence = nextTaskNumber++;
       const taskId = `fixture-task-${sequence}`;
       const runId = `fixture-run-${sequence}`;
@@ -242,6 +265,7 @@ export function createFixtureTaskClient(): TaskClient {
         createdAt,
         updatedAt: createdAt,
         ...(options.journey === "coding" ? { journey: "coding" as const } : {}),
+        ...(options.agentId ? { agentId: options.agentId } : {}),
         events: [],
         interruptId: `fixture-interrupt-${sequence}`,
         responseNumber: 0,
@@ -257,7 +281,9 @@ export function createFixtureTaskClient(): TaskClient {
           : {}),
       });
       scheduleRun(task);
-      return { taskId, runId, status: "queued" };
+      const receipt = { taskId, runId, status: "queued" as const, duplicate: false };
+      createReceipts.set(idempotencyKey, { digest, receipt });
+      return receipt;
     },
 
     async decide(taskId: string, input: DecisionInput): Promise<DecisionResult> {

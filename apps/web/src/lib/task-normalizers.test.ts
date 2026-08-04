@@ -58,13 +58,22 @@ describe("task response normalization", () => {
         taskId: "task-1",
         runId: "run-1",
         status: "queued",
+        duplicate: false,
       }),
-    ).toEqual({ taskId: "task-1", runId: "run-1", status: "queued" });
+    ).toEqual({ taskId: "task-1", runId: "run-1", status: "queued", duplicate: false });
+    expect(() =>
+      normalizeCreateTaskResult({
+        taskId: "task-1",
+        runId: "run-1",
+        status: "queued",
+      }),
+    ).toThrow("duplicate");
     expect(() =>
       normalizeCreateTaskResult({
         taskId: "task-1",
         runId: "run-1",
         status: "completed",
+        duplicate: false,
       }),
     ).toThrow("must be queued");
   });

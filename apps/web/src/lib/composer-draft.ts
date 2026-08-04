@@ -19,7 +19,11 @@
  * any storage access; there is deliberately no generic API fallback.
  */
 
+import { PROMPT_MAX_LENGTH } from "./task-types";
+import { validatePrompt } from "./task-normalizers";
+
 export const DRAFT_STORAGE_PREFIX = "dw-task-draft";
+export const DISPATCH_ATTEMPT_STORAGE_PREFIX = "dw-task-dispatch";
 
 /** Drafts older than this (or future-dated) are treated as expired and dropped. */
 export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -30,6 +34,35 @@ export const DRAFT_MAX_LENGTH = 20_000;
 export interface ComposerDraft {
   prompt: string;
   savedAt: number;
+}
+
+export interface ComposerDispatchAttempt {
+  schemaVersion: 1;
+  idempotencyKey: string;
+  attemptedAt: number;
+  prompt: string;
+  agentId?: string;
+  journey: "general" | "coding";
+}
+
+export function createComposerDispatchAttempt(
+  input: Pick<ComposerDispatchAttempt, "prompt" | "agentId" | "journey">,
+  now: number,
+  createKey: () => string,
+): ComposerDispatchAttempt {
+  const prompt = validatePrompt(input.prompt);
+  const idempotencyKey = createKey().trim();
+  if (idempotencyKey === "") {
+    throw new Error("A task dispatch identity could not be created.");
+  }
+  return {
+    schemaVersion: 1,
+    idempotencyKey,
+    attemptedAt: now,
+    prompt,
+    ...(input.agentId ? { agentId: input.agentId } : {}),
+    journey: input.journey,
+  };
 }
 
 export interface DraftIdentity {
@@ -58,6 +91,10 @@ export function draftScopeForRuntime(runtime: DraftRuntimeScope): string {
  */
 export function draftStorageKey(scope: string): string {
   return `${DRAFT_STORAGE_PREFIX}:${scope}`;
+}
+
+export function dispatchAttemptStorageKey(scope: string): string {
+  return `${DISPATCH_ATTEMPT_STORAGE_PREFIX}:${scope}`;
 }
 
 /** Human-readable age of a saved draft (pure): "just now", "5 minutes ago", … */
@@ -116,6 +153,47 @@ export function serializeComposerDraft(prompt: string, now: number): string {
   return JSON.stringify({ prompt: prompt.slice(0, DRAFT_MAX_LENGTH), savedAt: now });
 }
 
+export function parseComposerDispatchAttempt(
+  raw: string | null,
+  now: number,
+): ComposerDispatchAttempt | null {
+  if (raw === null || raw === "") return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+  const record = parsed as Record<string, unknown>;
+  const { schemaVersion, idempotencyKey, attemptedAt, prompt, agentId, journey } = record;
+  if (
+    schemaVersion !== 1 ||
+    typeof idempotencyKey !== "string" ||
+    idempotencyKey.trim() === "" ||
+    typeof attemptedAt !== "number" ||
+    !Number.isFinite(attemptedAt) ||
+    typeof prompt !== "string" ||
+    prompt.trim() === "" ||
+    prompt.length > PROMPT_MAX_LENGTH ||
+    (journey !== "general" && journey !== "coding") ||
+    (agentId !== undefined && (typeof agentId !== "string" || agentId.trim() === ""))
+  ) {
+    return null;
+  }
+  // Unlike an ordinary draft, an ambiguous dispatch must not silently expire:
+  // only an accepted receipt or authoritative rejection may unlock it.
+  if (attemptedAt < 0 || attemptedAt > now) return null;
+  return {
+    schemaVersion: 1,
+    idempotencyKey,
+    attemptedAt,
+    prompt,
+    ...(typeof agentId === "string" ? { agentId } : {}),
+    journey,
+  };
+}
+
 function storage(): Storage | null {
   try {
     return window.localStorage;
@@ -165,5 +243,42 @@ export function clearComposerDraft(scope: string): void {
     store.removeItem(draftStorageKey(scope));
   } catch {
     // Best effort; nothing to recover if removal fails.
+  }
+}
+
+export function loadComposerDispatchAttempt(
+  scope: string,
+  now: number = Date.now(),
+): ComposerDispatchAttempt | null {
+  const store = storage();
+  if (store === null) return null;
+  try {
+    return parseComposerDispatchAttempt(store.getItem(dispatchAttemptStorageKey(scope)), now);
+  } catch {
+    return null;
+  }
+}
+
+export function saveComposerDispatchAttempt(
+  scope: string,
+  attempt: ComposerDispatchAttempt,
+): boolean {
+  const store = storage();
+  if (store === null) return false;
+  try {
+    store.setItem(dispatchAttemptStorageKey(scope), JSON.stringify(attempt));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearComposerDispatchAttempt(scope: string): void {
+  const store = storage();
+  if (store === null) return;
+  try {
+    store.removeItem(dispatchAttemptStorageKey(scope));
+  } catch {
+    // Best effort; the in-memory composer remains locked for this session.
   }
 }

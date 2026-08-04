@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createHttpTaskClient } from "./http-task-client";
+import { isTaskCreateFailure } from "./task-create-outcome";
 import {
   recoverCurrentTaskAfterDecisionProblem,
   recoverCurrentTaskAfterPlanProblem,
@@ -11,6 +12,181 @@ afterEach(() => {
 });
 
 describe("Outcome 2 HTTP client", () => {
+  it("sends the caller's idempotency key and returns the duplicate receipt", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            taskId: "task-1",
+            runId: "run-1",
+            status: "queued",
+            duplicate: true,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+        idempotencyKey: "dispatch-key-1",
+        agentId: "agent-a",
+      }),
+    ).resolves.toMatchObject({ duplicate: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/api/v1/tasks",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        headers: expect.objectContaining({ "Idempotency-Key": "dispatch-key-1" }),
+      }),
+    );
+  });
+
+  it.each([
+    [400, "invalid_request", "rejected"],
+    [422, "invalid_request", "rejected"],
+    [409, "task_idempotency_conflict", "conflict"],
+    [500, "server_error", "unknown"],
+    [503, "local_source_unavailable", "unknown"],
+  ] as const)("classifies HTTP %s create failures as %s", async (status, code, kind) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ code, message: "Create problem" }), {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+
+    let problem: unknown;
+    try {
+      await createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+        idempotencyKey: "dispatch-key-1",
+      });
+    } catch (error) {
+      problem = error;
+    }
+    expect(isTaskCreateFailure(problem, kind)).toBe(true);
+  });
+
+  it.each(["network", "malformed"] as const)(
+    "classifies %s create ambiguity as unknown",
+    async (problemKind) => {
+      vi.stubGlobal(
+        "fetch",
+        problemKind === "network"
+          ? vi.fn(async () => {
+              throw new TypeError("connection reset");
+            })
+          : vi.fn(
+              async () =>
+                new Response("{broken", {
+                  status: 202,
+                  headers: { "content-type": "application/json" },
+                }),
+            ),
+      );
+
+      let problem: unknown;
+      try {
+        await createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+          idempotencyKey: "dispatch-key-1",
+        });
+      } catch (error) {
+        problem = error;
+      }
+      expect(isTaskCreateFailure(problem, "unknown")).toBe(true);
+    },
+  );
+
+  it("classifies a malformed accepted receipt as unknown", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ taskId: "task-1", runId: "run-1", status: "queued" }), {
+            status: 202,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+
+    let problem: unknown;
+    try {
+      await createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+        idempotencyKey: "dispatch-key-1",
+      });
+    } catch (error) {
+      problem = error;
+    }
+    expect(isTaskCreateFailure(problem, "unknown")).toBe(true);
+  });
+
+  it("uses a 4xx status as authoritative rejection even when its body is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("{broken", {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+
+    let problem: unknown;
+    try {
+      await createHttpTaskClient("http://api.test").createTask("Prepare the release", {
+        idempotencyKey: "dispatch-key-rejected",
+      });
+    } catch (error) {
+      problem = error;
+    }
+    expect(isTaskCreateFailure(problem, "rejected")).toBe(true);
+  });
+
+  it("classifies a changed receipt for the same key and body as unknown", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            taskId: "task-1",
+            runId: "run-1",
+            status: "queued",
+            duplicate: false,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            taskId: "task-other",
+            runId: "run-other",
+            status: "queued",
+            duplicate: true,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createHttpTaskClient("http://api.test");
+    const options = { idempotencyKey: "dispatch-key-mismatch" };
+
+    await client.createTask("Prepare the release", options);
+    let problem: unknown;
+    try {
+      await client.createTask("Prepare the release", options);
+    } catch (error) {
+      problem = error;
+    }
+    expect(isTaskCreateFailure(problem, "unknown")).toBe(true);
+  });
+
   it("sends the exact interrupt and revision guard when updating a plan", async () => {
     const fetchMock = vi.fn(
       async () =>

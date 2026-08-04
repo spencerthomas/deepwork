@@ -19,12 +19,21 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { SidebarLabel } from "@/components/shell/sidebar-nav";
 import {
+  clearComposerDispatchAttempt,
   clearComposerDraft,
+  createComposerDispatchAttempt,
   draftScopeForRuntime,
   formatDraftAge,
+  loadComposerDispatchAttempt,
   loadComposerDraft,
+  saveComposerDispatchAttempt,
   saveComposerDraft,
+  type ComposerDispatchAttempt,
 } from "@/lib/composer-draft";
+import {
+  nextComposerDispatchPhase,
+  type ComposerDispatchPhase,
+} from "@/lib/composer-dispatch-state";
 import { getSession } from "@/lib/auth-client";
 import { consumeEditRerunPrompt } from "@/lib/edit-rerun-handoff";
 import { unicodeLength, validatePrompt } from "@/lib/task-normalizers";
@@ -44,7 +53,7 @@ const templates = [
 
 export function NewTask() {
   const router = useRouter();
-  const { creating, createError, createTask, mode } = useTasksStore();
+  const { dispatchTask, mode } = useTasksStore();
   const {
     available: agentsAvailable,
     agents,
@@ -57,6 +66,9 @@ export function NewTask() {
   const [agentId, setAgentId] = useState<string>("");
   const [journey, setJourney] = useState<"general" | "coding">("general");
   const [validationError, setValidationError] = useState<string>();
+  const [dispatchPhase, setDispatchPhase] = useState<ComposerDispatchPhase>("editing");
+  const [dispatchMessage, setDispatchMessage] = useState<string>();
+  const [dispatchAttempt, setDispatchAttempt] = useState<ComposerDispatchAttempt>();
   const [restoredAge, setRestoredAge] = useState<string>();
   const [draftScope, setDraftScope] = useState<string | null>(() =>
     mode === "fixture" ? draftScopeForRuntime({ mode: "fixture" }) : null,
@@ -65,6 +77,7 @@ export function NewTask() {
   const promptTouchedRef = useRef(false);
   const editRerunCheckedRef = useRef(false);
   const editRerunWonRef = useRef(false);
+  const dispatchBusyRef = useRef(false);
   const runtimeCopy = taskRuntimePresentation(mode);
   const codingFixtureAvailable =
     mode === "fixture" || (mode === "api" && runtimeStatus?.runtimeKind === "fixture");
@@ -120,6 +133,18 @@ export function NewTask() {
   // precedence over device-local persistence.
   useEffect(() => {
     if (draftScope === null) return;
+    const pendingAttempt = loadComposerDispatchAttempt(draftScope);
+    if (pendingAttempt !== null) {
+      setPrompt(pendingAttempt.prompt);
+      setAgentId(pendingAttempt.agentId ?? "");
+      setJourney(pendingAttempt.journey);
+      setDispatchAttempt(pendingAttempt);
+      setDispatchPhase("outcome-unknown");
+      setDispatchMessage(undefined);
+      setRestoredAge(undefined);
+      setReadyDraftScope(draftScope);
+      return;
+    }
     if (promptTouchedRef.current || editRerunWonRef.current) {
       setReadyDraftScope(draftScope);
       return;
@@ -151,6 +176,12 @@ export function NewTask() {
   }, [draftScope, prompt, readyDraftScope]);
 
   const draftRestored = restoredAge !== undefined;
+  const composerLocked =
+    dispatchPhase === "submitting" ||
+    dispatchPhase === "reconciling" ||
+    dispatchPhase === "outcome-unknown" ||
+    dispatchPhase === "conflict";
+  const requestInFlight = dispatchPhase === "submitting" || dispatchPhase === "reconciling";
 
   function discardDraft() {
     if (draftScope !== null) {
@@ -168,12 +199,62 @@ export function NewTask() {
   // state uses it too and matches what actually dispatches.
   const promptLength = unicodeLength(prompt.trim());
   const overLimit = promptLength > PROMPT_MAX_LENGTH;
-  const shownError = validationError ?? createError;
+  const shownError =
+    validationError ?? (dispatchPhase === "rejected" ? dispatchMessage : undefined);
   const promptDescribedBy = [countId, shownError !== undefined ? errorId : null]
     .filter((id): id is string => id !== null)
     .join(" ");
 
+  async function completeAttempt(
+    attempt: ComposerDispatchAttempt,
+    automaticallyReconcileUnknown: boolean,
+  ) {
+    const outcome = await dispatchTask(
+      attempt.prompt,
+      attempt.idempotencyKey,
+      attempt.agentId,
+      attempt.journey,
+    );
+    if (outcome.kind === "accepted") {
+      if (draftScope !== null) {
+        clearComposerDispatchAttempt(draftScope);
+        clearComposerDraft(draftScope);
+      }
+      setDispatchAttempt(undefined);
+      setRestoredAge(undefined);
+      router.push(`/tasks/${outcome.task.taskId}`);
+      return;
+    }
+    const nextPhase = nextComposerDispatchPhase(
+      automaticallyReconcileUnknown ? "submitting" : "reconciling",
+      outcome.kind,
+    );
+    if (outcome.kind === "rejected") {
+      if (draftScope !== null) clearComposerDispatchAttempt(draftScope);
+      setDispatchAttempt(undefined);
+      setDispatchPhase(nextPhase);
+      setDispatchMessage(outcome.message);
+      return;
+    }
+    if (outcome.kind === "conflict") {
+      setDispatchPhase(nextPhase);
+      setDispatchMessage(outcome.message);
+      return;
+    }
+    if (nextPhase === "reconciling") {
+      setDispatchPhase(nextPhase);
+      // Let the checking state reach the accessibility tree before replaying
+      // the exact persisted request once.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+      await completeAttempt(attempt, false);
+      return;
+    }
+    setDispatchPhase(nextPhase);
+    setDispatchMessage(outcome.message);
+  }
+
   async function dispatch() {
+    if (composerLocked || dispatchBusyRef.current) return;
     if (mode === "api" && (agentsLoading || runtimeLoading) && journey === "coding") {
       setValidationError("Wait for the runtime checks before starting a coding review.");
       return;
@@ -186,6 +267,10 @@ export function NewTask() {
       setValidationError("Choose a connected agent before dispatching this task.");
       return;
     }
+    if (draftScope === null) {
+      setValidationError("Wait for the connected workspace before dispatching this task.");
+      return;
+    }
     try {
       validatePrompt(prompt);
     } catch (error) {
@@ -193,17 +278,39 @@ export function NewTask() {
       return;
     }
     setValidationError(undefined);
-    // The fields are disabled while `creating`, so `prompt` cannot change under
-    // the in-flight request — the value dispatched is the value cleared.
-    const created = await createTask(prompt, agentId || undefined, journey);
-    if (created) {
-      // The work is now a real task; drop the local draft so a later visit
-      // starts clean.
-      if (draftScope !== null) {
-        clearComposerDraft(draftScope);
-      }
-      setRestoredAge(undefined);
-      router.push(`/tasks/${created.taskId}`);
+    const attempt = createComposerDispatchAttempt(
+      { prompt, ...(agentId ? { agentId } : {}), journey },
+      Date.now(),
+      () => globalThis.crypto.randomUUID(),
+    );
+    // Persist synchronously before the POST. Reloads can now reconcile this
+    // exact body and key without starting a second logical task.
+    if (!saveComposerDispatchAttempt(draftScope, attempt)) {
+      setValidationError(
+        "Deep Work could not safely save this request before starting it. Check device storage and try again.",
+      );
+      return;
+    }
+    dispatchBusyRef.current = true;
+    setDispatchAttempt(attempt);
+    setDispatchMessage(undefined);
+    setDispatchPhase("submitting");
+    try {
+      await completeAttempt(attempt, true);
+    } finally {
+      dispatchBusyRef.current = false;
+    }
+  }
+
+  async function checkTask() {
+    if (!dispatchAttempt || dispatchBusyRef.current) return;
+    dispatchBusyRef.current = true;
+    setDispatchMessage(undefined);
+    setDispatchPhase("reconciling");
+    try {
+      await completeAttempt(dispatchAttempt, false);
+    } finally {
+      dispatchBusyRef.current = false;
     }
   }
 
@@ -220,7 +327,7 @@ export function NewTask() {
         <button
           key={template}
           type="button"
-          disabled={creating}
+          disabled={composerLocked}
           onClick={() => {
             promptTouchedRef.current = true;
             setPrompt(template);
@@ -261,7 +368,7 @@ export function NewTask() {
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    disabled={creating}
+                    disabled={composerLocked}
                     onClick={() => setAgentId(value)}
                     className={cn(
                       "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-60",
@@ -347,7 +454,7 @@ export function NewTask() {
               type="button"
               role="radio"
               aria-checked={journey === "general"}
-              disabled={creating}
+              disabled={composerLocked}
               onClick={() => setJourney("general")}
               className={cn(
                 "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-60",
@@ -369,7 +476,7 @@ export function NewTask() {
               role="radio"
               aria-checked={journey === "coding"}
               aria-disabled={codingUnavailable}
-              disabled={creating || codingUnavailable}
+              disabled={composerLocked || codingUnavailable}
               onClick={() => setJourney("coding")}
               className={cn(
                 "flex min-h-24 items-start gap-3 rounded-2xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
@@ -442,7 +549,7 @@ export function NewTask() {
             value={prompt}
             rows={5}
             maxLength={PROMPT_MAX_LENGTH * 2}
-            disabled={creating}
+            disabled={composerLocked}
             placeholder="Describe the outcome you want. The agent plans its own steps and pauses for your review."
             aria-invalid={shownError !== undefined || overLimit}
             aria-describedby={promptDescribedBy}
@@ -477,16 +584,25 @@ export function NewTask() {
             <button
               type="button"
               disabled={
-                creating ||
-                prompt.trim() === "" ||
-                (mode === "api" &&
-                  (agentsLoading || agentsError !== undefined || (agentsAvailable && !agentId)))
+                requestInFlight ||
+                dispatchPhase === "conflict" ||
+                (dispatchPhase !== "outcome-unknown" &&
+                  (draftScope === null ||
+                    prompt.trim() === "" ||
+                    (mode === "api" &&
+                      (agentsLoading ||
+                        agentsError !== undefined ||
+                        (agentsAvailable && !agentId)))))
               }
-              onClick={() => void dispatch()}
+              onClick={() => void (dispatchPhase === "outcome-unknown" ? checkTask() : dispatch())}
               className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-1.5 text-[13px] font-medium text-brand-foreground transition-colors hover:bg-brand-hover disabled:pointer-events-none disabled:opacity-50"
             >
-              {creating ? (
+              {dispatchPhase === "submitting" ? (
                 "Starting…"
+              ) : dispatchPhase === "reconciling" ? (
+                "Checking…"
+              ) : dispatchPhase === "outcome-unknown" ? (
+                "Check task"
               ) : (
                 <>
                   <Sparkles className="size-3.5" /> Dispatch
@@ -496,6 +612,60 @@ export function NewTask() {
             </button>
           </div>
         </div>
+
+        {dispatchPhase === "submitting" ? (
+          <div
+            className="mt-3 rounded-2xl border border-border bg-secondary/60 px-4 py-3"
+            role="status"
+          >
+            <p className="text-sm font-medium">Starting this task…</p>
+          </div>
+        ) : dispatchPhase === "reconciling" ? (
+          <div
+            className="mt-3 rounded-2xl border border-border bg-secondary/60 px-4 py-3"
+            role="status"
+          >
+            <p className="text-sm font-medium">Checking the original request…</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Task start not confirmed yet. Deep Work is checking the original request so it does
+              not start twice.
+            </p>
+          </div>
+        ) : dispatchPhase === "outcome-unknown" ? (
+          <div
+            className="mt-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
+            role="alert"
+          >
+            <p className="text-sm font-medium">Task start not confirmed.</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Deep Work could not confirm the original request. It may already be running. Check the
+              same request before starting anything else.
+            </p>
+            <Link
+              href="/tasks"
+              className="mt-3 inline-flex rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium"
+            >
+              View tasks
+            </Link>
+          </div>
+        ) : dispatchPhase === "conflict" ? (
+          <div
+            className="mt-3 rounded-2xl border border-status-failed/30 bg-status-failed-bg px-4 py-3"
+            role="alert"
+          >
+            <p className="text-sm font-medium">This request identity is already in use.</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {dispatchMessage ??
+                "The saved request key belongs to different task details. Review existing tasks before taking another action."}
+            </p>
+            <Link
+              href="/tasks"
+              className="mt-3 inline-flex rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium"
+            >
+              View tasks
+            </Link>
+          </div>
+        ) : null}
 
         {shownError !== undefined && (
           <div
@@ -519,7 +689,7 @@ export function NewTask() {
               <button
                 key={template}
                 type="button"
-                disabled={creating}
+                disabled={composerLocked}
                 onClick={() => {
                   promptTouchedRef.current = true;
                   setPrompt(template);

@@ -8,10 +8,27 @@ afterEach(() => {
 });
 
 describe("fixture task client", () => {
+  it("replays the same create key without creating a second task and rejects changed input", async () => {
+    const client = createFixtureTaskClient();
+    const options = { idempotencyKey: "fixture-create-replay" };
+
+    const created = await client.createTask("Prepare an idempotent plan", options);
+    await expect(client.createTask("Prepare an idempotent plan", options)).resolves.toEqual({
+      ...created,
+      duplicate: true,
+    });
+    await expect(client.createTask("Changed prompt", options)).rejects.toMatchObject({
+      kind: "conflict",
+      code: "task_idempotency_conflict",
+    });
+  });
+
   it("preserves repeated actions and applies an ordered approve/edit vector atomically", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
-    const created = await client.createTask("Prepare an ordered release plan");
+    const created = await client.createTask("Prepare an ordered release plan", {
+      idempotencyKey: "fixture-create-1",
+    });
     const events: TaskEvent[] = [];
     client.subscribe(created.taskId, {
       onConnectionChange: () => undefined,
@@ -69,7 +86,9 @@ describe("fixture task client", () => {
   it("records a rejected ordered batch as one terminal fixture outcome", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
-    const created = await client.createTask("Reject an ordered release plan");
+    const created = await client.createTask("Reject an ordered release plan", {
+      idempotencyKey: "fixture-create-2",
+    });
     const events: TaskEvent[] = [];
     client.subscribe(created.taskId, {
       onConnectionChange: () => undefined,
@@ -105,7 +124,9 @@ describe("fixture task client", () => {
   it("runs create, evidence, plan edit, response, approval, and result locally", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
-    const created = await client.createTask("Prepare a release checklist");
+    const created = await client.createTask("Prepare a release checklist", {
+      idempotencyKey: "fixture-create-3",
+    });
     const events: TaskEvent[] = [];
     let connection = "closed";
     const close = client.subscribe(created.taskId, {
@@ -182,7 +203,9 @@ describe("fixture task client", () => {
   it("cancels a waiting task, stays terminal, and refuses a finished task", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
-    const created = await client.createTask("Prepare a plan I will stop");
+    const created = await client.createTask("Prepare a plan I will stop", {
+      idempotencyKey: "fixture-create-4",
+    });
     const events: TaskEvent[] = [];
     const close = client.subscribe(created.taskId, {
       onConnectionChange: () => undefined,
@@ -222,7 +245,9 @@ describe("fixture task client", () => {
   it("refuses to cancel an already completed task", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
-    const created = await client.createTask("Approve me to completion");
+    const created = await client.createTask("Approve me to completion", {
+      idempotencyKey: "fixture-create-5",
+    });
     const events: TaskEvent[] = [];
     client.subscribe(created.taskId, {
       onConnectionChange: () => undefined,

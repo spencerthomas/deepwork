@@ -1,13 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  clearComposerDispatchAttempt,
+  createComposerDispatchAttempt,
+  dispatchAttemptStorageKey,
   DRAFT_MAX_LENGTH,
   DRAFT_TTL_MS,
   draftScopeForRuntime,
   draftStorageKey,
   formatDraftAge,
   loadComposerDraft,
+  loadComposerDispatchAttempt,
+  parseComposerDispatchAttempt,
   parseComposerDraft,
+  saveComposerDispatchAttempt,
   serializeComposerDraft,
 } from "./composer-draft";
 
@@ -142,5 +148,102 @@ describe("formatDraftAge", () => {
 
   it("never reports negative ages for a future stamp", () => {
     expect(formatDraftAge(NOW + 5 * MINUTE, NOW)).toBe("just now");
+  });
+});
+
+describe("ComposerDispatchAttempt", () => {
+  const attempt = {
+    schemaVersion: 1 as const,
+    idempotencyKey: "dispatch-key-1",
+    attemptedAt: NOW,
+    prompt: "Write the exact launch brief",
+    agentId: "agent-a",
+    journey: "coding" as const,
+  };
+
+  it("round-trips the exact locked request independently from the ordinary draft", () => {
+    expect(parseComposerDispatchAttempt(JSON.stringify(attempt), NOW)).toEqual(attempt);
+    expect(dispatchAttemptStorageKey("fixture")).toBe("dw-task-dispatch:fixture");
+    expect(dispatchAttemptStorageKey("fixture")).not.toBe(draftStorageKey("fixture"));
+  });
+
+  it("does not generate a request identity until the prompt is valid", () => {
+    const createKey = vi.fn(() => "dispatch-key-new");
+
+    expect(() =>
+      createComposerDispatchAttempt(
+        { prompt: " ", agentId: "agent-a", journey: "general" },
+        NOW,
+        createKey,
+      ),
+    ).toThrow("cannot be empty");
+    expect(createKey).not.toHaveBeenCalled();
+
+    expect(
+      createComposerDispatchAttempt(
+        { prompt: "  Write the brief  ", agentId: "agent-a", journey: "general" },
+        NOW,
+        createKey,
+      ),
+    ).toEqual({
+      schemaVersion: 1,
+      idempotencyKey: "dispatch-key-new",
+      attemptedAt: NOW,
+      prompt: "Write the brief",
+      agentId: "agent-a",
+      journey: "general",
+    });
+    expect(createKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects malformed, future-dated, or incomplete attempts", () => {
+    expect(parseComposerDispatchAttempt(null, NOW)).toBeNull();
+    expect(parseComposerDispatchAttempt("not-json", NOW)).toBeNull();
+    expect(
+      parseComposerDispatchAttempt(JSON.stringify({ ...attempt, idempotencyKey: "" }), NOW),
+    ).toBeNull();
+    expect(
+      parseComposerDispatchAttempt(JSON.stringify({ ...attempt, prompt: " " }), NOW),
+    ).toBeNull();
+    expect(
+      parseComposerDispatchAttempt(
+        JSON.stringify({ ...attempt, attemptedAt: NOW - DRAFT_TTL_MS - 1 }),
+        NOW,
+      ),
+    ).toEqual({ ...attempt, attemptedAt: NOW - DRAFT_TTL_MS - 1 });
+    expect(
+      parseComposerDispatchAttempt(JSON.stringify({ ...attempt, attemptedAt: NOW + 1 }), NOW),
+    ).toBeNull();
+  });
+
+  it("uses the actor/workspace scope and clears only the dispatch record", () => {
+    const scope = draftScopeForRuntime({
+      mode: "api",
+      identity: { actorId: "actor-a", workspaceId: "workspace-a" },
+    });
+    const values = new Map<string, string>();
+    const setItem = vi.fn((key: string, value: string) => values.set(key, value));
+    const getItem = vi.fn((key: string) => values.get(key) ?? null);
+    const removeItem = vi.fn((key: string) => values.delete(key));
+    vi.stubGlobal("window", { localStorage: { setItem, getItem, removeItem } });
+
+    expect(saveComposerDispatchAttempt(scope, attempt)).toBe(true);
+    expect(loadComposerDispatchAttempt(scope, NOW)).toEqual(attempt);
+    clearComposerDispatchAttempt(scope);
+
+    expect(removeItem).toHaveBeenCalledWith(dispatchAttemptStorageKey(scope));
+    expect(removeItem).not.toHaveBeenCalledWith(draftStorageKey(scope));
+  });
+
+  it("fails closed when the exact dispatch request cannot be persisted", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        setItem: vi.fn(() => {
+          throw new DOMException("Storage full", "QuotaExceededError");
+        }),
+      },
+    });
+
+    expect(saveComposerDispatchAttempt("fixture", attempt)).toBe(false);
   });
 });

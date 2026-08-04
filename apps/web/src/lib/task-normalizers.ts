@@ -514,11 +514,15 @@ export function normalizeCreateTaskResult(value: unknown): CreateTaskResult {
   if (status !== "queued") {
     throw new ContractError(`Create-task response status must be queued, received ${status}.`);
   }
+  if (typeof value.duplicate !== "boolean") {
+    throw new ContractError("Create-task response is missing a valid duplicate flag.");
+  }
 
   return {
     taskId: requiredString(value, "taskId", "Create-task response"),
     runId: requiredString(value, "runId", "Create-task response"),
     status,
+    duplicate: value.duplicate,
   };
 }
 

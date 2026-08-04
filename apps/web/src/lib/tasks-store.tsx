@@ -31,8 +31,10 @@ import {
   statusAfterEvent,
   summaryAfterAuthoritativeReload,
   taskEventCursor,
+  validatePrompt,
 } from "./task-normalizers";
 import { appendUniqueTaskEvent } from "./task-event-index";
+import { isTaskCreateFailure, type TaskCreateOutcome } from "./task-create-outcome";
 import {
   sameTaskDetailProjection,
   sameTaskSummaryProjection,
@@ -82,6 +84,12 @@ export interface TasksStore {
     agentId?: string,
     journey?: "general" | "coding",
   ) => Promise<TaskSummary | undefined>;
+  dispatchTask: (
+    prompt: string,
+    idempotencyKey: string,
+    agentId?: string,
+    journey?: "general" | "coding",
+  ) => Promise<TaskCreateOutcome>;
 
   detailsByTask: Record<string, TaskDetail>;
   eventsByTask: Record<string, TaskEvent[]>;
@@ -565,14 +573,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createTask = useCallback(
+  const dispatchTask = useCallback(
     async (
       prompt: string,
+      idempotencyKey: string,
       agentId?: string,
       journey: "general" | "coding" = "general",
-    ): Promise<TaskSummary | undefined> => {
+    ): Promise<TaskCreateOutcome> => {
       setCreating(true);
-      setCreateError(undefined);
       try {
         // Stamp the dispatch instant *before* awaiting the create call, so the
         // optimistic createdAt reflects when this task was dispatched rather than
@@ -582,6 +590,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         // the server's authoritative createdAt on the next list refresh.
         const dispatchedAt = new Date().toISOString();
         const created = await taskClient.createTask(prompt, {
+          idempotencyKey,
           ...(agentId ? { agentId } : {}),
           ...(journey === "coding" ? { journey: "coding" as const } : {}),
         });
@@ -602,15 +611,47 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           ...current.filter((task) => task.taskId !== created.taskId),
         ]);
         setListError(undefined);
-        return optimisticTask;
+        return { kind: "accepted", task: optimisticTask, duplicate: created.duplicate };
       } catch (error) {
-        setCreateError(messageFrom(error));
-        return undefined;
+        if (isTaskCreateFailure(error)) {
+          return { kind: error.kind, message: error.message, code: error.code };
+        }
+        return {
+          kind: "unknown",
+          message: "Deep Work could not confirm whether the task started.",
+        };
       } finally {
         setCreating(false);
       }
     },
     [],
+  );
+
+  const createTask = useCallback(
+    async (
+      prompt: string,
+      agentId?: string,
+      journey: "general" | "coding" = "general",
+    ): Promise<TaskSummary | undefined> => {
+      setCreateError(undefined);
+      let normalizedPrompt: string;
+      try {
+        normalizedPrompt = validatePrompt(prompt);
+      } catch (error) {
+        setCreateError(messageFrom(error));
+        return undefined;
+      }
+      const outcome = await dispatchTask(
+        normalizedPrompt,
+        globalThis.crypto.randomUUID(),
+        agentId,
+        journey,
+      );
+      if (outcome.kind === "accepted") return outcome.task;
+      setCreateError(outcome.message);
+      return undefined;
+    },
+    [dispatchTask],
   );
 
   const reconcileTaskSnapshot = useCallback(
@@ -1072,6 +1113,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       creating,
       createError,
       createTask,
+      dispatchTask,
       detailsByTask,
       eventsByTask,
       loadDetail,
@@ -1105,6 +1147,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       creating,
       createError,
       createTask,
+      dispatchTask,
       detailsByTask,
       eventsByTask,
       loadDetail,

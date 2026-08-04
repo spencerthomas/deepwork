@@ -78,6 +78,7 @@ export interface CreateTaskResult {
   taskId: string;
   runId: string;
   status: "queued";
+  duplicate: boolean;
 }
 
 export interface CancelResult {
@@ -178,7 +179,8 @@ export interface TaskClient {
   cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult>;
   createTask(
     prompt: string,
-    options?: Readonly<{
+    options: Readonly<{
+      idempotencyKey: string;
       agentId?: string;
       journey?: "coding";
       signal?: AbortSignal;

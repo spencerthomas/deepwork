@@ -12,7 +12,7 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-04
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: 8acd3db9dce29ee9b8a20de5363b604315a17ca5
+last_verified_commit: ef0bcc852ddae90c92a3144b16922c7d067799a7
 risk: high
 governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, tools/product_demo/**, tools/worktree/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
@@ -267,7 +267,11 @@ scorecard columns.
 - [x] 2026-08-04 — Session-scoped SQLite job/API/worker recovery proof completed
   at `c28ef9b`; scorecard truth was reconciled at `e7a8ef9`. This is explicitly
   not PostgreSQL/outbox or product-demo proof.
-- [ ] PostgreSQL job/outbox runtime, migration and recovery proof.
+- [x] 2026-08-04 — PostgreSQL job/outbox runtime, packaged Alembic migration and
+  recovery proof completed at `ef0bcc852ddae90c92a3144b16922c7d067799a7`.
+  The existing SQLite `/api/v1/jobs` response remains byte-compatible; the
+  additive `/api/v1/durable-jobs` contract truthfully identifies the guarded
+  PostgreSQL outbox implementation.
 - [ ] Sealed dual-stack product-demo driver and local browser acceptance.
 - [ ] Protected hosted browser proof and release-owner acceptance.
 
@@ -337,6 +341,12 @@ scorecard columns.
 4. Add visual and hosted Playwright projects plus root/CI commands.
 5. Write the live scorecard from executable evidence, reconcile canonical status
    prose, regenerate documentation, and run the full repository gates.
+6. Add a real PostgreSQL job/outbox repository with packaged migrations, atomic
+   enqueue, scoped idempotency, concurrent worker leases, retry/dead-letter
+   recovery and separate API/worker restart proof while preserving the existing
+   v1 SQLite contract.
+7. Build and seal the repository-reviewed dual-stack product-demo driver, then run
+   its local browser/isolation acceptance before seeking protected hosted proof.
 
 ## Validation and proof
 
@@ -347,6 +357,7 @@ make check-architecture
 make check
 make test-unit
 make test-contract
+make test-postgres
 make test-e2e-demo
 make test-visual
 make test-hosted
@@ -377,7 +388,9 @@ The branch now contains the designed shell, a complete credential-free supervise
 task journey, retained result/evidence/export/trace inspection, reopen, immutable
 prototype references, complete route mappings, desktop/phone screenshots, 320px
 reflow, a truthful credential-free coding-to-draft-PR fixture journey, a fail-closed
-real-source hosted journey, and the 12-scenario scorecard.
+real-source hosted journey, a real local PostgreSQL transactional job/outbox with
+packaged migrations and separate API/worker restart proof, and the 12-scenario
+scorecard.
 
 Independent review found and the branch fixed a stale decision-receipt race,
 unretained agent identity, overlapping mobile overlays, secret-bearing hosted

@@ -37,8 +37,11 @@ browser cases and seven production visual cases pass. The hosted
 acceptance test also passes locally against the production web bundle and real
 local LangGraph Agent Server with a deterministic keyless model stand-in. Its
 protected hosted invocation now additionally requires the exact CI commit to be
-reported by both deployed services. No reviewed hosted URL/access key/build pair
-is configured; the protected hosted journey has not run, and no
+reported by both deployed services. A read-only 2026-08-04 preflight found the
+documented Vercel target still serving the legacy bare access-key form without a
+build marker; the Railway API returned 404 for runtime status and labelled health
+as fixture. No protected access key/current build pair is configured; the hosted
+journey has not run, and no
 canonical v1 scenario is release-accepted.
 [`RELEASE_SCORECARD.md`](RELEASE_SCORECARD.md) is the source of truth for the
 remaining behavior and proof gaps.

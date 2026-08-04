@@ -297,6 +297,10 @@ scorecard columns.
   `6589cb9`. Acceptance disables disposable webpack/TypeScript/browser caches,
   the two-tab case proves both tabs adopt one accepted task with one POST, all 18
   browser cases pass, and all seven production visual cases pass.
+- [x] 2026-08-04 — Public hosted preflight completed without credentials. The
+  documented Vercel target is a legacy bare sign-in build with no build marker;
+  the Railway API has no runtime-status route and reports fixture health. This
+  contradicts hosted acceptance and confirms promotion is still required.
 - [ ] Protected hosted browser proof and release-owner acceptance.
 
 ## Surprises & Discoveries
@@ -339,6 +343,9 @@ scorecard columns.
   generated `.next` and Playwright output were removed. Acceptance was then made
   cache-bounded and generated dev tooling was temporarily reclaimed; the current
   18-case browser and seven-case visual gates subsequently passed.
+- 2026-08-04 — The documented public web/API pair is not this recovery build.
+  Public inspection shows the pre-recovery sign-in and fixture API, so deployment
+  reachability cannot be used as evidence for any hosted scorecard cell.
 
 ## Decision Log
 

@@ -28,6 +28,7 @@
     "@axe-core/playwright": "4.10.2",
     "@playwright/test": "1.61.1",
     "axe-core": "4.11.0",
+    "next": "16.2.6",
     "oxfmt": "0.60.0",
     "oxlint": "1.75.0",
     "sharp": "0.34.5",

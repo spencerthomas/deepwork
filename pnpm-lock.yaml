@@ -20,6 +20,9 @@ importers:
       axe-core:
         specifier: 4.11.0
         version: 4.11.0
+      next:
+        specifier: 16.2.6
+        version: 16.2.6(@playwright/test@1.61.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       oxfmt:
         specifier: 0.60.0
         version: 0.60.0

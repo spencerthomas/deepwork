@@ -16,6 +16,10 @@ from typing import TypeVar, cast
 
 from deepwork_api.domain import (
     CANCELLATION_SAFE_REASON,
+    DEFAULT_ACTOR_ID,
+    DEFAULT_SECURITY_CONTEXT,
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
@@ -40,6 +44,7 @@ from deepwork_api.domain import (
     PlanUnavailableError,
     PlanUpdateRecord,
     ProposedPlan,
+    SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
     TaskEvent,
@@ -54,7 +59,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 4
+_SCHEMA_VERSION = 5
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -114,7 +119,10 @@ CREATE TABLE tasks (
     plan_steps TEXT,
     plan_evidence_refs TEXT,
     result TEXT,
-    created_at TEXT
+    created_at TEXT,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant-local',
+    workspace_id TEXT NOT NULL DEFAULT 'workspace-local',
+    created_by_actor_id TEXT NOT NULL DEFAULT 'operator'
 )
 """,
     """
@@ -161,11 +169,18 @@ CREATE TABLE decisions (
 # single canonical shape (created_at nullable and last) so a fresh database and
 # any upgraded database validate identically. Real timestamps are preserved; a
 # never-recorded creation instant becomes NULL rather than a fabricated value.
+_OWNERSHIP_UPGRADE = (
+    "ALTER TABLE tasks ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'tenant-local'",
+    "ALTER TABLE tasks ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'workspace-local'",
+    "ALTER TABLE tasks ADD COLUMN created_by_actor_id TEXT NOT NULL DEFAULT 'operator'",
+)
+
 _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
     # v1 predates created_at: appending the column leaves existing rows NULL.
     1: (
         "ALTER TABLE tasks ADD COLUMN created_at TEXT",
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
+        *_OWNERSHIP_UPGRADE,
     ),
     # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
     # column. Move it last and drop NOT NULL without losing the recorded values,
@@ -176,9 +191,15 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "UPDATE tasks SET created_at = created_at_legacy",
         "ALTER TABLE tasks DROP COLUMN created_at_legacy",
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
+        *_OWNERSHIP_UPGRADE,
     ),
     # v3 has the canonical task columns but predates the name-led event index.
-    3: ("CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",),
+    3: (
+        "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
+        *_OWNERSHIP_UPGRADE,
+    ),
+    # v4 has the canonical timestamp and event-index shape but no ownership.
+    4: _OWNERSHIP_UPGRADE,
 }
 
 _EXPECTED_COLUMNS = {
@@ -196,6 +217,9 @@ _EXPECTED_COLUMNS = {
         "plan_evidence_refs",
         "result",
         "created_at",
+        "tenant_id",
+        "workspace_id",
+        "created_by_actor_id",
     ),
     "events": ("task_id", "event_id", "name", "data"),
     "evidence": (
@@ -227,6 +251,9 @@ _EXPECTED_TABLE_INFO = {
         # Nullable and last so a fresh database and every in-place upgrade in
         # _SUPPORTED_UPGRADES converge on one canonical column layout.
         ("created_at", "TEXT", 0, 0),
+        ("tenant_id", "TEXT", 1, 0),
+        ("workspace_id", "TEXT", 1, 0),
+        ("created_by_actor_id", "TEXT", 1, 0),
     ),
     "events": (
         ("task_id", "TEXT", 1, 1),
@@ -249,6 +276,30 @@ _EXPECTED_TABLE_INFO = {
         ("decision", "TEXT", 1, 0),
         ("response_digest", "TEXT", 0, 0),
     ),
+}
+
+_EXPECTED_DEFAULTS = {
+    "tasks": (
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        f"'{DEFAULT_TENANT_ID}'",
+        f"'{DEFAULT_WORKSPACE_ID}'",
+        f"'{DEFAULT_ACTOR_ID}'",
+    ),
+    "events": (None, None, None, None),
+    "evidence": (None, None, None, None, None, None, None),
+    "decisions": (None, None, None, None),
 }
 
 _EXPECTED_INDEXES = {
@@ -386,6 +437,7 @@ class SQLiteTaskRepository:
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 
@@ -398,6 +450,7 @@ class SQLiteTaskRepository:
             agent_id,
             journey,
             repository_id,
+            security_context,
         )
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
@@ -752,7 +805,7 @@ class SQLiteTaskRepository:
             if (
                 actual != expected
                 or table_info != _EXPECTED_TABLE_INFO[table]
-                or any(row["dflt_value"] is not None for row in table_rows)
+                or tuple(row["dflt_value"] for row in table_rows) != _EXPECTED_DEFAULTS[table]
             ):
                 raise SQLiteTaskRepositorySchemaError(
                     "local task database schema shape is unsupported"
@@ -803,6 +856,7 @@ class SQLiteTaskRepository:
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         connection = self._connect()
         try:
@@ -813,10 +867,21 @@ class SQLiteTaskRepository:
                 INSERT INTO tasks (
                     task_id, run_id, title, objective, status,
                     pending_interrupt_id, plan_revision, plan_title,
-                    plan_steps, plan_evidence_refs, result, created_at
-                ) VALUES ('pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?)
+                    plan_steps, plan_evidence_refs, result, created_at,
+                    tenant_id, workspace_id, created_by_actor_id
+                ) VALUES (
+                    'pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?
+                )
                 """,
-                (title, objective, TaskStatus.QUEUED.value, created_at),
+                (
+                    title,
+                    objective,
+                    TaskStatus.QUEUED.value,
+                    created_at,
+                    security_context.tenant_id,
+                    security_context.workspace_id,
+                    security_context.actor_id,
+                ),
             )
             number = cast(int, cursor.lastrowid)
             if number < 1 or number > _MAX_TASK_NUMBER:
@@ -1470,6 +1535,14 @@ class SQLiteTaskRepository:
                 maximum=64,
             )
         )
+        try:
+            security_context = SecurityContext(
+                tenant_id=cast(str, task["tenant_id"]),
+                workspace_id=cast(str, task["workspace_id"]),
+                actor_id=cast(str, task["created_by_actor_id"]),
+            )
+        except (TypeError, ValueError):
+            raise SQLiteTaskRepositoryDataError("stored task ownership is invalid") from None
         if created_event_row is None:
             created_event_row = connection.execute(
                 "SELECT event_id, name, data FROM events WHERE task_id = ? AND event_id = 1",
@@ -1537,6 +1610,9 @@ class SQLiteTaskRepository:
             proposed_plan=self._plan_from_row(task),
             evidence=evidence,
             result=result,
+            tenant_id=security_context.tenant_id,
+            workspace_id=security_context.workspace_id,
+            created_by_actor_id=security_context.actor_id,
             agent_id=stored_agent_id,
             journey=(TaskJourney.CODING if stored_journey is not None else None),
             repository_id=(

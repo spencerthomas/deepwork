@@ -51,6 +51,9 @@ class SecurityContext:
         _validate_identifier("actor_id", self.actor_id)
 
 
+DEFAULT_SECURITY_CONTEXT = SecurityContext()
+
+
 @dataclass(frozen=True, slots=True)
 class Session:
     """A minted operator session. The token is opaque and server-issued."""

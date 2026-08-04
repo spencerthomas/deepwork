@@ -10,6 +10,7 @@ from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
     DEFAULT_ACTOR_ID,
+    DEFAULT_SECURITY_CONTEXT,
     DEFAULT_TENANT_ID,
     DEFAULT_WORKSPACE_ID,
     AgentRegistryUnavailableError,
@@ -46,6 +47,7 @@ from deepwork_api.ports import PromptStore, TraceLocator
 
 __all__ = [
     "DEFAULT_ACTOR_ID",
+    "DEFAULT_SECURITY_CONTEXT",
     "DEFAULT_TENANT_ID",
     "DEFAULT_WORKSPACE_ID",
     "AgentRegistryUnavailableError",

@@ -20,6 +20,9 @@ from deepwork_api.adapters.persistence import (
     SQLiteTaskRepositorySchemaError,
 )
 from deepwork_api.domain import (
+    DEFAULT_ACTOR_ID,
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
@@ -37,6 +40,7 @@ from deepwork_api.domain import (
     PlanRevisionConflictError,
     PlanUpdateRecord,
     ProposedPlan,
+    SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
     TaskEvent,
@@ -86,6 +90,36 @@ async def test_selected_agent_identity_survives_repository_reopen(tmp_path: Path
         assert retained.agent_id == "assistant-2"
         event = (await reopened.events_after(created.task_id, 0))[0]
         assert dict(event.data)["agentId"] == "assistant-2"
+    finally:
+        await reopened.close()
+
+
+async def test_task_owner_round_trips_without_entering_creation_event(tmp_path: Path) -> None:
+    database = tmp_path / "owned-tasks.sqlite"
+    context = SecurityContext("tenant-a", "workspace-a", "actor-a")
+    first = SQLiteTaskRepository(database)
+    created = await first.create_task(
+        title="Owned task",
+        objective="Retain server-side ownership",
+        security_context=context,
+    )
+    assert (
+        created.tenant_id,
+        created.workspace_id,
+        created.created_by_actor_id,
+    ) == ("tenant-a", "workspace-a", "actor-a")
+    event = (await first.events_after(created.task_id, 0))[0]
+    assert not {"tenantId", "workspaceId", "actorId"}.intersection(dict(event.data))
+    await first.close()
+
+    reopened = SQLiteTaskRepository(database)
+    try:
+        retained = await reopened.get_task(created.task_id)
+        assert (
+            retained.tenant_id,
+            retained.workspace_id,
+            retained.created_by_actor_id,
+        ) == ("tenant-a", "workspace-a", "actor-a")
     finally:
         await reopened.close()
 
@@ -1255,7 +1289,10 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
                 plan_steps TEXT,
                 plan_evidence_refs TEXT,
                 result TEXT,
-                created_at TEXT
+                created_at TEXT,
+                tenant_id TEXT NOT NULL DEFAULT 'tenant-local',
+                workspace_id TEXT NOT NULL DEFAULT 'workspace-local',
+                created_by_actor_id TEXT NOT NULL DEFAULT 'operator'
             );
             CREATE TABLE events (
                 task_id TEXT, event_id INTEGER, name TEXT, data TEXT
@@ -1271,7 +1308,7 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
             CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 4;
+            PRAGMA user_version = 5;
             """
         )
 
@@ -1280,12 +1317,22 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
         await repository.initialize()
 
 
+def _without_ownership_columns(statement: str) -> str:
+    return statement.replace(
+        "    created_at TEXT,\n"
+        "    tenant_id TEXT NOT NULL DEFAULT 'tenant-local',\n"
+        "    workspace_id TEXT NOT NULL DEFAULT 'workspace-local',\n"
+        "    created_by_actor_id TEXT NOT NULL DEFAULT 'operator'\n",
+        "    created_at TEXT\n",
+    )
+
+
 async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> None:
     database = tmp_path / "schema-v3.sqlite"
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
             if "events_name_task_order" not in statement:
-                connection.execute(statement)
+                connection.execute(_without_ownership_columns(statement))
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
         connection.execute("PRAGMA user_version = 3")
 
@@ -1300,8 +1347,48 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
             for row in connection.execute("PRAGMA index_xinfo(events_name_task_order)")
             if int(row[5]) == 1
         )
-    assert version == 4
+    assert version == 5
     assert indexed_columns == (("name", 0), ("task_id", 0), ("event_id", 1))
+
+
+async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path) -> None:
+    database = tmp_path / "schema-v4.sqlite"
+    created_event = sqlite_adapter._encode_event_data(
+        (
+            ("taskId", "task_00000001"),
+            ("runId", "run_00000001"),
+            ("status", TaskStatus.QUEUED.value),
+        )
+    )
+    with sqlite3.connect(database) as connection:
+        for statement in sqlite_adapter._SCHEMA_STATEMENTS:
+            connection.execute(_without_ownership_columns(statement))
+        connection.execute(
+            """
+            INSERT INTO tasks (task_id, run_id, title, objective, status)
+            VALUES ('task_00000001', 'run_00000001', 'Legacy v4', 'Legacy v4 objective', ?)
+            """,
+            (TaskStatus.QUEUED.value,),
+        )
+        connection.execute(
+            "INSERT INTO events (task_id, event_id, name, data) VALUES (?, 1, ?, ?)",
+            ("task_00000001", TaskEventName.TASK_CREATED.value, created_event),
+        )
+        connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
+        connection.execute("PRAGMA user_version = 4")
+
+    repository = SQLiteTaskRepository(database)
+    recovered = await repository.get_task("task_00000001")
+    assert (
+        recovered.tenant_id,
+        recovered.workspace_id,
+        recovered.created_by_actor_id,
+    ) == (DEFAULT_TENANT_ID, DEFAULT_WORKSPACE_ID, DEFAULT_ACTOR_ID)
+    await repository.close()
+
+    with sqlite3.connect(database) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+    assert version == 5
 
 
 def _seed_v1_database(database: Path) -> None:
@@ -1389,6 +1476,11 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     # The pre-timestamp task survives the schema bump; its unknown creation
     # instant stays null rather than being invented.
     assert recovered.created_at is None
+    assert (
+        recovered.tenant_id,
+        recovered.workspace_id,
+        recovered.created_by_actor_id,
+    ) == (DEFAULT_TENANT_ID, DEFAULT_WORKSPACE_ID, DEFAULT_ACTOR_ID)
     assert recovered.title == "Legacy task"
     assert recovered.status is TaskStatus.QUEUED
     assert recovered.last_event_id == 1
@@ -1406,8 +1498,13 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(tasks)")]
-    assert version == 4
-    assert columns[-1] == "created_at"
+    assert version == 5
+    assert columns[-4:] == [
+        "created_at",
+        "tenant_id",
+        "workspace_id",
+        "created_by_actor_id",
+    ]
 
     reopened = SQLiteTaskRepository(database)
     listing = await reopened.list_tasks()
@@ -1513,6 +1610,11 @@ async def test_legacy_v2_database_upgrades_preserving_recorded_timestamps(
     # A task from the first timestamp release keeps its real recorded creation
     # time through the column move -- it is preserved, never dropped to null.
     assert recovered.created_at == recorded
+    assert (
+        recovered.tenant_id,
+        recovered.workspace_id,
+        recovered.created_by_actor_id,
+    ) == (DEFAULT_TENANT_ID, DEFAULT_WORKSPACE_ID, DEFAULT_ACTOR_ID)
     assert recovered.title == "Timestamped task"
     assert recovered.last_event_id == 1
 
@@ -1529,8 +1631,13 @@ async def test_legacy_v2_database_upgrades_preserving_recorded_timestamps(
         notnull = {
             str(row[1]): int(row[3]) for row in connection.execute("PRAGMA table_info(tasks)")
         }
-    assert version == 4
-    assert columns[-1] == "created_at"
+    assert version == 5
+    assert columns[-4:] == [
+        "created_at",
+        "tenant_id",
+        "workspace_id",
+        "created_by_actor_id",
+    ]
     assert notnull["created_at"] == 0
 
     reopened = SQLiteTaskRepository(database)

@@ -2,7 +2,7 @@
 
 import argparse
 import os
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import cast
@@ -32,7 +32,12 @@ from deepwork_api.application import (
     TaskService,
 )
 from deepwork_api.application.local_runner import LocalSource
-from deepwork_api.domain import TaskEventName, TaskStatus
+from deepwork_api.domain import (
+    DEFAULT_SECURITY_CONTEXT,
+    SecurityContext,
+    TaskEventName,
+    TaskStatus,
+)
 from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
 from deepwork_api.transport import (
     build_agents_router,
@@ -52,6 +57,10 @@ _LOCAL_SOURCE_GATED_MESSAGE = (
     "(CLI: --allow-ungated-local-agent-source). The default runtime makes no "
     "provider/service calls."
 )
+
+
+def _open_security_context() -> SecurityContext:
+    return DEFAULT_SECURITY_CONTEXT
 
 
 def _build_local_agent_server_source(
@@ -99,6 +108,7 @@ def create_app(
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
+    access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
     trace_api_key: str | None = None,
     clock: Clock = system_clock,
@@ -244,10 +254,19 @@ def create_app(
     # read on the server and never returned; task routes are then guarded and the
     # /api/v1/auth routes are exposed. Without a key the API stays open (fixture
     # and local-development default).
+    if access_key is not None and access_key_contexts is not None:
+        raise ValueError("configure either one access key or an access key context mapping")
     auth_service = (
-        AuthService(store=InMemorySessionStore(), access_key=access_key) if access_key else None
+        AuthService(
+            store=InMemorySessionStore(),
+            access_key=access_key,
+            access_key_contexts=access_key_contexts,
+        )
+        if access_key is not None or access_key_contexts is not None
+        else None
     )
-    task_dependencies = [Depends(build_session_guard(auth_service))] if auth_service else None
+    auth_guard = build_session_guard(auth_service) if auth_service else None
+    task_dependencies = [Depends(auth_guard)] if auth_guard else None
 
     app.add_middleware(
         CORSMiddleware,
@@ -283,7 +302,7 @@ def create_app(
     app.include_router(
         build_task_router(
             task_service,
-            dependencies=task_dependencies,
+            security_context_dependency=(auth_guard if auth_guard else _open_security_context),
             trace_locator=trace_locator,
         )
     )

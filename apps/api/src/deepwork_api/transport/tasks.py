@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from typing import Annotated, Any
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Annotated
 
-from fastapi import APIRouter, Header, Path
+from fastapi import APIRouter, Depends, Header, Path
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from deepwork_api.application import (
+    DEFAULT_SECURITY_CONTEXT,
     DecisionBatchUnsupportedError,
     DecisionBatchVersionStaleError,
     DecisionConflictError,
@@ -19,6 +20,7 @@ from deepwork_api.application import (
     OrderedDecision,
     PlanRevisionConflictError,
     PlanUnavailableError,
+    SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
     TaskCancellationUnsupportedError,
@@ -53,32 +55,42 @@ TaskPath = Annotated[str, Path(pattern=r"^task_[0-9]{8}$")]
 _MAX_EVENT_CURSOR = 2_147_483_647
 
 
+def _default_security_context() -> SecurityContext:
+    return DEFAULT_SECURITY_CONTEXT
+
+
 def build_task_router(
     service: TaskService,
     *,
-    dependencies: list[Any] | None = None,
+    security_context_dependency: Callable[
+        ..., SecurityContext | Awaitable[SecurityContext]
+    ] = _default_security_context,
     trace_locator: TraceLocator | None = None,
 ) -> APIRouter:
     """Build the shared internal task API around an injected service.
 
-    ``dependencies`` are attached to every route (for example a session guard
-    when authentication is enabled); the default is an open router.
+    ``security_context_dependency`` returns the authenticated caller context,
+    or the legacy default context for the open local-development router.
     """
 
     router = APIRouter(
         prefix="/api/v1/tasks",
         tags=["tasks"],
-        dependencies=dependencies or [],
     )
+    security_context_marker = Depends(security_context_dependency)
 
     @router.post("", response_model=TaskAcceptedResponse, status_code=202)
-    async def create_task(request: TaskCreateRequest) -> TaskAcceptedResponse | JSONResponse:
+    async def create_task(
+        request: TaskCreateRequest,
+        security_context: SecurityContext = security_context_marker,
+    ) -> TaskAcceptedResponse | JSONResponse:
         try:
             task = await service.create_task(
                 request.prompt,
                 agent_id=request.agent_id,
                 journey=(TaskJourney.CODING if request.journey == "coding" else None),
                 repository_id=request.repository_id,
+                security_context=security_context,
             )
         except TaskSourceContractError:
             return _problem(
@@ -95,16 +107,21 @@ def build_task_router(
         return TaskAcceptedResponse.from_domain(task)
 
     @router.get("", response_model=TaskListResponse)
-    async def list_tasks() -> TaskListResponse:
-        tasks = await service.list_tasks()
+    async def list_tasks(
+        security_context: SecurityContext = security_context_marker,
+    ) -> TaskListResponse:
+        tasks = await service.list_tasks(security_context)
         return TaskListResponse(
             items=tuple(TaskSummaryResponse.from_domain(task) for task in tasks)
         )
 
     @router.get("/{task_id}", response_model=TaskDetailResponse)
-    async def get_task(task_id: TaskPath) -> TaskDetailResponse | JSONResponse:
+    async def get_task(
+        task_id: TaskPath,
+        security_context: SecurityContext = security_context_marker,
+    ) -> TaskDetailResponse | JSONResponse:
         try:
-            task = await service.get_task(task_id)
+            task = await service.get_task(task_id, security_context)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
         return TaskDetailResponse.from_domain(
@@ -113,9 +130,12 @@ def build_task_router(
         )
 
     @router.get("/{task_id}/result", response_model=TaskResultResponse)
-    async def get_task_result(task_id: TaskPath) -> TaskResultResponse | JSONResponse:
+    async def get_task_result(
+        task_id: TaskPath,
+        security_context: SecurityContext = security_context_marker,
+    ) -> TaskResultResponse | JSONResponse:
         try:
-            task = await service.get_task(task_id)
+            task = await service.get_task(task_id, security_context)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
         if task.status is not TaskStatus.COMPLETED or not task.result:
@@ -127,10 +147,13 @@ def build_task_router(
         return TaskResultResponse.from_domain(task)
 
     @router.get("/{task_id}/trace")
-    async def get_task_trace(task_id: TaskPath) -> JSONResponse:
+    async def get_task_trace(
+        task_id: TaskPath,
+        security_context: SecurityContext = security_context_marker,
+    ) -> JSONResponse:
         """Return the run's trace link, or an honest unavailable state."""
         try:
-            task = await service.get_task(task_id)
+            task = await service.get_task(task_id, security_context)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
         trace_url = None
@@ -147,18 +170,19 @@ def build_task_router(
     @router.get("/{task_id}/events", response_model=None)
     async def task_events(
         task_id: TaskPath,
+        security_context: SecurityContext = security_context_marker,
         last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
     ) -> StreamingResponse | JSONResponse:
         try:
             cursor = _parse_event_cursor(last_event_id)
-            await service.validate_event_cursor(task_id, cursor)
+            await service.validate_event_cursor(task_id, cursor, security_context)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
         except InvalidEventCursorError:
             return _problem(409, "event_cursor_invalid", "Event replay cursor is invalid.")
 
         return StreamingResponse(
-            _event_stream(service, task_id, cursor),
+            _event_stream(service, task_id, cursor, security_context),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache, no-store",
@@ -174,6 +198,7 @@ def build_task_router(
     async def record_decision(
         task_id: TaskPath,
         request: DecisionRequest,
+        security_context: SecurityContext = security_context_marker,
     ) -> DecisionAcceptedResponse | JSONResponse:
         try:
             decision = await service.record_decision(
@@ -181,6 +206,7 @@ def build_task_router(
                 interrupt_id=request.interrupt_id,
                 decision=request.decision,
                 comment=request.comment,
+                security_context=security_context,
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
@@ -220,6 +246,7 @@ def build_task_router(
     async def record_decision_batch(
         task_id: TaskPath,
         request: DecisionBatchRequest,
+        security_context: SecurityContext = security_context_marker,
     ) -> DecisionBatchAcceptedResponse | JSONResponse:
         decisions = tuple(
             OrderedDecision(
@@ -240,6 +267,7 @@ def build_task_router(
                 expected_version=request.expected_version,
                 idempotency_key=request.idempotency_key,
                 decisions=decisions,
+                security_context=security_context,
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
@@ -298,9 +326,10 @@ def build_task_router(
     )
     async def cancel_task(
         task_id: TaskPath,
+        security_context: SecurityContext = security_context_marker,
     ) -> CancellationAcceptedResponse | JSONResponse:
         try:
-            cancellation = await service.cancel_task(task_id)
+            cancellation = await service.cancel_task(task_id, security_context)
         except TaskCancellationUnsupportedError:
             return _problem(
                 409,
@@ -324,6 +353,7 @@ def build_task_router(
     async def update_plan(
         task_id: TaskPath,
         request: PlanUpdateRequest,
+        security_context: SecurityContext = security_context_marker,
     ) -> PlanUpdateResponse | JSONResponse:
         try:
             update = await service.update_plan(
@@ -331,6 +361,7 @@ def build_task_router(
                 interrupt_id=request.interrupt_id,
                 expected_revision=request.expected_revision,
                 steps=request.steps,
+                security_context=security_context,
             )
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
@@ -387,8 +418,9 @@ async def _event_stream(
     service: TaskService,
     task_id: str,
     event_id: int,
+    security_context: SecurityContext,
 ) -> AsyncIterator[str]:
-    async for event in service.stream_events(task_id, event_id):
+    async for event in service.stream_events(task_id, event_id, security_context):
         yield _format_event(event)
 
 

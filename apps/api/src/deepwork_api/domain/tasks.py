@@ -7,6 +7,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
+from deepwork_api.domain.auth import (
+    DEFAULT_ACTOR_ID,
+    DEFAULT_TENANT_ID,
+    DEFAULT_WORKSPACE_ID,
+    SecurityContext,
+)
+
 EventDataValue = str | int | bool | tuple[str, ...] | None
 EventData = tuple[tuple[str, EventDataValue], ...]
 MAX_TASK_OBJECTIVE_LENGTH = 8_000
@@ -289,6 +296,11 @@ class TaskSnapshot:
     proposed_plan: ProposedPlan | None
     evidence: tuple[EvidenceRecord, ...]
     result: str | None
+    # Application-owned authorization metadata. These fields stay server-side:
+    # task response and event contracts intentionally do not project them.
+    tenant_id: str = DEFAULT_TENANT_ID
+    workspace_id: str = DEFAULT_WORKSPACE_ID
+    created_by_actor_id: str = DEFAULT_ACTOR_ID
     # The source assistant selected for this run. Older fixture tasks and
     # pre-agent-registry event histories legitimately have no retained value.
     agent_id: str | None = None
@@ -299,6 +311,13 @@ class TaskSnapshot:
     journey: TaskJourney | None = None
     repository_id: str | None = None
     coding: CodingOutcome | None = None
+
+    def __post_init__(self) -> None:
+        SecurityContext(
+            tenant_id=self.tenant_id,
+            workspace_id=self.workspace_id,
+            actor_id=self.created_by_actor_id,
+        )
 
 
 @dataclass(frozen=True, slots=True)

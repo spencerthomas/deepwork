@@ -9,6 +9,7 @@ from deepwork_api.domain.agents import (
 )
 from deepwork_api.domain.auth import (
     DEFAULT_ACTOR_ID,
+    DEFAULT_SECURITY_CONTEXT,
     DEFAULT_TENANT_ID,
     DEFAULT_WORKSPACE_ID,
     AuthError,
@@ -81,6 +82,7 @@ from deepwork_api.domain.tasks import (
 __all__ = [
     "CANCELLATION_SAFE_REASON",
     "DEFAULT_ACTOR_ID",
+    "DEFAULT_SECURITY_CONTEXT",
     "DEFAULT_TENANT_ID",
     "DEFAULT_WORKSPACE_ID",
     "MAX_AGENT_DESCRIPTION_LENGTH",

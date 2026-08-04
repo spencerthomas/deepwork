@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from deepwork_api.domain import (
+    DEFAULT_SECURITY_CONTEXT,
     CancellationRecord,
     DecisionBatchRecord,
     DecisionRecord,
@@ -15,6 +16,7 @@ from deepwork_api.domain import (
     EvidenceRecord,
     PlanUpdateRecord,
     ProposedPlan,
+    SecurityContext,
     TaskEvent,
     TaskEventName,
     TaskJourney,
@@ -35,6 +37,7 @@ class TaskRepository(Protocol):
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from deepwork_api.domain import (
     CANCELLATION_SAFE_REASON,
+    DEFAULT_SECURITY_CONTEXT,
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
@@ -26,6 +27,7 @@ from deepwork_api.domain import (
     PlanUnavailableError,
     PlanUpdateRecord,
     ProposedPlan,
+    SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
     TaskEvent,
@@ -50,6 +52,9 @@ class _StoredTask:
     agent_id: str | None
     journey: TaskJourney | None
     repository_id: str | None
+    tenant_id: str
+    workspace_id: str
+    created_by_actor_id: str
     status: TaskStatus
     events: list[TaskEvent] = field(default_factory=list)
     pending_interrupt_id: str | None = None
@@ -83,6 +88,9 @@ class _StoredTask:
             proposed_plan=self.proposed_plan,
             evidence=tuple(self.evidence),
             result=self.result,
+            tenant_id=self.tenant_id,
+            workspace_id=self.workspace_id,
+            created_by_actor_id=self.created_by_actor_id,
             agent_id=self.agent_id,
             journey=self.journey,
             repository_id=self.repository_id,
@@ -113,6 +121,7 @@ class InMemoryTaskRepository:
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         """Create a queued task containing only its sanitized objective."""
 
@@ -129,6 +138,9 @@ class InMemoryTaskRepository:
                 agent_id=agent_id,
                 journey=journey,
                 repository_id=repository_id,
+                tenant_id=security_context.tenant_id,
+                workspace_id=security_context.workspace_id,
+                created_by_actor_id=security_context.actor_id,
                 status=TaskStatus.QUEUED,
             )
             created_data: EventData = (

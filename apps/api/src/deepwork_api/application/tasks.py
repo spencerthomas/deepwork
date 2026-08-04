@@ -15,6 +15,7 @@ from deepwork_api.application.local_runner import (
     LocalScheduleSummary,
 )
 from deepwork_api.domain import (
+    DEFAULT_SECURITY_CONTEXT,
     MAX_PLAN_STEP_LENGTH,
     MAX_TASK_OBJECTIVE_LENGTH,
     AgentRegistryUnavailableError,
@@ -35,10 +36,12 @@ from deepwork_api.domain import (
     PlanUpdateRecord,
     ProposedPlan,
     ScheduleRegistryUnavailableError,
+    SecurityContext,
     TaskCancellationUnsupportedError,
     TaskEvent,
     TaskEventName,
     TaskJourney,
+    TaskNotFoundError,
     TaskSnapshot,
     TaskSourceUnavailableError,
     TaskStatus,
@@ -480,6 +483,7 @@ class TaskService:
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         """Create a queued task and start its deterministic runner.
 
@@ -499,12 +503,18 @@ class TaskService:
         elif repository_id is not None:
             raise TaskSourceUnavailableError
         if isinstance(self.runner, LocalAgentServerRunner):
-            return await self.runner.create(title=title, objective=objective, agent_id=agent_id)
+            return await self.runner.create(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                security_context=security_context,
+            )
         task = await self.repository.create_task(
             title=title,
             objective=objective,
             journey=journey,
             repository_id=repository_id,
+            security_context=security_context,
         )
         self.runner.start(task)
         return task
@@ -565,17 +575,39 @@ class TaskService:
             raise ScheduleRegistryUnavailableError
         return await self.runner.list_schedules()
 
-    async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
+    async def list_tasks(
+        self, security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT
+    ) -> tuple[TaskSnapshot, ...]:
         """List local task summaries."""
 
-        return await self.repository.list_tasks()
+        tasks = await self.repository.list_tasks()
+        return tuple(task for task in tasks if self._is_owned_by(task, security_context))
 
-    async def get_task(self, task_id: str) -> TaskSnapshot:
+    async def get_task(
+        self, task_id: str, security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT
+    ) -> TaskSnapshot:
         """Read one local task."""
 
-        return await self.repository.get_task(task_id)
+        return await self._get_owned_task(task_id, security_context)
 
-    async def cancel_task(self, task_id: str) -> CancellationRecord:
+    @staticmethod
+    def _is_owned_by(task: TaskSnapshot, security_context: SecurityContext) -> bool:
+        return (
+            task.tenant_id == security_context.tenant_id
+            and task.workspace_id == security_context.workspace_id
+        )
+
+    async def _get_owned_task(
+        self, task_id: str, security_context: SecurityContext
+    ) -> TaskSnapshot:
+        task = await self.repository.get_task(task_id)
+        if not self._is_owned_by(task, security_context):
+            raise TaskNotFoundError
+        return task
+
+    async def cancel_task(
+        self, task_id: str, security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT
+    ) -> CancellationRecord:
         """Cancel a live task, recording an honest terminal cancelled state.
 
         This is only truthful when Deep Work itself executes the task: the
@@ -591,6 +623,7 @@ class TaskService:
         time it touches task state; no separate runner command is required.
         """
 
+        await self._get_owned_task(task_id, security_context)
         if isinstance(self.runner, LocalAgentServerRunner):
             raise TaskCancellationUnsupportedError
         return await self.repository.cancel_task(task_id)
@@ -602,9 +635,11 @@ class TaskService:
         interrupt_id: str,
         decision: DecisionValue,
         comment: str | None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> DecisionRecord:
         """Record one bounded interrupt decision without replaying comment text."""
 
+        await self._get_owned_task(task_id, security_context)
         response_digest = (
             _digest_text(comment)
             if decision is DecisionValue.RESPOND and comment is not None
@@ -635,10 +670,11 @@ class TaskService:
         expected_version: str,
         idempotency_key: str,
         decisions: tuple[OrderedDecision, ...],
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> DecisionBatchRecord:
         """Validate and atomically accept one complete positional plan vector."""
 
-        task = await self.repository.get_task(task_id)
+        task = await self._get_owned_task(task_id, security_context)
         if task.pending_interrupt_id is not None and task.pending_interrupt_id != interrupt_id:
             raise InterruptMismatchError
         plan = task.proposed_plan
@@ -732,12 +768,13 @@ class TaskService:
         interrupt_id: str,
         expected_revision: int,
         steps: tuple[str, ...],
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> PlanUpdateRecord:
         """Edit the current plan before resuming its exact interrupt."""
 
+        task = await self._get_owned_task(task_id, security_context)
         sanitized_steps = tuple(sanitize_objective(step) for step in steps)
         if isinstance(self.runner, LocalAgentServerRunner):
-            task = await self.repository.get_task(task_id)
             return await self.runner.update_plan(
                 task,
                 interrupt_id=interrupt_id,
@@ -751,22 +788,34 @@ class TaskService:
             steps=sanitized_steps,
         )
 
-    async def validate_event_cursor(self, task_id: str, event_id: int) -> None:
+    async def validate_event_cursor(
+        self,
+        task_id: str,
+        event_id: int,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> None:
         """Validate task existence and replay cursor before opening SSE."""
 
+        await self._get_owned_task(task_id, security_context)
         await self.repository.events_after(task_id, event_id)
 
-    async def stream_events(self, task_id: str, event_id: int) -> AsyncIterator[TaskEvent]:
+    async def stream_events(
+        self,
+        task_id: str,
+        event_id: int,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> AsyncIterator[TaskEvent]:
         """Replay then follow normalized events until the task is terminal."""
 
         cursor = event_id
+        await self._get_owned_task(task_id, security_context)
         while True:
             events = await self.repository.events_after(task_id, cursor)
             for event in events:
                 yield event
                 cursor = event.event_id
 
-            task = await self.repository.get_task(task_id)
+            task = await self._get_owned_task(task_id, security_context)
             if task.status.is_terminal and cursor >= task.last_event_id:
                 return
             await self.repository.wait_for_events(task_id, cursor)

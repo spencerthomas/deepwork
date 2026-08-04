@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from deepwork_api.application import (
     AuthService,
     InvalidCredentialError,
+    SecurityContext,
     Session,
     SessionExpiredError,
     SessionNotFoundError,
@@ -110,16 +111,17 @@ def build_auth_router(auth: AuthService) -> APIRouter:
 
 def build_session_guard(
     auth: AuthService,
-) -> Callable[[Request, str | None], Awaitable[Session]]:
+) -> Callable[[Request, str | None], Awaitable[SecurityContext]]:
     """Return a FastAPI dependency that requires a live session."""
 
     async def guard(
         request: Request,
         authorization: Annotated[str | None, Header()] = None,
-    ) -> Session:
+    ) -> SecurityContext:
         token = _extract_token(request, authorization)
         try:
-            return await auth.authenticate(token)
+            session = await auth.authenticate(token)
+            return session.security_context
         except (SessionNotFoundError, SessionExpiredError):
             raise HTTPException(
                 status_code=401,

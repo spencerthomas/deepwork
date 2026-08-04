@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from deepwork_api.domain import (
+    DEFAULT_SECURITY_CONTEXT,
     DecisionRecord,
     DecisionValue,
     EvidenceClass,
@@ -16,6 +17,7 @@ from deepwork_api.domain import (
     PlanUnavailableError,
     PlanUpdateRecord,
     ProposedPlan,
+    SecurityContext,
     StaleInterruptError,
     TaskEventName,
     TaskSnapshot,
@@ -161,7 +163,12 @@ class LocalAgentServerRunner:
     _closing: bool = field(default=False, init=False)
 
     async def create(
-        self, *, title: str, objective: str, agent_id: str | None = None
+        self,
+        *,
+        title: str,
+        objective: str,
+        agent_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         # The workspace prompt override governs the default assistant whether
         # it was implicit or explicitly selected. A different named agent's
@@ -179,6 +186,7 @@ class LocalAgentServerRunner:
             objective=objective,
             run_id=run.run_id,
             agent_id=agent_id,
+            security_context=security_context,
         )
         self._threads[task.task_id] = run.thread_id
         self.start(task, run)
@@ -423,12 +431,20 @@ class LocalAgentServerRunner:
     async def _follow(self, task: TaskSnapshot, run: LocalRun) -> None:
         resume_key: tuple[str, str] | None = None
         try:
-            await self.repository.append_event(
-                task.task_id,
-                name=TaskEventName.RUN_STARTED,
-                data=(("runId", run.run_id), ("status", "running")),
-                status=TaskStatus.RUNNING,
-            )
+            # A follower restarted after a source-confirmed plan edit already
+            # owns a fresh pending interrupt. That checkpoint is paused, not a
+            # new executing run: publishing RUN_STARTED here would overwrite
+            # the durable waiting-approval state while the follower waits for
+            # the exact new decision. Followers started for initial execution
+            # or after an accepted decision have no pending interrupt and do
+            # publish the normal running transition.
+            if task.pending_interrupt_id is None:
+                await self.repository.append_event(
+                    task.task_id,
+                    name=TaskEventName.RUN_STARTED,
+                    data=(("runId", run.run_id), ("status", "running")),
+                    status=TaskStatus.RUNNING,
+                )
             async for event in self.source.stream(run):
                 kind = getattr(event, "kind", None)
                 if kind == "error":

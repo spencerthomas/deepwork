@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from datetime import datetime
 
     from fastapi import FastAPI
+
+    from deepwork_api.domain import SecurityContext
 
 __all__ = ["create_app"]
 
@@ -25,6 +27,7 @@ def create_app(
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
     access_key: str | None = None,
+    access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
     trace_api_key: str | None = None,
     clock: Callable[[], datetime] | None = None,
@@ -57,6 +60,7 @@ def create_app(
             classic_deployment_assistant=classic_deployment_assistant,
             classic_deployment_credential=classic_deployment_credential,
             access_key=access_key,
+            access_key_contexts=access_key_contexts,
             web_origins=web_origins,
             trace_api_key=trace_api_key,
         )
@@ -70,6 +74,7 @@ def create_app(
         classic_deployment_assistant=classic_deployment_assistant,
         classic_deployment_credential=classic_deployment_credential,
         access_key=access_key,
+        access_key_contexts=access_key_contexts,
         web_origins=web_origins,
         trace_api_key=trace_api_key,
         clock=clock,

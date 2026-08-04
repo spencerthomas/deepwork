@@ -8,5 +8,5 @@
   "driver_sha256": "c765a2e33509e8855ab87e2fd8e574a4fdfd0897f402a97a034ecf2b8cf23b4e",
   "loopback_bindings_only": true,
   "protocol": "deepwork-dual-product-demo-v1",
-  "reviewed_repository_commit": "12a82db5a704305bf6f540a8fabac43829e62a4c"
+  "reviewed_repository_commit": "54f6873406debcd492872c5934043589936292d5"
 }

@@ -12,7 +12,7 @@ issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-04
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: 1a80096ce27d2fc7925d7c66161ff38ca207dc72
+last_verified_commit: 6589cb9b013a7edf716a21734e78cdadf9ae7318
 risk: high
 governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/agent/**, packages/domain/**, packages/sdk/**, packages/ui/**, tests/**, tools/architecture/**, tools/contract-spikes/**, tools/docs/**, tools/oss_audit/**, tools/product_demo/**, tools/worktree/**, ARCHITECTURE.md, dev, playwright.config.ts, playwright.hosted.config.ts, playwright.performance.config.ts, playwright.recovery.config.ts, playwright.security.config.ts, playwright.visual.config.ts, package.json, pnpm-lock.yaml, pnpm-workspace.yaml, pyproject.toml, .node-version, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
@@ -293,10 +293,10 @@ scorecard columns.
 - [x] 2026-08-04 — Current focused verification passes 95 API tests, 80 domain
   tests, 73 SDK tests, 22 composer-dispatch tests, three TypeScript type checks,
   and the two-test 12-route desktop/phone visual reference contract.
-- [ ] 2026-08-04 — Current-head production-browser rerun. The harness starts, but
-  the nearly full workstation volume prevents Chromium from creating its profile
-  (`ENOSPC`) before any application assertion. Prior browser proof is retained but
-  is not relabelled as a current-head pass.
+- [x] 2026-08-04 — Current-head browser recovery completed at `57c820b` and
+  `6589cb9`. Acceptance disables disposable webpack/TypeScript/browser caches,
+  the two-tab case proves both tabs adopt one accepted task with one POST, all 18
+  browser cases pass, and all seven production visual cases pass.
 - [ ] Protected hosted browser proof and release-owner acceptance.
 
 ## Surprises & Discoveries
@@ -336,8 +336,9 @@ scorecard columns.
   product-demo pass around SQLite.
 - 2026-08-04 — The implementation volume reached 100% APFS capacity during the
   current-head browser rerun. Next and Chromium failed with `ENOSPC`; only failed
-  generated `.next` and Playwright output were removed. This is an execution-host
-  blocker, not browser acceptance evidence.
+  generated `.next` and Playwright output were removed. Acceptance was then made
+  cache-bounded and generated dev tooling was temporarily reclaimed; the current
+  18-case browser and seven-case visual gates subsequently passed.
 
 ## Decision Log
 

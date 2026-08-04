@@ -7,12 +7,12 @@ owner: product-recovery
 reviewed_by: [product-owner]
 reviewed_at: 2026-08-03
 primary_feature_id: DW-QUAL-001
-supporting_feature_ids: [DW-FND-002, DW-ONB-001, DW-TASK-002, DW-TASK-003, DW-HITL-001, DW-SURF-001]
+supporting_feature_ids: [DW-FND-002, DW-ONB-001, DW-TASK-002, DW-TASK-003, DW-HITL-001, DW-CODE-001, DW-CODE-002, DW-CODE-003, DW-SURF-001]
 issue: local:DW-PRODUCT-RECOVERY-001
 created: 2026-08-03
 last_updated: 2026-08-03
 base_commit: c7e0ea6cd2fce6187d96f0da06957320641c4a4e
-last_verified_commit: e11efe03fb75754639b20c71bbc18982586bfb60
+last_verified_commit: 8acd3db9dce29ee9b8a20de5363b604315a17ca5
 risk: high
 governed_paths: [.github/workflows/**, apps/api/**, apps/web/**, packages/domain/**, packages/sdk/**, tests/**, playwright.config.ts, package.json, Makefile, docs/PLANS.md, docs/QUALITY_SCORE.md, docs/RELEASE_SCORECARD.md, docs/exec-plans/index.md, docs/exec-plans/active/DW-EXEC-PRODUCT-RECOVERY-GOLDEN-JOURNEY.md]
 contract_gates: [SPIKE-HITL-001]
@@ -20,8 +20,8 @@ decision_gates: [DEC-033]
 gate_review_status: reviewed-with-gates
 gate_reviewed_by: [product-owner]
 gate_reviewed_at: 2026-08-03
-authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/PRODUCT_SENSE.md, docs/DESIGN.md, docs/FRONTEND.md, docs/PLANS.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/onboarding/DW-ONB-001-auth-session-workspace-demo.md, docs/product-specs/tasks/DW-TASK-002-composer-templates-attachments-rubric-plan.md, docs/product-specs/tasks/DW-TASK-003-detail-streaming-tools-reasoning-todos-reconnect.md, docs/product-specs/approvals/DW-HITL-001-ordered-approvals-plan-stale-mobile.md, docs/product-specs/surfaces/dw-surf-001-responsive-web-pwa-offline-and-push.md]
-scenario_ids: [E2E-V1-01-FIRST-VALUE, E2E-V1-02-TRUTHFUL-RUNTIME, E2E-V1-06-ORDERED-APPROVAL, E2E-V1-08-RESPONSIVE-ACCESS, E2E-V1-11-CONTRIBUTOR, E2E-V1-12-OPERATIONAL-RELEASE]
+authoritative_sources: [AGENTS.md, ARCHITECTURE.md, docs/PRODUCT_SENSE.md, docs/DESIGN.md, docs/FRONTEND.md, docs/PLANS.md, docs/product-specs/acceptance-scenarios.md, docs/product-specs/foundations/dw-fnd-002-design-system-shell-and-demo-mode.md, docs/product-specs/onboarding/DW-ONB-001-auth-session-workspace-demo.md, docs/product-specs/tasks/DW-TASK-002-composer-templates-attachments-rubric-plan.md, docs/product-specs/tasks/DW-TASK-003-detail-streaming-tools-reasoning-todos-reconnect.md, docs/product-specs/approvals/DW-HITL-001-ordered-approvals-plan-stale-mobile.md, docs/product-specs/coding/DW-CODE-001-sandbox-environments-snapshots-setup-egress.md, docs/product-specs/coding/DW-CODE-002-github-auth-repository-pr-ci-merge.md, docs/product-specs/coding/DW-CODE-003-files-diff-terminal-browser-phone.md, docs/product-specs/surfaces/dw-surf-001-responsive-web-pwa-offline-and-push.md]
+scenario_ids: [E2E-V1-01-FIRST-VALUE, E2E-V1-02-TRUTHFUL-RUNTIME, E2E-V1-06-ORDERED-APPROVAL, E2E-V1-07-CODING-DRAFT-PR, E2E-V1-08-RESPONSIVE-ACCESS, E2E-V1-11-CONTRIBUTOR, E2E-V1-12-OPERATIONAL-RELEASE]
 dispatch_kind: cell
 dispatch_ready: true
 agent_review_required: true
@@ -180,6 +180,19 @@ Acceptance: focused API/domain/SDK/web tests and a two-width browser case prove 
 complete repeated-name vector. A malformed or stale vector sends no provider request;
 the scorecard continues to distinguish installed/local proof from hosted acceptance.
 
+### Milestone 7 — Truthful coding-to-draft-PR fixture journey
+
+Bind the accepted coding-review shell to an additive real task API contract. The
+credential-free deterministic fixture exposes exact revision, sandbox, file,
+draft-PR retry and non-authoritative CI evidence without claiming GitHub or hosted
+provider execution. Partial bindings fail before task creation, coding evidence
+appears only on a completed coding task, and the result survives SQLite reopen.
+
+Acceptance: API/domain/SDK/web tests plus a phone browser journey prove fresh sign-in,
+coding choice, ordered approval, progress, exact-SHA inspection, unavailable merge
+and reopen. Real GitHub, authoritative CI, hosted proof and release acceptance stay
+explicitly gated.
+
 ## Progress
 
 - [x] 2026-08-03 00:00 PDT — Product-owner recovery directive accepted and clean
@@ -212,6 +225,13 @@ the scorecard continues to distinguish installed/local proof from hosted accepta
   edited-plan trace, explicit per-action choice, two-device stale/conflict safety,
   keyboard/touch access and desktop/phone screenshots pass locally. Classic batch
   resume, hosted proof and release acceptance remain gated.
+- [x] 2026-08-03 — Truthful coding-to-draft-PR fixture journey completed at
+  `8acd3db9dce29ee9b8a20de5363b604315a17ca5`. The additive task contract binds
+  coding intent and repository identity, exposes terminal-only exact-revision and
+  deterministic sandbox/PR/CI evidence, reconciles one retained draft PR after a
+  simulated timeout, persists through SQLite reopen, blocks creation until the
+  agent registry resolves, completes and reopens on a phone, and keeps real GitHub,
+  authoritative CI, hosted execution, merge and release acceptance fail-closed.
 
 ## Surprises & Discoveries
 
@@ -307,7 +327,8 @@ product owner for those external actions.
 The branch now contains the designed shell, a complete credential-free supervised
 task journey, retained result/evidence/export/trace inspection, reopen, immutable
 prototype references, complete route mappings, desktop/phone screenshots, 320px
-reflow, a fail-closed real-source hosted journey, and the 12-scenario scorecard.
+reflow, a truthful credential-free coding-to-draft-PR fixture journey, a fail-closed
+real-source hosted journey, and the 12-scenario scorecard.
 
 Independent review found and the branch fixed a stale decision-receipt race,
 unretained agent identity, overlapping mobile overlays, secret-bearing hosted

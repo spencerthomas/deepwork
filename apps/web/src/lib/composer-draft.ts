@@ -207,10 +207,7 @@ export function parseComposerDispatchAttempt(
   // Unlike an ordinary draft, an ambiguous dispatch must not silently expire:
   // only an accepted receipt or authoritative rejection may unlock it.
   if (attemptedAt < 0) return null;
-  if (
-    hasAcceptedTask &&
-    (acceptedAt! > now || now - acceptedAt! > DISPATCH_ACCEPTED_TTL_MS)
-  ) {
+  if (hasAcceptedTask && (acceptedAt! > now || now - acceptedAt! > DISPATCH_ACCEPTED_TTL_MS)) {
     return null;
   }
   return {

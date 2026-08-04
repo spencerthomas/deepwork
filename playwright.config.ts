@@ -23,9 +23,13 @@ export default defineConfig({
     // This journey enters an access key. Retain masked screenshots only; a
     // Playwright trace can serialize form values and request bodies.
     trace: "off",
+    launchOptions: {
+      args: ["--disk-cache-size=1048576", "--media-cache-size=1048576"],
+    },
   },
   webServer: {
-    command: "DEEPWORK_ACCESS_KEY=deepwork-local-browser-acceptance ./dev",
+    command:
+      "DEEPWORK_EPHEMERAL_ACCEPTANCE=1 DEEPWORK_ACCESS_KEY=deepwork-local-browser-acceptance ./dev",
     url: "http://127.0.0.1:3000/tasks/new",
     reuseExistingServer: false,
     timeout: 60_000,

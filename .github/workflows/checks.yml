@@ -157,6 +157,7 @@ jobs:
     env:
       DEEPWORK_HOSTED_URL: ${{ secrets.DEEPWORK_HOSTED_URL }}
       DEEPWORK_E2E_ACCESS_KEY: ${{ secrets.DEEPWORK_E2E_ACCESS_KEY }}
+      DEEPWORK_EXPECTED_BUILD_SHA: ${{ github.sha }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -180,6 +181,7 @@ jobs:
         run: |
           test -n "$DEEPWORK_HOSTED_URL"
           test -n "$DEEPWORK_E2E_ACCESS_KEY"
+          test -n "$DEEPWORK_EXPECTED_BUILD_SHA"
 
       - name: Run hosted golden journey
         run: make test-hosted

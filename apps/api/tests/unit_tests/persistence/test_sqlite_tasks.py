@@ -493,6 +493,16 @@ def _unchecked_plan_with_revision(revision: int) -> ProposedPlan:
     return plan
 
 
+async def _source_lease_token(repository: SQLiteTaskRepository, task_id: str) -> str:
+    lease = await repository.acquire_source_lease(
+        task_id,
+        owner_id="sqlite-test-owner",
+        lease_seconds=300,
+    )
+    assert lease is not None
+    return lease.lease_token
+
+
 async def test_create_list_and_detail_survive_repository_reopen(tmp_path: Path) -> None:
     database = tmp_path / "tasks.sqlite"
     first = SQLiteTaskRepository(database)
@@ -515,14 +525,17 @@ async def test_source_binding_replaces_and_survives_repository_reopen(tmp_path: 
     database = tmp_path / "tasks.sqlite"
     first = SQLiteTaskRepository(database)
     task = await first.create_task(title="Source task", objective="Rejoin accepted work")
+    lease_token = await _source_lease_token(first, task.task_id)
 
     initial = await first.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
     )
     advanced = await first.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-2",
     )
@@ -563,6 +576,20 @@ async def test_source_lease_excludes_peers_and_allows_expired_takeover(tmp_path:
     assert replacement is not None
     assert replacement.owner_id == "api-process-b"
     assert replacement.lease_token != original.lease_token
+    with pytest.raises(TaskSourceContractError):
+        await first.bind_source_run(
+            task.task_id,
+            lease_token=original.lease_token,
+            thread_id="stale-thread",
+            run_id="stale-run",
+        )
+    replacement_binding = await second.bind_source_run(
+        task.task_id,
+        lease_token=replacement.lease_token,
+        thread_id="replacement-thread",
+        run_id="replacement-run",
+    )
+    assert replacement_binding.run_id == "replacement-run"
     assert await first.release_source_lease(task.task_id, lease_token=original.lease_token) is False
     assert (
         await second.release_source_lease(task.task_id, lease_token=replacement.lease_token) is True
@@ -576,14 +603,17 @@ async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_pat
     database = tmp_path / "tasks.sqlite"
     first = SQLiteTaskRepository(database)
     task = await first.create_task(title="Source task", objective="Resume accepted work")
+    lease_token = await _source_lease_token(first, task.task_id)
     await first.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
     )
 
     pending = await first.mark_source_transition_pending(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
         interrupt_id="interrupt-1",
@@ -597,6 +627,7 @@ async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_pat
     assert await reopened.get_source_binding(task.task_id) == pending
     accepted = await reopened.accept_source_transition(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         previous_run_id="source-run-1",
         run_id="source-run-2",
@@ -613,6 +644,7 @@ async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_pat
     with pytest.raises(TaskSourceContractError):
         await final.accept_source_transition(
             task.task_id,
+            lease_token=lease_token,
             thread_id="source-thread-1",
             previous_run_id="source-run-1",
             run_id="source-run-3",
@@ -621,6 +653,7 @@ async def test_source_transition_claim_and_ack_survive_reopen_atomically(tmp_pat
     with pytest.raises(TaskSourceContractError):
         await final.bind_source_run(
             task.task_id,
+            lease_token=lease_token,
             thread_id="source-thread-1",
             run_id="source-run-late",
         )
@@ -634,8 +667,10 @@ async def test_source_plan_transition_commits_plan_interrupt_and_binding_atomica
     database = tmp_path / "tasks.sqlite"
     repository = SQLiteTaskRepository(database)
     task = await repository.create_task(title="Plan task", objective="Edit durably")
+    lease_token = await _source_lease_token(repository, task.task_id)
     await repository.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
     )
@@ -666,6 +701,7 @@ async def test_source_plan_transition_commits_plan_interrupt_and_binding_atomica
     assert await reopened.get_source_plan_transition(task.task_id) == pending
     binding = await reopened.accept_source_plan_transition(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         previous_run_id="source-run-1",
         run_id="source-run-2",
@@ -690,8 +726,10 @@ async def test_source_plan_transition_commits_plan_interrupt_and_binding_atomica
 async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_path: Path) -> None:
     repository = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
     task = await repository.create_task(title="Streaming", objective="Retain exact progress")
+    lease_token = await _source_lease_token(repository, task.task_id)
     await repository.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
     )
@@ -702,6 +740,7 @@ async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_p
 
     first = await repository.append_source_progress(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
         source_event_key="a" * 64,
@@ -712,6 +751,7 @@ async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_p
     reopened = SQLiteTaskRepository(tmp_path / "tasks.sqlite")
     duplicate = await reopened.append_source_progress(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
         source_event_key="a" * 64,
@@ -729,6 +769,7 @@ async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_p
     with pytest.raises(TaskSourceContractError):
         await reopened.append_source_progress(
             task.task_id,
+            lease_token=lease_token,
             thread_id="source-thread-1",
             run_id="source-run-other",
             source_event_key="b" * 64,
@@ -747,8 +788,10 @@ async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
     )
     repository = SQLiteTaskRepository(tmp_path / "bounded-source-receipts.sqlite")
     task = await repository.create_task(title="Streaming", objective="Bound receipt growth")
+    lease_token = await _source_lease_token(repository, task.task_id)
     await repository.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-1",
         run_id="source-run-1",
     )
@@ -758,6 +801,7 @@ async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
         assert (
             await repository.append_source_progress(
                 task.task_id,
+                lease_token=lease_token,
                 thread_id="source-thread-1",
                 run_id="source-run-1",
                 source_event_key=key,
@@ -768,6 +812,7 @@ async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
     assert (
         await repository.append_source_progress(
             task.task_id,
+            lease_token=lease_token,
             thread_id="source-thread-1",
             run_id="source-run-1",
             source_event_key="a" * 64,
@@ -778,6 +823,7 @@ async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
     with pytest.raises(TaskSourceContractError):
         await repository.append_source_progress(
             task.task_id,
+            lease_token=lease_token,
             thread_id="source-thread-1",
             run_id="source-run-1",
             source_event_key="c" * 64,
@@ -1813,8 +1859,10 @@ async def test_v6_database_adds_source_recovery_tables_without_rewriting_tasks(
 
     repository = SQLiteTaskRepository(database)
     task = await repository.create_task(title="Migrated", objective="Retain task schema")
+    lease_token = await _source_lease_token(repository, task.task_id)
     binding = await repository.bind_source_run(
         task.task_id,
+        lease_token=lease_token,
         thread_id="source-thread-migrated",
         run_id="source-run-migrated",
     )

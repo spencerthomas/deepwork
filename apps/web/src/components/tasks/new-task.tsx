@@ -30,6 +30,7 @@ import {
   saveComposerDispatchAttempt,
   saveComposerDraft,
   parseComposerDispatchAttempt,
+  retainAcceptedComposerDispatch,
   withComposerDispatchLock,
   type ComposerDispatchAttempt,
 } from "@/lib/composer-draft";
@@ -152,6 +153,11 @@ export function NewTask() {
     if (draftScope === null) return;
     const pendingAttempt = loadComposerDispatchAttempt(draftScope);
     if (pendingAttempt !== null) {
+      if (pendingAttempt.acceptedTaskId) {
+        clearComposerDraft(draftScope);
+        router.push(`/tasks/${pendingAttempt.acceptedTaskId}`);
+        return;
+      }
       setPrompt(pendingAttempt.prompt);
       setAgentId(pendingAttempt.agentId ?? "");
       setJourney(pendingAttempt.journey);
@@ -184,6 +190,11 @@ export function NewTask() {
       if (event.storageArea !== window.localStorage || event.key !== key) return;
       const pending = parseComposerDispatchAttempt(event.newValue, Date.now());
       if (pending === null) return;
+      if (pending.acceptedTaskId) {
+        clearComposerDraft(draftScope);
+        router.push(`/tasks/${pending.acceptedTaskId}`);
+        return;
+      }
       setPrompt(pending.prompt);
       setAgentId(pending.agentId ?? "");
       setJourney(pending.journey);
@@ -193,7 +204,7 @@ export function NewTask() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [draftScope]);
+  }, [draftScope, router]);
 
   useEffect(() => {
     if (mode === "api" && agentsAvailable && agents.length > 0 && agentId === "") {
@@ -250,6 +261,11 @@ export function NewTask() {
     epoch: number,
   ) {
     if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
+    if (attempt.acceptedTaskId) {
+      clearComposerDraft(attemptScope);
+      router.push(`/tasks/${attempt.acceptedTaskId}`);
+      return;
+    }
     if (mode === "api") {
       try {
         const session = await getSession(AbortSignal.timeout(15_000));
@@ -285,7 +301,7 @@ export function NewTask() {
       attempt.journey,
     );
     if (outcome.kind === "accepted") {
-      clearComposerDispatchAttempt(attemptScope, attempt.idempotencyKey);
+      retainAcceptedComposerDispatch(attemptScope, attempt, outcome.task.taskId);
       clearComposerDraft(attemptScope);
       if (!mountedRef.current || dispatchEpochRef.current !== epoch) return;
       setDispatchAttempt(undefined);

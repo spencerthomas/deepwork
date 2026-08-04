@@ -278,10 +278,21 @@ class InMemoryTaskRepository:
             self._condition.notify_all()
             return True
 
+    def _require_source_lease(self, task_id: str, lease_token: str) -> None:
+        current = self._source_leases.get(task_id)
+        now = int(self._clock().timestamp())
+        if (
+            current is None
+            or current.expires_at <= now
+            or not secrets.compare_digest(current.lease_token, lease_token)
+        ):
+            raise TaskSourceContractError
+
     async def bind_source_run(
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
     ) -> TaskSourceBinding:
@@ -293,6 +304,7 @@ class InMemoryTaskRepository:
             run_id=run_id,
         )
         async with self._condition:
+            self._require_source_lease(task_id, lease_token)
             self._get(task_id)
             current = self._source_bindings.get(task_id)
             if current is not None:
@@ -318,6 +330,7 @@ class InMemoryTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
         interrupt_id: str,
@@ -326,6 +339,7 @@ class InMemoryTaskRepository:
         """Persist a transition claim only against the current source run."""
 
         async with self._condition:
+            self._require_source_lease(task_id, lease_token)
             self._get(task_id)
             current = self._source_bindings.get(task_id)
             if current is None or (current.thread_id, current.run_id) != (thread_id, run_id):
@@ -351,6 +365,7 @@ class InMemoryTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -359,6 +374,7 @@ class InMemoryTaskRepository:
         """Replace a claimed run and retain its durable acknowledgement."""
 
         async with self._condition:
+            self._require_source_lease(task_id, lease_token)
             self._get(task_id)
             current = self._source_bindings.get(task_id)
             if current is None or (
@@ -444,6 +460,7 @@ class InMemoryTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -454,6 +471,7 @@ class InMemoryTaskRepository:
         """Commit the revised plan, interrupt, and binding as one mutation."""
 
         async with self._condition:
+            self._require_source_lease(task_id, lease_token)
             task = self._get(task_id)
             pending = self._source_plan_transitions.get(task_id)
             current = self._source_bindings.get(task_id)
@@ -531,6 +549,7 @@ class InMemoryTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
         source_event_key: str,
@@ -543,6 +562,7 @@ class InMemoryTaskRepository:
         ):
             raise TaskSourceContractError
         async with self._condition:
+            self._require_source_lease(task_id, lease_token)
             task = self._get(task_id)
             current = self._source_bindings.get(task_id)
             if current is None or (current.thread_id, current.run_id) != (thread_id, run_id):

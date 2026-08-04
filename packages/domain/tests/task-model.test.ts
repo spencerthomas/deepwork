@@ -352,6 +352,7 @@ describe("client-safe task values", () => {
       taskId: task,
       run: summaryInput.run,
       facts,
+      duplicate: false,
       authRef: "accepted-secret",
     };
     const detailInput = {

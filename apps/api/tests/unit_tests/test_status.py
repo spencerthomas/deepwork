@@ -36,6 +36,12 @@ def test_fixture_status_is_explicitly_unavailable() -> None:
     assert service.worker().durability is WorkerDurability.UNAVAILABLE
 
 
+def test_runtime_status_reports_the_composed_build_identity() -> None:
+    service = StatusService(provider=FixtureStatusProvider(), build_sha="abc1234")
+
+    assert service.demo().build_sha == "abc1234"
+
+
 def test_classic_status_identifies_the_configured_runtime_without_claiming_health() -> None:
     service = StatusService(
         provider=SourceStatusProvider(

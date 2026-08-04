@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { approveCurrentReview } from "../e2e/support/approve-current-review";
 
 const accessKey = process.env.DEEPWORK_E2E_ACCESS_KEY;
+const expectedBuildSha = process.env.DEEPWORK_EXPECTED_BUILD_SHA;
 
 interface HostedAgent {
   agentId: string;
@@ -10,6 +11,7 @@ interface HostedAgent {
 }
 
 interface HostedTaskDetail {
+  agentId: string | null;
   evidence: Array<{ kind: string; source: string }>;
   result: string | null;
 }
@@ -18,6 +20,7 @@ interface HostedRuntimeStatus {
   runtime_kind: "fixture" | "local-agent-server" | "classic-deployment";
   evidence_class: string;
   capabilities: Array<{ name: string; state: string }>;
+  build_sha: string | null;
 }
 
 function isApiUrl(value: string): boolean {
@@ -68,6 +71,10 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   });
 
   await page.goto("/login");
+  expect(expectedBuildSha).toBeTruthy();
+  expect(
+    await page.locator('meta[name="deepwork-build-sha"]').getAttribute("content"),
+  ).toBe(expectedBuildSha);
   await expect(page.getByRole("heading", { name: "Connect to Deep Work" })).toBeVisible();
   await page.getByLabel("Workspace access key").fill(accessKey);
   await page.getByRole("button", { name: "Connect workspace" }).click();
@@ -82,6 +89,7 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   });
   expect(runtime.status).toBe(200);
   expect(runtime.body.runtime_kind).not.toBe("fixture");
+  expect(runtime.body.build_sha).toBe(expectedBuildSha);
   expect(runtime.body.evidence_class).toBe("local-source");
   const runtimeCapabilities = Object.fromEntries(
     runtime.body.capabilities.map((capability) => [capability.name, capability.state]),
@@ -138,6 +146,8 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
     return (await response.json()) as HostedTaskDetail;
   }, taskId);
   expect(detail.result?.trim().length).toBeGreaterThan(0);
+  expect(detail.agentId).toBe(agent.agentId);
+  expect(detail.evidence.length).toBeGreaterThan(0);
 
   await page.getByRole("tab", { name: "Sources" }).click();
   await expect(page.getByText("local-source", { exact: false }).first()).toBeVisible();
@@ -152,6 +162,14 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   await page.locator(`a[href="${taskUrl.pathname}"]`).first().click();
   await expect(page).toHaveURL(new RegExp(`${taskUrl.pathname}$`));
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
+  const reopenedDetail = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/tasks/${encodeURIComponent(id!)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error(`Reopened task returned HTTP ${response.status}`);
+    return (await response.json()) as HostedTaskDetail;
+  }, taskId);
+  expect(reopenedDetail.agentId).toBe(agent.agentId);
   await page.getByRole("tab", { name: "Files" }).click();
   await expect(page.getByText("result.md", { exact: true })).toBeVisible();
 

@@ -56,6 +56,7 @@ function checkpointDetail(lastEventId: number) {
   return {
     taskId: "task_00000001",
     runId: "run_00000001",
+    agentId: null,
     createdAt: "2026-01-01T00:00:00+00:00",
     title: "Task",
     objective: "Inspect the bounded contract.",
@@ -76,6 +77,7 @@ describe("separate task services", () => {
           {
             taskId: "task_00000001",
             runId: "run_00000001",
+            agentId: null,
             createdAt: "2026-01-01T00:00:00+00:00",
             title: "Task",
             objective: "Inspect the bounded contract.",
@@ -120,6 +122,7 @@ describe("separate task services", () => {
       taskId: "task_00000001",
       runId: "run_00000001",
       status: "queued",
+      duplicate: false,
     }));
     const transport: TaskMutationTransport = {
       createTask,
@@ -147,6 +150,7 @@ describe("separate task services", () => {
         taskId: "task_00000001",
         runId: "run_00000001",
         status: "queued",
+        duplicate: false,
       }),
     );
     const transport: TaskMutationTransport = {
@@ -492,7 +496,12 @@ describe("separate task services", () => {
     if (!replay.ok || replayObserver === undefined) {
       throw new Error("Expected replay stream.");
     }
-    const created = { taskId: "task_00000001", runId: "run_00000001", status: "queued" };
+    const created = {
+      taskId: "task_00000001",
+      runId: "run_00000001",
+      agentId: null,
+      status: "queued",
+    };
     replayObserver.onEvent("task.created", "1", created);
     replayObserver.onEvent("task.created", "1", created);
     replayObserver.onEvent("task.created", "1", {
@@ -614,6 +623,7 @@ describe("separate task services", () => {
     observer.onEvent("task.created", "1", {
       taskId: "task_00000001",
       runId: "run_00000001",
+      agentId: null,
       status: "queued",
     });
     observer.onEvent("run.started", "2", {

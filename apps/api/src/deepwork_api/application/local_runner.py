@@ -41,6 +41,7 @@ _SOURCE_STATE_RECONCILIATION_SECONDS = 1.0
 _SOURCE_STATE_RECONCILIATION_MAX_SECONDS = 8.0
 _SOURCE_LEASE_SECONDS = 15
 _SOURCE_RECOVERY_MAX_DELAY_SECONDS = 2.0
+_SOURCE_ACTIVE_STREAM_MAX_ATTEMPTS = 12
 _SOURCE_REPLAY_EVENT_LIMIT = 20_000
 
 
@@ -348,6 +349,7 @@ class LocalAgentServerRunner:
         try:
             await self.repository.bind_source_run(
                 task.task_id,
+                lease_token=self._source_lease_token(task.task_id),
                 thread_id=run.thread_id,
                 run_id=run.run_id,
             )
@@ -428,6 +430,7 @@ class LocalAgentServerRunner:
             )
             binding = await self.repository.bind_source_run(
                 task.task_id,
+                lease_token=self._source_lease_token(task.task_id),
                 thread_id=run.thread_id,
                 run_id=run.run_id,
             )
@@ -443,6 +446,7 @@ class LocalAgentServerRunner:
             updated = await self._request_source_plan_update(task, plan_transition)
             binding = await self.repository.accept_source_plan_transition(
                 task.task_id,
+                lease_token=self._source_lease_token(task.task_id),
                 thread_id=updated.thread_id,
                 previous_run_id=binding.run_id,
                 run_id=updated.run_id,
@@ -474,6 +478,7 @@ class LocalAgentServerRunner:
             )
             binding = await self.repository.accept_source_transition(
                 task.task_id,
+                lease_token=self._source_lease_token(task.task_id),
                 thread_id=next_run.thread_id,
                 previous_run_id=binding.run_id,
                 run_id=next_run.run_id,
@@ -532,7 +537,17 @@ class LocalAgentServerRunner:
             recovery.exception()
 
     async def _acquire_source_lease(self, task_id: str) -> bool:
-        if task_id in self._source_leases:
+        current = self._source_leases.get(task_id)
+        if current is not None:
+            renewed = await self.repository.renew_source_lease(
+                task_id,
+                lease_token=current.lease_token,
+                lease_seconds=_SOURCE_LEASE_SECONDS,
+            )
+            if renewed is None:
+                self._source_leases.pop(task_id, None)
+                return False
+            self._source_leases[task_id] = renewed
             return True
         lease = await self.repository.acquire_source_lease(
             task_id,
@@ -593,6 +608,12 @@ class LocalAgentServerRunner:
             task_id,
             lease_token=lease.lease_token,
         )
+
+    def _source_lease_token(self, task_id: str) -> str:
+        lease = self._source_leases.get(task_id)
+        if lease is None:
+            raise TaskSourceUnavailableError
+        return lease.lease_token
 
     def start(
         self,
@@ -792,6 +813,7 @@ class LocalAgentServerRunner:
             raise TaskSourceUnavailableError from None
         await self.repository.accept_source_plan_transition(
             task.task_id,
+            lease_token=self._source_lease_token(task.task_id),
             thread_id=updated.thread_id,
             previous_run_id=transition.run_id,
             run_id=updated.run_id,
@@ -1032,6 +1054,7 @@ class LocalAgentServerRunner:
                 try:
                     await self.repository.mark_source_transition_pending(
                         task.task_id,
+                        lease_token=self._source_lease_token(task.task_id),
                         thread_id=run.thread_id,
                         run_id=run.run_id,
                         interrupt_id=state.interrupt.interrupt_id,
@@ -1050,6 +1073,7 @@ class LocalAgentServerRunner:
                 try:
                     await self.repository.accept_source_transition(
                         task.task_id,
+                        lease_token=self._source_lease_token(task.task_id),
                         thread_id=next_run.thread_id,
                         previous_run_id=run.run_id,
                         run_id=next_run.run_id,
@@ -1081,6 +1105,10 @@ class LocalAgentServerRunner:
             # transition. Do not turn recoverable upstream work into a false
             # terminal failure merely because the replacement write failed.
             self._reject_resume(resume_key, TaskSourceUnavailableError())
+            current = asyncio.current_task()
+            if current is not None and self._tasks.get(task.task_id) is current:
+                self._tasks.pop(task.task_id, None)
+            self._watch_recovery_id(task.task_id)
         except Exception:
             self._reject_resume(resume_key, TaskSourceUnavailableError())
             await self._fail(task, _RUNNER_FAILURE_REASON)
@@ -1094,12 +1122,17 @@ class LocalAgentServerRunner:
 
         delay = min(0.25, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
         replay = _SourceReplayState(_SOURCE_REPLAY_EVENT_LIMIT)
-        while True:
+        attempts = 0
+        while attempts < _SOURCE_ACTIVE_STREAM_MAX_ATTEMPTS:
             try:
                 return await self._follow_stream_once(task, run, replay)
             except TaskSourceUnavailableError:
+                attempts += 1
+                if attempts >= _SOURCE_ACTIVE_STREAM_MAX_ATTEMPTS:
+                    raise
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
+        raise TaskSourceUnavailableError
 
     async def _follow_stream_once(
         self,
@@ -1152,6 +1185,7 @@ class LocalAgentServerRunner:
                     )
                     await self.repository.append_source_progress(
                         task.task_id,
+                        lease_token=self._source_lease_token(task.task_id),
                         thread_id=run.thread_id,
                         run_id=run.run_id,
                         source_event_key=_source_event_key(

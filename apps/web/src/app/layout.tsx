@@ -40,6 +40,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     // assertions (e.g. the demo acceptance journey) whenever CI runs dark.
     <html lang="en" className="bg-background" suppressHydrationWarning>
       <head>
+        <meta
+          name="deepwork-build-sha"
+          content={process.env.NEXT_PUBLIC_DEEPWORK_BUILD_SHA ?? "unknown"}
+        />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body className="font-sans antialiased">

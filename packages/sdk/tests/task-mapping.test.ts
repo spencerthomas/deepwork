@@ -39,6 +39,7 @@ function resolver(sourceName: string): TaskBindingResolver {
 const waitingDetail = {
   taskId: "task_00000001",
   runId: "run_00000001",
+  agentId: "deepwork-fixture-planner",
   createdAt: "2026-01-01T00:00:00+00:00",
   title: "Review the task",
   objective: "Inspect the accepted task contract.",
@@ -58,6 +59,8 @@ const waitingDetail = {
   evidence: [
     {
       evidenceId: "evidence_00000001",
+      taskId: "task_00000001",
+      runId: "run_00000001",
       kind: "fixture",
       summary: "The accepted contract was inspected.",
       source: "deterministic-local-runner",
@@ -592,6 +595,7 @@ describe("strict accepted task mapping", () => {
             {
               taskId: "task_00000001",
               runId: "run_00000001",
+              agentId: null,
               createdAt: "2026-01-01T00:00:00+00:00",
               title: "Task",
               objective: "Objective",
@@ -614,6 +618,7 @@ describe("strict accepted task mapping", () => {
             {
               taskId: "task_00000001",
               runId: "run_00000001",
+              agentId: null,
               createdAt,
               title: "Task",
               objective: "Objective",

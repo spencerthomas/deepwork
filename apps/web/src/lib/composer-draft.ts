@@ -30,6 +30,7 @@ export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Hard cap on a persisted draft, independent of the live textarea limit. */
 export const DRAFT_MAX_LENGTH = 20_000;
+export const DISPATCH_ACCEPTED_TTL_MS = 30_000;
 
 export interface ComposerDraft {
   prompt: string;
@@ -43,6 +44,8 @@ export interface ComposerDispatchAttempt {
   prompt: string;
   agentId?: string;
   journey: "general" | "coding";
+  acceptedTaskId?: string;
+  acceptedAt?: number;
 }
 
 export function createComposerDispatchAttempt(
@@ -160,7 +163,7 @@ export function serializeComposerDraft(prompt: string, now: number): string {
 
 export function parseComposerDispatchAttempt(
   raw: string | null,
-  _now: number,
+  now: number,
 ): ComposerDispatchAttempt | null {
   if (raw === null || raw === "") return null;
   let parsed: unknown;
@@ -171,7 +174,17 @@ export function parseComposerDispatchAttempt(
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
   const record = parsed as Record<string, unknown>;
-  const { schemaVersion, idempotencyKey, attemptedAt, prompt, agentId, journey } = record;
+  const {
+    schemaVersion,
+    idempotencyKey,
+    attemptedAt,
+    prompt,
+    agentId,
+    journey,
+    acceptedTaskId,
+    acceptedAt,
+  } = record;
+  const hasAcceptedTask = acceptedTaskId !== undefined || acceptedAt !== undefined;
   if (
     schemaVersion !== 1 ||
     typeof idempotencyKey !== "string" ||
@@ -182,13 +195,24 @@ export function parseComposerDispatchAttempt(
     prompt.trim() === "" ||
     unicodeLength(prompt) > PROMPT_MAX_LENGTH ||
     (journey !== "general" && journey !== "coding") ||
-    (agentId !== undefined && (typeof agentId !== "string" || agentId.trim() === ""))
+    (agentId !== undefined && (typeof agentId !== "string" || agentId.trim() === "")) ||
+    (hasAcceptedTask &&
+      (typeof acceptedTaskId !== "string" ||
+        !/^task_[0-9]{8}$/.test(acceptedTaskId) ||
+        typeof acceptedAt !== "number" ||
+        !Number.isFinite(acceptedAt)))
   ) {
     return null;
   }
   // Unlike an ordinary draft, an ambiguous dispatch must not silently expire:
   // only an accepted receipt or authoritative rejection may unlock it.
   if (attemptedAt < 0) return null;
+  if (
+    hasAcceptedTask &&
+    (acceptedAt! > now || now - acceptedAt! > DISPATCH_ACCEPTED_TTL_MS)
+  ) {
+    return null;
+  }
   return {
     schemaVersion: 1,
     idempotencyKey,
@@ -196,6 +220,9 @@ export function parseComposerDispatchAttempt(
     prompt,
     ...(typeof agentId === "string" ? { agentId } : {}),
     journey,
+    ...(hasAcceptedTask
+      ? { acceptedTaskId: acceptedTaskId as string, acceptedAt: acceptedAt as number }
+      : {}),
   };
 }
 
@@ -276,6 +303,20 @@ export function saveComposerDispatchAttempt(
   } catch {
     return false;
   }
+}
+
+export function retainAcceptedComposerDispatch(
+  scope: string,
+  attempt: ComposerDispatchAttempt,
+  taskId: string,
+  now: number = Date.now(),
+): boolean {
+  if (!/^task_[0-9]{8}$/.test(taskId)) return false;
+  return saveComposerDispatchAttempt(scope, {
+    ...attempt,
+    acceptedTaskId: taskId,
+    acceptedAt: now,
+  });
 }
 
 export function clearComposerDispatchAttempt(scope: string, idempotencyKey: string): void {

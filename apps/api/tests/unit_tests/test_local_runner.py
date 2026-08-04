@@ -280,6 +280,7 @@ class _CrashBeforeBindingRepository(InMemoryTaskRepository):
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
     ) -> TaskSourceBinding:
@@ -288,6 +289,7 @@ class _CrashBeforeBindingRepository(InMemoryTaskRepository):
             raise asyncio.CancelledError
         return await super().bind_source_run(
             task_id,
+            lease_token=lease_token,
             thread_id=thread_id,
             run_id=run_id,
         )
@@ -303,6 +305,7 @@ class _CrashOnAcceptRepository(InMemoryTaskRepository):
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -311,17 +314,19 @@ class _CrashOnAcceptRepository(InMemoryTaskRepository):
         if self.crash_once:
             self.crash_once = False
             if not self.after_commit:
-                raise asyncio.CancelledError
+                raise RuntimeError("simulated transient binding failure")
             await super().accept_source_transition(
                 task_id,
+                lease_token=lease_token,
                 thread_id=thread_id,
                 previous_run_id=previous_run_id,
                 run_id=run_id,
                 transition_id=transition_id,
             )
-            raise asyncio.CancelledError
+            raise RuntimeError("simulated post-commit acknowledgement failure")
         return await super().accept_source_transition(
             task_id,
+            lease_token=lease_token,
             thread_id=thread_id,
             previous_run_id=previous_run_id,
             run_id=run_id,
@@ -336,6 +341,7 @@ class _CrashOnAcceptPlanRepository(InMemoryTaskRepository):
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -348,6 +354,7 @@ class _CrashOnAcceptPlanRepository(InMemoryTaskRepository):
             raise RuntimeError("simulated plan binding crash")
         return await super().accept_source_plan_transition(
             task_id,
+            lease_token=lease_token,
             thread_id=thread_id,
             previous_run_id=previous_run_id,
             run_id=run_id,
@@ -367,6 +374,7 @@ class _BlockingAfterAcceptPlanRepository(InMemoryTaskRepository):
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -376,6 +384,7 @@ class _BlockingAfterAcceptPlanRepository(InMemoryTaskRepository):
     ) -> TaskSourceBinding:
         binding = await super().accept_source_plan_transition(
             task_id,
+            lease_token=lease_token,
             thread_id=thread_id,
             previous_run_id=previous_run_id,
             run_id=run_id,
@@ -395,6 +404,7 @@ class _CrashOnAcceptPlanSQLiteRepository(SQLiteTaskRepository):
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -407,12 +417,40 @@ class _CrashOnAcceptPlanSQLiteRepository(SQLiteTaskRepository):
             raise RuntimeError("simulated SQLite plan binding crash")
         return await super().accept_source_plan_transition(
             task_id,
+            lease_token=lease_token,
             thread_id=thread_id,
             previous_run_id=previous_run_id,
             run_id=run_id,
             transition_id=transition_id,
             new_interrupt_id=new_interrupt_id,
             plan_revision=plan_revision,
+        )
+
+
+async def _bind_source_for_test(
+    repository: InMemoryTaskRepository | SQLiteTaskRepository,
+    task_id: str,
+    *,
+    thread_id: str = "thread_1",
+    run_id: str = "run_1",
+) -> TaskSourceBinding:
+    lease = await repository.acquire_source_lease(
+        task_id,
+        owner_id="test-source-setup",
+        lease_seconds=30,
+    )
+    assert lease is not None
+    try:
+        return await repository.bind_source_run(
+            task_id,
+            lease_token=lease.lease_token,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
+    finally:
+        assert await repository.release_source_lease(
+            task_id,
+            lease_token=lease.lease_token,
         )
 
 
@@ -426,11 +464,7 @@ async def _paused_task(
         objective="Objective",
         agent_id=agent_id,
     )
-    await repository.bind_source_run(
-        task.task_id,
-        thread_id="thread_1",
-        run_id="run_1",
-    )
+    await _bind_source_for_test(repository, task.task_id)
     await repository.set_plan(
         task.task_id,
         plan=ProposedPlan(1, "Plan", ("First step",), ()),
@@ -956,11 +990,7 @@ async def test_non_owner_plan_update_is_executed_once_by_the_lease_owner(
     owner_repository = SQLiteTaskRepository(database)
     peer_repository = SQLiteTaskRepository(database)
     task = await _paused_task(owner_repository, agent_id="assistant-reviewer")
-    await owner_repository.bind_source_run(
-        task.task_id,
-        thread_id="thread_1",
-        run_id="run_1",
-    )
+    await _bind_source_for_test(owner_repository, task.task_id)
     source = _IdempotentRecoverySource()
     owner = LocalAgentServerRunner(owner_repository, source)
     peer = LocalAgentServerRunner(peer_repository, source)
@@ -1005,11 +1035,7 @@ async def test_queued_binding_recovery_announces_run_started_once(
         objective="Objective",
         run_id="run_1",
     )
-    await repository.bind_source_run(
-        task.task_id,
-        thread_id="thread_1",
-        run_id="run_1",
-    )
+    await _bind_source_for_test(repository, task.task_id)
 
     assert await runner.recover(task) is True
     for _ in range(20):
@@ -1029,6 +1055,7 @@ async def test_error_stream_event_fails_instead_of_completing() -> None:
     runner = LocalAgentServerRunner(repository, _Source(events=(SimpleNamespace(kind="error"),)))
     task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
 
+    await _claim_source_ownership(runner, task)
     await runner._follow(task, _Run())
 
     assert (await repository.get_task(task.task_id)).status is TaskStatus.FAILED
@@ -1040,12 +1067,9 @@ async def test_cursorless_progress_fails_without_persisting_an_undedupeable_even
     source = _Source(events=(SimpleNamespace(kind="progress", cursor=None),))
     runner = LocalAgentServerRunner(repository, source)
     task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
-    await repository.bind_source_run(
-        task.task_id,
-        thread_id="thread_1",
-        run_id="run_1",
-    )
+    await _bind_source_for_test(repository, task.task_id)
 
+    await _claim_source_ownership(runner, task)
     await runner._follow(task, _Run())
 
     current = await repository.get_task(task.task_id)
@@ -1092,12 +1116,9 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
     source = FlakyActiveStreamSource()
     runner = LocalAgentServerRunner(repository, source)
     task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
-    await repository.bind_source_run(
-        task.task_id,
-        thread_id="thread_1",
-        run_id="run_1",
-    )
+    await _bind_source_for_test(repository, task.task_id)
 
+    await _claim_source_ownership(runner, task)
     await runner._follow(task, _Run())
 
     current = await repository.get_task(task.task_id)
@@ -1107,6 +1128,57 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
     assert current.status is TaskStatus.COMPLETED
     assert current.result == "Recovered result"
     assert [event.name for event in events].count(TaskEventName.CONTENT_DELTA) == 2
+
+
+@pytest.mark.asyncio
+async def test_active_stream_fails_safely_after_bounded_unavailability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_ACTIVE_STREAM_MAX_ATTEMPTS",
+        2,
+    )
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_RECOVERY_MAX_DELAY_SECONDS",
+        0.001,
+    )
+
+    class UnavailableActiveStreamSource(_Source):
+        def __init__(self) -> None:
+            super().__init__()
+            self.attempts = 0
+
+        async def stream(
+            self,
+            run: LocalRun,
+            *,
+            after_cursor: str | None = None,
+        ) -> AsyncIterator[object]:
+            del run, after_cursor
+            self.attempts += 1
+            if False:
+                yield None
+            raise TaskSourceUnavailableError
+
+    repository = InMemoryTaskRepository()
+    source = UnavailableActiveStreamSource()
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+    await _bind_source_for_test(repository, task.task_id)
+
+    await _claim_source_ownership(runner, task)
+    await runner._follow(task, _Run())
+
+    current = await repository.get_task(task.task_id)
+    events = await repository.events_after(task.task_id, 0)
+    assert source.attempts == 2
+    assert current.status is TaskStatus.FAILED
+    failed = next(
+        event
+        for event in events
+        if event.name is TaskEventName.RUN_COMPLETED and dict(event.data).get("status") == "failed"
+    )
+    assert dict(failed.data)["safeReason"] == "The local agent source became unavailable."
 
 
 @pytest.mark.asyncio
@@ -1233,11 +1305,12 @@ async def test_response_comment_is_forwarded_to_source_resume() -> None:
     service = TaskService(repository, runner)
     task = await _paused_task(repository)
 
+    await _claim_source_ownership(runner, task)
     follower = asyncio.create_task(runner._follow(task, _Run()))
     for _ in range(20):
         if (task.task_id, "interrupt_1") in runner._resume_acknowledgements:
             break
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
     await service.record_decision(
         task.task_id,
         interrupt_id="interrupt_1",
@@ -1316,11 +1389,12 @@ async def _wait_for_repository_status(
 
 
 @pytest.mark.asyncio
-async def test_recovery_discovers_resume_accepted_before_replacement_binding() -> None:
+async def test_runner_retries_resume_accepted_before_replacement_binding_without_restart() -> None:
     repository = _CrashOnAcceptRepository(after_commit=False)
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository)
     first_runner = LocalAgentServerRunner(repository, source)
+    await _claim_source_ownership(first_runner, task)
     first_runner.start(task, _Run(), announce_started=False)
 
     decision = asyncio.create_task(
@@ -1335,23 +1409,17 @@ async def test_recovery_discovers_resume_accepted_before_replacement_binding() -
     )
     with pytest.raises(TaskSourceUnavailableError):
         await decision
-    pending = await repository.get_source_binding(task.task_id)
-    assert pending is not None
-    assert pending.pending_transition_id is not None
-
-    recovered_runner = LocalAgentServerRunner(repository, source)
-    current = await repository.get_task(task.task_id)
-    assert await recovered_runner.recover(current) is True
     completed = await _wait_for_repository_status(
         repository,
         task.task_id,
         TaskStatus.COMPLETED,
     )
+    binding = await repository.get_source_binding(task.task_id)
+    assert binding is not None and binding.accepted_transition_id is not None
     assert completed.result == "Recovered result"
     assert source.upstream_resumes == 1
     assert len(source.transition_ids) == 2
 
-    await recovered_runner.close()
     await first_runner.close()
 
 
@@ -1520,6 +1588,8 @@ async def test_plan_recovery_rejects_a_reused_interrupt_before_local_commit() ->
     repository = InMemoryTaskRepository()
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository)
+    runner = LocalAgentServerRunner(repository, source)
+    await _claim_source_ownership(runner, task)
     transition_id = "plan-transition-stale"
     await repository.mark_source_plan_transition_pending(
         task.task_id,
@@ -1535,8 +1605,6 @@ async def test_plan_recovery_rejects_a_reused_interrupt_before_local_commit() ->
         return _PlanUpdate(interrupt_id="interrupt_1", plan_revision=2)
 
     source.update_plan = stale_update_plan  # type: ignore[method-assign]
-    runner = LocalAgentServerRunner(repository, source)
-
     with pytest.raises(TaskSourceContractError):
         await runner.recover(await repository.get_task(task.task_id))
 
@@ -1547,11 +1615,12 @@ async def test_plan_recovery_rejects_a_reused_interrupt_before_local_commit() ->
 
 
 @pytest.mark.asyncio
-async def test_duplicate_decision_succeeds_after_binding_commit_before_memory_ack() -> None:
+async def test_runner_recovers_after_binding_commit_before_memory_ack() -> None:
     repository = _CrashOnAcceptRepository(after_commit=True)
     source = _IdempotentRecoverySource()
     task = await _paused_task(repository)
     first_runner = LocalAgentServerRunner(repository, source)
+    await _claim_source_ownership(first_runner, task)
     first_runner.start(task, _Run(), announce_started=False)
 
     first = asyncio.create_task(
@@ -1570,20 +1639,13 @@ async def test_duplicate_decision_succeeds_after_binding_commit_before_memory_ac
     assert accepted is not None
     assert accepted.accepted_transition_id is not None
 
-    recovered_runner = LocalAgentServerRunner(repository, source)
-    current = await repository.get_task(task.task_id)
-    assert await recovered_runner.recover(current) is True
-    duplicate = await recovered_runner.record_decision(
+    completed = await _wait_for_repository_status(
+        repository,
         task.task_id,
-        interrupt_id="interrupt_1",
-        decision=DecisionValue.APPROVE,
-        comment=None,
-        comment_provided=False,
-        response_digest=None,
+        TaskStatus.COMPLETED,
     )
-    assert duplicate.duplicate is True
+    assert completed.result == "Recovered result"
     assert source.upstream_resumes == 1
     assert len(source.transition_ids) == 1
 
-    await recovered_runner.close()
     await first_runner.close()

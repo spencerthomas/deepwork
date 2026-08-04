@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearComposerDispatchAttempt,
   createComposerDispatchAttempt,
+  DISPATCH_ACCEPTED_TTL_MS,
   dispatchAttemptStorageKey,
   DRAFT_MAX_LENGTH,
   DRAFT_TTL_MS,
@@ -14,6 +15,7 @@ import {
   parseComposerDispatchAttempt,
   parseComposerDraft,
   saveComposerDispatchAttempt,
+  retainAcceptedComposerDispatch,
   serializeComposerDraft,
   withComposerDispatchLock,
 } from "./composer-draft";
@@ -245,6 +247,25 @@ describe("ComposerDispatchAttempt", () => {
 
     expect(removeItem).toHaveBeenCalledWith(dispatchAttemptStorageKey(scope));
     expect(removeItem).not.toHaveBeenCalledWith(draftStorageKey(scope));
+  });
+
+  it("retains an accepted task tombstone long enough for queued tabs to adopt it", () => {
+    const scope = "api:scope-a";
+    const values = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+      },
+    });
+
+    expect(retainAcceptedComposerDispatch(scope, attempt, "task_00000042", NOW)).toBe(true);
+    expect(loadComposerDispatchAttempt(scope, NOW)).toMatchObject({
+      idempotencyKey: attempt.idempotencyKey,
+      acceptedTaskId: "task_00000042",
+      acceptedAt: NOW,
+    });
+    expect(loadComposerDispatchAttempt(scope, NOW + DISPATCH_ACCEPTED_TTL_MS + 1)).toBeNull();
   });
 
   it("does not let one tab clear another tab's newer attempt", () => {

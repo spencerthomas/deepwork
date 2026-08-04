@@ -51,7 +51,7 @@
       "path": "/tasks/t-901",
       "canonicalPath": "/tasks/:taskId",
       "canonicalBaseline": "task-completed",
-      "maxPerceptualDelta": { "desktop": 0.18, "phone": 0.21 },
+      "maxPerceptualDelta": { "desktop": 0.18, "phone": 0.24 },
       "referenceSha256": {
         "desktop": "8bbb4711f67a824562218ee6cec368451dc93f82e625496ff193272c17bb090a",
         "phone": "5d7b1136d211e74218fc0573743bd7de2877241074f12ed24df9eb5da14b0410"

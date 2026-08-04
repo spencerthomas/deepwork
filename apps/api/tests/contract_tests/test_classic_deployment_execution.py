@@ -100,6 +100,7 @@ async def test_classic_deployment_runs_plan_approve_result(
                 "credential boundary. These are configured adapter mechanics, not a live "
                 "provider readiness check."
             ),
+            "build_sha": None,
         }
 
         created = await _create_task(client, "Summarize the supplied notes")

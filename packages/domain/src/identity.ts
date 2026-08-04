@@ -5,6 +5,7 @@ declare const taskIdBrand: unique symbol;
 declare const interruptIdBrand: unique symbol;
 declare const evidenceIdBrand: unique symbol;
 declare const applicationEventIdBrand: unique symbol;
+declare const agentIdBrand: unique symbol;
 
 export type SourceId = string & { readonly [sourceIdBrand]: "SourceId" };
 export type ThreadId = string & { readonly [threadIdBrand]: "ThreadId" };
@@ -17,6 +18,7 @@ export type EvidenceId = string & { readonly [evidenceIdBrand]: "EvidenceId" };
 export type ApplicationEventId = string & {
   readonly [applicationEventIdBrand]: "ApplicationEventId";
 };
+export type AgentId = string & { readonly [agentIdBrand]: "AgentId" };
 
 export interface SourceThreadKey {
   readonly sourceId: SourceId;
@@ -92,6 +94,10 @@ export function evidenceId(value: string): EvidenceId {
 
 export function applicationEventId(value: string): ApplicationEventId {
   return opaqueIdentifier<ApplicationEventId>(value, "Application event identifier");
+}
+
+export function agentId(value: string): AgentId {
+  return opaqueIdentifier<AgentId>(value, "Agent identifier");
 }
 
 export function sourceThreadKey(source: SourceId, thread: ThreadId): SourceThreadKey {

@@ -19,6 +19,7 @@ class StatusService:
 
     provider: StatusProvider
     job_durability: JobDurability | None = None
+    build_sha: str | None = None
 
     def health(self) -> HealthStatus:
         """Read process-only liveness."""
@@ -29,7 +30,7 @@ class StatusService:
         """Read credential-free configured runtime status."""
 
         status = self.provider.demo()
-        if self.job_durability is not JobDurability.POSTGRES_OUTBOX:
+        if self.job_durability is not JobDurability.POSTGRES_OUTBOX and self.build_sha is None:
             return status
         capabilities = tuple(
             Capability(name=item.name, state=CapabilityState.AVAILABLE)
@@ -45,7 +46,10 @@ class StatusService:
             safe_reason=(
                 f"{status.safe_reason} PostgreSQL transactional job/outbox durability "
                 "is configured."
+                if self.job_durability is JobDurability.POSTGRES_OUTBOX
+                else status.safe_reason
             ),
+            build_sha=self.build_sha,
         )
 
     def worker(self) -> WorkerStatus:

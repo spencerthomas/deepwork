@@ -2,10 +2,11 @@ import { defineConfig } from "@playwright/test";
 
 const hostedUrl = process.env.DEEPWORK_HOSTED_URL?.trim();
 const hostedAccessKey = process.env.DEEPWORK_E2E_ACCESS_KEY?.trim();
+const expectedBuildSha = process.env.DEEPWORK_EXPECTED_BUILD_SHA?.trim();
 
-if (!hostedUrl || !hostedAccessKey) {
+if (!hostedUrl || !hostedAccessKey || !expectedBuildSha) {
   throw new Error(
-    "Hosted acceptance is blocking: DEEPWORK_HOSTED_URL and DEEPWORK_E2E_ACCESS_KEY are required.",
+    "Hosted acceptance is blocking: DEEPWORK_HOSTED_URL, DEEPWORK_E2E_ACCESS_KEY, and DEEPWORK_EXPECTED_BUILD_SHA are required.",
   );
 }
 

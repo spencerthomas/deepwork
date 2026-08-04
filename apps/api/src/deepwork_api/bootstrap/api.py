@@ -135,6 +135,7 @@ def create_app(
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
     trace_api_key: str | None = None,
+    build_sha: str | None = None,
     clock: Clock = system_clock,
 ) -> FastAPI:
     """Create the local application; loopback source execution is gated off by default.
@@ -259,6 +260,7 @@ def create_app(
     status_service = StatusService(
         provider=status_provider,
         job_durability=(job_repository.durability if job_repository is not None else None),
+        build_sha=build_sha,
     )
 
     async def _reconcile_orphaned_tasks() -> None:
@@ -596,6 +598,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             access_key=access_key,
             web_origins=web_origins,
             trace_api_key=trace_api_key,
+            build_sha=os.environ.get("DEEPWORK_BUILD_SHA"),
         ),
         host=host,
         port=port,

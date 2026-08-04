@@ -57,6 +57,10 @@ test-postgres: offline-ready
 	@DEEPWORK_DATABASE_URL="$(DEEPWORK_TEST_DATABASE_URL)" \
 		$(OFFLINE_UV) run --frozen deepwork-migrate upgrade
 	@DEEPWORK_DATABASE_URL="$(DEEPWORK_TEST_DATABASE_URL)" \
+		$(OFFLINE_UV) run --frozen alembic -c alembic.ini downgrade base
+	@DEEPWORK_DATABASE_URL="$(DEEPWORK_TEST_DATABASE_URL)" \
+		$(OFFLINE_UV) run --frozen deepwork-migrate upgrade
+	@DEEPWORK_DATABASE_URL="$(DEEPWORK_TEST_DATABASE_URL)" \
 		$(OFFLINE_UV) run --frozen alembic -c alembic.ini check
 	@DEEPWORK_TEST_DATABASE_URL="$(DEEPWORK_TEST_DATABASE_URL)" \
 		$(OFFLINE_UV) run --frozen pytest --disable-socket \

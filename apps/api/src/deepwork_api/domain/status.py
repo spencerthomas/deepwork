@@ -65,6 +65,7 @@ class DemoStatus:
     evidence_class: EvidenceClass
     capabilities: tuple[Capability, ...]
     safe_reason: str
+    build_sha: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

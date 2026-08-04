@@ -1,5 +1,6 @@
 import {
   applicationEventId,
+  agentId,
   evidenceId,
   interruptId,
   runId,
@@ -16,6 +17,7 @@ import {
   type SourceInterruptKey,
   type SourceRunKey,
   type SourceThreadKey,
+  type AgentId,
   type TaskId,
 } from "./identity.js";
 import type { TaskStatus } from "./view-state.js";
@@ -90,6 +92,7 @@ export interface TaskAccepted {
   readonly run: SourceRunKey;
   readonly facts: TaskStateFacts;
   readonly status: TaskStatus;
+  readonly duplicate: boolean;
 }
 
 export interface TaskStateFacts {
@@ -137,6 +140,7 @@ export interface TaskSummary {
   readonly taskId: TaskId;
   readonly sourceThread: SourceThreadKey;
   readonly run: SourceRunKey;
+  readonly agentId?: AgentId;
   // Present when the summary comes from an API snapshot; the event-sourced
   // reducer does not observe creation time, so it stays absent there.
   readonly createdAt?: string;
@@ -235,6 +239,7 @@ interface EventBase<Name extends TaskEventName> {
 
 export interface TaskCreatedEvent extends EventBase<"task.created"> {
   readonly run: SourceRunKey;
+  readonly agentId?: AgentId;
 }
 
 export interface RunStartedEvent extends EventBase<"run.started"> {
@@ -462,6 +467,7 @@ export function taskAccepted(input: Omit<TaskAccepted, "status">): TaskAccepted 
     run: acceptedRun,
     facts,
     status: deriveTaskStatus(facts),
+    duplicate: input.duplicate,
   });
 }
 
@@ -645,6 +651,7 @@ export function taskSummary(
     taskId: acceptedTaskId,
     sourceThread: acceptedSourceThread,
     run: acceptedRun,
+    ...(input.agentId === undefined ? {} : { agentId: agentId(input.agentId) }),
     ...(input.createdAt === undefined ? {} : { createdAt: createdAtTimestamp(input.createdAt) }),
     title: displayText(input.title, "Task title", 80),
     objective: objectiveText(input.objective),

@@ -40,6 +40,7 @@ def create_app(
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
     trace_api_key: str | None = None,
+    build_sha: str | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> FastAPI:
     """Load and create the local application only when explicitly called.
@@ -75,6 +76,7 @@ def create_app(
             access_key_contexts=access_key_contexts,
             web_origins=web_origins,
             trace_api_key=trace_api_key,
+            build_sha=build_sha,
         )
     return _create_app(
         task_database_path=task_database_path,
@@ -91,5 +93,6 @@ def create_app(
         access_key_contexts=access_key_contexts,
         web_origins=web_origins,
         trace_api_key=trace_api_key,
+        build_sha=build_sha,
         clock=clock,
     )

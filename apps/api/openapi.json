@@ -614,6 +614,17 @@
         "additionalProperties": false,
         "description": "Credential-free configured runtime status response.",
         "properties": {
+          "build_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Sha"
+          },
           "capabilities": {
             "items": {
               "$ref": "#/components/schemas/CapabilityResponse"
@@ -640,7 +651,8 @@
           "runtime_kind",
           "evidence_class",
           "capabilities",
-          "safe_reason"
+          "safe_reason",
+          "build_sha"
         ],
         "title": "DemoStatusResponse",
         "type": "object"

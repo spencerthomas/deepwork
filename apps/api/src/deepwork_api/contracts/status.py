@@ -46,6 +46,7 @@ class DemoStatusResponse(_WireModel):
     evidence_class: EvidenceClass
     capabilities: tuple[CapabilityResponse, ...]
     safe_reason: str
+    build_sha: str | None
 
     @classmethod
     def from_domain(cls, status: DemoStatus) -> "DemoStatusResponse":
@@ -61,6 +62,7 @@ class DemoStatusResponse(_WireModel):
             evidence_class=status.evidence_class,
             capabilities=capabilities,
             safe_reason=status.safe_reason,
+            build_sha=status.build_sha,
         )
 
 

@@ -27,9 +27,21 @@ function sha256(bytes: Buffer): string {
 }
 
 async function perceptualDelta(referencePath: string, canonicalPath: string): Promise<number> {
+  const [referenceMetadata, canonicalMetadata] = await Promise.all([
+    sharp(referencePath).metadata(),
+    sharp(canonicalPath).metadata(),
+  ]);
+  const width = Math.min(referenceMetadata.width ?? 0, canonicalMetadata.width ?? 0);
+  const height = Math.min(referenceMetadata.height ?? 0, canonicalMetadata.height ?? 0);
+  if (width < 1 || height < 1) throw new Error("Visual comparison requires readable images.");
   const [reference, canonical] = await Promise.all(
     [referencePath, canonicalPath].map((path) =>
-      sharp(path).resize(64, 64, { fit: "fill" }).greyscale().raw().toBuffer(),
+      sharp(path)
+        .extract({ left: 0, top: 0, width, height })
+        .removeAlpha()
+        .toColourspace("srgb")
+        .raw()
+        .toBuffer(),
     ),
   );
   let total = 0;
@@ -71,4 +83,30 @@ test("the complete prototype route reference remains binding", async () => {
       ).toBeLessThanOrEqual(route.maxPerceptualDelta[viewport]);
     }
   }
+});
+
+test("the comparator detects brand-color and localized layout mutations", async ({}, testInfo) => {
+  const baseline = testInfo.outputPath("comparator-baseline.png");
+  const colorMutation = testInfo.outputPath("comparator-color.png");
+  const layoutMutation = testInfo.outputPath("comparator-layout.png");
+  const block = {
+    input: { create: { width: 24, height: 24, channels: 3 as const, background: "#ef4444" } },
+  };
+  await Promise.all([
+    sharp({ create: { width: 120, height: 80, channels: 3, background: "#2563eb" } })
+      .composite([{ ...block, left: 8, top: 8 }])
+      .png()
+      .toFile(baseline),
+    sharp({ create: { width: 120, height: 80, channels: 3, background: "#9333ea" } })
+      .composite([{ ...block, left: 8, top: 8 }])
+      .png()
+      .toFile(colorMutation),
+    sharp({ create: { width: 120, height: 80, channels: 3, background: "#2563eb" } })
+      .composite([{ ...block, left: 72, top: 40 }])
+      .png()
+      .toFile(layoutMutation),
+  ]);
+
+  expect(await perceptualDelta(baseline, colorMutation)).toBeGreaterThan(0.1);
+  expect(await perceptualDelta(baseline, layoutMutation)).toBeGreaterThan(0.03);
 });

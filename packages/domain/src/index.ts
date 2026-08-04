@@ -60,6 +60,7 @@ export {
 } from "./source-probe.js";
 
 export {
+  agentId,
   applicationEventId,
   evidenceId,
   interruptId,
@@ -79,6 +80,7 @@ export {
   taskId,
   threadId,
   type ApplicationEventId,
+  type AgentId,
   type EvidenceId,
   type InterruptId,
   type RunId,

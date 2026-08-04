@@ -1,5 +1,6 @@
 import {
   applicationEventId,
+  agentId,
   ACTION_DECISION_TYPES,
   batchDecisionInput,
   batchDecisionReceipt,
@@ -218,6 +219,7 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
     [
       "taskId",
       "runId",
+      "agentId",
       "createdAt",
       "title",
       "objective",
@@ -248,6 +250,9 @@ function mapSummaryRecord(value: unknown, resolver: TaskBindingResolver): TaskSu
     taskId: mappedTaskId,
     sourceThread,
     run,
+    ...(wire.agentId === null
+      ? {}
+      : { agentId: agentId(string(wire.agentId, "Task agent identifier", 200)) }),
     // Null marks a task migrated from a pre-timestamp schema; drop the field so
     // the summary reports an unknown creation time rather than a fabricated one.
     ...(wire.createdAt === null
@@ -367,9 +372,12 @@ function mapEvidence(
 ): EvidenceRecord {
   const wire = record(
     value,
-    ["evidenceId", "kind", "summary", "source", "verified"],
+    ["evidenceId", "taskId", "runId", "kind", "summary", "source", "verified"],
     "Evidence record",
   );
+  if (wire.taskId !== task || wire.runId !== run.runId) {
+    throw new TypeError("Evidence record correlation failed.");
+  }
   if (wire.kind !== "fixture") {
     throw new TypeError("Evidence kind is not accepted.");
   }
@@ -507,7 +515,11 @@ export function mapTaskAccepted(
   resolver: TaskBindingResolver,
 ): SdkResult<TaskAccepted> {
   return attempt(() => {
-    const wire = record(value, ["taskId", "runId", "status"], "Create-task receipt");
+    const wire = record(
+      value,
+      ["taskId", "runId", "status", "duplicate"],
+      "Create-task receipt",
+    );
     if (wire.status !== "queued") {
       throw new TypeError("Create-task status must be queued.");
     }
@@ -521,6 +533,7 @@ export function mapTaskAccepted(
         runId(identifier(wire.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
       ),
       facts: factsForWireStatus("queued"),
+      duplicate: boolean(wire.duplicate, "Create-task duplicate flag"),
     });
   }, "Create-task receipt");
 }
@@ -558,6 +571,7 @@ export function mapTaskDetail(
       [
         "taskId",
         "runId",
+        "agentId",
         "createdAt",
         "title",
         "objective",
@@ -576,6 +590,7 @@ export function mapTaskDetail(
       {
         taskId: wire.taskId,
         runId: wire.runId,
+        agentId: wire.agentId,
         createdAt: wire.createdAt,
         title: wire.title,
         objective: wire.objective,
@@ -852,7 +867,13 @@ export function mapTaskEvent(
         }
         const wire = record(
           data,
-          ["taskId", "runId", "status", ...(hasJourney ? ["journey", "repositoryId"] : [])],
+          [
+            "taskId",
+            "runId",
+            "agentId",
+            "status",
+            ...(hasJourney ? ["journey", "repositoryId"] : []),
+          ],
           "task.created event",
         );
         if (
@@ -864,7 +885,13 @@ export function mapTaskEvent(
         ) {
           throw new TypeError("task.created event correlation failed.");
         }
-        return Object.freeze({ ...base, name: eventName });
+        return Object.freeze({
+          ...base,
+          name: eventName,
+          ...(wire.agentId === null
+            ? {}
+            : { agentId: agentId(string(wire.agentId, "Task agent identifier", 200)) }),
+        });
       }
       case "run.started": {
         const wire = record(data, ["runId", "status"], "run.started event");

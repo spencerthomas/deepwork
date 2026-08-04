@@ -763,6 +763,7 @@ class SQLiteTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
     ) -> TaskSourceBinding:
@@ -773,7 +774,12 @@ class SQLiteTaskRepository:
             thread_id=thread_id,
             run_id=run_id,
         )
-        return await self._mutate(self._bind_source_run_sync, binding)
+        return await self._mutate(
+            self._bind_source_run_sync,
+            binding,
+            lease_token,
+            int(self._clock().timestamp()),
+        )
 
     async def get_source_binding(self, task_id: str) -> TaskSourceBinding | None:
         """Read source rejoin identity without exposing it through HTTP."""
@@ -785,6 +791,7 @@ class SQLiteTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
         interrupt_id: str,
@@ -800,12 +807,15 @@ class SQLiteTaskRepository:
             binding,
             interrupt_id,
             transition_id,
+            lease_token,
+            int(self._clock().timestamp()),
         )
 
     async def accept_source_transition(
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -823,6 +833,8 @@ class SQLiteTaskRepository:
             binding,
             previous_run_id,
             transition_id,
+            lease_token,
+            int(self._clock().timestamp()),
         )
 
     async def mark_source_plan_transition_pending(
@@ -866,6 +878,7 @@ class SQLiteTaskRepository:
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         previous_run_id: str,
         run_id: str,
@@ -892,12 +905,15 @@ class SQLiteTaskRepository:
             transition_id,
             new_interrupt_id,
             plan_revision,
+            lease_token,
+            int(self._clock().timestamp()),
         )
 
     async def append_source_progress(
         self,
         task_id: str,
         *,
+        lease_token: str,
         thread_id: str,
         run_id: str,
         source_event_key: str,
@@ -915,6 +931,8 @@ class SQLiteTaskRepository:
             binding,
             source_event_key,
             _encode_event_data(data),
+            lease_token,
+            int(self._clock().timestamp()),
         )
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
@@ -1536,10 +1554,34 @@ class SQLiteTaskRepository:
         finally:
             connection.close()
 
-    def _bind_source_run_sync(self, binding: TaskSourceBinding) -> TaskSourceBinding:
+    @staticmethod
+    def _require_source_lease_sync(
+        connection: sqlite3.Connection,
+        task_id: str,
+        lease_token: str,
+        now: int,
+    ) -> None:
+        row = connection.execute(
+            "SELECT lease_token, lease_expires_at FROM task_source_leases WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+        if (
+            row is None
+            or int(row["lease_expires_at"]) <= now
+            or not secrets.compare_digest(cast(str, row["lease_token"]), lease_token)
+        ):
+            raise TaskSourceContractError
+
+    def _bind_source_run_sync(
+        self,
+        binding: TaskSourceBinding,
+        lease_token: str,
+        now: int,
+    ) -> TaskSourceBinding:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_source_lease_sync(connection, binding.task_id, lease_token, now)
             self._task_row_sync(connection, binding.task_id)
             row = connection.execute(
                 """
@@ -1630,10 +1672,13 @@ class SQLiteTaskRepository:
         binding: TaskSourceBinding,
         interrupt_id: str,
         transition_id: str,
+        lease_token: str,
+        now: int,
     ) -> TaskSourceBinding:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_source_lease_sync(connection, binding.task_id, lease_token, now)
             self._task_row_sync(connection, binding.task_id)
             changed = connection.execute(
                 """
@@ -1687,10 +1732,13 @@ class SQLiteTaskRepository:
         binding: TaskSourceBinding,
         previous_run_id: str,
         transition_id: str,
+        lease_token: str,
+        now: int,
     ) -> TaskSourceBinding:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_source_lease_sync(connection, binding.task_id, lease_token, now)
             self._task_row_sync(connection, binding.task_id)
             changed = connection.execute(
                 """
@@ -1868,10 +1916,13 @@ class SQLiteTaskRepository:
         transition_id: str,
         new_interrupt_id: str,
         plan_revision: int,
+        lease_token: str,
+        now: int,
     ) -> TaskSourceBinding:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_source_lease_sync(connection, binding.task_id, lease_token, now)
             task = self._task_row_sync(connection, binding.task_id)
             row = connection.execute(
                 """
@@ -1988,6 +2039,8 @@ class SQLiteTaskRepository:
         binding: TaskSourceBinding,
         source_event_key: str,
         encoded_data: str,
+        lease_token: str,
+        now: int,
     ) -> TaskEvent | None:
         if len(source_event_key) != 64 or any(
             character not in "0123456789abcdef" for character in source_event_key
@@ -1996,6 +2049,7 @@ class SQLiteTaskRepository:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_source_lease_sync(connection, binding.task_id, lease_token, now)
             task = self._task_row_sync(connection, binding.task_id)
             row = connection.execute(
                 """

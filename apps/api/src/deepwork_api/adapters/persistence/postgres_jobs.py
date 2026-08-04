@@ -30,6 +30,10 @@ _MAX_IDEMPOTENCY_KEY_LENGTH = 200
 _MAX_SAFE_ERROR_LENGTH = 100
 _MAX_ATTEMPTS = 10
 _EXPIRED_FINAL_LEASE_ERROR = "worker lease expired after maximum attempts"
+_POOL_TIMEOUT_SECONDS = 5
+_CONNECT_TIMEOUT_SECONDS = 5
+_STATEMENT_TIMEOUT_MILLISECONDS = 10_000
+_LOCK_TIMEOUT_MILLISECONDS = 5_000
 
 
 class PostgresJobRepositoryError(Exception):
@@ -53,6 +57,15 @@ class PostgresJobRepository:
         self._engine: AsyncEngine = create_async_engine(
             parsed,
             pool_pre_ping=True,
+            pool_timeout=_POOL_TIMEOUT_SECONDS,
+            connect_args={
+                "connect_timeout": _CONNECT_TIMEOUT_SECONDS,
+                "options": (
+                    f"-c statement_timeout={_STATEMENT_TIMEOUT_MILLISECONDS} "
+                    f"-c lock_timeout={_LOCK_TIMEOUT_MILLISECONDS} "
+                    f"-c idle_in_transaction_session_timeout={_STATEMENT_TIMEOUT_MILLISECONDS}"
+                ),
+            },
             hide_parameters=True,
         )
         self._initialized = False

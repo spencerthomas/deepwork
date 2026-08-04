@@ -19,5 +19,8 @@ export default defineConfig({
     channel: undefined,
     storageState: undefined,
   },
-  webServer: localProductionWebServer("/tasks/new"),
+  webServer:
+    process.env.DEEPWORK_VISUAL_CONTRACT_ONLY === "1"
+      ? undefined
+      : localProductionWebServer("/tasks/new"),
 });

@@ -26,7 +26,7 @@ import {
   validatePlanSteps,
   validatePrompt,
 } from "./task-normalizers";
-import type { TaskDetail, TaskEvent, TaskSummary } from "./task-types";
+import type { ActiveInterrupt, TaskDetail, TaskEvent, TaskSummary } from "./task-types";
 
 describe("task response normalization", () => {
   it("normalizes API status aliases without treating unknown values as success", () => {
@@ -831,6 +831,37 @@ describe("terminal result handling", () => {
 
     expect(detail.status).toBe("waiting-approval");
     expect(detail.lastEventId).toBe(2);
+  });
+
+  it("does not replay stale early events over a newer approval snapshot", () => {
+    const pendingInterrupt: ActiveInterrupt = {
+      interruptId: "interrupt-1",
+      decisions: ["approve", "reject"],
+      planRevision: 1,
+      question: "Approve this plan?",
+      title: "Approval required",
+    };
+    const detail = reduceEventsIntoDetail(
+      {
+        taskId: "task-1",
+        title: "Ship it",
+        status: "waiting-approval",
+        pendingInterrupt,
+        lastEventId: 6,
+      },
+      [
+        { id: "2", name: "run.started", data: { status: "running" } },
+        {
+          id: "5",
+          name: "plan.proposed",
+          data: { revision: 1, title: "Plan", steps: ["Ship it"], evidenceRefs: [] },
+        },
+      ],
+    );
+
+    expect(detail.status).toBe("waiting-approval");
+    expect(detail.pendingInterrupt).toEqual(pendingInterrupt);
+    expect(detail.lastEventId).toBe(6);
   });
 });
 

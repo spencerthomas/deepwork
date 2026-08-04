@@ -1021,9 +1021,22 @@ export function detailAfterAuthoritativeReload(
 }
 
 export function reduceEventsIntoDetail(task: TaskDetail, events: readonly TaskEvent[]): TaskDetail {
+  const snapshotCursor = task.lastEventId;
   return events.reduce<TaskDetail>((current, event) => {
-    const eventResult = event.name === "run.completed" ? getCompletionResultText(event) : undefined;
     const eventCursor = taskEventCursor(event.id);
+    // The authoritative detail snapshot already includes every event through
+    // lastEventId. Replaying an earlier event can regress a waiting-approval or
+    // terminal snapshot back to running while leaving its interrupt/result in
+    // place, producing a contradictory UI. Only genuinely newer streamed
+    // events may advance the snapshot.
+    if (
+      snapshotCursor !== undefined &&
+      eventCursor !== undefined &&
+      eventCursor <= snapshotCursor
+    ) {
+      return current;
+    }
+    const eventResult = event.name === "run.completed" ? getCompletionResultText(event) : undefined;
     return {
       ...current,
       status: statusAfterEvent(current.status, event, current.pendingInterrupt),

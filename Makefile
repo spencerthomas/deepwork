@@ -5,7 +5,7 @@ SHELL := /bin/sh
 # Targets that the scaffold has not yet implemented report the gap and fail
 # rather than inventing a passing substitute.
 
-.PHONY: help doctor bootstrap dev-demo check check-toolchain check-architecture check-docs \
+.PHONY: help doctor bootstrap dev-demo check check-toolchain check-architecture check-docs check-oss \
 	test-unit test-contract test-e2e-demo test-recovery test-security-boundary test-visual test-hosted \
 	test-performance
 
@@ -17,6 +17,7 @@ help:
 	@echo "  make check              Run all workspace checks (pnpm + API + agent)"
 	@echo "  make check-architecture Run architecture import/boundary checks"
 	@echo "  make check-docs         Validate and drift-check repository documentation"
+	@echo "  make check-oss          Audit OSS license, attribution, trademark, and CI pinning"
 	@echo "  make test-unit          Run TypeScript and Python unit suites"
 	@echo "  make test-contract      Run the API contract suite"
 	@echo "  make test-e2e-demo      Run the credential-free browser task journey"
@@ -43,12 +44,17 @@ dev-demo:
 
 check:
 	$(MAKE) check-toolchain
+	$(MAKE) check-oss
 	pnpm check
 	$(MAKE) -C apps/api check
 	$(MAKE) -C packages/agent check
 
 check-toolchain:
 	python3 -m unittest discover -s tools/doctor/tests -p 'test_*.py'
+
+check-oss:
+	python3 -m unittest discover -s tools/oss_audit/tests -p 'test_*.py'
+	python3 tools/oss_audit/check.py --report output/oss-audit/report.json
 
 check-architecture:
 	pnpm check-architecture

@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # Full history: tools/docs/check.py verifies each ExecPlan's
           # base_commit / last_verified_commit exists in the repository, which a
@@ -31,15 +31,15 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .node-version
           # pnpm is provided by corepack in the next step, so it is not on PATH
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload Playwright failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-failure-artifacts
           # Password controls are masked. Do not retain traces, auth state, or
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload synthetic performance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: inbox-performance-report
           path: output/playwright/performance-report/*.json
@@ -107,20 +107,20 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .node-version
           package-manager-cache: false
@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload visual failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: visual-acceptance-failure-screenshots
           path: output/playwright/visual-results/**/test-failed-*.png
@@ -156,10 +156,10 @@ jobs:
       DEEPWORK_E2E_ACCESS_KEY: ${{ secrets.DEEPWORK_E2E_ACCESS_KEY }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .node-version
           package-manager-cache: false
@@ -183,7 +183,7 @@ jobs:
 
       - name: Upload hosted browser failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: hosted-acceptance-failure-artifacts
           # Traces and reports are deliberately excluded: the hosted journey

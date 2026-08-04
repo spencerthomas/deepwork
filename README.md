@@ -194,7 +194,17 @@ dispatch is current until `SPIKE-SYMPHONY-001` passes.
 
 ## License and affiliation
 
-MIT. Deep Work is an independent open-source project built for compatibility with
-LangChain technologies. It is not affiliated with, endorsed by, or sponsored by
-LangChain, Inc. “LangChain” and “LangSmith” are trademarks of their respective
-owner and are used only to describe compatibility.
+Deep Work is released under the [MIT license](LICENSE). Portions Copyright (c)
+LangChain, Inc. (MIT); that attribution covers upstream MIT-licensed ideas and
+dependencies and does not imply ownership of this project.
+
+Deep Work is an independent open-source project built for compatibility with
+LangChain technologies. Deep Work is not affiliated with, endorsed by, or sponsored by LangChain, Inc.
+“LangChain” and “LangSmith” are trademarks of their respective owner and are used
+only to describe compatibility.
+
+`langgraph-api` is a separately operated Agent Server runtime under the Elastic
+License 2.0. Deep Work communicates with that runtime over HTTP and never vendors
+or redistributes langgraph-api. The Deep Work source and packages in this
+repository remain MIT-licensed; using a separately deployed runtime remains
+subject to that runtime's own terms.

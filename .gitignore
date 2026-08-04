@@ -26,6 +26,7 @@ src-tauri/target/
 *.log
 coverage/
 output/playwright/
+output/oss-audit/
 .vercel/
 *.tsbuildinfo
 .claude/

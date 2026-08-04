@@ -8,6 +8,7 @@ version = "0.0.0"
 description = "Credential-free Wave 1 scaffold for the Deep Work application service"
 readme = "README.md"
 requires-python = "==3.12.*"
+license = { text = "MIT" }
 dependencies = [
   "fastapi==0.139.2",
   "langgraph-sdk==0.4.2",

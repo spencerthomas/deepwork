@@ -10,15 +10,21 @@ ExecPlan. Use one worktree per bounded task. Keep the ExecPlan current and attac
 exact validation results. Do not enable an unresolved provider contract, commit a
 credential, edit generated output, or use the visual prototype as runtime proof.
 
-Wave 0 validation is:
+The supported repository checks are:
 
 ```bash
-python3 tools/docs/generate.py --check
-python3 tools/docs/check.py
+make doctor
+make bootstrap
+make check
+make check-docs
+make test-e2e-demo
 ```
 
-The Wave 1 scaffold will establish language-specific setup, format, lint, type,
-test, build, and changeset commands. Until those commands exist, report the gap
-instead of inventing an equivalent pass.
+`make check` includes the repository's format, lint, type, unit, build,
+architecture and OSS license/trademark gates. `make check-oss` runs that legal and
+branding gate directly and writes a machine-readable local report to
+`output/oss-audit/report.json`. The root [README](README.md) states the MIT,
+attribution, runtime-license, trademark and non-affiliation boundaries a fork must
+preserve.
 
 Security issues should follow [SECURITY.md](SECURITY.md), not a public issue.

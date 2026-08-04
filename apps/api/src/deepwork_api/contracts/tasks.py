@@ -113,10 +113,11 @@ class TaskAcceptedResponse(_TaskWireModel):
     task_id: TaskId = Field(alias="taskId")
     run_id: RunId = Field(alias="runId")
     status: Literal["queued"] = "queued"
+    duplicate: bool
 
     @classmethod
-    def from_domain(cls, task: TaskSnapshot) -> TaskAcceptedResponse:
-        return cls(task_id=task.task_id, run_id=task.run_id)
+    def from_domain(cls, task: TaskSnapshot, *, duplicate: bool) -> TaskAcceptedResponse:
+        return cls(task_id=task.task_id, run_id=task.run_id, duplicate=duplicate)
 
 
 class PlanStepArgs(_TaskWireModel):

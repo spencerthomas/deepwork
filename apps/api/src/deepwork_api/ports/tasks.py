@@ -17,6 +17,7 @@ from deepwork_api.domain import (
     PlanUpdateRecord,
     ProposedPlan,
     SecurityContext,
+    TaskCreation,
     TaskEvent,
     TaskEventName,
     TaskJourney,
@@ -40,6 +41,30 @@ class TaskRepository(Protocol):
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
         """Create a queued task and its initial replayable event."""
+
+    async def create_task_idempotently(
+        self,
+        *,
+        title: str,
+        objective: str,
+        idempotency_key: str,
+        request_fingerprint: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskCreation:
+        """Atomically create or replay one scoped immutable request."""
+
+    async def find_task_by_idempotency(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskSnapshot | None:
+        """Resolve an existing scoped request or reject a changed replay."""
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""

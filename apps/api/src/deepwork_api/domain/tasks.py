@@ -323,6 +323,14 @@ class TaskSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskCreation:
+    """Atomic repository result for a new task or an idempotent replay."""
+
+    task: TaskSnapshot
+    created: bool
+
+
+@dataclass(frozen=True, slots=True)
 class DecisionRecord:
     """Accepted decision result, including idempotent replay state."""
 
@@ -381,6 +389,10 @@ class TaskDomainError(Exception):
 
 class TaskNotFoundError(TaskDomainError):
     """The task is absent or cannot be disclosed."""
+
+
+class TaskIdempotencyConflictError(TaskDomainError):
+    """A scoped creation key is already bound to different immutable input."""
 
 
 class InvalidEventCursorError(TaskDomainError):

@@ -149,6 +149,7 @@ async def test_create_list_detail_and_real_pause() -> None:
             "taskId": "task_00000001",
             "runId": "run_00000001",
             "status": "queued",
+            "duplicate": False,
         }
 
         paused = await _wait_for_status(

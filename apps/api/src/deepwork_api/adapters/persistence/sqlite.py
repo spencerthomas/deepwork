@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import secrets
 import sqlite3
 import weakref
 from collections import Counter
@@ -47,8 +48,10 @@ from deepwork_api.domain import (
     SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
+    TaskCreation,
     TaskEvent,
     TaskEventName,
+    TaskIdempotencyConflictError,
     TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
@@ -59,7 +62,7 @@ from deepwork_api.domain import (
 from deepwork_api.ports import Clock, system_clock
 
 _APPLICATION_ID = 0x44575031
-_SCHEMA_VERSION = 5
+_SCHEMA_VERSION = 6
 _BUSY_TIMEOUT_MILLISECONDS = 5_000
 _MAX_SERIALIZED_BYTES = 64 * 1024
 _MAX_TASK_NUMBER = 99_999_999
@@ -102,6 +105,20 @@ _PROCESS_STATES: weakref.WeakKeyDictionary[
     asyncio.AbstractEventLoop,
     dict[str, _ProcessState],
 ] = weakref.WeakKeyDictionary()
+
+
+_IDEMPOTENCY_SCHEMA = """
+CREATE TABLE task_idempotency (
+    tenant_id TEXT NOT NULL,
+    workspace_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    task_id TEXT NOT NULL UNIQUE,
+    PRIMARY KEY (tenant_id, workspace_id, actor_id, idempotency_key),
+    FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
+)
+"""
 
 
 _SCHEMA_STATEMENTS = (
@@ -159,6 +176,7 @@ CREATE TABLE decisions (
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE RESTRICT
 )
 """,
+    _IDEMPOTENCY_SCHEMA,
     "CREATE INDEX events_task_order ON events(task_id, event_id)",
     "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
     "CREATE INDEX evidence_task_order ON evidence(task_id, position)",
@@ -181,6 +199,7 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "ALTER TABLE tasks ADD COLUMN created_at TEXT",
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
+        _IDEMPOTENCY_SCHEMA,
     ),
     # v2 (the first timestamp release) stored created_at as a NOT NULL fourth
     # column. Move it last and drop NOT NULL without losing the recorded values,
@@ -192,14 +211,18 @@ _SUPPORTED_UPGRADES: dict[int, tuple[str, ...]] = {
         "ALTER TABLE tasks DROP COLUMN created_at_legacy",
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
+        _IDEMPOTENCY_SCHEMA,
     ),
     # v3 has the canonical task columns but predates the name-led event index.
     3: (
         "CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC)",
         *_OWNERSHIP_UPGRADE,
+        _IDEMPOTENCY_SCHEMA,
     ),
     # v4 has the canonical timestamp and event-index shape but no ownership.
-    4: _OWNERSHIP_UPGRADE,
+    4: (*_OWNERSHIP_UPGRADE, _IDEMPOTENCY_SCHEMA),
+    # v5 has task ownership but predates durable task-creation idempotency.
+    5: (_IDEMPOTENCY_SCHEMA,),
 }
 
 _EXPECTED_COLUMNS = {
@@ -232,6 +255,14 @@ _EXPECTED_COLUMNS = {
         "verified",
     ),
     "decisions": ("task_id", "interrupt_id", "decision", "response_digest"),
+    "task_idempotency": (
+        "tenant_id",
+        "workspace_id",
+        "actor_id",
+        "idempotency_key",
+        "request_fingerprint",
+        "task_id",
+    ),
 }
 
 _EXPECTED_TABLE_INFO = {
@@ -276,6 +307,14 @@ _EXPECTED_TABLE_INFO = {
         ("decision", "TEXT", 1, 0),
         ("response_digest", "TEXT", 0, 0),
     ),
+    "task_idempotency": (
+        ("tenant_id", "TEXT", 1, 1),
+        ("workspace_id", "TEXT", 1, 2),
+        ("actor_id", "TEXT", 1, 3),
+        ("idempotency_key", "TEXT", 1, 4),
+        ("request_fingerprint", "TEXT", 1, 0),
+        ("task_id", "TEXT", 1, 0),
+    ),
 }
 
 _EXPECTED_DEFAULTS = {
@@ -300,6 +339,7 @@ _EXPECTED_DEFAULTS = {
     "events": (None, None, None, None),
     "evidence": (None, None, None, None, None, None, None),
     "decisions": (None, None, None, None),
+    "task_idempotency": (None, None, None, None, None, None),
 }
 
 _EXPECTED_INDEXES = {
@@ -328,6 +368,12 @@ _EXPECTED_INDEXES = {
             (True, "pk", ("task_id", "interrupt_id")): 1,
         }
     ),
+    "task_idempotency": Counter(
+        {
+            (True, "pk", ("tenant_id", "workspace_id", "actor_id", "idempotency_key")): 1,
+            (True, "u", ("task_id",)): 1,
+        }
+    ),
 }
 
 _EXPECTED_FOREIGN_KEYS = {
@@ -335,6 +381,7 @@ _EXPECTED_FOREIGN_KEYS = {
     "events": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
     "evidence": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
     "decisions": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
+    "task_idempotency": (("tasks", "task_id", "task_id", "NO ACTION", "RESTRICT", "NONE"),),
 }
 
 _EXPECTED_OBJECTS = {
@@ -345,6 +392,7 @@ _EXPECTED_OBJECTS = {
     "events_name_task_order",
     "events_task_order",
     "evidence_task_order",
+    "task_idempotency",
 }
 
 _LATEST_CODING_EVENTS_QUERY = """
@@ -450,6 +498,54 @@ class SQLiteTaskRepository:
             agent_id,
             journey,
             repository_id,
+            security_context,
+        )
+
+    async def create_task_idempotently(
+        self,
+        *,
+        title: str,
+        objective: str,
+        idempotency_key: str,
+        request_fingerprint: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskCreation:
+        """Atomically create or replay one actor-scoped task request."""
+
+        _validate_task_input(title=title, objective=objective)
+        _validate_idempotency_input(idempotency_key, request_fingerprint)
+        return await self._mutate(
+            self._create_task_idempotently_sync,
+            title,
+            objective,
+            idempotency_key,
+            request_fingerprint,
+            run_id,
+            agent_id,
+            journey,
+            repository_id,
+            security_context,
+        )
+
+    async def find_task_by_idempotency(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskSnapshot | None:
+        """Resolve one scoped creation request without exposing other scopes."""
+
+        _validate_idempotency_input(idempotency_key, request_fingerprint)
+        await self.initialize()
+        return await self._run_sync(
+            self._find_task_by_idempotency_sync,
+            idempotency_key,
+            request_fingerprint,
             security_context,
         )
 
@@ -861,52 +957,16 @@ class SQLiteTaskRepository:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            created_at = self._clock().isoformat()
-            cursor = connection.execute(
-                """
-                INSERT INTO tasks (
-                    task_id, run_id, title, objective, status,
-                    pending_interrupt_id, plan_revision, plan_title,
-                    plan_steps, plan_evidence_refs, result, created_at,
-                    tenant_id, workspace_id, created_by_actor_id
-                ) VALUES (
-                    'pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?
-                )
-                """,
-                (
-                    title,
-                    objective,
-                    TaskStatus.QUEUED.value,
-                    created_at,
-                    security_context.tenant_id,
-                    security_context.workspace_id,
-                    security_context.actor_id,
-                ),
+            snapshot = self._create_task_in_transaction_sync(
+                connection,
+                title=title,
+                objective=objective,
+                external_run_id=external_run_id,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                security_context=security_context,
             )
-            number = cast(int, cursor.lastrowid)
-            if number < 1 or number > _MAX_TASK_NUMBER:
-                raise SQLiteTaskRepositoryDataError("local task identifier bound exhausted")
-            suffix = f"{number:08d}"
-            task_id = f"task_{suffix}"
-            run_id = external_run_id or f"run_{suffix}"
-            connection.execute(
-                "UPDATE tasks SET task_id = ?, run_id = ? WHERE task_number = ?",
-                (task_id, run_id, number),
-            )
-            event = TaskEvent(
-                event_id=1,
-                name=TaskEventName.TASK_CREATED,
-                data=(
-                    ("taskId", task_id),
-                    ("runId", run_id),
-                    ("status", TaskStatus.QUEUED.value),
-                    *((("journey", journey.value),) if journey is not None else ()),
-                    *((("repositoryId", repository_id),) if repository_id is not None else ()),
-                    *(((("agentId", agent_id),)) if agent_id is not None else ()),
-                ),
-            )
-            self._insert_event_sync(connection, task_id, event)
-            snapshot = self._snapshot_sync(connection, task_id)
             connection.commit()
             return snapshot
         except Exception:
@@ -914,6 +974,184 @@ class SQLiteTaskRepository:
             raise
         finally:
             connection.close()
+
+    def _create_task_idempotently_sync(
+        self,
+        title: str,
+        objective: str,
+        idempotency_key: str,
+        request_fingerprint: str,
+        external_run_id: str | None = None,
+        agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskCreation:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = self._idempotency_row_sync(
+                connection,
+                idempotency_key=idempotency_key,
+                security_context=security_context,
+            )
+            if existing is not None:
+                if not secrets.compare_digest(
+                    cast(str, existing["request_fingerprint"]),
+                    request_fingerprint,
+                ):
+                    raise TaskIdempotencyConflictError
+                task = self._snapshot_sync(connection, cast(str, existing["task_id"]))
+                connection.commit()
+                return TaskCreation(task=task, created=False)
+            task = self._create_task_in_transaction_sync(
+                connection,
+                title=title,
+                objective=objective,
+                external_run_id=external_run_id,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                security_context=security_context,
+            )
+            connection.execute(
+                """
+                INSERT INTO task_idempotency (
+                    tenant_id, workspace_id, actor_id, idempotency_key,
+                    request_fingerprint, task_id
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    security_context.tenant_id,
+                    security_context.workspace_id,
+                    security_context.actor_id,
+                    idempotency_key,
+                    request_fingerprint,
+                    task.task_id,
+                ),
+            )
+            connection.commit()
+            return TaskCreation(task=task, created=True)
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _find_task_by_idempotency_sync(
+        self,
+        idempotency_key: str,
+        request_fingerprint: str,
+        security_context: SecurityContext,
+    ) -> TaskSnapshot | None:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN")
+            existing = self._idempotency_row_sync(
+                connection,
+                idempotency_key=idempotency_key,
+                security_context=security_context,
+            )
+            if existing is None:
+                connection.commit()
+                return None
+            if not secrets.compare_digest(
+                cast(str, existing["request_fingerprint"]),
+                request_fingerprint,
+            ):
+                raise TaskIdempotencyConflictError
+            task = self._snapshot_sync(connection, cast(str, existing["task_id"]))
+            connection.commit()
+            return task
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _idempotency_row_sync(
+        connection: sqlite3.Connection,
+        *,
+        idempotency_key: str,
+        security_context: SecurityContext,
+    ) -> sqlite3.Row | None:
+        return cast(
+            sqlite3.Row | None,
+            connection.execute(
+                """
+                SELECT request_fingerprint, task_id
+                FROM task_idempotency
+                WHERE tenant_id = ? AND workspace_id = ?
+                  AND actor_id = ? AND idempotency_key = ?
+                """,
+                (
+                    security_context.tenant_id,
+                    security_context.workspace_id,
+                    security_context.actor_id,
+                    idempotency_key,
+                ),
+            ).fetchone(),
+        )
+
+    def _create_task_in_transaction_sync(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        title: str,
+        objective: str,
+        external_run_id: str | None,
+        agent_id: str | None,
+        journey: TaskJourney | None,
+        repository_id: str | None,
+        security_context: SecurityContext,
+    ) -> TaskSnapshot:
+        created_at = self._clock().isoformat()
+        cursor = connection.execute(
+            """
+            INSERT INTO tasks (
+                task_id, run_id, title, objective, status,
+                pending_interrupt_id, plan_revision, plan_title,
+                plan_steps, plan_evidence_refs, result, created_at,
+                tenant_id, workspace_id, created_by_actor_id
+            ) VALUES (
+                'pending', 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?
+            )
+            """,
+            (
+                title,
+                objective,
+                TaskStatus.QUEUED.value,
+                created_at,
+                security_context.tenant_id,
+                security_context.workspace_id,
+                security_context.actor_id,
+            ),
+        )
+        number = cast(int, cursor.lastrowid)
+        if number < 1 or number > _MAX_TASK_NUMBER:
+            raise SQLiteTaskRepositoryDataError("local task identifier bound exhausted")
+        suffix = f"{number:08d}"
+        task_id = f"task_{suffix}"
+        run_id = external_run_id or f"run_{suffix}"
+        connection.execute(
+            "UPDATE tasks SET task_id = ?, run_id = ? WHERE task_number = ?",
+            (task_id, run_id, number),
+        )
+        event = TaskEvent(
+            event_id=1,
+            name=TaskEventName.TASK_CREATED,
+            data=(
+                ("taskId", task_id),
+                ("runId", run_id),
+                ("status", TaskStatus.QUEUED.value),
+                *((("journey", journey.value),) if journey is not None else ()),
+                *((("repositoryId", repository_id),) if repository_id is not None else ()),
+                *((("agentId", agent_id),) if agent_id is not None else ()),
+            ),
+        )
+        self._insert_event_sync(connection, task_id, event)
+        return self._snapshot_sync(connection, task_id)
 
     def _list_tasks_sync(self) -> tuple[TaskSnapshot, ...]:
         connection = self._connect()
@@ -1783,6 +2021,18 @@ def _validate_task_input(*, title: str, objective: str) -> None:
         raise ValueError("task title is outside the shared response bound")
     if not objective or len(objective) > MAX_TASK_OBJECTIVE_LENGTH:
         raise ValueError("task objective is outside the shared request bound")
+
+
+def _validate_idempotency_input(key: str, fingerprint: str) -> None:
+    if (
+        not isinstance(key, str)
+        or not key.strip()
+        or len(key) > 128
+        or any(ord(character) < 32 or ord(character) == 127 for character in key)
+    ):
+        raise ValueError("task idempotency key is invalid")
+    if not isinstance(fingerprint, str) or _SHA256_PATTERN.fullmatch(fingerprint) is None:
+        raise ValueError("task request fingerprint is invalid")
 
 
 def _validate_steps(steps: tuple[str, ...], *, stored: bool = False) -> None:

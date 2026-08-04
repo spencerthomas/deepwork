@@ -30,8 +30,10 @@ from deepwork_api.domain import (
     SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
+    TaskCreation,
     TaskEvent,
     TaskEventName,
+    TaskIdempotencyConflictError,
     TaskJourney,
     TaskNotFoundError,
     TaskSnapshot,
@@ -109,6 +111,7 @@ class InMemoryTaskRepository:
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
         self._tasks: dict[str, _StoredTask] = {}
+        self._idempotency: dict[tuple[str, str, str, str], tuple[str, str]] = {}
         self._next_task_number = 1
         self._clock = clock
 
@@ -126,44 +129,133 @@ class InMemoryTaskRepository:
         """Create a queued task containing only its sanitized objective."""
 
         async with self._condition:
-            number = self._next_task_number
-            self._next_task_number += 1
-            suffix = f"{number:08d}"
-            task = _StoredTask(
-                task_id=f"task_{suffix}",
-                run_id=run_id or f"run_{suffix}",
-                created_at=self._clock().isoformat(),
+            task = self._create_task_locked(
                 title=title,
                 objective=objective,
+                run_id=run_id,
                 agent_id=agent_id,
                 journey=journey,
                 repository_id=repository_id,
-                tenant_id=security_context.tenant_id,
-                workspace_id=security_context.workspace_id,
-                created_by_actor_id=security_context.actor_id,
-                status=TaskStatus.QUEUED,
+                security_context=security_context,
             )
-            created_data: EventData = (
-                ("taskId", task.task_id),
-                ("runId", task.run_id),
-                ("status", TaskStatus.QUEUED.value),
-            )
-            if journey is not None:
-                created_data = (*created_data, ("journey", journey.value))
-            if repository_id is not None:
-                created_data = (*created_data, ("repositoryId", repository_id))
-            if agent_id is not None:
-                created_data = (*created_data, ("agentId", agent_id))
-            task.events.append(
-                TaskEvent(
-                    event_id=1,
-                    name=TaskEventName.TASK_CREATED,
-                    data=created_data,
-                )
-            )
-            self._tasks[task.task_id] = task
             self._condition.notify_all()
             return task.snapshot()
+
+    async def create_task_idempotently(
+        self,
+        *,
+        title: str,
+        objective: str,
+        idempotency_key: str,
+        request_fingerprint: str,
+        run_id: str | None = None,
+        agent_id: str | None = None,
+        journey: TaskJourney | None = None,
+        repository_id: str | None = None,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskCreation:
+        """Atomically create or replay one actor-scoped task request."""
+
+        scope = self._idempotency_scope(security_context, idempotency_key)
+        async with self._condition:
+            existing = self._idempotency.get(scope)
+            if existing is not None:
+                fingerprint, task_id = existing
+                if fingerprint != request_fingerprint:
+                    raise TaskIdempotencyConflictError
+                return TaskCreation(task=self._get(task_id).snapshot(), created=False)
+            task = self._create_task_locked(
+                title=title,
+                objective=objective,
+                run_id=run_id,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                security_context=security_context,
+            )
+            self._idempotency[scope] = (request_fingerprint, task.task_id)
+            self._condition.notify_all()
+            return TaskCreation(task=task.snapshot(), created=True)
+
+    async def find_task_by_idempotency(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
+    ) -> TaskSnapshot | None:
+        """Resolve one scoped creation request without exposing other scopes."""
+
+        scope = self._idempotency_scope(security_context, idempotency_key)
+        async with self._lock:
+            existing = self._idempotency.get(scope)
+            if existing is None:
+                return None
+            fingerprint, task_id = existing
+            if fingerprint != request_fingerprint:
+                raise TaskIdempotencyConflictError
+            return self._get(task_id).snapshot()
+
+    @staticmethod
+    def _idempotency_scope(
+        security_context: SecurityContext,
+        idempotency_key: str,
+    ) -> tuple[str, str, str, str]:
+        return (
+            security_context.tenant_id,
+            security_context.workspace_id,
+            security_context.actor_id,
+            idempotency_key,
+        )
+
+    def _create_task_locked(
+        self,
+        *,
+        title: str,
+        objective: str,
+        run_id: str | None,
+        agent_id: str | None,
+        journey: TaskJourney | None,
+        repository_id: str | None,
+        security_context: SecurityContext,
+    ) -> _StoredTask:
+        number = self._next_task_number
+        self._next_task_number += 1
+        suffix = f"{number:08d}"
+        task = _StoredTask(
+            task_id=f"task_{suffix}",
+            run_id=run_id or f"run_{suffix}",
+            created_at=self._clock().isoformat(),
+            title=title,
+            objective=objective,
+            agent_id=agent_id,
+            journey=journey,
+            repository_id=repository_id,
+            tenant_id=security_context.tenant_id,
+            workspace_id=security_context.workspace_id,
+            created_by_actor_id=security_context.actor_id,
+            status=TaskStatus.QUEUED,
+        )
+        created_data: EventData = (
+            ("taskId", task.task_id),
+            ("runId", task.run_id),
+            ("status", TaskStatus.QUEUED.value),
+        )
+        if journey is not None:
+            created_data = (*created_data, ("journey", journey.value))
+        if repository_id is not None:
+            created_data = (*created_data, ("repositoryId", repository_id))
+        if agent_id is not None:
+            created_data = (*created_data, ("agentId", agent_id))
+        task.events.append(
+            TaskEvent(
+                event_id=1,
+                name=TaskEventName.TASK_CREATED,
+                data=created_data,
+            )
+        )
+        self._tasks[task.task_id] = task
+        return task
 
     async def list_tasks(self) -> tuple[TaskSnapshot, ...]:
         """List tasks in deterministic creation order."""

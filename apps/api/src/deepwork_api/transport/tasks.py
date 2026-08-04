@@ -25,6 +25,7 @@ from deepwork_api.application import (
     TaskAlreadyResolvedError,
     TaskCancellationUnsupportedError,
     TaskEvent,
+    TaskIdempotencyConflictError,
     TaskJourney,
     TaskNotFoundError,
     TaskService,
@@ -66,6 +67,7 @@ def build_task_router(
         ..., SecurityContext | Awaitable[SecurityContext]
     ] = _default_security_context,
     trace_locator: TraceLocator | None = None,
+    require_idempotency_key: bool = False,
 ) -> APIRouter:
     """Build the shared internal task API around an injected service.
 
@@ -83,14 +85,36 @@ def build_task_router(
     async def create_task(
         request: TaskCreateRequest,
         security_context: SecurityContext = security_context_marker,
+        idempotency_key: Annotated[
+            str | None,
+            Header(
+                alias="Idempotency-Key",
+                min_length=1,
+                max_length=128,
+                pattern=r"^.*\S.*$",
+            ),
+        ] = None,
     ) -> TaskAcceptedResponse | JSONResponse:
+        if require_idempotency_key and idempotency_key is None:
+            return _problem(
+                400,
+                "idempotency_key_required",
+                "Idempotency-Key is required for task creation.",
+            )
         try:
-            task = await service.create_task(
+            creation = await service.create_task(
                 request.prompt,
                 agent_id=request.agent_id,
                 journey=(TaskJourney.CODING if request.journey == "coding" else None),
                 repository_id=request.repository_id,
+                idempotency_key=idempotency_key,
                 security_context=security_context,
+            )
+        except TaskIdempotencyConflictError:
+            return _problem(
+                409,
+                "task_idempotency_conflict",
+                "Idempotency-Key was already used for a different task request.",
             )
         except TaskSourceContractError:
             return _problem(
@@ -104,7 +128,10 @@ def build_task_router(
                 "local_source_unavailable",
                 "The configured local task source is unavailable.",
             )
-        return TaskAcceptedResponse.from_domain(task)
+        return TaskAcceptedResponse.from_domain(
+            creation.task,
+            duplicate=not creation.created,
+        )
 
     @router.get("", response_model=TaskListResponse)
     async def list_tasks(

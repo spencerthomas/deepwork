@@ -1517,6 +1517,10 @@
         "additionalProperties": false,
         "description": "Queued task receipt returned before background work starts.",
         "properties": {
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
           "runId": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
             "title": "Runid",
@@ -1536,7 +1540,8 @@
         },
         "required": [
           "taskId",
-          "runId"
+          "runId",
+          "duplicate"
         ],
         "title": "TaskAcceptedResponse",
         "type": "object"
@@ -2289,6 +2294,27 @@
       },
       "post": {
         "operationId": "create_task_api_v1_tasks_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^.*\\S.*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

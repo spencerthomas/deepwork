@@ -47,6 +47,7 @@ async def _clients(
 async def _create_waiting_task(client: httpx.AsyncClient) -> dict[str, object]:
     created = await client.post(
         "/api/v1/tasks",
+        headers={"Idempotency-Key": "tenant-isolation-task"},
         json={"prompt": "Keep this task inside workspace A"},
     )
     assert created.status_code == 202

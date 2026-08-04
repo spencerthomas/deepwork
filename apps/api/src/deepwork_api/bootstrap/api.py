@@ -386,6 +386,7 @@ def create_app(
             task_service,
             security_context_dependency=(auth_guard if auth_guard else _open_security_context),
             trace_locator=trace_locator,
+            require_idempotency_key=auth_guard is not None,
         )
     )
     app.include_router(

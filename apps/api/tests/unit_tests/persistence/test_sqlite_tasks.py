@@ -43,8 +43,10 @@ from deepwork_api.domain import (
     SecurityContext,
     StaleInterruptError,
     TaskAlreadyResolvedError,
+    TaskCreation,
     TaskEvent,
     TaskEventName,
+    TaskIdempotencyConflictError,
     TaskJourney,
     TaskStatus,
 )
@@ -122,6 +124,85 @@ async def test_task_owner_round_trips_without_entering_creation_event(tmp_path: 
         ) == ("tenant-a", "workspace-a", "actor-a")
     finally:
         await reopened.close()
+
+
+async def test_idempotent_task_creation_is_scoped_and_survives_reopen(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "idempotent-tasks.sqlite"
+    context = SecurityContext("tenant-a", "workspace-a", "actor-a")
+    other_actor = SecurityContext("tenant-a", "workspace-a", "actor-b")
+    repository = SQLiteTaskRepository(database)
+
+    created = await repository.create_task_idempotently(
+        title="Idempotent",
+        objective="Create exactly one task",
+        idempotency_key="task-key",
+        request_fingerprint="a" * 64,
+        security_context=context,
+    )
+    replayed = await repository.create_task_idempotently(
+        title="Idempotent",
+        objective="Create exactly one task",
+        idempotency_key="task-key",
+        request_fingerprint="a" * 64,
+        security_context=context,
+    )
+    assert created.created is True
+    assert replayed.created is False
+    assert replayed.task == created.task
+
+    with pytest.raises(TaskIdempotencyConflictError):
+        await repository.create_task_idempotently(
+            title="Changed",
+            objective="Changed immutable input",
+            idempotency_key="task-key",
+            request_fingerprint="b" * 64,
+            security_context=context,
+        )
+
+    other = await repository.create_task_idempotently(
+        title="Other actor",
+        objective="Reuse the scoped key",
+        idempotency_key="task-key",
+        request_fingerprint="c" * 64,
+        security_context=other_actor,
+    )
+    assert other.created is True
+    assert other.task.task_id != created.task.task_id
+    await repository.close()
+
+    reopened = SQLiteTaskRepository(database)
+    retained = await reopened.find_task_by_idempotency(
+        idempotency_key="task-key",
+        request_fingerprint="a" * 64,
+        security_context=context,
+    )
+    assert retained == created.task
+    await reopened.close()
+
+
+async def test_concurrent_sqlite_idempotent_creates_converge(tmp_path: Path) -> None:
+    database = tmp_path / "concurrent-idempotent-tasks.sqlite"
+    first = SQLiteTaskRepository(database)
+    second = SQLiteTaskRepository(database)
+    context = SecurityContext("tenant-a", "workspace-a", "actor-a")
+
+    async def create(repository: SQLiteTaskRepository) -> TaskCreation:
+        return await repository.create_task_idempotently(
+            title="Concurrent",
+            objective="Converge on one task",
+            idempotency_key="concurrent-task-key",
+            request_fingerprint="d" * 64,
+            security_context=context,
+        )
+
+    results = await asyncio.gather(create(first), create(second))
+    assert {result.task.task_id for result in results} == {"task_00000001"}
+    assert sorted(result.created for result in results) == [False, True]
+    assert len(await first.list_tasks()) == 1
+    await first.close()
+    await second.close()
 
 
 async def test_latest_coding_query_uses_name_led_index(tmp_path: Path) -> None:
@@ -1334,9 +1415,10 @@ async def test_same_version_schema_without_constraints_is_rejected(tmp_path: Pat
             CREATE INDEX events_name_task_order ON events(name, task_id, event_id DESC);
             CREATE INDEX evidence_task_order ON evidence(task_id, position);
             PRAGMA application_id = 1146572849;
-            PRAGMA user_version = 5;
+            PRAGMA user_version = 6;
             """
         )
+        connection.execute(sqlite_adapter._IDEMPOTENCY_SCHEMA)
 
     repository = SQLiteTaskRepository(database)
     with pytest.raises(SQLiteTaskRepositorySchemaError, match="schema shape"):
@@ -1357,7 +1439,7 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
     database = tmp_path / "schema-v3.sqlite"
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
-            if "events_name_task_order" not in statement:
+            if "events_name_task_order" not in statement and "task_idempotency" not in statement:
                 connection.execute(_without_ownership_columns(statement))
         connection.execute(f"PRAGMA application_id = {sqlite_adapter._APPLICATION_ID}")
         connection.execute("PRAGMA user_version = 3")
@@ -1373,7 +1455,7 @@ async def test_v3_database_migrates_to_name_led_event_index(tmp_path: Path) -> N
             for row in connection.execute("PRAGMA index_xinfo(events_name_task_order)")
             if int(row[5]) == 1
         )
-    assert version == 5
+    assert version == sqlite_adapter._SCHEMA_VERSION
     assert indexed_columns == (("name", 0), ("task_id", 0), ("event_id", 1))
 
 
@@ -1388,7 +1470,8 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
     )
     with sqlite3.connect(database) as connection:
         for statement in sqlite_adapter._SCHEMA_STATEMENTS:
-            connection.execute(_without_ownership_columns(statement))
+            if "task_idempotency" not in statement:
+                connection.execute(_without_ownership_columns(statement))
         connection.execute(
             """
             INSERT INTO tasks (task_id, run_id, title, objective, status)
@@ -1414,7 +1497,7 @@ async def test_v4_database_migrates_legacy_task_to_default_owner(tmp_path: Path)
 
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 5
+    assert version == sqlite_adapter._SCHEMA_VERSION
 
 
 def _seed_v1_database(database: Path) -> None:
@@ -1524,7 +1607,7 @@ async def test_v1_database_migrates_preserving_tasks_without_fabricating_time(
     with sqlite3.connect(database) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         columns = [str(row[1]) for row in connection.execute("PRAGMA table_info(tasks)")]
-    assert version == 5
+    assert version == sqlite_adapter._SCHEMA_VERSION
     assert columns[-4:] == [
         "created_at",
         "tenant_id",
@@ -1657,7 +1740,7 @@ async def test_legacy_v2_database_upgrades_preserving_recorded_timestamps(
         notnull = {
             str(row[1]): int(row[3]) for row in connection.execute("PRAGMA table_info(tasks)")
         }
-    assert version == 5
+    assert version == sqlite_adapter._SCHEMA_VERSION
     assert columns[-4:] == [
         "created_at",
         "tenant_id",

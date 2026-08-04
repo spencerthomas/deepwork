@@ -190,6 +190,30 @@ async def test_create_forwards_the_workspace_prompt_to_source_start() -> None:
     assert source.start_system_prompts == ["Always be terse."]
 
 
+async def test_service_idempotent_retry_does_not_restart_local_source() -> None:
+    repository = InMemoryTaskRepository()
+    source = _Source()
+    runner = LocalAgentServerRunner(repository, source)
+    service = TaskService(repository, runner)
+    try:
+        first = await service.create_task(
+            "Do the thing",
+            idempotency_key="local-source-task-key",
+        )
+        retried = await service.create_task(
+            "Do the thing",
+            idempotency_key="local-source-task-key",
+        )
+    finally:
+        await runner.close()
+
+    assert first.created is True
+    assert retried.created is False
+    assert retried.task.task_id == first.task.task_id
+    assert retried.task.run_id == first.task.run_id
+    assert source.start_system_prompts == [None]
+
+
 @pytest.mark.asyncio
 async def test_create_reads_prompt_from_the_task_security_context() -> None:
     from deepwork_api.adapters.prompt import InMemoryPromptStore
@@ -257,8 +281,8 @@ async def test_create_with_an_agent_id_skips_the_workspace_prompt_override() -> 
 
     assert source.start_system_prompts == [None]
     assert source.start_agent_ids == ["assistant-2"]
-    assert task.agent_id == "assistant-2"
-    created_event = (await repository.events_after(task.task_id, 0))[0]
+    assert task.task.agent_id == "assistant-2"
+    created_event = (await repository.events_after(task.task.task_id, 0))[0]
     assert dict(created_event.data)["agentId"] == "assistant-2"
 
 
@@ -280,7 +304,7 @@ async def test_create_with_explicit_default_agent_keeps_workspace_prompt_and_ide
 
     assert source.start_system_prompts == ["Always be terse."]
     assert source.start_agent_ids == ["assistant-default"]
-    assert task.agent_id == "assistant-default"
+    assert task.task.agent_id == "assistant-default"
 
 
 async def test_runner_agent_registry_methods_delegate_to_the_source() -> None:

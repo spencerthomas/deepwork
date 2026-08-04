@@ -19,6 +19,7 @@ from deepwork_api.domain import (
     ProposedPlan,
     SecurityContext,
     StaleInterruptError,
+    TaskCreation,
     TaskEventName,
     TaskSnapshot,
     TaskSourceContractError,
@@ -174,8 +175,10 @@ class LocalAgentServerRunner:
         title: str,
         objective: str,
         agent_id: str | None = None,
+        idempotency_key: str | None = None,
+        request_fingerprint: str | None = None,
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
-    ) -> TaskSnapshot:
+    ) -> TaskCreation:
         # The source owns assistant identity and suppresses this workspace
         # override when a different named agent is selected. Keeping that
         # decision at the adapter boundary avoids a second registry lookup.
@@ -186,16 +189,33 @@ class LocalAgentServerRunner:
             raise
         except Exception:
             raise TaskSourceUnavailableError from None
-        task = await self.repository.create_task(
-            title=title,
-            objective=objective,
-            run_id=run.run_id,
-            agent_id=agent_id,
-            security_context=security_context,
-        )
-        self._threads[task.task_id] = run.thread_id
-        self.start(task, run)
-        return task
+        if idempotency_key is None:
+            task = await self.repository.create_task(
+                title=title,
+                objective=objective,
+                run_id=run.run_id,
+                agent_id=agent_id,
+                security_context=security_context,
+            )
+            created = True
+        else:
+            if request_fingerprint is None:
+                raise ValueError("idempotent task creation requires a request fingerprint")
+            creation = await self.repository.create_task_idempotently(
+                title=title,
+                objective=objective,
+                run_id=run.run_id,
+                agent_id=agent_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                security_context=security_context,
+            )
+            task = creation.task
+            created = creation.created
+        if created:
+            self._threads[task.task_id] = run.thread_id
+            self.start(task, run)
+        return TaskCreation(task=task, created=created)
 
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
         return await self.source.list_agents()

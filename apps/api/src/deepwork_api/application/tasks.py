@@ -38,6 +38,7 @@ from deepwork_api.domain import (
     ScheduleRegistryUnavailableError,
     SecurityContext,
     TaskCancellationUnsupportedError,
+    TaskCreation,
     TaskEvent,
     TaskEventName,
     TaskJourney,
@@ -161,6 +162,36 @@ def _reconcile_fixture_draft_pr_after_timeout() -> _FixturePrCreateResult:
 
 def _digest_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _validate_task_idempotency_key(value: str) -> None:
+    if (
+        not value.strip()
+        or len(value) > 128
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise ValueError("task idempotency key is invalid")
+
+
+def _task_request_fingerprint(
+    *,
+    objective: str,
+    agent_id: str | None,
+    journey: TaskJourney | None,
+    repository_id: str | None,
+) -> str:
+    normalized = json.dumps(
+        {
+            "agent": agent_id,
+            "journey": journey.value if journey is not None else None,
+            "prompt": objective,
+            "repository": repository_id,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return _digest_text(normalized)
 
 
 def sanitize_objective(prompt: str) -> str:
@@ -476,12 +507,13 @@ class DeterministicFixtureRunner:
             return
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class TaskService:
     """Coordinate task commands, queries, decisions, and event replay."""
 
     repository: TaskRepository
     runner: DeterministicFixtureRunner | LocalAgentServerRunner
+    _creation_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
 
     @property
     def batch_allowed_decisions(self) -> tuple[DecisionType, ...] | None:
@@ -502,8 +534,9 @@ class TaskService:
         agent_id: str | None = None,
         journey: TaskJourney | None = None,
         repository_id: str | None = None,
+        idempotency_key: str | None = None,
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
-    ) -> TaskSnapshot:
+    ) -> TaskCreation:
         """Create a queued task and start its deterministic runner.
 
         ``agent_id`` selects a specific registered agent for a real-agent-mode
@@ -512,6 +545,12 @@ class TaskService:
 
         objective = sanitize_objective(prompt)
         title = _build_task_title(objective)
+        request_fingerprint = _task_request_fingerprint(
+            objective=objective,
+            agent_id=agent_id,
+            journey=journey,
+            repository_id=repository_id,
+        )
         if journey is TaskJourney.CODING:
             if repository_id != _FIXTURE_REPOSITORY_ID:
                 raise TaskSourceUnavailableError
@@ -521,25 +560,86 @@ class TaskService:
                 raise TaskSourceUnavailableError
         elif repository_id is not None:
             raise TaskSourceUnavailableError
-        if isinstance(self.runner, LocalAgentServerRunner):
-            return await self.runner.create(
-                title=title,
-                objective=objective,
-                agent_id=agent_id,
-                security_context=security_context,
-            )
-        if agent_id is not None and agent_id != _FIXTURE_AGENT_ID:
-            raise TaskSourceUnavailableError
-        task = await self.repository.create_task(
+        if idempotency_key is not None:
+            _validate_task_idempotency_key(idempotency_key)
+            async with self._creation_lock:
+                existing = await self.repository.find_task_by_idempotency(
+                    idempotency_key=idempotency_key,
+                    request_fingerprint=request_fingerprint,
+                    security_context=security_context,
+                )
+                if existing is not None:
+                    return TaskCreation(task=existing, created=False)
+                return await self._create_task(
+                    title=title,
+                    objective=objective,
+                    agent_id=agent_id,
+                    journey=journey,
+                    repository_id=repository_id,
+                    idempotency_key=idempotency_key,
+                    request_fingerprint=request_fingerprint,
+                    security_context=security_context,
+                )
+        return await self._create_task(
             title=title,
             objective=objective,
             agent_id=agent_id,
             journey=journey,
             repository_id=repository_id,
+            idempotency_key=None,
+            request_fingerprint=request_fingerprint,
             security_context=security_context,
         )
-        self.runner.start(task)
-        return task
+
+    async def _create_task(
+        self,
+        *,
+        title: str,
+        objective: str,
+        agent_id: str | None,
+        journey: TaskJourney | None,
+        repository_id: str | None,
+        idempotency_key: str | None,
+        request_fingerprint: str,
+        security_context: SecurityContext,
+    ) -> TaskCreation:
+        if isinstance(self.runner, LocalAgentServerRunner):
+            return await self.runner.create(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                security_context=security_context,
+            )
+        if agent_id is not None and agent_id != _FIXTURE_AGENT_ID:
+            raise TaskSourceUnavailableError
+        if idempotency_key is None:
+            task = await self.repository.create_task(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                security_context=security_context,
+            )
+            created = True
+        else:
+            creation = await self.repository.create_task_idempotently(
+                title=title,
+                objective=objective,
+                agent_id=agent_id,
+                journey=journey,
+                repository_id=repository_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                security_context=security_context,
+            )
+            task = creation.task
+            created = creation.created
+        if created:
+            self.runner.start(task)
+        return TaskCreation(task=task, created=created)
 
     async def list_agents(self) -> tuple[LocalAgentSummary, ...]:
         """List agents registered on the configured real task source.

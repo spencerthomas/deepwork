@@ -6,6 +6,7 @@ from deepwork_api.application.local_runner import (
     LocalAgentSummary,
     LocalScheduleSummary,
 )
+from deepwork_api.application.sources import SourceService
 from deepwork_api.application.status import StatusService
 from deepwork_api.application.tasks import DeterministicFixtureRunner, TaskService
 from deepwork_api.domain import (
@@ -32,6 +33,9 @@ from deepwork_api.domain import (
     Session,
     SessionExpiredError,
     SessionNotFoundError,
+    SourceEndpointInvalidError,
+    SourceProbeResult,
+    SourceProbeUnavailableError,
     StaleInterruptError,
     SystemPromptTooLongError,
     TaskAlreadyResolvedError,
@@ -75,6 +79,10 @@ __all__ = [
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",
+    "SourceEndpointInvalidError",
+    "SourceProbeResult",
+    "SourceProbeUnavailableError",
+    "SourceService",
     "StaleInterruptError",
     "StatusService",
     "SystemPromptTooLongError",

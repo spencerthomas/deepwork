@@ -1175,6 +1175,144 @@
         "title": "ScheduleSummaryResponse",
         "type": "object"
       },
+      "SourceCapabilityResponse": {
+        "additionalProperties": false,
+        "description": "One sanitized, independently observed capability state.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unavailable",
+              "gated",
+              "permission-denied",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "state",
+          "reason"
+        ],
+        "title": "SourceCapabilityResponse",
+        "type": "object"
+      },
+      "SourceProbeRequest": {
+        "additionalProperties": false,
+        "description": "A hosted classic candidate; credentials are intentionally absent.",
+        "properties": {
+          "assistantId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Assistantid",
+            "type": "string"
+          },
+          "deploymentUrl": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Deploymenturl",
+            "type": "string"
+          },
+          "kind": {
+            "const": "langsmith_deployment",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "deploymentUrl",
+          "assistantId"
+        ],
+        "title": "SourceProbeRequest",
+        "type": "object"
+      },
+      "SourceProbeResponse": {
+        "additionalProperties": false,
+        "description": "Credential-free result; read qualification never authorizes saving.",
+        "properties": {
+          "assistantId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistantid"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCapabilityResponse"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "graphId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graphid"
+          },
+          "kind": {
+            "const": "langsmith_deployment",
+            "default": "langsmith_deployment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "saveAllowed": {
+            "const": false,
+            "default": false,
+            "title": "Saveallowed",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unavailable",
+              "gated",
+              "permission-denied",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "capabilities"
+        ],
+        "title": "SourceProbeResponse",
+        "type": "object"
+      },
       "SystemPromptResponse": {
         "additionalProperties": false,
         "description": "The workspace's current system prompt and whether it overrides the default.",
@@ -1884,6 +2022,47 @@
         "summary": "Put Prompt",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/sources/probes": {
+      "post": {
+        "operationId": "probe_source_api_v1_sources_probes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProbeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Probe Source",
+        "tags": [
+          "sources"
         ]
       }
     },

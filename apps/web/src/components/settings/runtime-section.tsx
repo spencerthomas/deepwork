@@ -1,10 +1,15 @@
 "use client";
 
-import { Check, Copy, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, Copy, RefreshCw, ShieldCheck } from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { CapabilityChip } from "@/components/capability-chip";
 import { formatRuntimeDiagnostics } from "@/lib/runtime-diagnostics";
+import {
+  probeClassicSource,
+  type SourceProbeResult,
+  type SourceProbeState,
+} from "@/lib/source-probe-client";
 import { taskRuntimePresentation } from "@/lib/task-runtime-presentation";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useDemoStatus } from "@/lib/use-demo-status";
@@ -20,6 +25,150 @@ function MonoValue({ children }: { children: string }) {
     <span className="rounded-md bg-accent px-2 py-1 font-mono text-[12px] text-foreground">
       {children}
     </span>
+  );
+}
+
+function probeChipState(state: SourceProbeState): "available" | "unavailable" | "unknown" {
+  if (state === "available") return "available";
+  if (state === "unknown") return "unknown";
+  return "unavailable";
+}
+
+function SourceConnectionCheck({ apiBaseUrl }: { apiBaseUrl: string }) {
+  const [endpoint, setEndpoint] = useState("");
+  const [assistantId, setAssistantId] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState<SourceProbeResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setChecking(true);
+    setError(null);
+    setResult(null);
+    try {
+      setResult(
+        await probeClassicSource(apiBaseUrl, {
+          endpoint: endpoint.trim(),
+          assistantId: assistantId.trim(),
+        }),
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The source check failed safely.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <>
+      <GroupLabel>Connect a source</GroupLabel>
+      <Card className="mb-6">
+        <form onSubmit={(event) => void submit(event)} className="space-y-4 p-4">
+          <div>
+            <h3 className="text-[13px] font-medium text-crisp">Classic LangSmith deployment</h3>
+            <p className="mt-1 text-pretty text-[12px] leading-relaxed text-muted-foreground">
+              Check an operator-approved hosted deployment URL and assistant ID with the credential
+              held by this workspace server. Browser input cannot probe arbitrary hosts. This check
+              reads assistant identity only; it does not create a run or save a connection.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="min-w-0 text-[12px] font-medium text-foreground">
+              Deployment URL
+              <input
+                type="url"
+                required
+                value={endpoint}
+                onChange={(event) => setEndpoint(event.target.value)}
+                placeholder="https://deployment.example.com"
+                autoComplete="url"
+                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
+              />
+            </label>
+            <label className="min-w-0 text-[12px] font-medium text-foreground">
+              Assistant ID
+              <input
+                type="text"
+                required
+                value={assistantId}
+                onChange={(event) => setAssistantId(event.target.value)}
+                placeholder="deep-work-agent"
+                autoComplete="off"
+                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/50"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={checking || endpoint.trim() === "" || assistantId.trim() === ""}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-[13px] font-semibold text-brand-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            <ShieldCheck aria-hidden className="size-4" />
+            {checking ? "Checking…" : "Run read-only check"}
+          </button>
+        </form>
+
+        {error && (
+          <div role="alert" className="bg-status-failed-bg px-4 py-3 text-[13px] text-foreground">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-3 px-4 py-4" aria-label="Source check result">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-medium text-crisp">
+                  {result.state === "available" ? "Assistant found" : "Source not qualified"}
+                </p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  {result.state === "available"
+                    ? `Assistant ${result.assistantId ?? "unknown"} · graph ${result.graphId ?? "unknown"}`
+                    : "No connection was saved or enabled."}
+                </p>
+              </div>
+              <CapabilityChip state={probeChipState(result.state)} />
+            </div>
+            <ul className="divide-y divide-border rounded-xl border border-border">
+              {result.capabilities.map((capability) => (
+                <li
+                  key={capability.name}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
+                >
+                  <span>
+                    <span className="block font-mono text-[12px] text-foreground">
+                      {capability.name}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {capability.reason}
+                    </span>
+                  </span>
+                  <CapabilityChip
+                    state={probeChipState(capability.state)}
+                    label={capability.state.replace("-", " ")}
+                  />
+                </li>
+              ))}
+            </ul>
+            <p className="rounded-xl bg-status-review-bg px-3 py-2.5 text-[12px] leading-relaxed text-foreground">
+              Assistant read access is not execution proof. Saving and selecting this source stay
+              blocked until an explicitly authorized invocation check verifies run and stream
+              behavior.
+            </p>
+          </div>
+        )}
+      </Card>
+      <span role="status" aria-live="polite" className="sr-only">
+        {checking
+          ? "Checking the source."
+          : result
+            ? result.state === "available"
+              ? "Assistant found. The source was not saved."
+              : "The source was not qualified or saved."
+            : ""}
+      </span>
+    </>
   );
 }
 
@@ -131,6 +280,8 @@ export function RuntimeSection() {
           />
         )}
       </Card>
+
+      {mode === "api" && <SourceConnectionCheck apiBaseUrl={apiBaseUrl} />}
 
       <GroupLabel>Evidence</GroupLabel>
       <Card>

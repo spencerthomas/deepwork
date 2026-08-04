@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     # The public facade may depend only on bootstrap; import the composition
     # root's already-bound type instead of bypassing the architecture inward.
-    from deepwork_api.bootstrap.api import SecurityContext
+    from deepwork_api.bootstrap.api import SecurityContext, SourceProbeClient
 
 __all__ = ["create_app"]
 
@@ -28,6 +28,9 @@ def create_app(
     classic_deployment_endpoint: str | None = None,
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
+    source_probe_credential: str | None = None,
+    source_probe_allowed_endpoints: tuple[str, ...] = (),
+    source_probe_client: SourceProbeClient | None = None,
     access_key: str | None = None,
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
@@ -61,6 +64,9 @@ def create_app(
             classic_deployment_endpoint=classic_deployment_endpoint,
             classic_deployment_assistant=classic_deployment_assistant,
             classic_deployment_credential=classic_deployment_credential,
+            source_probe_credential=source_probe_credential,
+            source_probe_allowed_endpoints=source_probe_allowed_endpoints,
+            source_probe_client=source_probe_client,
             access_key=access_key,
             access_key_contexts=access_key_contexts,
             web_origins=web_origins,
@@ -75,6 +81,9 @@ def create_app(
         classic_deployment_endpoint=classic_deployment_endpoint,
         classic_deployment_assistant=classic_deployment_assistant,
         classic_deployment_credential=classic_deployment_credential,
+        source_probe_credential=source_probe_credential,
+        source_probe_allowed_endpoints=source_probe_allowed_endpoints,
+        source_probe_client=source_probe_client,
         access_key=access_key,
         access_key_contexts=access_key_contexts,
         web_origins=web_origins,

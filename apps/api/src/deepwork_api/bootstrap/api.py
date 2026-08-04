@@ -18,6 +18,7 @@ from deepwork_api.adapters.auth import InMemorySessionStore
 from deepwork_api.adapters.fixture import FixtureStatusProvider, InMemoryTaskRepository
 from deepwork_api.adapters.persistence import SQLiteTaskRepository
 from deepwork_api.adapters.prompt import InMemoryPromptStore, SQLitePromptStore
+from deepwork_api.adapters.sources.classic.probe import ClassicSourceProbeClient
 from deepwork_api.adapters.sources.classic.runtime import ClassicDeploymentSource
 from deepwork_api.adapters.sources.local import (
     LocalAgentServerSource,
@@ -28,6 +29,7 @@ from deepwork_api.application import (
     AuthService,
     DeterministicFixtureRunner,
     LocalAgentServerRunner,
+    SourceService,
     StatusService,
     TaskService,
 )
@@ -39,6 +41,7 @@ from deepwork_api.domain import (
 )
 from deepwork_api.domain import SecurityContext as SecurityContext
 from deepwork_api.ports import Clock, PromptStore, TaskRepository, system_clock
+from deepwork_api.ports import SourceProbeClient as SourceProbeClient
 from deepwork_api.transport import (
     build_agents_router,
     build_auth_router,
@@ -46,6 +49,7 @@ from deepwork_api.transport import (
     build_schedules_router,
     build_session_guard,
     build_settings_router,
+    build_sources_router,
     build_task_router,
 )
 
@@ -107,6 +111,9 @@ def create_app(
     classic_deployment_endpoint: str | None = None,
     classic_deployment_assistant: str | None = None,
     classic_deployment_credential: str | None = None,
+    source_probe_credential: str | None = None,
+    source_probe_allowed_endpoints: tuple[str, ...] = (),
+    source_probe_client: SourceProbeClient | None = None,
     access_key: str | None = None,
     access_key_contexts: Mapping[str, SecurityContext] | None = None,
     web_origins: tuple[str, ...] | None = None,
@@ -125,6 +132,21 @@ def create_app(
     """
 
     status_service = StatusService(provider=FixtureStatusProvider())
+    if source_probe_client is not None and source_probe_credential is not None:
+        raise ValueError("configure either a source probe client or source probe credential")
+    if source_probe_client is not None and source_probe_allowed_endpoints:
+        raise ValueError("an injected source probe client owns its endpoint policy")
+    configured_probe_client = source_probe_client
+    if configured_probe_client is None and source_probe_credential is not None:
+        configured_probe_client = ClassicSourceProbeClient(
+            source_probe_credential,
+            allowed_endpoints=source_probe_allowed_endpoints,
+        )
+    elif configured_probe_client is None and source_probe_allowed_endpoints:
+        raise ValueError("source probe allowed endpoints require a server-held credential")
+    source_service = (
+        SourceService(configured_probe_client) if configured_probe_client is not None else None
+    )
     task_repository: TaskRepository
     task_runner: DeterministicFixtureRunner | LocalAgentServerRunner
     sqlite_repository: SQLiteTaskRepository | None
@@ -241,6 +263,8 @@ def create_app(
                     await local_source.close()
                 if trace_locator is not None:
                     await trace_locator.close()
+                if source_service is not None:
+                    await source_service.close()
 
     app = FastAPI(
         title="Deep Work API fixture scaffold",
@@ -312,6 +336,12 @@ def create_app(
             security_context_dependency=(auth_guard if auth_guard else _open_security_context),
         )
     )
+    app.include_router(
+        build_sources_router(
+            source_service,
+            security_context_dependency=(auth_guard if auth_guard else _open_security_context),
+        )
+    )
     app.include_router(build_agents_router(task_service, dependencies=task_dependencies))
     app.include_router(build_schedules_router(task_service, dependencies=task_dependencies))
     if auth_service is not None:
@@ -320,6 +350,7 @@ def create_app(
     app.state.task_runner = task_runner
     app.state.task_service = task_service
     app.state.auth_service = auth_service
+    app.state.source_service = source_service
     return app
 
 
@@ -421,6 +452,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if raw_origins
         else None
     )
+    raw_probe_endpoints = os.environ.get("DEEPWORK_SOURCE_PROBE_ENDPOINTS")
+    source_probe_allowed_endpoints = tuple(
+        endpoint.strip() for endpoint in (raw_probe_endpoints or "").split(",") if endpoint.strip()
+    )
+    if args.classic_deployment_endpoint is not None:
+        source_probe_allowed_endpoints = (
+            *source_probe_allowed_endpoints,
+            args.classic_deployment_endpoint,
+        )
     # Hosting platforms (Railway, etc.) inject $PORT and require binding 0.0.0.0.
     # Local default stays loopback so nothing is exposed unless deliberately hosted.
     host = os.environ.get("DEEPWORK_HOST", "127.0.0.1")
@@ -439,7 +479,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             allow_ungated_local_agent_source=args.allow_ungated_local_agent_source,
             classic_deployment_endpoint=args.classic_deployment_endpoint,
             classic_deployment_assistant=args.classic_deployment_assistant,
-            classic_deployment_credential=classic_credential,
+            classic_deployment_credential=(
+                classic_credential if args.classic_deployment_endpoint is not None else None
+            ),
+            source_probe_credential=(
+                classic_credential if source_probe_allowed_endpoints else None
+            ),
+            source_probe_allowed_endpoints=source_probe_allowed_endpoints,
             access_key=access_key,
             web_origins=web_origins,
             trace_api_key=trace_api_key,

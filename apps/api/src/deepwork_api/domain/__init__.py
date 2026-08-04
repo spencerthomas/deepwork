@@ -25,6 +25,13 @@ from deepwork_api.domain.prompt import (
     normalize_system_prompt,
 )
 from deepwork_api.domain.schedules import ScheduleDomainError, ScheduleRegistryUnavailableError
+from deepwork_api.domain.sources import (
+    SourceCapabilityObservation,
+    SourceEndpointInvalidError,
+    SourceProbeResult,
+    SourceProbeState,
+    SourceProbeUnavailableError,
+)
 from deepwork_api.domain.status import (
     Capability,
     CapabilityState,
@@ -132,6 +139,11 @@ __all__ = [
     "Session",
     "SessionExpiredError",
     "SessionNotFoundError",
+    "SourceCapabilityObservation",
+    "SourceEndpointInvalidError",
+    "SourceProbeResult",
+    "SourceProbeState",
+    "SourceProbeUnavailableError",
     "StaleInterruptError",
     "SystemPromptTooLongError",
     "TaskAlreadyResolvedError",

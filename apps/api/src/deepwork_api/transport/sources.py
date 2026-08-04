@@ -1,0 +1,62 @@
+"""Authenticated API for read-only source qualification."""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+
+from deepwork_api.application import (
+    DEFAULT_SECURITY_CONTEXT,
+    SecurityContext,
+    SourceEndpointInvalidError,
+    SourceService,
+)
+from deepwork_api.contracts import SourceProbeRequest, SourceProbeResponse
+
+
+def _default_security_context() -> SecurityContext:
+    return DEFAULT_SECURITY_CONTEXT
+
+
+def build_sources_router(
+    service: SourceService | None,
+    *,
+    security_context_dependency: Callable[
+        ..., SecurityContext | Awaitable[SecurityContext]
+    ] = _default_security_context,
+) -> APIRouter:
+    """Build source qualification routes around an optional configured service."""
+
+    router = APIRouter(prefix="/api/v1/sources", tags=["sources"])
+    security_context_marker = Depends(security_context_dependency)
+
+    @router.post("/probes", response_model=SourceProbeResponse)
+    async def probe_source(
+        request: SourceProbeRequest,
+        _security_context: SecurityContext = security_context_marker,
+    ) -> SourceProbeResponse | JSONResponse:
+        if service is None:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "code": "source_probe_unavailable",
+                    "message": (
+                        "No server-held source credential is configured for connection checks."
+                    ),
+                },
+            )
+        try:
+            result = await service.probe_classic(request.deployment_url, request.assistant_id)
+        except SourceEndpointInvalidError:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "code": "source_endpoint_invalid",
+                    "message": "The deployment URL is not an allowed hosted HTTPS endpoint.",
+                },
+            )
+        return SourceProbeResponse.from_domain(result)
+
+    return router

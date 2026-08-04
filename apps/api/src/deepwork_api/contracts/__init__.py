@@ -8,6 +8,7 @@ from deepwork_api.contracts.agents import (
 )
 from deepwork_api.contracts.schedules import ScheduleListResponse, ScheduleSummaryResponse
 from deepwork_api.contracts.settings import SystemPromptResponse, SystemPromptUpdateRequest
+from deepwork_api.contracts.sources import SourceProbeRequest, SourceProbeResponse
 from deepwork_api.contracts.status import DemoStatusResponse, HealthResponse, WorkerStatusResponse
 from deepwork_api.contracts.tasks import (
     CancellationAcceptedResponse,
@@ -44,6 +45,8 @@ __all__ = [
     "ProblemResponse",
     "ScheduleListResponse",
     "ScheduleSummaryResponse",
+    "SourceProbeRequest",
+    "SourceProbeResponse",
     "SystemPromptResponse",
     "SystemPromptUpdateRequest",
     "TaskAcceptedResponse",

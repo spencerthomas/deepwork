@@ -1041,4 +1041,6 @@ async def test_local_mode_adds_no_new_wire_surface(
     serialized = json.dumps(local_schema)
     assert LOCAL_ENDPOINT not in serialized
     assert LOCAL_ASSISTANT not in serialized
-    assert "classic" not in serialized.casefold()
+    # The shared schema now intentionally documents the bounded classic source
+    # qualification route. Local mode must still leak no configured value.
+    assert "classic-deployment" not in serialized.casefold()

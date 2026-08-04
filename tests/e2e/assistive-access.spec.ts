@@ -57,7 +57,9 @@ test.describe("assistive interaction acceptance", () => {
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     const approvalBatch = page.getByRole("region", { name: "Ordered approval batch" });
+    await expect(approvalBatch.getByText("approval version 1", { exact: true })).toBeVisible();
     const approveButtons = approvalBatch.getByRole("button", { name: "Approve", exact: true });
+    await expect(approveButtons).toHaveCount(3);
     for (let index = 0; index < (await approveButtons.count()); index += 1) {
       await tabTo(page, approveButtons.nth(index));
       await page.keyboard.press("Enter");
@@ -203,10 +205,13 @@ test("a fresh 320px touch context completes the primary journey without overflow
     await expectNoHorizontalOverflow(page);
 
     const approvalBatch = page.getByRole("region", { name: "Ordered approval batch" });
+    await expect(approvalBatch.getByText("approval version 1", { exact: true })).toBeVisible();
     const approveButtons = approvalBatch.getByRole("button", { name: "Approve", exact: true });
+    await expect(approveButtons).toHaveCount(3);
     for (let index = 0; index < (await approveButtons.count()); index += 1) {
       await expectMinimumTarget(approveButtons.nth(index));
       await approveButtons.nth(index).tap();
+      await expect(approveButtons.nth(index)).toHaveAttribute("aria-pressed", "true");
     }
     const submitBatch = approvalBatch.getByRole("button", { name: "Submit reviewed batch" });
     await expectMinimumTarget(submitBatch);

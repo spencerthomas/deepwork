@@ -7,7 +7,15 @@ from pathlib import Path
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src" / "deepwork_api"
 PACKAGE_FORBIDDEN = {"apps", "deepagents", "langchain", "langgraph", "packages", "sqlalchemy"}
-DOMAIN_ALLOWED = {"__future__", "collections", "dataclasses", "deepwork_api", "enum", "re"}
+DOMAIN_ALLOWED = {
+    "__future__",
+    "collections",
+    "dataclasses",
+    "deepwork_api",
+    "enum",
+    "re",
+    "typing",
+}
 
 
 def _imports(path: Path) -> set[str]:

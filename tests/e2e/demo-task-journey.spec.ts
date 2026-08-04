@@ -241,3 +241,58 @@ test("creates, approves, and completes one API-backed task", async ({
   expect([...unexpectedEgress]).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
+
+test("checks a classic source without saving or accepting browser credentials", async ({ page }) => {
+  await page.goto("/settings/runtime");
+  await expect(page.getByRole("heading", { name: "Runtime" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect a source" })).toBeVisible();
+
+  await page.getByLabel("Deployment URL").fill("https://agent.example.test/api");
+  await page.getByLabel("Assistant ID").fill("assistant-1");
+  const unavailableResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url() === "http://127.0.0.1:3000/api/v1/sources/probes",
+  );
+  await page.getByRole("button", { name: "Run read-only check" }).click();
+  const unavailable = await unavailableResponse;
+  expect(unavailable.status()).toBe(503);
+  expect(unavailable.request().postDataJSON()).toEqual({
+    kind: "langsmith_deployment",
+    deploymentUrl: "https://agent.example.test/api",
+    assistantId: "assistant-1",
+  });
+  expect(unavailable.request().postData()?.toLowerCase()).not.toContain("credential");
+  await expect(
+    page.getByText("No server-held source credential is configured for connection checks."),
+  ).toBeVisible();
+
+  await page.route("**/api/v1/sources/probes", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        kind: "langsmith_deployment",
+        state: "available",
+        assistantId: "assistant-1",
+        graphId: "deep-work",
+        reason: "assistant-qualified-read-only",
+        saveAllowed: false,
+        capabilities: [
+          { name: "assistants-read", state: "available", reason: "assistant-qualified" },
+          { name: "runs-create", state: "gated", reason: "invocation-not-authorized" },
+        ],
+      }),
+    });
+  });
+  await page.getByRole("button", { name: "Run read-only check" }).click();
+
+  const result = page.getByLabel("Source check result");
+  await expect(result.getByText("Assistant found", { exact: true })).toBeVisible();
+  await expect(result.getByText("assistant-1 · graph deep-work", { exact: false })).toBeVisible();
+  await expect(result.getByText("assistants-read", { exact: true })).toBeVisible();
+  await expect(result.getByText("runs-create", { exact: true })).toBeVisible();
+  await expect(result.getByText("invocation-not-authorized", { exact: true })).toBeVisible();
+  await expect(result.getByText(/Saving and selecting this source stay blocked/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /save/i })).toHaveCount(0);
+});

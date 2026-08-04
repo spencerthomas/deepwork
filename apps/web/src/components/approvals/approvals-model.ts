@@ -1,17 +1,27 @@
 import type {
   ActiveInterrupt,
   DecisionInput,
+  HitlDecisionType,
+  OrderedDecision,
   ProposedPlan,
   TaskDetail,
   TaskSummary,
 } from "../../lib/task-types";
 
 export type DecisionVerb = DecisionInput["decision"];
+export type ApprovalCapability = HitlDecisionType;
+export type ApprovalResolution = DecisionVerb | "batch";
 
-export type ApprovalCapabilityFilter = "all" | DecisionVerb;
+export type ApprovalCapabilityFilter = "all" | ApprovalCapability;
 
 /** Canonical button order. Only verbs advertised by the interrupt are rendered. */
 export const DECISION_VERB_ORDER: readonly DecisionVerb[] = ["approve", "reject", "respond"];
+export const APPROVAL_CAPABILITY_ORDER: readonly ApprovalCapability[] = [
+  "approve",
+  "edit",
+  "reject",
+  "respond",
+];
 
 export interface ApprovalRow {
   interrupt?: ActiveInterrupt;
@@ -89,15 +99,57 @@ export function orderedDecisions(interrupt: ActiveInterrupt): DecisionVerb[] {
   return DECISION_VERB_ORDER.filter((verb) => interrupt.decisions.includes(verb));
 }
 
+export function isOrderedApproval(interrupt: ActiveInterrupt): boolean {
+  return (
+    interrupt.version !== undefined &&
+    interrupt.actionRequests !== undefined &&
+    interrupt.reviewConfigs !== undefined &&
+    interrupt.actionRequests.length > 0 &&
+    interrupt.actionRequests.length === interrupt.reviewConfigs.length
+  );
+}
+
+/** Capabilities the actionable contract actually offers, independent of legacy fallback verbs. */
+export function approvalCapabilities(interrupt: ActiveInterrupt): ApprovalCapability[] {
+  if (!isOrderedApproval(interrupt)) return orderedDecisions(interrupt);
+  const offered = new Set(interrupt.reviewConfigs!.flatMap((config) => config.allowedDecisions));
+  return APPROVAL_CAPABILITY_ORDER.filter((capability) => offered.has(capability));
+}
+
+/** Whether one keyboard verb can safely fill every position in the current contract. */
+export function supportsUniformDecision(
+  interrupt: ActiveInterrupt,
+  decision: "approve" | "reject",
+): boolean {
+  return isOrderedApproval(interrupt)
+    ? interrupt.reviewConfigs!.every((config) => config.allowedDecisions.includes(decision))
+    : interrupt.decisions.includes(decision);
+}
+
+/** Honest inbox confirmation for an accepted positional decision vector. */
+export function batchResolution(decisions: readonly OrderedDecision[]): ApprovalResolution {
+  if (decisions.some((decision) => decision.type === "reject")) return "reject";
+  if (decisions.every((decision) => decision.type === "approve")) return "approve";
+  if (decisions.every((decision) => decision.type === "respond")) return "respond";
+  return "batch";
+}
+
 /** How many pending rows offer each verb, for the capability sidebar counts. */
 export function approvalCapabilityCounts(
   rows: readonly ApprovalRow[],
-): Record<DecisionVerb, number> {
-  const counts: Record<DecisionVerb, number> = { approve: 0, reject: 0, respond: 0 };
+): Record<ApprovalCapability, number> {
+  const counts: Record<ApprovalCapability, number> = {
+    approve: 0,
+    edit: 0,
+    reject: 0,
+    respond: 0,
+  };
   for (const row of rows) {
-    for (const verb of DECISION_VERB_ORDER) {
-      if (row.interrupt?.decisions.includes(verb)) {
-        counts[verb] += 1;
+    if (!row.interrupt) continue;
+    const offered = approvalCapabilities(row.interrupt);
+    for (const capability of APPROVAL_CAPABILITY_ORDER) {
+      if (offered.includes(capability)) {
+        counts[capability] += 1;
       }
     }
   }
@@ -115,7 +167,9 @@ export function filterRowsByCapability(
   if (filter === "all") {
     return [...rows];
   }
-  return rows.filter((row) => row.interrupt?.decisions.includes(filter) ?? false);
+  return rows.filter(
+    (row) => row.interrupt !== undefined && approvalCapabilities(row.interrupt).includes(filter),
+  );
 }
 
 export const PLAN_PREVIEW_STEP_COUNT = 3;

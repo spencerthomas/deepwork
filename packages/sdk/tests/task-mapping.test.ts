@@ -11,8 +11,10 @@ import {
   type SourceThreadKey,
 } from "@deepwork/domain";
 import {
+  createBatchDecisionInput,
   createDecisionInput,
   createPlanEditInput,
+  mapBatchDecisionReceipt,
   mapDecisionReceipt,
   mapPlanEditReceipt,
   mapTaskDetail,
@@ -66,6 +68,133 @@ const waitingDetail = {
 };
 
 describe("strict accepted task mapping", () => {
+  it("maps exact ordered pending actions and correlates batch receipts", () => {
+    const orderedDetail = {
+      ...waitingDetail,
+      pendingInterrupt: {
+        ...waitingDetail.pendingInterrupt,
+        version: "7",
+        actionRequests: [
+          { name: "write_file", args: { path: "first.txt" } },
+          { name: "write_file", args: { path: "second.txt" }, description: "Write second" },
+        ],
+        reviewConfigs: [
+          { actionName: "write_file", allowedDecisions: ["approve", "reject"] },
+          {
+            actionName: "write_file",
+            allowedDecisions: ["edit", "reject"],
+            argsSchema: { type: "object" },
+          },
+        ],
+      },
+    };
+    const mapped = mapTaskDetail(orderedDetail, resolver("source-a"));
+    if (!mapped.ok || mapped.value.pendingInterrupt === undefined) {
+      throw new Error("Expected an accepted ordered interrupt.");
+    }
+    const request = createBatchDecisionInput(
+      mapped.value.pendingInterrupt,
+      "7",
+      "decision-key-1001",
+      [
+        { type: "approve" },
+        { type: "edit", editedAction: { name: "write_file", args: { path: "second-v2.txt" } } },
+      ],
+    );
+    const receipt = mapBatchDecisionReceipt(
+      {
+        taskId: "task_00000001",
+        runId: "run_00000001",
+        interruptId: "interrupt_00000001",
+        version: "7",
+        decisionTypes: ["approve", "edit"],
+        status: "accepted",
+        duplicate: false,
+      },
+      task,
+      request,
+    );
+
+    expect(mapped.value.pendingInterrupt.actionRequests?.map((action) => action.args.path)).toEqual(
+      ["first.txt", "second.txt"],
+    );
+    expect(receipt).toMatchObject({
+      ok: true,
+      value: { version: "7", decisionTypes: ["approve", "edit"], duplicate: false },
+    });
+  });
+
+  it("fails closed on ordered-interrupt extras and batch receipt correlation mismatches", () => {
+    expect(
+      mapTaskDetail(
+        {
+          ...waitingDetail,
+          pendingInterrupt: {
+            ...waitingDetail.pendingInterrupt,
+            version: "7",
+            actionRequests: [{ name: "write_file", args: {} }],
+            reviewConfigs: [{ actionName: "write_file", allowedDecisions: ["approve"] }],
+            providerPayload: "must-not-pass",
+          },
+        },
+        resolver("source-a"),
+      ),
+    ).toMatchObject({ ok: false, error: { category: "contract" } });
+
+    const mapped = mapTaskDetail(
+      {
+        ...waitingDetail,
+        pendingInterrupt: {
+          ...waitingDetail.pendingInterrupt,
+          version: "7",
+          actionRequests: [{ name: "write_file", args: {} }],
+          reviewConfigs: [{ actionName: "write_file", allowedDecisions: ["approve"] }],
+        },
+      },
+      resolver("source-a"),
+    );
+    if (!mapped.ok || mapped.value.pendingInterrupt === undefined) {
+      throw new Error("Expected an accepted ordered interrupt.");
+    }
+    const request = createBatchDecisionInput(
+      mapped.value.pendingInterrupt,
+      "7",
+      "decision-key-1002",
+      [{ type: "approve" }],
+    );
+    const receipt = {
+      taskId: "task_00000001",
+      runId: "run_00000001",
+      interruptId: "interrupt_00000001",
+      version: "7",
+      decisionTypes: ["approve"],
+      status: "accepted",
+      duplicate: false,
+    };
+    for (const mismatch of [
+      { ...receipt, taskId: "task_00000002" },
+      { ...receipt, runId: "run_00000002" },
+      { ...receipt, interruptId: "interrupt_00000002" },
+      { ...receipt, version: "8" },
+      { ...receipt, decisionTypes: ["reject"] },
+    ]) {
+      expect(mapBatchDecisionReceipt(mismatch, task, request)).toMatchObject({
+        ok: false,
+        error: { category: "contract" },
+      });
+    }
+    expect(
+      mapBatchDecisionReceipt(
+        {
+          ...receipt,
+          providerReceipt: "must-not-pass",
+        },
+        task,
+        request,
+      ),
+    ).toMatchObject({ ok: false, error: { category: "contract" } });
+  });
+
   it("maps local wire status into canonical presentation facts", () => {
     const mapped = mapTaskDetail(waitingDetail, resolver("source-a"));
 
@@ -152,6 +281,31 @@ describe("strict accepted task mapping", () => {
     expect(plan).toMatchObject({
       ok: true,
       value: { evidenceClass: "local-source" },
+    });
+  });
+
+  it("maps the exact API batch decision event and preserves positional decision types", () => {
+    const sourceThread = sourceThreadKey(sourceId("source-a"), threadId("thread-source-a"));
+    const mapped = mapTaskEvent(
+      "decision.recorded",
+      "7",
+      {
+        interruptId: "interrupt_00000001",
+        decision: "approve",
+        commentProvided: false,
+        responseProvided: false,
+        decisionTypes: ["approve", "edit", "approve"],
+      },
+      {
+        taskId: task,
+        sourceThread,
+        run: sourceRunKey(sourceThread.sourceId, sourceThread.threadId, run),
+      },
+    );
+
+    expect(mapped).toMatchObject({
+      ok: true,
+      value: { decisionTypes: ["approve", "edit", "approve"] },
     });
   });
 

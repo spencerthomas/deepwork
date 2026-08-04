@@ -224,6 +224,82 @@ describe("Outcome 2 HTTP client", () => {
     await expect(client.decide("task-1", input)).rejects.toThrow("did not match");
   });
 
+  it("posts a complete positional decision batch and correlates its receipt", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            taskId: "task-1",
+            runId: "run-1",
+            interruptId: "interrupt-1",
+            version: "interrupt-1:1",
+            decisionTypes: ["approve", "edit"],
+            status: "accepted",
+            duplicate: false,
+          }),
+          { status: 202, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const input = {
+      interruptId: "interrupt-1",
+      expectedVersion: "interrupt-1:1",
+      idempotencyKey: "batch-key-1",
+      decisions: [
+        { type: "approve" as const },
+        {
+          type: "edit" as const,
+          editedAction: {
+            name: "execute_plan_step",
+            args: { position: 2, text: "Verify hosted output" },
+          },
+        },
+      ],
+    };
+
+    await expect(
+      createHttpTaskClient("http://api.test").decideBatch("task-1", input),
+    ).resolves.toMatchObject({ decisionTypes: ["approve", "edit"] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/api/v1/tasks/task-1/decision-batch",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify(input),
+      }),
+    );
+  });
+
+  it("fails closed when an ordered batch receipt changes position or version", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              taskId: "task-1",
+              runId: "run-1",
+              interruptId: "interrupt-1",
+              version: "interrupt-1:2",
+              decisionTypes: ["edit", "approve"],
+              status: "accepted",
+              duplicate: false,
+            }),
+            { status: 202, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+
+    await expect(
+      createHttpTaskClient("http://api.test").decideBatch("task-1", {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-2",
+        decisions: [{ type: "approve" }, { type: "edit", editedAction: { name: "x", args: {} } }],
+      }),
+    ).rejects.toThrow("did not match");
+  });
+
   it("recovers a stale decision from detail even when no SSE event is available", async () => {
     const fetchMock = vi
       .fn()

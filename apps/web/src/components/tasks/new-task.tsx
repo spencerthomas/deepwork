@@ -3,7 +3,7 @@
 import { ArrowLeft, Bot, CornerDownLeft, History, ShieldCheck, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -43,6 +43,7 @@ export function NewTask() {
   const [agentId, setAgentId] = useState<string>("");
   const [validationError, setValidationError] = useState<string>();
   const [restoredAge, setRestoredAge] = useState<string>();
+  const promptTouchedRef = useRef(false);
   const runtimeCopy = taskRuntimePresentation(mode);
 
   // Seed the composer once on mount. An in-session "Edit & re-run" handoff wins
@@ -52,6 +53,9 @@ export function NewTask() {
   // reloading does not lose in-progress work. The draft key is scoped to the
   // runtime mode so a fixture-mode draft cannot surface in an API-backed one.
   useEffect(() => {
+    // Hydration or a slow storage read must never overwrite text the user has
+    // already entered into the now-interactive composer.
+    if (promptTouchedRef.current) return;
     const seeded = consumeEditRerunPrompt();
     if (seeded !== null && seeded.trim() !== "") {
       setPrompt(seeded.slice(0, PROMPT_MAX_LENGTH * 2));
@@ -287,6 +291,7 @@ export function NewTask() {
             aria-invalid={shownError !== undefined || overLimit}
             aria-describedby={promptDescribedBy}
             onChange={(event) => {
+              promptTouchedRef.current = true;
               setPrompt(event.target.value);
               setValidationError(undefined);
               setRestoredAge(undefined);

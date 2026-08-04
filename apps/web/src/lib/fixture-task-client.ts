@@ -2,6 +2,8 @@ import type {
   CancelResult,
   CreateTaskResult,
   DecisionInput,
+  DecisionBatchInput,
+  DecisionBatchResult,
   DecisionResult,
   EvidenceRecord,
   PlanUpdateInput,
@@ -14,7 +16,12 @@ import type {
   TaskStatus,
   TaskSummary,
 } from "./task-types";
-import { validateDecisionInput, validatePlanSteps, validatePrompt } from "./task-normalizers";
+import {
+  validateDecisionBatchInput,
+  validateDecisionInput,
+  validatePlanSteps,
+  validatePrompt,
+} from "./task-normalizers";
 
 const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
   "completed",
@@ -31,6 +38,7 @@ interface FixtureTask extends TaskDetail {
   events: TaskEvent[];
   interruptId: string;
   responseNumber: number;
+  batchReceipts: Map<string, { digest: string; receipt: DecisionBatchResult }>;
 }
 
 const tasks = new Map<string, FixtureTask>();
@@ -52,6 +60,28 @@ function emit(task: FixtureTask, name: TaskEvent["name"], data: TaskEvent["data"
 function updateStatus(task: FixtureTask, status: TaskStatus) {
   task.status = status;
   task.updatedAt = new Date().toISOString();
+}
+
+function installPendingInterrupt(task: FixtureTask, title: string, question: string) {
+  const revision = task.proposedPlan?.revision ?? 1;
+  const steps = task.proposedPlan?.steps ?? [];
+  task.pendingInterrupt = {
+    interruptId: task.interruptId,
+    version: `${task.interruptId}:${revision}`,
+    title,
+    question,
+    decisions: ["approve", "reject", "respond"],
+    planRevision: revision,
+    actionRequests: steps.map((text, index) => ({
+      name: "execute_plan_step",
+      description: `Plan step ${index + 1}`,
+      args: { position: index + 1, text },
+    })),
+    reviewConfigs: steps.map(() => ({
+      actionName: "execute_plan_step",
+      allowedDecisions: ["approve", "edit", "reject"],
+    })),
+  };
 }
 
 function scheduleRun(task: FixtureTask) {
@@ -107,11 +137,14 @@ function scheduleRun(task: FixtureTask) {
       940,
       () => {
         updateStatus(task, "waiting-approval");
+        const title = "Approve the proposed action";
+        const question =
+          "Review each ordered action, approve or edit it, or reject the batch before work continues.";
+        installPendingInterrupt(task, title, question);
         emit(task, "interrupt.requested", {
           interruptId: task.interruptId,
-          title: "Approve the proposed action",
-          question:
-            "Review or edit the plan, approve it, reject it, or respond with requested changes.",
+          title,
+          question,
           decisions: ["approve", "reject", "respond"],
           planRevision: task.proposedPlan?.revision,
         });
@@ -141,6 +174,7 @@ function publicTask(task: FixtureTask): TaskDetail {
     result: task.result,
     proposedPlan: task.proposedPlan,
     evidence: task.evidence,
+    pendingInterrupt: task.pendingInterrupt,
   };
 }
 
@@ -178,6 +212,7 @@ export function createFixtureTaskClient(): TaskClient {
         events: [],
         interruptId: `fixture-interrupt-${sequence}`,
         responseNumber: 0,
+        batchReceipts: new Map(),
       };
       tasks.set(taskId, task);
       emit(task, "task.created", { taskId, runId, status: "queued" });
@@ -204,6 +239,7 @@ export function createFixtureTaskClient(): TaskClient {
         commentProvided: decision.comment !== undefined,
         responseProvided: input.decision === "respond",
       });
+      task.pendingInterrupt = undefined;
 
       if (input.decision === "respond") {
         updateStatus(task, "running");
@@ -227,10 +263,14 @@ export function createFixtureTaskClient(): TaskClient {
           });
           emit(task, "plan.updated", { ...plan, evidenceClass: "fixture" });
           updateStatus(task, "waiting-approval");
+          const title = "Review the revised plan";
+          const question =
+            "The response was applied safely. Review the revised plan before continuing.";
+          installPendingInterrupt(task, title, question);
           emit(task, "interrupt.requested", {
             interruptId: task.interruptId,
-            title: "Review the revised plan",
-            question: "The response was applied safely. Review the revised plan before continuing.",
+            title,
+            question,
             decisions: ["approve", "reject", "respond"],
             planRevision: plan.revision,
           });
@@ -275,6 +315,68 @@ export function createFixtureTaskClient(): TaskClient {
       };
     },
 
+    async decideBatch(taskId: string, input: DecisionBatchInput): Promise<DecisionBatchResult> {
+      const task = tasks.get(taskId);
+      if (!task) throw new Error("The fixture task could not be found.");
+      const digest = JSON.stringify(input);
+      const previous = task.batchReceipts.get(input.idempotencyKey);
+      if (previous) {
+        if (previous.digest !== digest) {
+          throw new Error("The idempotency key was already used for a different decision batch.");
+        }
+        return { ...previous.receipt, duplicate: true };
+      }
+      if (task.status !== "waiting-approval" || !task.pendingInterrupt) {
+        throw new Error("This fixture task is not waiting for an ordered decision.");
+      }
+      const batch = validateDecisionBatchInput(task.pendingInterrupt, input);
+      const rejected = batch.decisions.some((decision) => decision.type === "reject");
+      const nextSteps = task.proposedPlan?.steps.map((step, index) => {
+        const decision = batch.decisions[index];
+        if (decision?.type !== "edit") return step;
+        const text = decision.editedAction.args.text;
+        if (typeof text !== "string" || text.trim() === "") {
+          throw new Error(`Edited action ${index + 1} requires a nonblank text argument.`);
+        }
+        return text;
+      });
+      if (nextSteps && task.proposedPlan) {
+        task.proposedPlan = { ...task.proposedPlan, steps: nextSteps };
+      }
+      const receipt: DecisionBatchResult = {
+        taskId: task.taskId,
+        runId: task.runId ?? "",
+        interruptId: batch.interruptId,
+        version: batch.expectedVersion,
+        decisionTypes: batch.decisions.map((decision) => decision.type),
+        status: "accepted",
+        duplicate: false,
+      };
+      task.batchReceipts.set(batch.idempotencyKey, { digest, receipt });
+      task.pendingInterrupt = undefined;
+      emit(task, "decision.recorded", {
+        interruptId: batch.interruptId,
+        version: batch.expectedVersion,
+        decisionTypes: receipt.decisionTypes,
+      });
+      updateStatus(task, "running");
+      globalThis.setTimeout(() => {
+        if (task.status !== "running") return;
+        const status = rejected ? "rejected" : "completed";
+        updateStatus(task, status);
+        const steps = task.proposedPlan?.steps.join("; ") ?? "No plan steps were available.";
+        task.result = rejected
+          ? `The fixture run for “${task.prompt}” stopped after the ordered proposal was rejected. No provider work was claimed or performed.`
+          : `First-pass result for “${task.prompt}”\n\nApproved plan executed in order: ${steps}. The fixture proves the supervised batch path; it does not claim live provider work.`;
+        emit(task, "run.completed", {
+          runId: task.runId,
+          status,
+          summary: task.result,
+        });
+      }, 420);
+      return receipt;
+    },
+
     async cancelTask(taskId: string): Promise<CancelResult> {
       const task = tasks.get(taskId);
       if (!task) {
@@ -315,6 +417,9 @@ export function createFixtureTaskClient(): TaskClient {
         steps,
       };
       task.proposedPlan = plan;
+      if (task.pendingInterrupt) {
+        installPendingInterrupt(task, task.pendingInterrupt.title, task.pendingInterrupt.question);
+      }
       emit(task, "plan.updated", { ...plan, evidenceClass: "fixture" });
       return {
         taskId: task.taskId,

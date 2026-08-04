@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -14,14 +15,23 @@ from deepwork_api.application.local_runner import (
     LocalScheduleSummary,
 )
 from deepwork_api.domain import (
+    MAX_PLAN_STEP_LENGTH,
     MAX_TASK_OBJECTIVE_LENGTH,
     AgentRegistryUnavailableError,
     CancellationRecord,
+    DecisionBatchRecord,
+    DecisionBatchUnsupportedError,
+    DecisionBatchVersionStaleError,
     DecisionRecord,
+    DecisionType,
     DecisionValue,
     EvidenceKind,
     EvidenceRecord,
     EvidenceSource,
+    InterruptMismatchError,
+    InvalidDecisionBatchError,
+    OrderedDecision,
+    PlanUnavailableError,
     PlanUpdateRecord,
     ProposedPlan,
     ScheduleRegistryUnavailableError,
@@ -54,6 +64,10 @@ _SECRET_PATTERNS = (
     ),
 )
 _MAX_TASK_TITLE_LENGTH = 80
+
+
+def _digest_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def sanitize_objective(prompt: str) -> str:
@@ -344,6 +358,18 @@ class TaskService:
     repository: TaskRepository
     runner: DeterministicFixtureRunner | LocalAgentServerRunner
 
+    @property
+    def batch_allowed_decisions(self) -> tuple[DecisionType, ...] | None:
+        """Advertise only decisions this configured runner can submit atomically."""
+
+        if isinstance(self.runner, LocalAgentServerRunner):
+            return None
+        return (
+            DecisionType.APPROVE,
+            DecisionType.EDIT,
+            DecisionType.REJECT,
+        )
+
     async def create_task(self, prompt: str, *, agent_id: str | None = None) -> TaskSnapshot:
         """Create a queued task and start its deterministic runner.
 
@@ -456,7 +482,7 @@ class TaskService:
         """Record one bounded interrupt decision without replaying comment text."""
 
         response_digest = (
-            hashlib.sha256(comment.encode()).hexdigest()
+            _digest_text(comment)
             if decision is DecisionValue.RESPOND and comment is not None
             else None
         )
@@ -475,6 +501,104 @@ class TaskService:
             decision=decision,
             comment_provided=bool(comment),
             response_digest=response_digest,
+        )
+
+    async def record_decision_batch(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_version: str,
+        idempotency_key: str,
+        decisions: tuple[OrderedDecision, ...],
+    ) -> DecisionBatchRecord:
+        """Validate and atomically accept one complete positional plan vector."""
+
+        task = await self.repository.get_task(task_id)
+        if task.pending_interrupt_id is not None and task.pending_interrupt_id != interrupt_id:
+            raise InterruptMismatchError
+        plan = task.proposed_plan
+        if plan is None:
+            raise PlanUnavailableError
+        version = str(plan.revision)
+        if task.pending_interrupt_id is not None and expected_version != version:
+            raise DecisionBatchVersionStaleError
+        try:
+            expected_revision = int(expected_version)
+        except ValueError:
+            raise DecisionBatchVersionStaleError from None
+        if str(expected_revision) != expected_version:
+            raise DecisionBatchVersionStaleError
+        if len(decisions) != len(plan.steps):
+            raise InvalidDecisionBatchError
+
+        uses_agent_server = isinstance(self.runner, LocalAgentServerRunner)
+        if uses_agent_server:
+            raise DecisionBatchUnsupportedError
+
+        edited_steps = list(plan.steps)
+        canonical: list[dict[str, object]] = []
+        decision_types: list[DecisionType] = []
+        advertised_decisions = self.batch_allowed_decisions
+        allowed = (
+            set(advertised_decisions)
+            if advertised_decisions is not None
+            else {DecisionType.APPROVE, DecisionType.REJECT, DecisionType.RESPOND}
+        )
+        for position, decision_input in enumerate(decisions, start=1):
+            if decision_input.decision_type not in allowed:
+                raise InvalidDecisionBatchError
+            decision_types.append(decision_input.decision_type)
+            item: dict[str, object] = {"type": decision_input.decision_type.value}
+            if decision_input.decision_type is DecisionType.EDIT:
+                if (
+                    decision_input.edited_action_name != "execute_plan_step"
+                    or decision_input.edited_position != position
+                    or decision_input.edited_text is None
+                ):
+                    raise InvalidDecisionBatchError
+                edited_text = sanitize_objective(decision_input.edited_text)
+                if not edited_text.strip() or len(edited_text) > MAX_PLAN_STEP_LENGTH:
+                    raise InvalidDecisionBatchError
+                edited_steps[position - 1] = edited_text
+                item["editedAction"] = {
+                    "name": "execute_plan_step",
+                    "args": {"position": position, "text": edited_text},
+                }
+            elif any(
+                value is not None
+                for value in (
+                    decision_input.edited_action_name,
+                    decision_input.edited_position,
+                    decision_input.edited_text,
+                )
+            ):
+                raise InvalidDecisionBatchError
+            message_digest = (
+                _digest_text(decision_input.message) if decision_input.message is not None else None
+            )
+            if message_digest is not None:
+                item["messageDigest"] = message_digest
+            if decision_input.decision_type is DecisionType.RESPOND and (
+                decision_input.message is None or not decision_input.message.strip()
+            ):
+                raise InvalidDecisionBatchError
+            canonical.append(item)
+
+        vector_digest = _digest_text(json.dumps(canonical, sort_keys=True, separators=(",", ":")))
+        if not idempotency_key.strip() or len(idempotency_key) > 128:
+            raise InvalidDecisionBatchError
+        request_fingerprint = _digest_text(
+            f"{expected_version}:{_digest_text(idempotency_key)}:{vector_digest}"
+        )
+        types = tuple(decision_types)
+        return await self.repository.record_decision_batch(
+            task_id,
+            interrupt_id=interrupt_id,
+            expected_revision=expected_revision,
+            decision_types=types,
+            request_fingerprint=request_fingerprint,
+            edited_steps=tuple(edited_steps),
         )
 
     async def update_plan(

@@ -138,14 +138,39 @@ test("creates, approves, and completes one API-backed task", async ({
   await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
   const taskHeader = page.getByRole("heading", { level: 1 }).locator("..");
   await expect(taskHeader.getByText("Needs review", { exact: true })).toBeVisible();
-  await expect(page.getByText("Safe local fixture plan", { exact: true })).toBeVisible();
+  await expect(page.getByText("Safe local fixture plan", { exact: true }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit plan" }).click();
+  await page.getByLabel("Plan step 2").fill("Execute the reviewed plan through the bounded API.");
+  await page.getByRole("button", { name: "Save plan" }).click();
+
+  const batch = page.getByRole("region", { name: "Ordered approval batch" });
+  await expect(batch.getByText("approval version 2", { exact: true })).toBeVisible();
+  await expect(batch.getByText("Execute the reviewed plan through the bounded API.")).toBeVisible();
+  await expect(batch.getByText("execute_plan_step", { exact: true })).toHaveCount(3);
+  await batch
+    .getByRole("listitem")
+    .nth(0)
+    .getByRole("button", { name: "Approve", exact: true })
+    .click();
+  const secondAction = batch.getByRole("listitem").nth(1);
+  await secondAction.getByRole("button", { name: "Edit", exact: true }).click();
+  await secondAction
+    .getByLabel("Edited step text for action 2 · execute_plan_step")
+    .fill("Execute the approved plan and verify the hosted-ready result.");
+  await batch
+    .getByRole("listitem")
+    .nth(2)
+    .getByRole("button", { name: "Approve", exact: true })
+    .click();
+  await expect(batch.getByText(/2 approve · 1 edit/)).toBeVisible();
 
   const decisionResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      /\/api\/v1\/tasks\/task_[0-9]{8}\/decisions$/.test(response.url()),
+      /\/api\/v1\/tasks\/task_[0-9]{8}\/decision-batch$/.test(response.url()),
   );
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await batch.getByRole("button", { name: "Submit reviewed batch" }).click();
   expect((await decisionResponse).status()).toBe(202);
 
   await expect(taskHeader.getByText("Running", { exact: true })).toBeVisible();
@@ -153,6 +178,7 @@ test("creates, approves, and completes one API-backed task", async ({
   await expect(taskHeader.getByText("Done", { exact: true })).toBeVisible();
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: prompt, exact: true })).toBeVisible();
+  await expect(page.getByText(/hosted-ready result/).first()).toBeVisible();
 
   // The completed result must be exportable: the user can take the deep-work
   // output out of the app. Assert the controls render and that "Copy brief"

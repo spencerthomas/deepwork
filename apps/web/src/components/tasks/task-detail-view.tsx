@@ -147,6 +147,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     cancelError,
     mode,
     decide,
+    decideBatch,
     updatePlan,
     cancelTask,
     createTask,
@@ -488,6 +489,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                         submitting={submittingDecision}
                         submittedDecision={submittedDecision}
                         onDecide={decide}
+                        onDecideBatch={decideBatch}
+                        plan={plan}
                       />
                     </div>
                   );
@@ -565,6 +568,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                     submitting={submittingDecision}
                     submittedDecision={submittedDecision}
                     onDecide={decide}
+                    onDecideBatch={decideBatch}
+                    plan={plan}
                   />
                 </div>
               )}

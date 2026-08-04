@@ -46,6 +46,25 @@ class DecisionValue(StrEnum):
     RESPOND = "respond"
 
 
+class DecisionType(StrEnum):
+    """One positional decision in an ordered HITL batch."""
+
+    APPROVE = "approve"
+    EDIT = "edit"
+    REJECT = "reject"
+    RESPOND = "respond"
+
+
+def aggregate_batch_decision(decision_types: tuple[DecisionType, ...]) -> DecisionValue:
+    """Project positional decisions onto the fixture runner's bounded outcome."""
+
+    if not decision_types:
+        raise ValueError("decision batch must not be empty")
+    if DecisionType.REJECT in decision_types:
+        return DecisionValue.REJECT
+    return DecisionValue.APPROVE
+
+
 class TaskEventName(StrEnum):
     """Normalized event names exposed by the application stream."""
 
@@ -148,6 +167,29 @@ class DecisionRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class DecisionBatchRecord:
+    """Accepted ordered decision vector, including replay state."""
+
+    task_id: str
+    run_id: str
+    interrupt_id: str
+    version: str
+    decision_types: tuple[DecisionType, ...]
+    duplicate: bool
+
+
+@dataclass(frozen=True, slots=True)
+class OrderedDecision:
+    """Transient validated input for one positional batch entry."""
+
+    decision_type: DecisionType
+    edited_action_name: str | None = None
+    edited_position: int | None = None
+    edited_text: str | None = None
+    message: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class PlanUpdateRecord:
     """Accepted plan edit for the exact pending interrupt and revision."""
 
@@ -188,6 +230,18 @@ class StaleInterruptError(TaskDomainError):
 
 class DecisionConflictError(TaskDomainError):
     """A different decision was already recorded for the interrupt."""
+
+
+class DecisionBatchVersionStaleError(TaskDomainError):
+    """The caller reviewed a different version of the pending batch."""
+
+
+class InvalidDecisionBatchError(TaskDomainError):
+    """The ordered decision vector is incomplete, misaligned, or disallowed."""
+
+
+class DecisionBatchUnsupportedError(TaskDomainError):
+    """The configured task source cannot safely submit this decision batch."""
 
 
 class TaskAlreadyResolvedError(TaskDomainError):

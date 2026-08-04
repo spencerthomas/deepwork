@@ -1,8 +1,8 @@
-import { type ApprovalCapabilityFilter, DECISION_VERB_ORDER } from "./approvals-model";
+import { APPROVAL_CAPABILITY_ORDER, type ApprovalCapabilityFilter } from "./approvals-model";
 
 const FILTER_PARAM = "capability";
 
-const KNOWN_FILTERS = new Set<string>(["all", ...DECISION_VERB_ORDER]);
+const KNOWN_FILTERS = new Set<string>(["all", ...APPROVAL_CAPABILITY_ORDER]);
 
 interface ReadonlyParams {
   get(name: string): string | null;

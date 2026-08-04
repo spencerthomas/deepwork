@@ -1,12 +1,19 @@
 import type {
+  ActionRequest,
   ActiveInterrupt,
   CancelResult,
   CreateTaskResult,
+  DecisionBatchInput,
+  DecisionBatchResult,
   DecisionInput,
   DecisionResult,
   EvidenceRecord,
+  HitlDecisionType,
+  JsonValue,
+  OrderedDecision,
   PlanUpdateResult,
   ProposedPlan,
+  ReviewConfig,
   TaskDetail,
   TaskEvent,
   TaskStatus,
@@ -123,6 +130,67 @@ function optionalString(record: Record<string, unknown>, key: string): string | 
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
+const HITL_DECISION_TYPES: readonly HitlDecisionType[] = ["approve", "edit", "reject", "respond"];
+
+function normalizeJsonValue(value: unknown, context: string): JsonValue {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) {
+    return value.map((item, index) => normalizeJsonValue(item, `${context}[${index}]`));
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        normalizeJsonValue(item, `${context}.${key}`),
+      ]),
+    );
+  }
+  throw new ContractError(`${context} must contain only JSON-safe values.`);
+}
+
+function normalizeActionRequest(value: unknown, context: string): ActionRequest {
+  if (!isRecord(value)) throw new ContractError(`${context} must be an object.`);
+  if (!isRecord(value.args)) throw new ContractError(`${context} is missing valid args.`);
+  const args = normalizeJsonValue(value.args, `${context} args`);
+  if (!isRecord(args)) throw new ContractError(`${context} args must be an object.`);
+  return {
+    name: requiredString(value, "name", context),
+    args: args as Record<string, JsonValue>,
+    ...(optionalString(value, "description")
+      ? { description: optionalString(value, "description") }
+      : {}),
+  };
+}
+
+function normalizeReviewConfig(value: unknown, context: string): ReviewConfig {
+  if (!isRecord(value)) throw new ContractError(`${context} must be an object.`);
+  if (
+    !Array.isArray(value.allowedDecisions) ||
+    value.allowedDecisions.length === 0 ||
+    value.allowedDecisions.some(
+      (decision) =>
+        typeof decision !== "string" || !HITL_DECISION_TYPES.includes(decision as HitlDecisionType),
+    )
+  ) {
+    throw new ContractError(`${context} contains an unsupported decision.`);
+  }
+  let argsSchema: Record<string, JsonValue> | undefined;
+  if (value.argsSchema !== undefined) {
+    if (!isRecord(value.argsSchema))
+      throw new ContractError(`${context} argsSchema must be an object.`);
+    argsSchema = normalizeJsonValue(value.argsSchema, `${context} argsSchema`) as Record<
+      string,
+      JsonValue
+    >;
+  }
+  return {
+    actionName: requiredString(value, "actionName", context),
+    allowedDecisions: [...value.allowedDecisions] as HitlDecisionType[],
+    ...(argsSchema ? { argsSchema } : {}),
+  };
+}
+
 export function normalizeTaskStatus(value: unknown): TaskStatus {
   if (typeof value !== "string") {
     return "unknown";
@@ -232,6 +300,48 @@ function normalizePendingInterrupt(value: unknown): ActiveInterrupt {
   if (!isRecord(value)) {
     throw new ContractError("Task detail pendingInterrupt must be an object.");
   }
+  const actionRequestsValue = value.actionRequests;
+  const reviewConfigsValue = value.reviewConfigs;
+  const hasBatchContract = actionRequestsValue !== undefined || reviewConfigsValue !== undefined;
+  if (
+    hasBatchContract &&
+    (!Array.isArray(actionRequestsValue) || !Array.isArray(reviewConfigsValue))
+  ) {
+    throw new ContractError(
+      "Task detail pendingInterrupt must provide actionRequests and reviewConfigs together.",
+    );
+  }
+  const actionRequests = Array.isArray(actionRequestsValue)
+    ? actionRequestsValue.map((item, index) =>
+        normalizeActionRequest(
+          item,
+          `Task detail pendingInterrupt actionRequests item ${index + 1}`,
+        ),
+      )
+    : undefined;
+  const reviewConfigs = Array.isArray(reviewConfigsValue)
+    ? reviewConfigsValue.map((item, index) =>
+        normalizeReviewConfig(item, `Task detail pendingInterrupt reviewConfigs item ${index + 1}`),
+      )
+    : undefined;
+  if (actionRequests && reviewConfigs) {
+    if (actionRequests.length === 0 || actionRequests.length !== reviewConfigs.length) {
+      throw new ContractError(
+        "Task detail pendingInterrupt actionRequests and reviewConfigs must have the same number of items.",
+      );
+    }
+    actionRequests.forEach((action, index) => {
+      if (reviewConfigs[index]?.actionName !== action.name) {
+        throw new ContractError(
+          `Task detail pendingInterrupt reviewConfigs item ${index + 1} does not match its action.`,
+        );
+      }
+    });
+  }
+  const version = optionalString(value, "version");
+  if (hasBatchContract && version === undefined) {
+    throw new ContractError("Task detail pendingInterrupt is missing a valid version.");
+  }
   return {
     interruptId: requiredString(value, "interruptId", "Task detail pendingInterrupt"),
     decisions: normalizeDecisions(value.decisions, true),
@@ -239,9 +349,74 @@ function normalizePendingInterrupt(value: unknown): ActiveInterrupt {
       Number.isInteger(value.planRevision) && Number(value.planRevision) >= 1
         ? Number(value.planRevision)
         : undefined,
+    ...(version ? { version } : {}),
+    ...(actionRequests ? { actionRequests } : {}),
+    ...(reviewConfigs ? { reviewConfigs } : {}),
     title: "Approval required",
     question: "Review the current plan and choose one of the actions offered by the agent.",
   };
+}
+
+function normalizeOrderedDecision(value: OrderedDecision, context: string): OrderedDecision {
+  if (!isRecord(value) || !HITL_DECISION_TYPES.includes(value.type as HitlDecisionType)) {
+    throw new ContractError(`${context} contains an unsupported decision.`);
+  }
+  switch (value.type) {
+    case "approve":
+      return { type: "approve" };
+    case "edit":
+      return {
+        type: "edit",
+        editedAction: normalizeActionRequest(value.editedAction, `${context} edit`),
+      };
+    case "reject": {
+      const message = validateDecisionComment(value.message);
+      return { type: "reject", ...(message ? { message } : {}) };
+    }
+    case "respond": {
+      const message = validateDecisionComment(value.message);
+      if (!message) throw new ContractError(`${context} requires a nonblank response message.`);
+      return { type: "respond", message };
+    }
+  }
+}
+
+export function validateDecisionBatchInput(
+  interrupt: ActiveInterrupt,
+  input: DecisionBatchInput,
+): DecisionBatchInput {
+  if (!interrupt.version || !interrupt.actionRequests || !interrupt.reviewConfigs) {
+    throw new ContractError("The current approval does not provide an ordered batch contract.");
+  }
+  if (input.interruptId !== interrupt.interruptId || input.expectedVersion !== interrupt.version) {
+    throw new ContractError("The ordered approval changed before submission.");
+  }
+  if (input.idempotencyKey.trim() === "") {
+    throw new ContractError("The ordered approval requires a valid idempotency key.");
+  }
+  if (input.decisions.length !== interrupt.actionRequests.length) {
+    throw new ContractError("The ordered approval requires one decision per action.");
+  }
+  const decisions = input.decisions.map((decision, index) => {
+    const normalized = normalizeOrderedDecision(decision, `Decision ${index + 1}`);
+    const config = interrupt.reviewConfigs?.[index];
+    const action = interrupt.actionRequests?.[index];
+    if (!config || !action || !config.allowedDecisions.includes(normalized.type)) {
+      throw new ContractError(`Action ${index + 1} does not allow ${normalized.type}.`);
+    }
+    if (normalized.type === "edit" && normalized.editedAction.name !== action.name) {
+      throw new ContractError(`Action ${index + 1} edit must preserve the action name.`);
+    }
+    if (
+      normalized.type === "edit" &&
+      action.name === "execute_plan_step" &&
+      normalized.editedAction.args.position !== index + 1
+    ) {
+      throw new ContractError(`Action ${index + 1} edit must preserve its plan position.`);
+    }
+    return normalized;
+  });
+  return { ...input, idempotencyKey: input.idempotencyKey.trim(), decisions };
 }
 
 export function normalizeTaskList(value: unknown): TaskSummary[] {
@@ -354,6 +529,32 @@ export function normalizeDecisionResult(value: unknown): DecisionResult {
   };
 }
 
+export function normalizeDecisionBatchResult(value: unknown): DecisionBatchResult {
+  if (!isRecord(value)) throw new ContractError("Decision-batch response must be an object.");
+  if (
+    !Array.isArray(value.decisionTypes) ||
+    value.decisionTypes.length === 0 ||
+    value.decisionTypes.some(
+      (decision) =>
+        typeof decision !== "string" || !HITL_DECISION_TYPES.includes(decision as HitlDecisionType),
+    )
+  ) {
+    throw new ContractError("Decision-batch response contains unsupported decision types.");
+  }
+  if (value.status !== "accepted" || typeof value.duplicate !== "boolean") {
+    throw new ContractError("Decision-batch response is missing a valid receipt status.");
+  }
+  return {
+    taskId: requiredString(value, "taskId", "Decision-batch response"),
+    runId: requiredString(value, "runId", "Decision-batch response"),
+    interruptId: requiredString(value, "interruptId", "Decision-batch response"),
+    version: requiredString(value, "version", "Decision-batch response"),
+    decisionTypes: [...value.decisionTypes] as HitlDecisionType[],
+    status: "accepted",
+    duplicate: value.duplicate,
+  };
+}
+
 function normalizeEvidence(value: unknown, context: string): EvidenceRecord {
   if (!isRecord(value)) {
     throw new ContractError(`${context} must be an object.`);
@@ -444,6 +645,14 @@ export function interruptAfterEvent(
     if (typeof interruptId !== "string" || interruptId.trim() === "") {
       return active;
     }
+    let batchFields: Pick<ActiveInterrupt, "version" | "actionRequests" | "reviewConfigs"> = {};
+    if (active?.interruptId === interruptId) {
+      batchFields = {
+        ...(active.version ? { version: active.version } : {}),
+        ...(active.actionRequests ? { actionRequests: active.actionRequests } : {}),
+        ...(active.reviewConfigs ? { reviewConfigs: active.reviewConfigs } : {}),
+      };
+    }
     return {
       interruptId,
       decisions: normalizeDecisions(event.data.decisions, true),
@@ -451,6 +660,7 @@ export function interruptAfterEvent(
         Number.isInteger(event.data.planRevision) && Number(event.data.planRevision) >= 1
           ? Number(event.data.planRevision)
           : undefined,
+      ...batchFields,
       title: typeof event.data.title === "string" ? event.data.title : "Approval required",
       question:
         typeof event.data.question === "string"
@@ -468,7 +678,13 @@ export function interruptAfterEvent(
     Number.isInteger(event.data.revision) &&
     Number(event.data.revision) >= 1
   ) {
-    return { ...active, planRevision: Number(event.data.revision) };
+    const {
+      version: _staleVersion,
+      actionRequests: _staleRequests,
+      reviewConfigs: _staleConfigs,
+      ...legacyInterrupt
+    } = active;
+    return { ...legacyInterrupt, planRevision: Number(event.data.revision) };
   }
   if (
     event.name === "decision.recorded" &&
@@ -476,7 +692,8 @@ export function interruptAfterEvent(
     event.data.interruptId === active.interruptId &&
     (event.data.decision === "approve" ||
       event.data.decision === "reject" ||
-      event.data.decision === "respond")
+      event.data.decision === "respond" ||
+      (Array.isArray(event.data.decisionTypes) && event.data.decisionTypes.length > 0))
   ) {
     return undefined;
   }
@@ -506,7 +723,8 @@ export function statusAfterEvent(
     case "decision.recorded":
       return (event.data.decision === "approve" ||
         event.data.decision === "reject" ||
-        event.data.decision === "respond") &&
+        event.data.decision === "respond" ||
+        (Array.isArray(event.data.decisionTypes) && event.data.decisionTypes.length > 0)) &&
         typeof event.data.interruptId === "string" &&
         activeInterrupt?.interruptId === event.data.interruptId
         ? "running"
@@ -618,6 +836,42 @@ export function detailAfterAcceptedDecision(task: TaskDetail, interruptId: strin
   return { ...task, status: "running", pendingInterrupt: undefined };
 }
 
+/**
+ * Show the accepted plan immediately, but fail closed while its versioned batch
+ * contract is reloaded. Legacy singleton approvals keep their advertised verbs.
+ */
+export function detailAwaitingApprovalReload(
+  task: TaskDetail,
+  interruptId: string,
+  plan: ProposedPlan,
+): TaskDetail {
+  const pending = task.pendingInterrupt;
+  if (pending?.interruptId !== interruptId) return { ...task, proposedPlan: plan };
+  if (!pending.version || !pending.actionRequests || !pending.reviewConfigs) {
+    return {
+      ...task,
+      proposedPlan: plan,
+      pendingInterrupt: { ...pending, planRevision: plan.revision },
+    };
+  }
+  const {
+    actionRequests: _actions,
+    reviewConfigs: _configs,
+    version: _version,
+    ...legacy
+  } = pending;
+  return {
+    ...task,
+    proposedPlan: plan,
+    pendingInterrupt: {
+      ...legacy,
+      decisions: [],
+      planRevision: plan.revision,
+      question: "Reloading the ordered approval for this saved plan…",
+    },
+  };
+}
+
 export const STALE_DECISION_MESSAGE =
   "This approval is no longer current. No decision was sent. The latest task state is shown.";
 
@@ -640,6 +894,23 @@ export function decisionPreflightProblem(
     return `The current approval does not offer ${input.decision}. No decision was sent.`;
   }
   return undefined;
+}
+
+export function decisionBatchPreflightProblem(
+  task: TaskDetail,
+  input: DecisionBatchInput,
+): string | undefined {
+  if (task.status !== "waiting-approval" || task.pendingInterrupt === undefined) {
+    return STALE_DECISION_MESSAGE;
+  }
+  try {
+    validateDecisionBatchInput(task.pendingInterrupt, input);
+    return undefined;
+  } catch (error) {
+    return error instanceof ContractError
+      ? `${error.message} No decision was sent.`
+      : "The ordered approval could not be validated. No decision was sent.";
+  }
 }
 
 /** Preserve newer streamed state when an awaited detail reload resolves late. */

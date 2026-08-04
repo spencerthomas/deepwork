@@ -56,8 +56,14 @@ test.describe("assistive interaction acceptance", () => {
     await expect(lifecycle).toHaveText("Needs review");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const approve = page.getByRole("button", { name: "Approve", exact: true });
-    await tabTo(page, approve);
+    const approvalBatch = page.getByRole("region", { name: "Ordered approval batch" });
+    const approveButtons = approvalBatch.getByRole("button", { name: "Approve", exact: true });
+    for (let index = 0; index < (await approveButtons.count()); index += 1) {
+      await tabTo(page, approveButtons.nth(index));
+      await page.keyboard.press("Enter");
+    }
+    const submitBatch = approvalBatch.getByRole("button", { name: "Submit reviewed batch" });
+    await tabTo(page, submitBatch);
     await page.keyboard.press("Enter");
     await expect(lifecycle).toHaveText("Running");
     await expect
@@ -196,9 +202,15 @@ test("a fresh 320px touch context completes the primary journey without overflow
     const taskPath = new URL(page.url()).pathname;
     await expectNoHorizontalOverflow(page);
 
-    const approve = page.getByRole("button", { name: "Approve", exact: true });
-    await expectMinimumTarget(approve);
-    await approve.tap();
+    const approvalBatch = page.getByRole("region", { name: "Ordered approval batch" });
+    const approveButtons = approvalBatch.getByRole("button", { name: "Approve", exact: true });
+    for (let index = 0; index < (await approveButtons.count()); index += 1) {
+      await expectMinimumTarget(approveButtons.nth(index));
+      await approveButtons.nth(index).tap();
+    }
+    const submitBatch = approvalBatch.getByRole("button", { name: "Submit reviewed batch" });
+    await expectMinimumTarget(submitBatch);
+    await submitBatch.tap();
     await expect(page.getByTestId("task-lifecycle-status")).toHaveText("Done");
     await expectNoHorizontalOverflow(page);
 

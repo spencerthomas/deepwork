@@ -1,6 +1,7 @@
 import {
   normalizeCancelResult,
   normalizeCreateTaskResult,
+  normalizeDecisionBatchResult,
   normalizeDecisionResult,
   normalizePlanUpdateResult,
   normalizeTaskDetail,
@@ -14,6 +15,8 @@ import type {
   CancelResult,
   CreateTaskResult,
   DecisionInput,
+  DecisionBatchInput,
+  DecisionBatchResult,
   DecisionResult,
   PlanUpdateInput,
   PlanUpdateResult,
@@ -30,6 +33,8 @@ const RECOVERABLE_PLAN_PROBLEM_CODES = new Set([
   "interrupt_mismatch",
 ]);
 const RECOVERABLE_DECISION_PROBLEM_CODES = new Set([
+  "approval_version_stale",
+  "decision_batch_version_stale",
   "interrupt_stale",
   "interrupt_mismatch",
   "decision_conflict",
@@ -215,6 +220,45 @@ export function createHttpTaskClient(configuredBaseUrl?: string): TaskClient {
         receipt.decision !== decision.decision
       ) {
         throw new Error("The decision receipt did not match the requested task and interrupt.");
+      }
+      return receipt;
+    },
+
+    async decideBatch(
+      taskId: string,
+      input: DecisionBatchInput,
+      signal?: AbortSignal,
+    ): Promise<DecisionBatchResult> {
+      if (
+        input.interruptId.trim() === "" ||
+        input.expectedVersion.trim() === "" ||
+        input.idempotencyKey.trim() === "" ||
+        input.decisions.length === 0
+      ) {
+        throw new Error("The ordered approval request is incomplete.");
+      }
+      const body = await request(
+        `${taskUrl}/${encodeURIComponent(taskId)}/decision-batch`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+          signal,
+        },
+        202,
+      );
+      const receipt = normalizeDecisionBatchResult(body);
+      const decisionTypes = input.decisions.map((decision) => decision.type);
+      if (
+        receipt.taskId !== taskId ||
+        receipt.interruptId !== input.interruptId ||
+        receipt.version !== input.expectedVersion ||
+        receipt.decisionTypes.length !== decisionTypes.length ||
+        receipt.decisionTypes.some((decision, index) => decision !== decisionTypes[index])
+      ) {
+        throw new Error(
+          "The decision-batch receipt did not match the requested task, interrupt, version, and ordered decisions.",
+        );
       }
       return receipt;
     },

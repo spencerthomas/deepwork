@@ -1,6 +1,38 @@
 {
   "components": {
     "schemas": {
+      "ActionRequestResponse": {
+        "additionalProperties": false,
+        "description": "One action in an ordered pending interrupt.",
+        "properties": {
+          "args": {
+            "$ref": "#/components/schemas/PlanStepArgs"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "const": "execute_plan_step",
+            "default": "execute_plan_step",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "args"
+        ],
+        "title": "ActionRequestResponse",
+        "type": "object"
+      },
       "AgentCreateRequest": {
         "additionalProperties": false,
         "description": "Register a new agent sharing the deployed graph.",
@@ -170,6 +202,21 @@
         "title": "AgentUpdateRequest",
         "type": "object"
       },
+      "ApproveDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "approve",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ApproveDecisionRequest",
+        "type": "object"
+      },
       "CancellationAcceptedResponse": {
         "additionalProperties": false,
         "description": "Accepted or idempotently replayed task cancellation receipt.",
@@ -266,6 +313,122 @@
         "title": "DecisionAcceptedResponse",
         "type": "object"
       },
+      "DecisionBatchAcceptedResponse": {
+        "additionalProperties": false,
+        "description": "Accepted or idempotently replayed ordered decision receipt.",
+        "properties": {
+          "decisionTypes": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionType"
+            },
+            "title": "Decisiontypes",
+            "type": "array"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "interruptId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Interruptid",
+            "type": "string"
+          },
+          "runId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Runid",
+            "type": "string"
+          },
+          "status": {
+            "const": "accepted",
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          },
+          "taskId": {
+            "pattern": "^task_[0-9]{8}$",
+            "title": "Taskid",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "runId",
+          "interruptId",
+          "version",
+          "decisionTypes",
+          "duplicate"
+        ],
+        "title": "DecisionBatchAcceptedResponse",
+        "type": "object"
+      },
+      "DecisionBatchRequest": {
+        "additionalProperties": false,
+        "description": "One complete ordered vector for the exact reviewed interrupt version.",
+        "properties": {
+          "decisions": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "approve": "#/components/schemas/ApproveDecisionRequest",
+                  "edit": "#/components/schemas/EditDecisionRequest",
+                  "reject": "#/components/schemas/RejectDecisionRequest",
+                  "respond": "#/components/schemas/RespondDecisionRequest"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ApproveDecisionRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/EditDecisionRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/RejectDecisionRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/RespondDecisionRequest"
+                }
+              ]
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Decisions",
+            "type": "array"
+          },
+          "expectedVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Expectedversion",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Idempotencykey",
+            "type": "string"
+          },
+          "interruptId": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "title": "Interruptid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interruptId",
+          "expectedVersion",
+          "idempotencyKey",
+          "decisions"
+        ],
+        "title": "DecisionBatchRequest",
+        "type": "object"
+      },
       "DecisionRequest": {
         "additionalProperties": false,
         "description": "One complete decision for the exact pending interrupt.",
@@ -297,6 +460,17 @@
         ],
         "title": "DecisionRequest",
         "type": "object"
+      },
+      "DecisionType": {
+        "description": "One positional decision in an ordered HITL batch.",
+        "enum": [
+          "approve",
+          "edit",
+          "reject",
+          "respond"
+        ],
+        "title": "DecisionType",
+        "type": "string"
       },
       "DecisionValue": {
         "description": "Supported decisions for the bounded approval interrupt.",
@@ -337,6 +511,45 @@
           "safe_reason"
         ],
         "title": "DemoStatusResponse",
+        "type": "object"
+      },
+      "EditDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "editedAction": {
+            "$ref": "#/components/schemas/EditedActionRequest"
+          },
+          "type": {
+            "const": "edit",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "editedAction"
+        ],
+        "title": "EditDecisionRequest",
+        "type": "object"
+      },
+      "EditedActionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "$ref": "#/components/schemas/PlanStepArgs"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "args"
+        ],
+        "title": "EditedActionRequest",
         "type": "object"
       },
       "EvidenceClass": {
@@ -449,6 +662,20 @@
         "additionalProperties": false,
         "description": "One actionable local approval interrupt.",
         "properties": {
+          "actionRequests": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActionRequestResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionrequests"
+          },
           "decisions": {
             "default": [
               "approve",
@@ -471,6 +698,33 @@
             "minimum": 1.0,
             "title": "Planrevision",
             "type": "integer"
+          },
+          "reviewConfigs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewConfigResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewconfigs"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           }
         },
         "required": [
@@ -478,6 +732,30 @@
           "planRevision"
         ],
         "title": "PendingInterruptResponse",
+        "type": "object"
+      },
+      "PlanStepArgs": {
+        "additionalProperties": false,
+        "description": "Bounded positional arguments for one fixture plan step.",
+        "properties": {
+          "position": {
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "text"
+        ],
+        "title": "PlanStepArgs",
         "type": "object"
       },
       "PlanUpdateRequest": {
@@ -594,6 +872,91 @@
           "evidenceRefs"
         ],
         "title": "ProposedPlanResponse",
+        "type": "object"
+      },
+      "RejectDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "type": {
+            "const": "reject",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "RejectDecisionRequest",
+        "type": "object"
+      },
+      "RespondDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "const": "respond",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "RespondDecisionRequest",
+        "type": "object"
+      },
+      "ReviewConfigResponse": {
+        "additionalProperties": false,
+        "description": "Allowed decisions aligned to one action by array position.",
+        "properties": {
+          "actionName": {
+            "const": "execute_plan_step",
+            "default": "execute_plan_step",
+            "title": "Actionname",
+            "type": "string"
+          },
+          "allowedDecisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionType"
+            },
+            "title": "Alloweddecisions",
+            "type": "array"
+          },
+          "argsSchema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Argsschema"
+          }
+        },
+        "required": [
+          "allowedDecisions"
+        ],
+        "title": "ReviewConfigResponse",
         "type": "object"
       },
       "ScheduleListResponse": {
@@ -1479,6 +1842,59 @@
           }
         },
         "summary": "Cancel Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/decision-batch": {
+      "post": {
+        "operationId": "record_decision_batch_api_v1_tasks__task_id__decision_batch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "pattern": "^task_[0-9]{8}$",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionBatchAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Decision Batch",
         "tags": [
           "tasks"
         ]

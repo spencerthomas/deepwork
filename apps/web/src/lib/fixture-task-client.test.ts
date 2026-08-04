@@ -8,6 +8,100 @@ afterEach(() => {
 });
 
 describe("fixture task client", () => {
+  it("preserves repeated actions and applies an ordered approve/edit vector atomically", async () => {
+    vi.useFakeTimers();
+    const client = createFixtureTaskClient();
+    const created = await client.createTask("Prepare an ordered release plan");
+    const events: TaskEvent[] = [];
+    client.subscribe(created.taskId, {
+      onConnectionChange: () => undefined,
+      onError: (message) => {
+        throw new Error(message);
+      },
+      onEvent: (event) => events.push(event),
+    });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(940);
+
+    const waiting = await client.getTask(created.taskId);
+    const interrupt = waiting.pendingInterrupt!;
+    expect(interrupt.actionRequests?.map((action) => action.name)).toEqual([
+      "execute_plan_step",
+      "execute_plan_step",
+      "execute_plan_step",
+    ]);
+
+    const input = {
+      interruptId: interrupt.interruptId,
+      expectedVersion: interrupt.version!,
+      idempotencyKey: "fixture-batch-key-1",
+      decisions: [
+        { type: "approve" as const },
+        {
+          type: "edit" as const,
+          editedAction: {
+            ...interrupt.actionRequests![1]!,
+            args: { position: 2, text: "Execute the bounded hosted work" },
+          },
+        },
+        { type: "approve" as const },
+      ],
+    };
+    const receipt = await client.decideBatch(created.taskId, input);
+    expect(receipt).toMatchObject({
+      version: interrupt.version,
+      decisionTypes: ["approve", "edit", "approve"],
+      duplicate: false,
+    });
+    expect(events.at(-1)?.data).toMatchObject({
+      interruptId: interrupt.interruptId,
+      decisionTypes: ["approve", "edit", "approve"],
+    });
+    expect(events.at(-1)?.data).not.toHaveProperty("decisions");
+    expect((await client.decideBatch(created.taskId, input)).duplicate).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(420);
+    const completed = await client.getTask(created.taskId);
+    expect(completed.status).toBe("completed");
+    expect(completed.result).toContain("Execute the bounded hosted work");
+  });
+
+  it("records a rejected ordered batch as one terminal fixture outcome", async () => {
+    vi.useFakeTimers();
+    const client = createFixtureTaskClient();
+    const created = await client.createTask("Reject an ordered release plan");
+    const events: TaskEvent[] = [];
+    client.subscribe(created.taskId, {
+      onConnectionChange: () => undefined,
+      onError: (message) => {
+        throw new Error(message);
+      },
+      onEvent: (event) => events.push(event),
+    });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(940);
+    const interrupt = (await client.getTask(created.taskId)).pendingInterrupt!;
+
+    await client.decideBatch(created.taskId, {
+      interruptId: interrupt.interruptId,
+      expectedVersion: interrupt.version!,
+      idempotencyKey: "fixture-reject-key-1",
+      decisions: interrupt.actionRequests!.map((_, index) =>
+        index === 1
+          ? { type: "reject" as const, message: "Stop here" }
+          : { type: "approve" as const },
+      ),
+    });
+
+    expect((await client.getTask(created.taskId)).status).toBe("running");
+    await vi.advanceTimersByTimeAsync(420);
+    const rejected = await client.getTask(created.taskId);
+    expect(rejected.status).toBe("rejected");
+    expect(rejected.result).toContain("stopped after the ordered proposal was rejected");
+    expect(events.filter((event) => event.name === "run.completed")).toHaveLength(1);
+    expect(events.at(-1)?.data).toMatchObject({ status: "rejected" });
+  });
+
   it("runs create, evidence, plan edit, response, approval, and result locally", async () => {
     vi.useFakeTimers();
     const client = createFixtureTaskClient();
@@ -34,9 +128,11 @@ describe("fixture task client", () => {
     expect(waiting.status).toBe("waiting-approval");
     expect(waiting.proposedPlan?.revision).toBe(1);
     expect(waiting.evidence?.at(0)?.source).toBe("deterministic-local-runner");
+    const initialInterruptId = waiting.pendingInterrupt?.interruptId;
+    expect(initialInterruptId).toBeTruthy();
 
     const updated = await client.updatePlan(created.taskId, {
-      interruptId: "fixture-interrupt-1",
+      interruptId: initialInterruptId!,
       expectedRevision: 1,
       steps: ["Inspect the request safely", "Verify the bounded result"],
     });
@@ -46,14 +142,14 @@ describe("fixture task client", () => {
     });
     await expect(
       client.updatePlan(created.taskId, {
-        interruptId: "fixture-interrupt-1",
+        interruptId: initialInterruptId!,
         expectedRevision: 1,
         steps: ["Stale edit"],
       }),
     ).rejects.toThrow("plan changed");
 
     await client.decide(created.taskId, {
-      interruptId: "fixture-interrupt-1",
+      interruptId: initialInterruptId!,
       decision: "respond",
       comment: "Which acceptance check is authoritative?",
     });

@@ -19,6 +19,8 @@ import { taskClient } from "./task-client";
 import {
   detailAfterAcceptedDecision,
   detailAfterAuthoritativeReload,
+  detailAwaitingApprovalReload,
+  decisionBatchPreflightProblem,
   decisionPreflightProblem,
   getActiveInterrupt,
   getCompletionResultText,
@@ -32,6 +34,7 @@ import {
 import { appendUniqueTaskEvent } from "./task-event-index";
 import type {
   ConnectionState,
+  DecisionBatchInput,
   DecisionInput,
   PlanUpdateInput,
   TaskDetail,
@@ -91,6 +94,8 @@ export interface TasksStore {
   cancelling: boolean;
   decide: (input: DecisionInput) => Promise<void>;
   decideForTask: (taskId: string, input: DecisionInput) => Promise<string | undefined>;
+  decideBatch: (input: DecisionBatchInput) => Promise<void>;
+  decideBatchForTask: (taskId: string, input: DecisionBatchInput) => Promise<string | undefined>;
   updatePlan: (input: PlanUpdateInput) => Promise<boolean>;
   cancelTask: (taskId: string) => Promise<string | undefined>;
 
@@ -743,68 +748,213 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [loadDetail, reconcileTaskSnapshot],
   );
 
-  const updatePlan = useCallback(async (input: PlanUpdateInput): Promise<boolean> => {
-    const taskId = activeTaskIdRef.current;
-    if (!taskId) {
-      return false;
-    }
-    setUpdatingPlan(true);
-    setPlanError(undefined);
-    try {
-      const updated = await taskClient.updatePlan(taskId, input);
-      const expectedRunId =
-        detailsByTaskRef.current[taskId]?.runId ??
-        tasksRef.current.find((task) => task.taskId === taskId)?.runId;
-      if (
-        updated.taskId !== taskId ||
-        updated.interruptId !== input.interruptId ||
-        updated.plan.revision !== input.expectedRevision + 1 ||
-        (expectedRunId !== undefined && updated.runId !== expectedRunId)
-      ) {
-        throw new Error("The plan receipt did not match the selected task, run, and revision.");
-      }
-      if (activeTaskIdRef.current === taskId) {
-        setDetailsByTask((current) => {
-          const task = current[taskId];
-          return task
-            ? {
-                ...current,
-                [taskId]: { ...task, proposedPlan: updated.plan },
-              }
-            : current;
-        });
-      }
-      return true;
-    } catch (error) {
-      if (activeTaskIdRef.current === taskId) {
-        try {
-          const currentTask = await recoverCurrentTaskAfterPlanProblem(taskClient, taskId, error);
-          if (currentTask) {
-            if (activeTaskIdRef.current === taskId) {
-              setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
-              setTasks((current) => replaceTask(current, taskId, () => currentTask));
-              setPlanError(
-                `${messageFrom(error)} The current task, plan revision, and interrupt were reloaded. Review them before trying again.`,
+  const decideBatch = useCallback(
+    async (input: DecisionBatchInput): Promise<void> => {
+      const taskId = activeTaskIdRef.current;
+      if (!taskId || decisionSubmissionRef.current?.taskId === taskId) return;
+      const requestId = decisionRequestRef.current + 1;
+      decisionRequestRef.current = requestId;
+      decisionSubmissionRef.current = { taskId, requestId };
+      pendingDecisionRef.current = { taskId, interruptId: input.interruptId, requestId };
+      setSubmittingDecision(true);
+      setSubmittedDecision(undefined);
+      setActionError(undefined);
+      try {
+        const authoritativeTask = await taskClient.getTask(taskId, AbortSignal.timeout(15_000));
+        const currentTask = reconcileTaskSnapshot(taskId, authoritativeTask);
+        if (
+          activeTaskIdRef.current !== taskId ||
+          pendingDecisionRef.current?.requestId !== requestId
+        ) {
+          return;
+        }
+        const problem =
+          decisionBatchPreflightProblem(authoritativeTask, input) ??
+          decisionBatchPreflightProblem(currentTask, input);
+        if (problem) {
+          setActionError(problem);
+          return;
+        }
+        const receipt = await taskClient.decideBatch(taskId, input);
+        const expectedRunId =
+          detailsByTaskRef.current[taskId]?.runId ??
+          tasksRef.current.find((task) => task.taskId === taskId)?.runId;
+        if (
+          receipt.taskId !== taskId ||
+          receipt.interruptId !== input.interruptId ||
+          receipt.version !== input.expectedVersion ||
+          (expectedRunId !== undefined && receipt.runId !== expectedRunId)
+        ) {
+          throw new Error(
+            "The ordered decision receipt did not match the selected task, run, interrupt, and version.",
+          );
+        }
+        if (receipt.duplicate) {
+          reconcileTaskSnapshot(taskId, await taskClient.getTask(taskId));
+        } else {
+          setDetailsByTask((current) => {
+            const task = current[taskId];
+            if (!task) return current;
+            const updated = detailAfterAcceptedDecision(task, input.interruptId);
+            return updated === task ? current : { ...current, [taskId]: updated };
+          });
+        }
+      } catch (error) {
+        if (
+          pendingDecisionRef.current?.requestId === requestId &&
+          activeTaskIdRef.current === taskId
+        ) {
+          try {
+            const currentTask = await recoverCurrentTaskAfterDecisionProblem(
+              taskClient,
+              taskId,
+              error,
+            );
+            if (currentTask) {
+              reconcileTaskSnapshot(taskId, currentTask);
+              setActionError(
+                `${messageFrom(error)} The current task and ordered approval were reloaded. Review every action before submitting again.`,
               );
+            } else {
+              setActionError(messageFrom(error));
             }
-          } else {
-            setPlanError(messageFrom(error));
-          }
-        } catch (refreshError) {
-          if (activeTaskIdRef.current === taskId) {
-            setPlanError(
-              `${messageFrom(error)} Deep Work could not reload the current task: ${messageFrom(refreshError)}`,
+          } catch (refreshError) {
+            setActionError(
+              `${messageFrom(error)} Deep Work could not reload the current ordered approval: ${messageFrom(refreshError)}`,
             );
           }
         }
+      } finally {
+        if (decisionSubmissionRef.current?.requestId === requestId)
+          decisionSubmissionRef.current = undefined;
+        if (pendingDecisionRef.current?.requestId === requestId)
+          pendingDecisionRef.current = undefined;
+        if (activeTaskIdRef.current === taskId) setSubmittingDecision(false);
       }
-      return false;
-    } finally {
-      if (activeTaskIdRef.current === taskId) {
-        setUpdatingPlan(false);
+    },
+    [reconcileTaskSnapshot],
+  );
+
+  const decideBatchForTask = useCallback(
+    async (taskId: string, input: DecisionBatchInput): Promise<string | undefined> => {
+      if (taskDecisionSubmissionIdsRef.current.has(taskId)) {
+        return "A decision is already being checked for this approval. No second decision was sent.";
       }
-    }
-  }, []);
+      taskDecisionSubmissionIdsRef.current.add(taskId);
+      try {
+        const authoritativeTask = await taskClient.getTask(taskId, AbortSignal.timeout(15_000));
+        const currentTask = reconcileTaskSnapshot(taskId, authoritativeTask);
+        const problem =
+          decisionBatchPreflightProblem(authoritativeTask, input) ??
+          decisionBatchPreflightProblem(currentTask, input);
+        if (problem) return problem;
+        const receipt = await taskClient.decideBatch(taskId, input);
+        const expectedRunId =
+          detailsByTaskRef.current[taskId]?.runId ??
+          tasksRef.current.find((task) => task.taskId === taskId)?.runId;
+        if (expectedRunId !== undefined && receipt.runId !== expectedRunId) {
+          return "The ordered decision receipt did not match the task and run.";
+        }
+        await loadDetail(taskId);
+        return undefined;
+      } catch (error) {
+        try {
+          const currentTask = await recoverCurrentTaskAfterDecisionProblem(
+            taskClient,
+            taskId,
+            error,
+          );
+          if (currentTask) {
+            reconcileTaskSnapshot(taskId, currentTask);
+            return `${messageFrom(error)} The task was reloaded — review every action before deciding again.`;
+          }
+        } catch {
+          // Return the original error when recovery also fails.
+        }
+        return messageFrom(error);
+      } finally {
+        taskDecisionSubmissionIdsRef.current.delete(taskId);
+      }
+    },
+    [loadDetail, reconcileTaskSnapshot],
+  );
+
+  const updatePlan = useCallback(
+    async (input: PlanUpdateInput): Promise<boolean> => {
+      const taskId = activeTaskIdRef.current;
+      if (!taskId) {
+        return false;
+      }
+      setUpdatingPlan(true);
+      setPlanError(undefined);
+      try {
+        const updated = await taskClient.updatePlan(taskId, input);
+        const expectedRunId =
+          detailsByTaskRef.current[taskId]?.runId ??
+          tasksRef.current.find((task) => task.taskId === taskId)?.runId;
+        if (
+          updated.taskId !== taskId ||
+          updated.interruptId !== input.interruptId ||
+          updated.plan.revision !== input.expectedRevision + 1 ||
+          (expectedRunId !== undefined && updated.runId !== expectedRunId)
+        ) {
+          throw new Error("The plan receipt did not match the selected task, run, and revision.");
+        }
+        const currentDetails = detailsByTaskRef.current;
+        const currentTask = currentDetails[taskId];
+        if (currentTask) {
+          const waitingForApproval = detailAwaitingApprovalReload(
+            currentTask,
+            input.interruptId,
+            updated.plan,
+          );
+          const nextDetails = { ...currentDetails, [taskId]: waitingForApproval };
+          detailsByTaskRef.current = nextDetails;
+          setDetailsByTask(nextDetails);
+        }
+        try {
+          const authoritativeTask = await taskClient.getTask(taskId, AbortSignal.timeout(15_000));
+          reconcileTaskSnapshot(taskId, authoritativeTask);
+        } catch (refreshError) {
+          if (activeTaskIdRef.current === taskId) {
+            setPlanError(
+              `The plan was saved, but Deep Work could not reload its ordered approval. Reload the task before deciding. ${messageFrom(refreshError)}`,
+            );
+          }
+        }
+        return true;
+      } catch (error) {
+        if (activeTaskIdRef.current === taskId) {
+          try {
+            const currentTask = await recoverCurrentTaskAfterPlanProblem(taskClient, taskId, error);
+            if (currentTask) {
+              if (activeTaskIdRef.current === taskId) {
+                setDetailsByTask((current) => ({ ...current, [taskId]: currentTask }));
+                setTasks((current) => replaceTask(current, taskId, () => currentTask));
+                setPlanError(
+                  `${messageFrom(error)} The current task, plan revision, and interrupt were reloaded. Review them before trying again.`,
+                );
+              }
+            } else {
+              setPlanError(messageFrom(error));
+            }
+          } catch (refreshError) {
+            if (activeTaskIdRef.current === taskId) {
+              setPlanError(
+                `${messageFrom(error)} Deep Work could not reload the current task: ${messageFrom(refreshError)}`,
+              );
+            }
+          }
+        }
+        return false;
+      } finally {
+        if (activeTaskIdRef.current === taskId) {
+          setUpdatingPlan(false);
+        }
+      }
+    },
+    [reconcileTaskSnapshot],
+  );
 
   /**
    * Cancel a live task. The authoritative terminal state arrives over the
@@ -869,6 +1019,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       cancelling,
       decide,
       decideForTask,
+      decideBatch,
+      decideBatchForTask,
       updatePlan,
       cancelTask,
       mode: taskClient.mode,
@@ -899,6 +1051,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       cancelling,
       decide,
       decideForTask,
+      decideBatch,
+      decideBatchForTask,
       updatePlan,
       cancelTask,
     ],

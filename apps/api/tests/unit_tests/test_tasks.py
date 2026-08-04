@@ -148,6 +148,19 @@ def _revision_wire_cases(revision: object) -> tuple[tuple[type[BaseModel], dict[
             {
                 "interruptId": "interrupt_00000001",
                 "planRevision": revision,
+                "version": str(revision),
+                "actionRequests": [
+                    {
+                        "name": "execute_plan_step",
+                        "args": {"position": 1, "text": "Inspect input"},
+                    }
+                ],
+                "reviewConfigs": [
+                    {
+                        "actionName": "execute_plan_step",
+                        "allowedDecisions": ["approve", "edit", "reject"],
+                    }
+                ],
             },
         ),
         (

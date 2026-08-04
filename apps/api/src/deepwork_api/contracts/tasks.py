@@ -21,7 +21,9 @@ from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
     CancellationRecord,
+    DecisionBatchRecord,
     DecisionRecord,
+    DecisionType,
     DecisionValue,
     EvidenceKind,
     EvidenceRecord,
@@ -100,6 +102,47 @@ class TaskAcceptedResponse(_TaskWireModel):
         return cls(task_id=task.task_id, run_id=task.run_id)
 
 
+class PlanStepArgs(_TaskWireModel):
+    """Bounded positional arguments for one fixture plan step."""
+
+    position: int = Field(strict=True, ge=1, le=MAX_PLAN_STEPS)
+    text: str = Field(min_length=1, max_length=MAX_PLAN_STEP_LENGTH)
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        reject_unsafe_controls(value)
+        if not value.strip():
+            raise ValueError("plan step must contain visible text")
+        return value
+
+
+class ActionRequestResponse(_TaskWireModel):
+    """One action in an ordered pending interrupt."""
+
+    name: Literal["execute_plan_step"] = "execute_plan_step"
+    args: PlanStepArgs
+    description: str | None = Field(
+        default=None,
+        max_length=300,
+        exclude_if=lambda value: value is None,
+    )
+
+
+class ReviewConfigResponse(_TaskWireModel):
+    """Allowed decisions aligned to one action by array position."""
+
+    action_name: Literal["execute_plan_step"] = Field(
+        default="execute_plan_step", alias="actionName"
+    )
+    allowed_decisions: tuple[DecisionType, ...] = Field(alias="allowedDecisions")
+    args_schema: dict[str, object] | None = Field(
+        default=None,
+        alias="argsSchema",
+        exclude_if=lambda value: value is None,
+    )
+
+
 class PendingInterruptResponse(_TaskWireModel):
     """One actionable local approval interrupt."""
 
@@ -114,6 +157,22 @@ class PendingInterruptResponse(_TaskWireModel):
         strict=True,
         ge=1,
         le=MAX_PLAN_REVISION,
+    )
+    version: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+        exclude_if=lambda value: value is None,
+    )
+    action_requests: tuple[ActionRequestResponse, ...] | None = Field(
+        default=None,
+        alias="actionRequests",
+        exclude_if=lambda value: value is None,
+    )
+    review_configs: tuple[ReviewConfigResponse, ...] | None = Field(
+        default=None,
+        alias="reviewConfigs",
+        exclude_if=lambda value: value is None,
     )
 
 
@@ -198,11 +257,43 @@ class TaskDetailResponse(TaskSummaryResponse):
     result: str | None = Field(default=None, max_length=MAX_TASK_RESULT_LENGTH)
 
     @classmethod
-    def from_domain(cls, task: TaskSnapshot) -> TaskDetailResponse:
+    def from_domain(
+        cls,
+        task: TaskSnapshot,
+        *,
+        batch_allowed_decisions: tuple[DecisionType, ...] | None = (
+            DecisionType.APPROVE,
+            DecisionType.EDIT,
+            DecisionType.REJECT,
+        ),
+    ) -> TaskDetailResponse:
         pending = (
             PendingInterruptResponse(
                 interrupt_id=task.pending_interrupt_id,
                 plan_revision=task.proposed_plan.revision,
+                version=(
+                    str(task.proposed_plan.revision)
+                    if batch_allowed_decisions is not None
+                    else None
+                ),
+                action_requests=(
+                    tuple(
+                        ActionRequestResponse(
+                            args=PlanStepArgs(position=position, text=step),
+                        )
+                        for position, step in enumerate(task.proposed_plan.steps, start=1)
+                    )
+                    if batch_allowed_decisions is not None
+                    else None
+                ),
+                review_configs=(
+                    tuple(
+                        ReviewConfigResponse(allowed_decisions=batch_allowed_decisions)
+                        for _ in task.proposed_plan.steps
+                    )
+                    if batch_allowed_decisions is not None
+                    else None
+                ),
             )
             if task.pending_interrupt_id is not None and task.proposed_plan is not None
             else None
@@ -224,6 +315,95 @@ class TaskDetailResponse(TaskSummaryResponse):
             ),
             evidence=tuple(EvidenceResponse.from_domain(item) for item in task.evidence),
             result=task.result,
+        )
+
+
+class ApproveDecisionRequest(_TaskWireModel):
+    type: Literal["approve"]
+
+
+class EditedActionRequest(_TaskWireModel):
+    name: str = Field(min_length=1, max_length=100)
+    args: PlanStepArgs
+
+
+class EditDecisionRequest(_TaskWireModel):
+    type: Literal["edit"]
+    edited_action: EditedActionRequest = Field(alias="editedAction")
+
+
+class RejectDecisionRequest(_TaskWireModel):
+    type: Literal["reject"]
+    message: str | None = Field(default=None, max_length=1_000)
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str | None) -> str | None:
+        if value is not None:
+            reject_unsafe_controls(value)
+        return value
+
+
+class RespondDecisionRequest(_TaskWireModel):
+    type: Literal["respond"]
+    message: str = Field(min_length=1, max_length=1_000)
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str) -> str:
+        reject_unsafe_controls(value)
+        if not value.strip():
+            raise ValueError("respond requires a non-blank message")
+        return value
+
+
+OrderedDecisionRequest = Annotated[
+    ApproveDecisionRequest | EditDecisionRequest | RejectDecisionRequest | RespondDecisionRequest,
+    Field(discriminator="type"),
+]
+
+
+class DecisionBatchRequest(_TaskWireModel):
+    """One complete ordered vector for the exact reviewed interrupt version."""
+
+    interrupt_id: InterruptId = Field(alias="interruptId")
+    expected_version: str = Field(alias="expectedVersion", min_length=1, max_length=64)
+    idempotency_key: str = Field(
+        alias="idempotencyKey",
+        min_length=1,
+        max_length=128,
+    )
+    decisions: tuple[OrderedDecisionRequest, ...] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def validate_idempotency_key(cls, value: str) -> str:
+        reject_unsafe_controls(value)
+        if not value.strip():
+            raise ValueError("idempotency key must contain visible text")
+        return value
+
+
+class DecisionBatchAcceptedResponse(_TaskWireModel):
+    """Accepted or idempotently replayed ordered decision receipt."""
+
+    task_id: TaskId = Field(alias="taskId")
+    run_id: RunId = Field(alias="runId")
+    interrupt_id: InterruptId = Field(alias="interruptId")
+    version: str = Field(min_length=1, max_length=64)
+    decision_types: tuple[DecisionType, ...] = Field(alias="decisionTypes")
+    status: Literal["accepted"] = "accepted"
+    duplicate: bool
+
+    @classmethod
+    def from_domain(cls, record: DecisionBatchRecord) -> DecisionBatchAcceptedResponse:
+        return cls(
+            task_id=record.task_id,
+            run_id=record.run_id,
+            interrupt_id=record.interrupt_id,
+            version=record.version,
+            decision_types=record.decision_types,
+            duplicate=record.duplicate,
         )
 
 
@@ -407,6 +587,11 @@ class DecisionRecordedEventData(_TaskWireModel):
     decision: DecisionValue
     comment_provided: bool = Field(alias="commentProvided")
     response_provided: bool = Field(alias="responseProvided")
+    decision_types: tuple[DecisionType, ...] | None = Field(
+        default=None,
+        alias="decisionTypes",
+        exclude_if=lambda value: value is None,
+    )
 
 
 class EvidenceRecordedEventData(EvidenceResponse):

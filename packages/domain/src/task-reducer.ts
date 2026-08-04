@@ -17,6 +17,7 @@ import type { SourceInterruptKey } from "./identity.js";
 import {
   deriveTaskStatus,
   EVENT_SEQUENCE_MAX,
+  pendingInterrupt,
   PLAN_REVISION_MAX,
   TASK_EVIDENCE_MAX_COUNT,
   taskDetail,
@@ -378,8 +379,44 @@ function samePendingInterrupt(
     sameInterrupt(first, second) &&
     first.planRevision === second.planRevision &&
     first.question === second.question &&
+    first.version === second.version &&
     first.decisions.length === second.decisions.length &&
-    first.decisions.every((decision, index) => decision === second.decisions[index])
+    first.decisions.every((decision, index) => decision === second.decisions[index]) &&
+    sameJsonValue(first.actionRequests, second.actionRequests) &&
+    sameJsonValue(first.reviewConfigs, second.reviewConfigs)
+  );
+}
+
+function sameJsonValue(first: unknown, second: unknown): boolean {
+  if (first === second) {
+    return true;
+  }
+  if (Array.isArray(first) || Array.isArray(second)) {
+    return (
+      Array.isArray(first) &&
+      Array.isArray(second) &&
+      first.length === second.length &&
+      first.every((item, index) => sameJsonValue(item, second[index]))
+    );
+  }
+  if (
+    typeof first !== "object" ||
+    first === null ||
+    typeof second !== "object" ||
+    second === null
+  ) {
+    return false;
+  }
+  const firstRecord = first as Record<string, unknown>;
+  const secondRecord = second as Record<string, unknown>;
+  const keys = Object.keys(firstRecord).sort();
+  const secondKeys = Object.keys(secondRecord).sort();
+  return (
+    keys.length === secondKeys.length &&
+    keys.every(
+      (key, index) =>
+        key === secondKeys[index] && sameJsonValue(firstRecord[key], secondRecord[key]),
+    )
   );
 }
 
@@ -432,12 +469,32 @@ function interruptIdentityBindingMatches(task: TaskDetail, identity: SourceInter
 }
 
 function interruptBindingMatches(task: TaskDetail, interrupt: PendingInterrupt): boolean {
-  return (
-    interruptIdentityBindingMatches(task, interrupt.identity) &&
-    Number.isSafeInteger(interrupt.planRevision) &&
-    interrupt.planRevision >= 1 &&
-    interrupt.planRevision <= PLAN_REVISION_MAX
-  );
+  if (
+    !interruptIdentityBindingMatches(task, interrupt.identity) ||
+    !Number.isSafeInteger(interrupt.planRevision) ||
+    interrupt.planRevision < 1 ||
+    interrupt.planRevision > PLAN_REVISION_MAX
+  ) {
+    return false;
+  }
+  try {
+    const canonical = pendingInterrupt({
+      identity: interrupt.identity,
+      decisions: interrupt.decisions,
+      planRevision: interrupt.planRevision,
+      ...(interrupt.question === undefined ? {} : { question: interrupt.question }),
+      ...(interrupt.version === undefined
+        ? {}
+        : {
+            version: interrupt.version,
+            actionRequests: interrupt.actionRequests!,
+            reviewConfigs: interrupt.reviewConfigs!,
+          }),
+    });
+    return samePendingInterrupt(canonical, interrupt);
+  } catch {
+    return false;
+  }
 }
 
 function eventNestedBindingsValid(

@@ -8,9 +8,14 @@ from dataclasses import dataclass, field
 from deepwork_api.domain import (
     CANCELLATION_SAFE_REASON,
     MAX_PLAN_REVISION,
+    MAX_PLAN_STEP_LENGTH,
+    MAX_PLAN_STEPS,
     CancellationRecord,
+    DecisionBatchRecord,
+    DecisionBatchVersionStaleError,
     DecisionConflictError,
     DecisionRecord,
+    DecisionType,
     DecisionValue,
     EventData,
     EvidenceClass,
@@ -28,6 +33,7 @@ from deepwork_api.domain import (
     TaskNotFoundError,
     TaskSnapshot,
     TaskStatus,
+    aggregate_batch_decision,
 )
 from deepwork_api.ports import Clock, system_clock
 
@@ -345,6 +351,99 @@ class InMemoryTaskRepository:
                 run_id=task.run_id,
                 interrupt_id=interrupt_id,
                 decision=decision,
+                duplicate=False,
+            )
+
+    async def record_decision_batch(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        decision_types: tuple[DecisionType, ...],
+        request_fingerprint: str,
+        edited_steps: tuple[str, ...],
+    ) -> DecisionBatchRecord:
+        """Apply edits and record the vector under one repository lock."""
+
+        if len(request_fingerprint) != 64:
+            raise ValueError("request fingerprint must be a SHA-256 value")
+        if not 1 <= len(edited_steps) <= MAX_PLAN_STEPS or any(
+            not step.strip() or len(step) > MAX_PLAN_STEP_LENGTH for step in edited_steps
+        ):
+            raise ValueError("edited steps are outside the shared plan bounds")
+        async with self._condition:
+            task = self._get(task_id)
+            aggregate = aggregate_batch_decision(decision_types)
+            existing = task.decisions.get(interrupt_id)
+            if existing is not None:
+                if existing != (aggregate, request_fingerprint):
+                    raise DecisionConflictError
+                return DecisionBatchRecord(
+                    task_id=task.task_id,
+                    run_id=task.run_id,
+                    interrupt_id=interrupt_id,
+                    version=str(expected_revision),
+                    decision_types=decision_types,
+                    duplicate=True,
+                )
+            if task.status.is_terminal or task.pending_interrupt_id is None:
+                raise StaleInterruptError
+            if task.pending_interrupt_id != interrupt_id:
+                raise InterruptMismatchError
+            plan = task.proposed_plan
+            if plan is None:
+                raise PlanUnavailableError
+            if plan.revision != expected_revision:
+                raise DecisionBatchVersionStaleError
+            if len(decision_types) != len(plan.steps) or len(edited_steps) != len(plan.steps):
+                raise ValueError("decision vector must align with the current plan")
+
+            if edited_steps != plan.steps:
+                if plan.revision >= MAX_PLAN_REVISION:
+                    raise PlanRevisionConflictError
+                task.proposed_plan = ProposedPlan(
+                    revision=plan.revision + 1,
+                    title=plan.title,
+                    steps=edited_steps,
+                    evidence_refs=plan.evidence_refs,
+                )
+                task.events.append(
+                    TaskEvent(
+                        event_id=len(task.events) + 1,
+                        name=TaskEventName.PLAN_UPDATED,
+                        data=(
+                            ("title", task.proposed_plan.title),
+                            ("steps", task.proposed_plan.steps),
+                            ("revision", task.proposed_plan.revision),
+                            ("evidenceRefs", task.proposed_plan.evidence_refs),
+                            ("evidenceClass", EvidenceClass.FIXTURE.value),
+                        ),
+                    )
+                )
+            task.decisions[interrupt_id] = (aggregate, request_fingerprint)
+            task.pending_interrupt_id = None
+            task.status = TaskStatus.RUNNING
+            task.events.append(
+                TaskEvent(
+                    event_id=len(task.events) + 1,
+                    name=TaskEventName.DECISION_RECORDED,
+                    data=(
+                        ("interruptId", interrupt_id),
+                        ("decision", aggregate.value),
+                        ("commentProvided", False),
+                        ("responseProvided", False),
+                        ("decisionTypes", tuple(item.value for item in decision_types)),
+                    ),
+                )
+            )
+            self._condition.notify_all()
+            return DecisionBatchRecord(
+                task_id=task.task_id,
+                run_id=task.run_id,
+                interrupt_id=interrupt_id,
+                version=str(expected_revision),
+                decision_types=decision_types,
                 duplicate=False,
             )
 

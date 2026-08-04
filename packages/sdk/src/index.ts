@@ -27,8 +27,10 @@ export {
 } from "./result.js";
 
 export {
+  createBatchDecisionInput,
   createDecisionInput,
   createPlanEditInput,
+  mapBatchDecisionReceipt,
   mapDecisionReceipt,
   mapPlanEditReceipt,
   mapTaskAccepted,
@@ -40,6 +42,8 @@ export {
   type TaskEventMappingContext,
   type TaskMutationBindingResolver,
 } from "./task-mapping.js";
+
+export type { BatchDecisionInput, BatchDecisionReceipt } from "@deepwork/domain";
 
 export {
   createTaskMutationService,

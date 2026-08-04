@@ -22,8 +22,11 @@ from deepwork_api.domain import (
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
     CancellationRecord,
+    DecisionBatchRecord,
+    DecisionBatchVersionStaleError,
     DecisionConflictError,
     DecisionRecord,
+    DecisionType,
     DecisionValue,
     EventData,
     EventDataValue,
@@ -44,6 +47,7 @@ from deepwork_api.domain import (
     TaskNotFoundError,
     TaskSnapshot,
     TaskStatus,
+    aggregate_batch_decision,
 )
 from deepwork_api.ports import Clock, system_clock
 
@@ -496,6 +500,33 @@ class SQLiteTaskRepository:
             decision,
             comment_provided,
             response_digest,
+        )
+
+    async def record_decision_batch(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        decision_types: tuple[DecisionType, ...],
+        request_fingerprint: str,
+        edited_steps: tuple[str, ...],
+    ) -> DecisionBatchRecord:
+        """Apply plan edits and record the vector in one SQLite transaction."""
+
+        _validate_plan_revision(expected_revision)
+        _validate_steps(edited_steps)
+        if _SHA256_PATTERN.fullmatch(request_fingerprint) is None:
+            raise ValueError("request fingerprint must be a lowercase SHA-256 value")
+        return await self._mutate(
+            self._record_decision_batch_sync,
+            task_id,
+            interrupt_id,
+            expected_revision,
+            decision_types,
+            request_fingerprint,
+            edited_steps,
+            _encode_string_tuple(edited_steps),
         )
 
     async def wait_for_decision(
@@ -1140,6 +1171,119 @@ class SQLiteTaskRepository:
                 run_id=cast(str, task["run_id"]),
                 interrupt_id=interrupt_id,
                 decision=decision,
+                duplicate=False,
+            )
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def _record_decision_batch_sync(
+        self,
+        task_id: str,
+        interrupt_id: str,
+        expected_revision: int,
+        decision_types: tuple[DecisionType, ...],
+        request_fingerprint: str,
+        edited_steps: tuple[str, ...],
+        encoded_steps: str,
+    ) -> DecisionBatchRecord:
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            task = self._task_row_sync(connection, task_id)
+            aggregate = aggregate_batch_decision(decision_types)
+            existing = connection.execute(
+                """
+                SELECT decision, response_digest
+                FROM decisions
+                WHERE task_id = ? AND interrupt_id = ?
+                """,
+                (task_id, interrupt_id),
+            ).fetchone()
+            if existing is not None:
+                if (
+                    _decode_decision(existing["decision"]) is not aggregate
+                    or cast(str | None, existing["response_digest"]) != request_fingerprint
+                ):
+                    raise DecisionConflictError
+                connection.commit()
+                return DecisionBatchRecord(
+                    task_id=cast(str, task["task_id"]),
+                    run_id=cast(str, task["run_id"]),
+                    interrupt_id=interrupt_id,
+                    version=str(expected_revision),
+                    decision_types=decision_types,
+                    duplicate=True,
+                )
+            if _decode_status(task["status"]).is_terminal or task["pending_interrupt_id"] is None:
+                raise StaleInterruptError
+            if cast(str, task["pending_interrupt_id"]) != interrupt_id:
+                raise InterruptMismatchError
+            plan = self._plan_from_row(task)
+            if plan is None:
+                raise PlanUnavailableError
+            if plan.revision != expected_revision:
+                raise DecisionBatchVersionStaleError
+            if len(decision_types) != len(plan.steps) or len(edited_steps) != len(plan.steps):
+                raise ValueError("decision vector must align with the current plan")
+
+            next_revision = plan.revision
+            if edited_steps != plan.steps:
+                if plan.revision >= MAX_PLAN_REVISION:
+                    raise PlanRevisionConflictError
+                next_revision += 1
+            connection.execute(
+                """
+                INSERT INTO decisions (task_id, interrupt_id, decision, response_digest)
+                VALUES (?, ?, ?, ?)
+                """,
+                (task_id, interrupt_id, aggregate.value, request_fingerprint),
+            )
+            connection.execute(
+                """
+                UPDATE tasks
+                SET pending_interrupt_id = NULL, status = ?, plan_revision = ?, plan_steps = ?
+                WHERE task_id = ?
+                """,
+                (TaskStatus.RUNNING.value, next_revision, encoded_steps, task_id),
+            )
+            if edited_steps != plan.steps:
+                updated = ProposedPlan(
+                    revision=next_revision,
+                    title=plan.title,
+                    steps=edited_steps,
+                    evidence_refs=plan.evidence_refs,
+                )
+                self._insert_event_sync(
+                    connection,
+                    task_id,
+                    TaskEvent(
+                        event_id=self._next_event_id_sync(connection, task_id),
+                        name=TaskEventName.PLAN_UPDATED,
+                        data=_plan_event_data(updated, EvidenceClass.FIXTURE),
+                    ),
+                )
+            event = TaskEvent(
+                event_id=self._next_event_id_sync(connection, task_id),
+                name=TaskEventName.DECISION_RECORDED,
+                data=(
+                    ("interruptId", interrupt_id),
+                    ("decision", aggregate.value),
+                    ("commentProvided", False),
+                    ("responseProvided", False),
+                    ("decisionTypes", tuple(item.value for item in decision_types)),
+                ),
+            )
+            self._insert_event_sync(connection, task_id, event)
+            connection.commit()
+            return DecisionBatchRecord(
+                task_id=cast(str, task["task_id"]),
+                run_id=cast(str, task["run_id"]),
+                interrupt_id=interrupt_id,
+                version=str(expected_revision),
+                decision_types=decision_types,
                 duplicate=False,
             )
         except Exception:

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { ActiveInterrupt, TaskDetail, TaskStatus, TaskSummary } from "../../lib/task-types";
 import {
+  approvalCapabilities,
   approvalCapabilityCounts,
+  batchResolution,
   deriveApprovalRows,
   filterRowsByCapability,
   orderedDecisions,
@@ -129,7 +131,12 @@ describe("capability counts and filtering", () => {
   });
 
   it("counts each verb only across loaded interrupts", () => {
-    expect(approvalCapabilityCounts(rows)).toEqual({ approve: 1, reject: 1, respond: 1 });
+    expect(approvalCapabilityCounts(rows)).toEqual({
+      approve: 1,
+      edit: 0,
+      reject: 1,
+      respond: 1,
+    });
   });
 
   it("keeps unhydrated rows under the all filter but not under verb filters", () => {
@@ -147,5 +154,53 @@ describe("capability counts and filtering", () => {
     expect(filterRowsByCapability(rows, "reject").map((row) => row.task.taskId)).toEqual([
       "task_00000001",
     ]);
+  });
+
+  it("derives batch capabilities from the aligned review configs instead of legacy verbs", () => {
+    const batch = task("task_00000004", "waiting-approval");
+    const batchInterrupt: ActiveInterrupt = {
+      ...interrupt("int-batch", ["approve", "reject", "respond"]),
+      version: "2",
+      actionRequests: [
+        { name: "execute_plan_step", args: { position: 1, text: "Inspect" } },
+        { name: "execute_plan_step", args: { position: 2, text: "Verify" } },
+      ],
+      reviewConfigs: [
+        { actionName: "execute_plan_step", allowedDecisions: ["approve", "edit"] },
+        { actionName: "execute_plan_step", allowedDecisions: ["approve", "reject"] },
+      ],
+    };
+    const batchRows = deriveApprovalRows([batch], {
+      [batch.taskId]: detailWithInterrupt(batch, batchInterrupt),
+    });
+
+    expect(approvalCapabilities(batchInterrupt)).toEqual(["approve", "edit", "reject"]);
+    expect(approvalCapabilityCounts(batchRows)).toEqual({
+      approve: 1,
+      edit: 1,
+      reject: 1,
+      respond: 0,
+    });
+    expect(filterRowsByCapability(batchRows, "edit")).toHaveLength(1);
+    expect(filterRowsByCapability(batchRows, "respond")).toHaveLength(0);
+  });
+});
+
+describe("batch resolution", () => {
+  it("reports the aggregate outcome without calling mixed or rejected vectors approvals", () => {
+    expect(batchResolution([{ type: "approve" }, { type: "approve" }])).toBe("approve");
+    expect(
+      batchResolution([
+        { type: "approve" },
+        { type: "edit", editedAction: { name: "execute_plan_step", args: {} } },
+      ]),
+    ).toBe("batch");
+    expect(batchResolution([{ type: "approve" }, { type: "reject" }])).toBe("reject");
+    expect(
+      batchResolution([
+        { type: "respond", message: "First" },
+        { type: "respond", message: "Second" },
+      ]),
+    ).toBe("respond");
   });
 });

@@ -10,6 +10,7 @@ import {
   getLatestPlan,
   isTerminalStatus,
   normalizeCreateTaskResult,
+  normalizeDecisionBatchResult,
   normalizeDecisionResult,
   normalizeTaskList,
   normalizeTaskDetail,
@@ -20,6 +21,7 @@ import {
   terminalEventNeedsDetail,
   validateDecisionComment,
   validateDecisionInput,
+  validateDecisionBatchInput,
   planStepIssue,
   validatePlanSteps,
   validatePrompt,
@@ -77,6 +79,176 @@ describe("task response normalization", () => {
         status: "accepted",
       }),
     ).toThrow("receipt status");
+  });
+
+  it("preserves repeated ordered actions and their position-aligned review configs", () => {
+    const detail = normalizeTaskDetail({
+      taskId: "task-1",
+      runId: "run-1",
+      status: "waiting-approval",
+      pendingInterrupt: {
+        interruptId: "interrupt-1",
+        version: "interrupt-1:1",
+        planRevision: 1,
+        decisions: ["approve", "reject"],
+        actionRequests: [
+          { name: "execute_plan_step", args: { position: 1, text: "Inspect" } },
+          { name: "execute_plan_step", args: { position: 2, text: "Verify" } },
+        ],
+        reviewConfigs: [
+          {
+            actionName: "execute_plan_step",
+            allowedDecisions: ["approve", "edit", "reject"],
+          },
+          {
+            actionName: "execute_plan_step",
+            allowedDecisions: ["approve", "edit", "reject"],
+          },
+        ],
+      },
+    });
+
+    expect(detail.pendingInterrupt).toMatchObject({
+      version: "interrupt-1:1",
+      actionRequests: [
+        { name: "execute_plan_step", args: { position: 1, text: "Inspect" } },
+        { name: "execute_plan_step", args: { position: 2, text: "Verify" } },
+      ],
+    });
+    expect(detail.pendingInterrupt?.reviewConfigs).toHaveLength(2);
+  });
+
+  it("rejects malformed or misaligned ordered approval contracts", () => {
+    const pendingInterrupt = {
+      interruptId: "interrupt-1",
+      version: "interrupt-1:1",
+      actionRequests: [{ name: "execute_plan_step", args: { position: 1, text: "Inspect" } }],
+      reviewConfigs: [],
+    };
+    expect(() =>
+      normalizeTaskDetail({ taskId: "task-1", status: "waiting-approval", pendingInterrupt }),
+    ).toThrow("same number");
+    expect(() =>
+      normalizeTaskDetail({
+        taskId: "task-1",
+        status: "waiting-approval",
+        pendingInterrupt: {
+          ...pendingInterrupt,
+          reviewConfigs: [
+            { actionName: "execute_plan_step", allowedDecisions: ["approve", "invent"] },
+          ],
+        },
+      }),
+    ).toThrow("unsupported decision");
+  });
+
+  it("validates a complete positional batch against its advertised decisions", () => {
+    const interrupt = normalizeTaskDetail({
+      taskId: "task-1",
+      status: "waiting-approval",
+      pendingInterrupt: {
+        interruptId: "interrupt-1",
+        version: "interrupt-1:1",
+        actionRequests: [
+          { name: "execute_plan_step", args: { position: 1, text: "Inspect" } },
+          { name: "execute_plan_step", args: { position: 2, text: "Verify" } },
+        ],
+        reviewConfigs: [
+          { actionName: "execute_plan_step", allowedDecisions: ["approve", "edit"] },
+          { actionName: "execute_plan_step", allowedDecisions: ["edit", "reject"] },
+        ],
+      },
+    }).pendingInterrupt!;
+
+    expect(
+      validateDecisionBatchInput(interrupt, {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-1",
+        decisions: [
+          { type: "approve" },
+          {
+            type: "edit",
+            editedAction: {
+              name: "execute_plan_step",
+              args: { position: 2, text: "Verify the hosted result" },
+            },
+          },
+        ],
+      }).decisions,
+    ).toHaveLength(2);
+
+    expect(() =>
+      validateDecisionBatchInput(interrupt, {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-2",
+        decisions: [{ type: "approve" }],
+      }),
+    ).toThrow("one decision per action");
+    expect(() =>
+      validateDecisionBatchInput(interrupt, {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-3",
+        decisions: [{ type: "approve" }, { type: "respond", message: "Continue" }],
+      }),
+    ).toThrow("does not allow respond");
+
+    const respondInterrupt = {
+      ...interrupt,
+      reviewConfigs: [
+        interrupt.reviewConfigs![0]!,
+        { actionName: "execute_plan_step", allowedDecisions: ["respond" as const] },
+      ],
+    };
+    expect(() =>
+      validateDecisionBatchInput(respondInterrupt, {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-4",
+        decisions: [{ type: "approve" }, { type: "respond", message: "  " }],
+      }),
+    ).toThrow("nonblank response");
+    expect(() =>
+      validateDecisionBatchInput(interrupt, {
+        interruptId: "interrupt-1",
+        expectedVersion: "interrupt-1:1",
+        idempotencyKey: "batch-key-5",
+        decisions: [
+          { type: "approve" },
+          {
+            type: "edit",
+            editedAction: {
+              name: "execute_plan_step",
+              args: { position: 1, text: "Wrong positional binding" },
+            },
+          },
+        ],
+      }),
+    ).toThrow("preserve its plan position");
+  });
+
+  it("normalizes an exact ordered batch receipt", () => {
+    expect(
+      normalizeDecisionBatchResult({
+        taskId: "task-1",
+        runId: "run-1",
+        interruptId: "interrupt-1",
+        version: "interrupt-1:1",
+        decisionTypes: ["approve", "edit"],
+        status: "accepted",
+        duplicate: false,
+      }),
+    ).toEqual({
+      taskId: "task-1",
+      runId: "run-1",
+      interruptId: "interrupt-1",
+      version: "interrupt-1:1",
+      decisionTypes: ["approve", "edit"],
+      status: "accepted",
+      duplicate: false,
+    });
   });
 });
 
@@ -538,6 +710,42 @@ describe("terminal result handling", () => {
 
     expect(detail.status).toBe("waiting-approval");
     expect(detail.pendingInterrupt?.interruptId).toBe("interrupt-current");
+  });
+
+  it("clears obsolete ordered controls when another device updates the plan", () => {
+    const detail = reduceEventsIntoDetail(
+      {
+        taskId: "task-1",
+        title: "Ship it",
+        status: "waiting-approval",
+        pendingInterrupt: {
+          interruptId: "interrupt-current",
+          version: "1",
+          decisions: ["approve", "reject"],
+          actionRequests: [{ name: "execute_plan_step", args: { position: 1, text: "Old step" } }],
+          reviewConfigs: [
+            { actionName: "execute_plan_step", allowedDecisions: ["approve", "edit"] },
+          ],
+          title: "Current request",
+          question: "Continue?",
+        },
+      },
+      [
+        {
+          id: "plan-2",
+          name: "plan.updated",
+          data: { revision: 2, title: "Updated", steps: ["New step"], evidenceRefs: [] },
+        },
+      ],
+    );
+
+    expect(detail.pendingInterrupt).toMatchObject({
+      interruptId: "interrupt-current",
+      planRevision: 2,
+    });
+    expect(detail.pendingInterrupt?.version).toBeUndefined();
+    expect(detail.pendingInterrupt?.actionRequests).toBeUndefined();
+    expect(detail.pendingInterrupt?.reviewConfigs).toBeUndefined();
   });
 
   it("reduces early stream events into a later detail response", () => {

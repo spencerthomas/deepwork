@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+async function chooseRejectForEveryAction(scope: import("@playwright/test").Locator) {
+  const buttons = scope.getByRole("button", { name: "Reject", exact: true });
+  const count = await buttons.count();
+  for (let index = 0; index < count; index += 1) {
+    await buttons.nth(index).click();
+  }
+}
+
+async function chooseApproveForEveryAction(scope: import("@playwright/test").Locator) {
+  const buttons = scope.getByRole("button", { name: "Approve", exact: true });
+  const count = await buttons.count();
+  for (let index = 0; index < count; index += 1) {
+    await buttons.nth(index).click();
+  }
+}
+
+async function approveBatch(scope: import("@playwright/test").Locator) {
+  await chooseApproveForEveryAction(scope);
+  await scope.getByRole("button", { name: "Submit reviewed batch" }).click();
+}
+
 test("a stale second-device decision is refreshed and blocked before submission", async ({
   browser,
   page,
@@ -13,7 +34,8 @@ test("a stale second-device decision is refreshed and blocked before submission"
   const taskUrl = page.url();
   const taskId = new URL(taskUrl).pathname.split("/").at(-1);
   if (!taskId) throw new Error("The dispatched task URL did not contain a task identifier.");
-  await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible();
+  const firstBatch = page.getByRole("region", { name: "Ordered approval batch" });
+  await expect(firstBatch.getByRole("button", { name: "Approve", exact: true })).toHaveCount(3);
 
   const secondContext = await browser.newContext({
     baseURL: "http://127.0.0.1:3000",
@@ -34,7 +56,7 @@ test("a stale second-device decision is refreshed and blocked before submission"
   secondPage.on("request", (request) => {
     if (
       request.method() === "POST" &&
-      request.url().endsWith(`/api/v1/tasks/${taskId}/decisions`)
+      request.url().endsWith(`/api/v1/tasks/${taskId}/decision-batch`)
     ) {
       secondDeviceDecisionPosts += 1;
     }
@@ -42,9 +64,10 @@ test("a stale second-device decision is refreshed and blocked before submission"
 
   await secondPage.goto(taskUrl);
   await expect(secondPage.getByRole("heading", { name: objective, exact: true })).toBeVisible();
-  await expect(secondPage.getByRole("button", { name: "Reject", exact: true })).toBeVisible();
+  const secondBatch = secondPage.getByRole("region", { name: "Ordered approval batch" });
+  await expect(secondBatch.getByRole("button", { name: "Reject", exact: true })).toHaveCount(3);
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveBatch(firstBatch);
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   const eventTranscript = await page.request.get(`/api/v1/tasks/${taskId}/events`);
   expect(eventTranscript.status()).toBe(200);
@@ -52,9 +75,11 @@ test("a stale second-device decision is refreshed and blocked before submission"
   expect(eventText.match(/event: decision\.recorded/g)).toHaveLength(1);
   expect(eventText).toContain('"decision":"approve"');
 
-  await secondPage.getByRole("button", { name: "Reject", exact: true }).click();
+  await chooseRejectForEveryAction(secondBatch);
+  await secondBatch.getByRole("button", { name: "Submit reviewed batch" }).click();
   const staleNotice = secondPage.getByRole("alert").filter({
-    hasText: "This approval is no longer current. No decision was sent. The latest task state is shown.",
+    hasText:
+      "This approval is no longer current. No decision was sent. The latest task state is shown.",
   });
   await expect(staleNotice).toBeVisible();
   await expect(staleNotice).toBeFocused();
@@ -90,7 +115,7 @@ test("the approvals inbox retains and focuses a stale-decision explanation after
   secondPage.on("request", (request) => {
     if (
       request.method() === "POST" &&
-      request.url().endsWith(`/api/v1/tasks/${taskId}/decisions`)
+      request.url().endsWith(`/api/v1/tasks/${taskId}/decision-batch`)
     ) {
       secondDeviceDecisionPosts += 1;
     }
@@ -98,11 +123,12 @@ test("the approvals inbox retains and focuses a stale-decision explanation after
 
   await secondPage.goto("/approvals");
   const staleRow = secondPage.locator(`#approval-row-${taskId}`);
-  await expect(staleRow.getByRole("button", { name: "Reject", exact: true })).toBeVisible();
+  await expect(staleRow.getByRole("button", { name: "Reject", exact: true })).toHaveCount(3);
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveBatch(page.getByRole("region", { name: "Ordered approval batch" }));
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
-  await staleRow.getByRole("button", { name: "Reject", exact: true }).click();
+  await chooseRejectForEveryAction(staleRow);
+  await staleRow.getByRole("button", { name: "Submit reviewed batch" }).click();
 
   const staleNotice = secondPage.getByRole("alert").filter({
     hasText:
@@ -168,24 +194,26 @@ test("a decision won after preflight is reconciled from the server without a sec
   secondPage.on("request", (request) => {
     if (
       request.method() === "POST" &&
-      request.url().endsWith(`/api/v1/tasks/${taskId}/decisions`)
+      request.url().endsWith(`/api/v1/tasks/${taskId}/decision-batch`)
     ) {
       secondDeviceDecisionPosts += 1;
     }
   });
 
   await secondPage.goto(taskUrl);
-  await expect(secondPage.getByRole("button", { name: "Reject", exact: true })).toBeVisible();
-  await secondPage.getByRole("button", { name: "Reject", exact: true }).click();
+  const secondBatch = secondPage.getByRole("region", { name: "Ordered approval batch" });
+  await expect(secondBatch.getByRole("button", { name: "Reject", exact: true })).toHaveCount(3);
+  await chooseRejectForEveryAction(secondBatch);
+  await secondBatch.getByRole("button", { name: "Submit reviewed batch" }).click();
   await preflightCaptured;
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveBatch(page.getByRole("region", { name: "Ordered approval batch" }));
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();
   releasePreflight();
 
   const conflictNotice = secondPage.getByRole("alert").filter({
     hasText:
-      "A different decision was already recorded. The current task and interruption were reloaded.",
+      "A different decision vector was already recorded. The current task and ordered approval were reloaded.",
   });
   await expect(conflictNotice).toBeVisible();
   await expect(conflictNotice).toBeFocused();

@@ -19,6 +19,12 @@ import {
   type TaskId,
 } from "./identity.js";
 import type { TaskStatus } from "./view-state.js";
+import {
+  orderedActionReview,
+  type ActionDecisionType,
+  type ActionRequest,
+  type ReviewConfig,
+} from "./action-review.js";
 
 export const TASK_OBJECTIVE_MAX_CODE_POINTS = 8_000;
 export const PLAN_STEP_MAX_CODE_POINTS = 1_000;
@@ -121,6 +127,9 @@ export interface PendingInterrupt {
   readonly decisions: readonly TaskDecision[];
   readonly planRevision: number;
   readonly question?: DisplayText;
+  readonly version?: string;
+  readonly actionRequests?: readonly ActionRequest[];
+  readonly reviewConfigs?: readonly ReviewConfig[];
 }
 
 export interface TaskSummary {
@@ -235,6 +244,7 @@ export interface DecisionRecordedEvent extends EventBase<"decision.recorded"> {
   readonly decision: TaskDecision;
   readonly commentProvided: boolean;
   readonly responseProvided: boolean;
+  readonly decisionTypes?: readonly ActionDecisionType[];
 }
 
 export interface RunCompletedEvent extends EventBase<"run.completed"> {
@@ -490,6 +500,9 @@ export function pendingInterrupt(input: {
   readonly decisions: readonly TaskDecision[];
   readonly planRevision: number;
   readonly question?: string;
+  readonly version?: string;
+  readonly actionRequests?: readonly ActionRequest[];
+  readonly reviewConfigs?: readonly ReviewConfig[];
 }): PendingInterrupt {
   if (
     input.decisions.length < 1 ||
@@ -499,10 +512,31 @@ export function pendingInterrupt(input: {
   ) {
     throw new TypeError("Interrupt decisions must be a non-empty unique accepted set.");
   }
+  const orderedFieldsPresent = [
+    input.version !== undefined,
+    input.actionRequests !== undefined,
+    input.reviewConfigs !== undefined,
+  ];
+  if (orderedFieldsPresent.some(Boolean) && !orderedFieldsPresent.every(Boolean)) {
+    throw new TypeError(
+      "Ordered interrupt version, actions, and configs must be provided together.",
+    );
+  }
+  const ordered =
+    input.version === undefined ||
+    input.actionRequests === undefined ||
+    input.reviewConfigs === undefined
+      ? undefined
+      : orderedActionReview({
+          version: input.version,
+          actionRequests: input.actionRequests,
+          reviewConfigs: input.reviewConfigs,
+        });
   return Object.freeze({
     identity: exactSourceInterrupt(input.identity),
     decisions: Object.freeze([...input.decisions]),
     planRevision: positiveRevision(input.planRevision, "Interrupt plan revision"),
+    ...(ordered === undefined ? {} : ordered),
     ...(input.question === undefined
       ? {}
       : {
@@ -629,6 +663,13 @@ export function taskDetail(
           identity: input.pendingInterrupt.identity,
           decisions: input.pendingInterrupt.decisions,
           planRevision: input.pendingInterrupt.planRevision,
+          ...(input.pendingInterrupt.version === undefined
+            ? {}
+            : {
+                version: input.pendingInterrupt.version,
+                actionRequests: input.pendingInterrupt.actionRequests!,
+                reviewConfigs: input.pendingInterrupt.reviewConfigs!,
+              }),
           ...(input.pendingInterrupt.question === undefined
             ? {}
             : { question: input.pendingInterrupt.question }),

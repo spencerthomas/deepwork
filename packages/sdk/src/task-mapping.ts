@@ -1,5 +1,8 @@
 import {
   applicationEventId,
+  ACTION_DECISION_TYPES,
+  batchDecisionInput,
+  batchDecisionReceipt,
   decisionInput,
   displayText,
   evidenceId,
@@ -25,6 +28,11 @@ import {
   taskResult,
   taskSummary,
   threadId,
+  type ActionDecision,
+  type ActionDecisionType,
+  type ActionRequest,
+  type BatchDecisionInput,
+  type BatchDecisionReceipt,
   type DecisionInput,
   type DecisionReceipt,
   type EvidenceClass,
@@ -32,6 +40,8 @@ import {
   type PlanEditInput,
   type PlanEditReceipt,
   type PendingInterrupt,
+  type ReviewConfig,
+  type SourceInterruptKey,
   type SourceRunKey,
   type SourceThreadKey,
   type TaskAccepted,
@@ -311,9 +321,77 @@ function mapInterrupt(
   sourceThread: SourceThreadKey,
   run: SourceRunKey,
 ): ReturnType<typeof pendingInterrupt> {
-  const wire = record(value, ["interruptId", "decisions", "planRevision"], "Pending interrupt");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError("Pending interrupt must be a record.");
+  }
+  const hasOrderedFields = ["version", "actionRequests", "reviewConfigs"].some((key) =>
+    Object.hasOwn(value, key),
+  );
+  const wire = record(
+    value,
+    hasOrderedFields
+      ? ["interruptId", "decisions", "planRevision", "version", "actionRequests", "reviewConfigs"]
+      : ["interruptId", "decisions", "planRevision"],
+    "Pending interrupt",
+  );
   if (!Array.isArray(wire.decisions) || !wire.decisions.every(isTaskDecision)) {
     throw new TypeError("Pending interrupt decisions are invalid.");
+  }
+  let ordered:
+    | Readonly<{
+        version: string;
+        actionRequests: readonly ActionRequest[];
+        reviewConfigs: readonly ReviewConfig[];
+      }>
+    | undefined;
+  if (hasOrderedFields) {
+    if (!Array.isArray(wire.actionRequests) || !Array.isArray(wire.reviewConfigs)) {
+      throw new TypeError("Pending interrupt ordered review fields are invalid.");
+    }
+    ordered = {
+      version: wire.version as string,
+      actionRequests: wire.actionRequests.map((item) => {
+        if (typeof item !== "object" || item === null || Array.isArray(item)) {
+          throw new TypeError("Action request must be a record.");
+        }
+        const hasDescription = Object.hasOwn(item, "description");
+        const accepted = record(
+          item,
+          hasDescription ? ["name", "args", "description"] : ["name", "args"],
+          "Action request",
+        );
+        return {
+          name: accepted.name as string,
+          args: accepted.args as ActionRequest["args"],
+          ...(hasDescription ? { description: accepted.description as string } : {}),
+        };
+      }),
+      reviewConfigs: wire.reviewConfigs.map((item) => {
+        if (typeof item !== "object" || item === null || Array.isArray(item)) {
+          throw new TypeError("Review config must be a record.");
+        }
+        const hasArgsSchema = Object.hasOwn(item, "argsSchema");
+        const accepted = record(
+          item,
+          hasArgsSchema
+            ? ["actionName", "allowedDecisions", "argsSchema"]
+            : ["actionName", "allowedDecisions"],
+          "Review config",
+        );
+        if (!Array.isArray(accepted.allowedDecisions)) {
+          throw new TypeError("Review config decisions are invalid.");
+        }
+        return {
+          actionName: accepted.actionName as string,
+          allowedDecisions: accepted.allowedDecisions as ActionDecisionType[],
+          ...(hasArgsSchema
+            ? {
+                argsSchema: accepted.argsSchema as NonNullable<ReviewConfig["argsSchema"]>,
+              }
+            : {}),
+        };
+      }),
+    };
   }
   return pendingInterrupt({
     identity: sourceInterruptKey(
@@ -327,7 +405,20 @@ function mapInterrupt(
     ),
     decisions: wire.decisions,
     planRevision: positiveInteger(wire.planRevision, "Interrupt plan revision"),
+    ...(ordered === undefined ? {} : ordered),
   });
+}
+
+function canonicalRequestInterrupt(interrupt: SourceInterruptKey): SourceInterruptKey {
+  return sourceInterruptKey(
+    sourceId(string(interrupt.sourceId, "Task source identifier", 200)),
+    taskId(identifier(interrupt.taskId, "Task identifier", TASK_ID_PATTERN)),
+    threadId(string(interrupt.threadId, "Task thread identifier", 200)),
+    runId(identifier(interrupt.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
+    interruptId(
+      identifier(interrupt.interruptId, "Interrupt identifier", SOURCE_SAFE_IDENTIFIER_PATTERN),
+    ),
+  );
 }
 
 export function mapTaskAccepted(
@@ -470,19 +561,7 @@ export function mapDecisionReceipt(
   request: DecisionInput,
 ): SdkResult<DecisionReceipt> {
   return attempt(() => {
-    const correlatedInterrupt = sourceInterruptKey(
-      sourceId(string(request.interrupt.sourceId, "Task source identifier", 200)),
-      taskId(identifier(request.interrupt.taskId, "Task identifier", TASK_ID_PATTERN)),
-      threadId(string(request.interrupt.threadId, "Task thread identifier", 200)),
-      runId(identifier(request.interrupt.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
-      interruptId(
-        identifier(
-          request.interrupt.interruptId,
-          "Interrupt identifier",
-          SOURCE_SAFE_IDENTIFIER_PATTERN,
-        ),
-      ),
-    );
+    const correlatedInterrupt = canonicalRequestInterrupt(request.interrupt);
     const wire = record(
       value,
       ["taskId", "runId", "interruptId", "decision", "status", "duplicate"],
@@ -520,19 +599,7 @@ export function mapPlanEditReceipt(
   request: PlanEditInput,
 ): SdkResult<PlanEditReceipt> {
   return attempt(() => {
-    const correlatedInterrupt = sourceInterruptKey(
-      sourceId(string(request.interrupt.sourceId, "Task source identifier", 200)),
-      taskId(identifier(request.interrupt.taskId, "Task identifier", TASK_ID_PATTERN)),
-      threadId(string(request.interrupt.threadId, "Task thread identifier", 200)),
-      runId(identifier(request.interrupt.runId, "Run identifier", SOURCE_SAFE_IDENTIFIER_PATTERN)),
-      interruptId(
-        identifier(
-          request.interrupt.interruptId,
-          "Interrupt identifier",
-          SOURCE_SAFE_IDENTIFIER_PATTERN,
-        ),
-      ),
-    );
+    const correlatedInterrupt = canonicalRequestInterrupt(request.interrupt);
     const wire = record(value, ["taskId", "runId", "interruptId", "plan"], "Plan-edit receipt");
     if (
       wire.taskId !== task ||
@@ -566,6 +633,48 @@ export function mapPlanEditReceipt(
       plan,
     });
   }, "Plan-edit receipt");
+}
+
+export function mapBatchDecisionReceipt(
+  value: unknown,
+  task: TaskId,
+  request: BatchDecisionInput,
+): SdkResult<BatchDecisionReceipt> {
+  return attempt(() => {
+    const correlatedInterrupt = canonicalRequestInterrupt(request.interrupt);
+    const wire = record(
+      value,
+      ["taskId", "runId", "interruptId", "version", "decisionTypes", "status", "duplicate"],
+      "Batch decision receipt",
+    );
+    const expectedDecisionTypes = request.decisions.map((item) => item.type);
+    if (
+      wire.status !== "accepted" ||
+      wire.taskId !== task ||
+      correlatedInterrupt.taskId !== task ||
+      wire.runId !== correlatedInterrupt.runId ||
+      wire.interruptId !== correlatedInterrupt.interruptId ||
+      wire.version !== request.expectedVersion ||
+      !Array.isArray(wire.decisionTypes) ||
+      wire.decisionTypes.length !== expectedDecisionTypes.length ||
+      !wire.decisionTypes.every((item, index) => item === expectedDecisionTypes[index])
+    ) {
+      throw new TypeError("Batch decision receipt correlation failed.");
+    }
+    return batchDecisionReceipt({
+      taskId: task,
+      run: sourceRunKey(
+        correlatedInterrupt.sourceId,
+        correlatedInterrupt.threadId,
+        correlatedInterrupt.runId,
+      ),
+      interrupt: correlatedInterrupt,
+      version: wire.version as string,
+      decisionTypes: wire.decisionTypes as ActionDecisionType[],
+      status: "accepted",
+      duplicate: boolean(wire.duplicate, "Batch decision duplicate flag"),
+    });
+  }, "Batch decision receipt");
 }
 
 function eventBase(
@@ -723,9 +832,20 @@ export function mapTaskEvent(
         });
       }
       case "decision.recorded": {
+        const hasDecisionTypes =
+          typeof data === "object" &&
+          data !== null &&
+          !Array.isArray(data) &&
+          Object.hasOwn(data, "decisionTypes");
         const wire = record(
           data,
-          ["interruptId", "decision", "commentProvided", "responseProvided"],
+          [
+            "interruptId",
+            "decision",
+            "commentProvided",
+            "responseProvided",
+            ...(hasDecisionTypes ? ["decisionTypes"] : []),
+          ],
           "decision.recorded event",
         );
         if (!isTaskDecision(wire.decision)) {
@@ -733,6 +853,16 @@ export function mapTaskEvent(
         }
         const commentProvided = boolean(wire.commentProvided, "Decision commentProvided");
         const responseProvided = boolean(wire.responseProvided, "Decision responseProvided");
+        if (
+          hasDecisionTypes &&
+          (!Array.isArray(wire.decisionTypes) ||
+            wire.decisionTypes.length < 1 ||
+            !wire.decisionTypes.every((item) =>
+              (ACTION_DECISION_TYPES as readonly unknown[]).includes(item),
+            ))
+        ) {
+          throw new TypeError("Recorded decision types are invalid.");
+        }
         if (
           (wire.decision === "respond") !== responseProvided ||
           (wire.decision === "respond" && !commentProvided)
@@ -754,6 +884,9 @@ export function mapTaskEvent(
           decision: wire.decision,
           commentProvided,
           responseProvided,
+          ...(hasDecisionTypes
+            ? { decisionTypes: Object.freeze([...(wire.decisionTypes as ActionDecisionType[])]) }
+            : {}),
         });
       }
       case "run.completed": {
@@ -805,6 +938,15 @@ export function createDecisionInput(
     decision,
     ...(comment === undefined ? {} : { comment }),
   });
+}
+
+export function createBatchDecisionInput(
+  interrupt: PendingInterrupt,
+  expectedVersion: string,
+  idempotencyKey: string,
+  decisions: readonly ActionDecision[],
+): BatchDecisionInput {
+  return batchDecisionInput(interrupt, { expectedVersion, idempotencyKey, decisions });
 }
 
 export function createPlanEditInput(

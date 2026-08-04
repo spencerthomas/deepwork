@@ -6,6 +6,8 @@ import { spawn, type ChildProcess } from "node:child_process";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { approveCurrentReview } from "../e2e/support/approve-current-review";
+
 const repositoryRoot = process.cwd();
 const apiExecutable = resolve(repositoryRoot, "apps/api/.venv/bin/deepwork-api");
 const apiOrigin = "http://127.0.0.1:8000";
@@ -314,7 +316,7 @@ test("completed fixture task survives an API restart and reopens without duplica
 
   const header = firstPage.getByRole("heading", { level: 1 }).locator("..");
   await expect(header.getByText("Needs review", { exact: true })).toBeVisible();
-  await firstPage.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveCurrentReview(firstPage);
   await expect(header.getByText("Done", { exact: true })).toBeVisible();
 
   const beforeRestart = await readSnapshot(firstPage, taskId);

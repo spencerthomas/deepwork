@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { approveCurrentReview } from "../e2e/support/approve-current-review";
+
 const accessKey = process.env.DEEPWORK_E2E_ACCESS_KEY;
 
 interface HostedAgent {
@@ -57,7 +59,7 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   await expect(header.getByText("Needs review", { exact: true })).toBeVisible();
   await expect(page.getByText(/plan/i).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveCurrentReview(page);
   await expect(header.getByText("Running", { exact: true })).toBeVisible();
   await expect(header.getByText("Done", { exact: true })).toBeVisible();
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();

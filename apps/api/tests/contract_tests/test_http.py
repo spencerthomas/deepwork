@@ -153,6 +153,46 @@ async def test_create_list_detail_and_real_pause() -> None:
             "interruptId": "interrupt_00000001",
             "decisions": ["approve", "reject", "respond"],
             "planRevision": 1,
+            "version": "1",
+            "actionRequests": [
+                {
+                    "name": "execute_plan_step",
+                    "args": {
+                        "position": 1,
+                        "text": "Confirm readiness gates, owners, and dependencies.",
+                    },
+                },
+                {
+                    "name": "execute_plan_step",
+                    "args": {
+                        "position": 2,
+                        "text": (
+                            "Sequence the change with explicit rollback and communication steps."
+                        ),
+                    },
+                },
+                {
+                    "name": "execute_plan_step",
+                    "args": {
+                        "position": 3,
+                        "text": ("Validate launch health and record any unresolved release risk."),
+                    },
+                },
+            ],
+            "reviewConfigs": [
+                {
+                    "actionName": "execute_plan_step",
+                    "allowedDecisions": ["approve", "edit", "reject"],
+                },
+                {
+                    "actionName": "execute_plan_step",
+                    "allowedDecisions": ["approve", "edit", "reject"],
+                },
+                {
+                    "actionName": "execute_plan_step",
+                    "allowedDecisions": ["approve", "edit", "reject"],
+                },
+            ],
         }
         assert paused["proposedPlan"] == {
             "revision": 1,

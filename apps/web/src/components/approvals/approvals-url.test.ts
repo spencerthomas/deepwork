@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DECISION_VERB_ORDER } from "./approvals-model";
+import { APPROVAL_CAPABILITY_ORDER } from "./approvals-model";
 import { approvalFilterToQuery, readApprovalFilter } from "./approvals-url";
 
-const ALL_FILTERS = ["all", ...DECISION_VERB_ORDER] as const;
+const ALL_FILTERS = ["all", ...APPROVAL_CAPABILITY_ORDER] as const;
 
 describe("readApprovalFilter", () => {
   it("defaults to 'all' when the query is empty", () => {

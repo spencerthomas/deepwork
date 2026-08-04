@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Inbox,
   MessageSquare,
+  Pencil,
   Plus,
   RefreshCw,
   ShieldQuestion,
@@ -25,29 +26,38 @@ import { useTasksStore } from "@/lib/tasks-store";
 import { cn } from "@/lib/utils";
 
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
-import type { ApprovalCapabilityFilter, ApprovalRow, DecisionVerb } from "./approvals-model";
+import type {
+  ApprovalCapability,
+  ApprovalCapabilityFilter,
+  ApprovalResolution,
+  ApprovalRow,
+} from "./approvals-model";
 import {
   approvalCapabilityCounts,
   deriveApprovalRows,
   filterRowsByCapability,
+  isOrderedApproval,
+  supportsUniformDecision,
   waitingTaskIdsNeedingDetail,
 } from "./approvals-model";
 import { approvalFilterToQuery, readApprovalFilter } from "./approvals-url";
 
-const VERB_FILTER_LABELS: Record<DecisionVerb, string> = {
+const CAPABILITY_FILTER_LABELS: Record<ApprovalCapability, string> = {
   approve: "Approve",
+  edit: "Edit",
   reject: "Reject",
   respond: "Respond",
 };
 
-const CONFIRMATION_TEXT: Record<DecisionVerb, string> = {
+const CONFIRMATION_TEXT: Record<ApprovalResolution, string> = {
   approve: "Approval recorded",
+  batch: "Decision batch recorded",
   reject: "Rejection recorded",
   respond: "Response sent",
 };
 
 interface ResolvedConfirmation {
-  decision: DecisionVerb;
+  decision: ApprovalResolution;
   taskId: string;
   taskTitle: string;
 }
@@ -122,6 +132,7 @@ export function ApprovalsView() {
     detailsByTask,
     loadDetail,
     decideForTask,
+    decideBatchForTask,
     mode,
   } = useTasksStore();
   const runtimeCopy = taskRuntimePresentation(mode);
@@ -131,6 +142,8 @@ export function ApprovalsView() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [decisionError, setDecisionError] = useState<string>();
   const decisionErrorRef = useRef<HTMLDivElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const resolvedFocusTargetRef = useRef<string | undefined>(undefined);
 
   // Mirror the active capability filter in the URL so a filtered queue is
   // shareable, and restore it on first load and on browser back/forward — the
@@ -205,28 +218,46 @@ export function ApprovalsView() {
     [hydrate],
   );
 
-  const handleResolved = useCallback((row: ApprovalRow, decision: DecisionVerb) => {
-    setDecisionError(undefined);
-    if (row.interrupt) {
-      const resolvedId = row.interrupt.interruptId;
-      setResolvedInterruptIds((current) => addToSet(current, resolvedId));
-    }
-    setConfirmation({ decision, taskId: row.task.taskId, taskTitle: row.task.title });
-  }, []);
+  const handleResolved = useCallback(
+    (row: ApprovalRow, decision: ApprovalResolution) => {
+      setDecisionError(undefined);
+      const remainingIds = orderedIds.filter((taskId) => taskId !== row.task.taskId);
+      const resolvedIndex = orderedIds.indexOf(row.task.taskId);
+      const nextFocus = remainingIds[Math.min(Math.max(resolvedIndex, 0), remainingIds.length - 1)];
+      resolvedFocusTargetRef.current = nextFocus ?? "confirmation";
+      setFocusedId(nextFocus ?? null);
+      if (row.interrupt) {
+        const resolvedId = row.interrupt.interruptId;
+        setResolvedInterruptIds((current) => addToSet(current, resolvedId));
+      }
+      setConfirmation({ decision, taskId: row.task.taskId, taskTitle: row.task.title });
+    },
+    [orderedIds],
+  );
 
   // Keyboard triage: approve/reject the focused row without leaving the queue.
   // Only approve/reject are keyboard-driven (respond needs a written note), and
   // only when the interrupt actually advertises that verb.
   const decideFromKeyboard = useCallback(
     (row: ApprovalRow, verb: "approve" | "reject") => {
-      if (!row.interrupt || !row.interrupt.decisions.includes(verb)) return;
+      if (!row.interrupt) return;
       if (decidingRef.current) return;
+      const batchReady = isOrderedApproval(row.interrupt);
+      if (batchReady) {
+        const control = document.querySelector<HTMLButtonElement>(
+          `#approval-row-${row.task.taskId} [aria-label="Decision for action 1"] button`,
+        );
+        control?.focus();
+        return;
+      }
+      if (!supportsUniformDecision(row.interrupt, verb)) return;
       decidingRef.current = true;
       setDecisionError(undefined);
-      void decideForTask(row.task.taskId, {
+      const request = decideForTask(row.task.taskId, {
         interruptId: row.interrupt.interruptId,
         decision: verb,
-      }).then((failure) => {
+      });
+      void request.then((failure) => {
         decidingRef.current = false;
         if (failure === undefined) {
           handleResolved(row, verb);
@@ -289,7 +320,15 @@ export function ApprovalsView() {
   useEffect(() => {
     if (focusedId === null) return;
     document.getElementById(`approval-row-${focusedId}`)?.focus();
+    if (resolvedFocusTargetRef.current === focusedId) resolvedFocusTargetRef.current = undefined;
   }, [focusedId]);
+
+  useEffect(() => {
+    if (confirmation && resolvedFocusTargetRef.current === "confirmation") {
+      confirmationRef.current?.focus();
+      resolvedFocusTargetRef.current = undefined;
+    }
+  }, [confirmation]);
 
   const sidebar = (
     <nav className="flex flex-col gap-1">
@@ -309,6 +348,13 @@ export function ApprovalsView() {
         count={counts.approve}
         active={filter === "approve"}
         onClick={() => selectFilter("approve")}
+      />
+      <SidebarItem
+        icon={Pencil}
+        label="Edit"
+        count={counts.edit}
+        active={filter === "edit"}
+        onClick={() => selectFilter("edit")}
       />
       <SidebarItem
         icon={X}
@@ -364,6 +410,8 @@ export function ApprovalsView() {
 
       {confirmation && (
         <div
+          ref={confirmationRef}
+          tabIndex={-1}
           role="status"
           className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-status-done/35 bg-status-done-bg px-4 py-3 text-[13px]"
         >
@@ -460,7 +508,7 @@ export function ApprovalsView() {
           <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
             <p className="text-[14px] text-muted-foreground">
               None of the pending approvals offer the “
-              {filter === "all" ? "" : VERB_FILTER_LABELS[filter]}” action.
+              {filter === "all" ? "" : CAPABILITY_FILTER_LABELS[filter]}” action.
             </p>
             <button
               type="button"
@@ -476,8 +524,8 @@ export function ApprovalsView() {
           {listErrorBanner}
           <p className="mb-2 text-[12px] text-muted-foreground">
             Keyboard: <span className="font-medium text-foreground/80">j / k</span> move ·{" "}
-            <span className="font-medium text-foreground/80">a</span> approve ·{" "}
-            <span className="font-medium text-foreground/80">r</span> reject ·{" "}
+            <span className="font-medium text-foreground/80">a / r</span> choose for a single action
+            or focus an ordered review ·{" "}
             <span className="font-medium text-foreground/80">Enter</span> open
           </p>
           <ul aria-label="Pending approvals" className="space-y-3">
@@ -520,6 +568,10 @@ export function ApprovalsView() {
                     onDecide={async (input) => {
                       setDecisionError(undefined);
                       return decideForTask(row.task.taskId, input);
+                    }}
+                    onDecideBatch={async (input) => {
+                      setDecisionError(undefined);
+                      return decideBatchForTask(row.task.taskId, input);
                     }}
                     onDecisionError={setDecisionError}
                     onResolved={(decision) => handleResolved(row, decision)}

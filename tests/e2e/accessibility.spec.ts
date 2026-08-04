@@ -2,6 +2,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { blockNonLoopbackEgress } from "./support/block-non-loopback-egress";
+import { approveCurrentReview } from "./support/approve-current-review";
 
 // WCAG 2.2 Level A and AA is the repository acceptance bar (AGENTS.md) for
 // E2E-V1-08-RESPONSIVE-ACCESS; the older-version tags stay listed so every
@@ -60,13 +61,13 @@ async function auditTaskJourney(page: Page): Promise<void> {
 
   await page.getByLabel("Task", { exact: true }).fill("Audit an accessible task journey");
   await page.getByRole("button", { name: "Dispatch" }).click();
-  await expect(page).toHaveURL(/\/tasks\/[^/]+$/);
+  await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
 
   const header = page.getByRole("heading", { level: 1 }).locator("..");
   await expect(header.getByText("Needs review", { exact: true })).toBeVisible();
   await expectNoViolations(page, "task detail (needs review + approval card)");
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveCurrentReview(page);
   await expect(header.getByText("Done", { exact: true })).toBeVisible();
   await expectNoViolations(page, "task detail (completed)");
 }

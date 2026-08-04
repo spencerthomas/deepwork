@@ -7,6 +7,11 @@ import { unicodeLength, validateDecisionComment } from "@/lib/task-normalizers";
 import type { ActiveInterrupt, DecisionInput } from "@/lib/task-types";
 import { DECISION_COMMENT_MAX_LENGTH } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
+import {
+  orderedApprovalIdentity,
+  OrderedApprovalBatch,
+} from "@/components/approvals/ordered-approval-batch";
+import type { DecisionBatchInput, ProposedPlan } from "@/lib/task-types";
 
 interface ApprovalCardProps {
   interrupt: ActiveInterrupt;
@@ -14,6 +19,8 @@ interface ApprovalCardProps {
   submittedDecision?: DecisionInput["decision"];
   error?: string;
   onDecide: (input: DecisionInput) => Promise<void>;
+  onDecideBatch?: (input: DecisionBatchInput) => Promise<void>;
+  plan?: ProposedPlan;
 }
 
 /**
@@ -26,6 +33,8 @@ export function ApprovalCard({
   submittedDecision,
   error,
   onDecide,
+  onDecideBatch,
+  plan,
 }: ApprovalCardProps) {
   const fieldId = useId();
   const [comment, setComment] = useState("");
@@ -72,6 +81,27 @@ export function ApprovalCard({
     } finally {
       submissionRef.current = false;
     }
+  }
+
+  if (
+    interrupt.version &&
+    interrupt.actionRequests?.length &&
+    interrupt.reviewConfigs?.length &&
+    onDecideBatch
+  ) {
+    return (
+      <OrderedApprovalBatch
+        key={orderedApprovalIdentity(interrupt)}
+        interrupt={interrupt}
+        plan={plan}
+        submitting={submitting}
+        error={error}
+        onSubmit={async (input) => {
+          await onDecideBatch(input);
+          return undefined;
+        }}
+      />
+    );
   }
 
   return (

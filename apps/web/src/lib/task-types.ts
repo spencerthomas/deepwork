@@ -84,6 +84,51 @@ export interface DecisionResult {
   taskId: string;
 }
 
+export type HitlDecisionType = "approve" | "edit" | "reject" | "respond";
+
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export interface ActionRequest {
+  name: string;
+  args: Record<string, JsonValue>;
+  description?: string;
+}
+
+export interface ReviewConfig {
+  actionName: string;
+  allowedDecisions: HitlDecisionType[];
+  argsSchema?: Record<string, JsonValue>;
+}
+
+export type OrderedDecision =
+  | { type: "approve" }
+  | { type: "edit"; editedAction: ActionRequest }
+  | { type: "reject"; message?: string }
+  | { type: "respond"; message: string };
+
+export interface DecisionBatchInput {
+  interruptId: string;
+  expectedVersion: string;
+  idempotencyKey: string;
+  decisions: OrderedDecision[];
+}
+
+export interface DecisionBatchResult {
+  taskId: string;
+  runId: string;
+  interruptId: string;
+  version: string;
+  decisionTypes: HitlDecisionType[];
+  status: "accepted";
+  duplicate: boolean;
+}
+
 export interface PlanUpdateInput {
   interruptId: string;
   expectedRevision: number;
@@ -109,6 +154,11 @@ export interface TaskClient {
   cancelTask(taskId: string, signal?: AbortSignal): Promise<CancelResult>;
   createTask(prompt: string, agentId?: string, signal?: AbortSignal): Promise<CreateTaskResult>;
   decide(taskId: string, input: DecisionInput, signal?: AbortSignal): Promise<DecisionResult>;
+  decideBatch(
+    taskId: string,
+    input: DecisionBatchInput,
+    signal?: AbortSignal,
+  ): Promise<DecisionBatchResult>;
   getTask(taskId: string, signal?: AbortSignal): Promise<TaskDetail>;
   listTasks(signal?: AbortSignal): Promise<TaskSummary[]>;
   subscribe(taskId: string, handlers: TaskEventHandlers): () => void;
@@ -123,6 +173,9 @@ export interface ActiveInterrupt {
   decisions: DecisionInput["decision"][];
   interruptId: string;
   planRevision?: number;
+  version?: string;
+  actionRequests?: ActionRequest[];
+  reviewConfigs?: ReviewConfig[];
   title: string;
   question: string;
 }

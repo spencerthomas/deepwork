@@ -9,9 +9,14 @@ from fastapi import APIRouter, Header, Path
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from deepwork_api.application import (
+    DecisionBatchUnsupportedError,
+    DecisionBatchVersionStaleError,
     DecisionConflictError,
+    DecisionType,
     InterruptMismatchError,
+    InvalidDecisionBatchError,
     InvalidEventCursorError,
+    OrderedDecision,
     PlanRevisionConflictError,
     PlanUnavailableError,
     StaleInterruptError,
@@ -28,6 +33,8 @@ from deepwork_api.application import (
 from deepwork_api.contracts import (
     CancellationAcceptedResponse,
     DecisionAcceptedResponse,
+    DecisionBatchAcceptedResponse,
+    DecisionBatchRequest,
     DecisionRequest,
     PlanUpdateRequest,
     PlanUpdateResponse,
@@ -94,7 +101,10 @@ def build_task_router(
             task = await service.get_task(task_id)
         except TaskNotFoundError:
             return _problem(404, "task_not_found", "Task was not found.")
-        return TaskDetailResponse.from_domain(task)
+        return TaskDetailResponse.from_domain(
+            task,
+            batch_allowed_decisions=service.batch_allowed_decisions,
+        )
 
     @router.get("/{task_id}/result", response_model=TaskResultResponse)
     async def get_task_result(task_id: TaskPath) -> TaskResultResponse | JSONResponse:
@@ -195,6 +205,85 @@ def build_task_router(
                 "A different decision was already recorded.",
             )
         return DecisionAcceptedResponse.from_domain(decision)
+
+    @router.post(
+        "/{task_id}/decision-batch",
+        response_model=DecisionBatchAcceptedResponse,
+        status_code=202,
+    )
+    async def record_decision_batch(
+        task_id: TaskPath,
+        request: DecisionBatchRequest,
+    ) -> DecisionBatchAcceptedResponse | JSONResponse:
+        decisions = tuple(
+            OrderedDecision(
+                decision_type=DecisionType(item.type),
+                edited_action_name=(item.edited_action.name if item.type == "edit" else None),
+                edited_position=(item.edited_action.args.position if item.type == "edit" else None),
+                edited_text=(item.edited_action.args.text if item.type == "edit" else None),
+                message=(
+                    getattr(item, "message", None) if item.type in {"reject", "respond"} else None
+                ),
+            )
+            for item in request.decisions
+        )
+        try:
+            record = await service.record_decision_batch(
+                task_id,
+                interrupt_id=request.interrupt_id,
+                expected_version=request.expected_version,
+                idempotency_key=request.idempotency_key,
+                decisions=decisions,
+            )
+        except TaskNotFoundError:
+            return _problem(404, "task_not_found", "Task was not found.")
+        except InterruptMismatchError:
+            return _problem(
+                409,
+                "interrupt_mismatch",
+                "Interrupt does not match the pending task decision.",
+            )
+        except StaleInterruptError:
+            return _problem(409, "interrupt_stale", "Interrupt is no longer actionable.")
+        except DecisionBatchVersionStaleError:
+            return _problem(
+                409,
+                "decision_batch_version_stale",
+                "The reviewed decision batch version is stale.",
+            )
+        except DecisionConflictError:
+            return _problem(
+                409,
+                "decision_conflict",
+                "A different decision vector was already recorded.",
+            )
+        except InvalidDecisionBatchError:
+            return _problem(
+                422,
+                "decision_batch_invalid",
+                "The decision vector is incomplete, misaligned, or disallowed.",
+            )
+        except PlanUnavailableError:
+            return _problem(409, "plan_unavailable", "Task has no reviewable plan.")
+        except DecisionBatchUnsupportedError:
+            return _problem(
+                409,
+                "decision_batch_unsupported",
+                "The configured task source cannot safely submit this decision batch.",
+            )
+        except TaskSourceContractError:
+            return _problem(
+                502,
+                "local_source_contract_mismatch",
+                "The configured local task source broke its supported contract.",
+            )
+        except TaskSourceUnavailableError:
+            return _problem(
+                503,
+                "local_source_unavailable",
+                "The configured local task source is unavailable.",
+            )
+        return DecisionBatchAcceptedResponse.from_domain(record)
 
     @router.post(
         "/{task_id}/cancel",

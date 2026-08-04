@@ -5,12 +5,18 @@ import type { ComponentType } from "react";
 import { useId, useRef, useState } from "react";
 
 import { ContractError, unicodeLength, validateDecisionComment } from "../../lib/task-normalizers";
-import type { ActiveInterrupt, DecisionInput, ProposedPlan } from "../../lib/task-types";
+import type {
+  ActiveInterrupt,
+  DecisionBatchInput,
+  DecisionInput,
+  ProposedPlan,
+} from "../../lib/task-types";
 import { DECISION_COMMENT_MAX_LENGTH } from "../../lib/task-types";
 import { cn } from "../../lib/utils";
 
-import type { DecisionVerb } from "./approvals-model";
-import { orderedDecisions, planPreview } from "./approvals-model";
+import type { ApprovalResolution, DecisionVerb } from "./approvals-model";
+import { batchResolution, orderedDecisions, planPreview } from "./approvals-model";
+import { orderedApprovalIdentity, OrderedApprovalBatch } from "./ordered-approval-batch";
 
 interface VerbMeta {
   icon: ComponentType<{ className?: string }>;
@@ -33,8 +39,9 @@ interface ApprovalDecisionPanelProps {
   interrupt: ActiveInterrupt;
   /** Returns an error message on failure, undefined on success. */
   onDecide: (input: DecisionInput) => Promise<string | undefined>;
+  onDecideBatch?: (input: DecisionBatchInput) => Promise<string | undefined>;
   onDecisionError?: (message: string) => void;
-  onResolved: (decision: DecisionVerb) => void;
+  onResolved: (decision: ApprovalResolution) => void;
   plan?: ProposedPlan;
 }
 
@@ -46,6 +53,7 @@ interface ApprovalDecisionPanelProps {
 export function ApprovalDecisionPanel({
   interrupt,
   onDecide,
+  onDecideBatch,
   onDecisionError,
   onResolved,
   plan,
@@ -60,6 +68,26 @@ export function ApprovalDecisionPanel({
   const supportsRespond = verbs.includes("respond");
   const submitting = pendingVerb !== undefined;
   const preview = plan ? planPreview(plan) : undefined;
+
+  if (
+    interrupt.version &&
+    interrupt.actionRequests?.length &&
+    interrupt.reviewConfigs?.length &&
+    onDecideBatch
+  ) {
+    return (
+      <OrderedApprovalBatch
+        key={orderedApprovalIdentity(interrupt)}
+        interrupt={interrupt}
+        plan={plan}
+        onSubmit={async (input) => {
+          return onDecideBatch(input);
+        }}
+        onSubmitError={onDecisionError}
+        onResolved={(decisions) => onResolved(batchResolution(decisions))}
+      />
+    );
+  }
 
   async function submit(verb: DecisionVerb) {
     if (submissionRef.current) return;

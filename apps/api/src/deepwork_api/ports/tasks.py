@@ -6,7 +6,9 @@ from typing import Protocol
 
 from deepwork_api.domain import (
     CancellationRecord,
+    DecisionBatchRecord,
     DecisionRecord,
+    DecisionType,
     DecisionValue,
     EventData,
     EvidenceClass,
@@ -96,6 +98,18 @@ class TaskRepository(Protocol):
         response_digest: str | None,
     ) -> DecisionRecord:
         """Atomically record or idempotently replay one interrupt decision."""
+
+    async def record_decision_batch(
+        self,
+        task_id: str,
+        *,
+        interrupt_id: str,
+        expected_revision: int,
+        decision_types: tuple[DecisionType, ...],
+        request_fingerprint: str,
+        edited_steps: tuple[str, ...],
+    ) -> DecisionBatchRecord:
+        """Atomically apply plan edits and record one complete decision vector."""
 
     async def wait_for_decision(
         self,

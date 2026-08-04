@@ -1,4 +1,6 @@
 import type {
+  BatchDecisionInput,
+  BatchDecisionReceipt,
   GeneratedMutationTransport,
   MutationPort,
   QueryPort,
@@ -12,5 +14,7 @@ describe("public contracts", () => {
     expectTypeOf<MutationPort<unknown, unknown>>().toBeObject();
     expectTypeOf<StreamPort<unknown, unknown>>().toBeObject();
     expectTypeOf<GeneratedMutationTransport<unknown, unknown>>().toBeObject();
+    expectTypeOf<BatchDecisionInput>().toBeObject();
+    expectTypeOf<BatchDecisionReceipt>().toBeObject();
   });
 });

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { approveCurrentReview } from "../e2e/support/approve-current-review";
+
 const viewports = {
   desktop: { width: 1440, height: 1000 },
   phone: { width: 390, height: 844 },
@@ -87,11 +89,11 @@ test("designed routes and supervised journey match their accepted screenshots", 
   await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
   const taskPath = new URL(page.url()).pathname;
 
-  await expect(page.getByText("Safe local fixture plan", { exact: true })).toBeVisible();
+  await expect(page.getByText("Safe local fixture plan", { exact: true }).first()).toBeVisible();
   await capture(page, "task-plan-review", "desktop");
   await capture(page, "task-plan-review", "phone");
 
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveCurrentReview(page);
   await expect(page.getByText("Running", { exact: true }).first()).toBeVisible();
   await capture(page, "task-running", "desktop");
   await expect(page.getByText("Run completed", { exact: true })).toBeVisible();

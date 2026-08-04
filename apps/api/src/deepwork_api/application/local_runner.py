@@ -32,6 +32,13 @@ _SOURCE_CONTRACT_REASON = "The local agent source broke its supported contract."
 _RUNNER_FAILURE_REASON = "The local source task runner failed safely."
 _TERMINAL_REASON = "Local Agent Server run reached a terminal state."
 _RESUME_SHUTDOWN_GRACE_SECONDS = 1.0
+_SOURCE_STATE_RECONCILIATION_SECONDS = 1.0
+
+
+async def _next_source_event(stream: AsyncIterator[object]) -> object:
+    """Present ``anext`` as a coroutine accepted by ``asyncio.create_task``."""
+
+    return await anext(stream)
 
 
 class LocalRun(Protocol):
@@ -113,7 +120,6 @@ class LocalState(Protocol):
 
 
 class LocalSource(Protocol):
-    def is_default_agent(self, agent_id: str) -> bool: ...
     async def start(
         self,
         objective: str,
@@ -170,13 +176,10 @@ class LocalAgentServerRunner:
         agent_id: str | None = None,
         security_context: SecurityContext = DEFAULT_SECURITY_CONTEXT,
     ) -> TaskSnapshot:
-        # The workspace prompt override governs the default assistant whether
-        # it was implicit or explicitly selected. A different named agent's
-        # registered config governs its persona.
-        uses_default_agent = agent_id is None or self.source.is_default_agent(agent_id)
-        system_prompt = (
-            await self._current_system_prompt(security_context) if uses_default_agent else None
-        )
+        # The source owns assistant identity and suppresses this workspace
+        # override when a different named agent is selected. Keeping that
+        # decision at the adapter boundary avoids a second registry lookup.
+        system_prompt = await self._current_system_prompt(security_context)
         try:
             run = await self.source.start(objective, system_prompt=system_prompt, agent_id=agent_id)
         except TaskSourceContractError:
@@ -450,21 +453,7 @@ class LocalAgentServerRunner:
                     data=(("runId", run.run_id), ("status", "running")),
                     status=TaskStatus.RUNNING,
                 )
-            async for event in self.source.stream(run):
-                kind = getattr(event, "kind", None)
-                if kind == "error":
-                    raise TaskSourceContractError
-                if kind != "progress":
-                    continue
-                await self.repository.append_event(
-                    task.task_id,
-                    name=TaskEventName.CONTENT_DELTA,
-                    data=(
-                        ("text", "Local Agent Server progress received."),
-                        ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
-                    ),
-                )
-            state = await self.source.get_state(run.thread_id)
+            state = await self._follow_stream_to_source_state(task, run)
             if state.interrupt is not None:
                 resume_key = (task.task_id, state.interrupt.interrupt_id)
                 self._register_resume_acknowledgement(resume_key)
@@ -505,6 +494,59 @@ class LocalAgentServerRunner:
         except Exception:
             self._reject_resume(resume_key, TaskSourceUnavailableError())
             await self._fail(task, _RUNNER_FAILURE_REASON)
+
+    async def _follow_stream_to_source_state(
+        self,
+        task: TaskSnapshot,
+        run: LocalRun,
+    ) -> LocalState:
+        """Consume progress while reconciling a source run that settled before join.
+
+        A resumable Agent Server stream can remain open without replaying an event
+        when a short run reaches its interrupt or terminal checkpoint before the
+        join request is attached. The thread state is source-authoritative, so a
+        bounded idle poll prevents Deep Work from leaving the retained task stuck
+        in ``running`` while preserving the same fail-closed state validation.
+        """
+
+        stream = self.source.stream(run)
+        pending: asyncio.Task[object] = asyncio.create_task(_next_source_event(stream))
+        try:
+            while True:
+                done, _ = await asyncio.wait(
+                    {pending},
+                    timeout=_SOURCE_STATE_RECONCILIATION_SECONDS,
+                )
+                if pending not in done:
+                    state = await self.source.get_state(run.thread_id)
+                    if state.interrupt is not None or state.status in {"completed", "rejected"}:
+                        return state
+                    continue
+                try:
+                    event = pending.result()
+                except StopAsyncIteration:
+                    return await self.source.get_state(run.thread_id)
+                kind = getattr(event, "kind", None)
+                if kind == "error":
+                    raise TaskSourceContractError
+                if kind == "progress":
+                    await self.repository.append_event(
+                        task.task_id,
+                        name=TaskEventName.CONTENT_DELTA,
+                        data=(
+                            ("text", "Local Agent Server progress received."),
+                            ("evidenceClass", EvidenceClass.LOCAL_SOURCE.value),
+                        ),
+                    )
+                pending = asyncio.create_task(_next_source_event(stream))
+        finally:
+            stream_was_waiting = not pending.done()
+            if stream_was_waiting:
+                pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+            close = getattr(stream, "aclose", None)
+            if close is not None and not stream_was_waiting:
+                await close()
 
     def _register_resume_acknowledgement(self, key: tuple[str, str]) -> None:
         existing = self._resume_acknowledgements.get(key)

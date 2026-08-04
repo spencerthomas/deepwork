@@ -36,13 +36,27 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   const failedApiResponses: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() === "error") {
+      const location = message.location().url;
+      consoleErrors.push(`${message.text()}${location ? ` @ ${location}` : ""}`);
+    }
   });
   page.on("requestfailed", (request) => {
     if (isApiUrl(request.url())) {
-      failedApiRequests.push(
-        `${request.method()} ${new URL(request.url()).pathname}: ${request.failure()?.errorText ?? "unknown"}`,
-      );
+      const path = new URL(request.url()).pathname;
+      const failure = request.failure()?.errorText ?? "unknown";
+      // A successful login immediately replaces /login with /tasks. Chromium can
+      // report the now-unneeded rewritten POST body as aborted during that
+      // navigation; the explicit /tasks assertion and authenticated status call
+      // below remain the binding proof that login actually succeeded.
+      if (
+        request.method() === "POST" &&
+        path === "/api/v1/auth/login" &&
+        failure === "net::ERR_ABORTED"
+      ) {
+        return;
+      }
+      failedApiRequests.push(`${request.method()} ${path}: ${failure}`);
     }
   });
   page.on("response", (response) => {
@@ -98,7 +112,7 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
   const objective = `Hosted release acceptance ${new Date().toISOString()}`;
   await page.getByLabel("Task", { exact: true }).fill(objective);
   await page.getByRole("button", { name: "Dispatch" }).click();
-  await expect(page).toHaveURL(/\/tasks\/[^/?]+$/);
+  await expect(page).toHaveURL(/\/tasks\/task_[0-9]{8}$/);
   const taskUrl = new URL(page.url());
 
   const header = page.getByRole("heading", { level: 1 }).locator("..");
@@ -116,7 +130,11 @@ test("hosted golden journey reaches a retained inspectable result", async ({ pag
     const response = await fetch(`/api/v1/tasks/${encodeURIComponent(id!)}`, {
       credentials: "include",
     });
-    if (!response.ok) throw new Error(`Task detail returned HTTP ${response.status}.`);
+    if (!response.ok) {
+      throw new Error(
+        `Task detail for ${JSON.stringify(id)} at ${response.url} returned HTTP ${response.status}: ${await response.text()}`,
+      );
+    }
     return (await response.json()) as HostedTaskDetail;
   }, taskId);
   expect(detail.result?.trim().length).toBeGreaterThan(0);

@@ -71,9 +71,16 @@ async def test_explicit_loopback_agent_server_completes_a_task_via_the_api() -> 
         pytest.skip(f"set {_URL_ENV} and {_ASSISTANT_ENV} to run loopback acceptance")
 
     async with _live_client(endpoint, assistant_id) as client:
+        registry = await client.get("/api/v1/agents")
+        assert registry.status_code == 200
+        agents = registry.json()["items"]
+        default_agent = next(agent for agent in agents if agent["isDefault"])
         created = await client.post(
             "/api/v1/tasks",
-            json={"prompt": "Prepare a two-step local plan, then wait for review."},
+            json={
+                "prompt": "Prepare a two-step local plan, then wait for review.",
+                "agentId": default_agent["agentId"],
+            },
         )
         assert created.status_code == 202
         task_id = created.json()["taskId"]

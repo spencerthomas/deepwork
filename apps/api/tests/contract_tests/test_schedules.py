@@ -35,6 +35,7 @@ class _FakeAssistants:
         default_factory=lambda: [
             {
                 "assistant_id": LOCAL_ASSISTANT,
+                "graph_id": LOCAL_ASSISTANT,
                 "name": LOCAL_ASSISTANT,
                 "description": None,
                 "config": {},

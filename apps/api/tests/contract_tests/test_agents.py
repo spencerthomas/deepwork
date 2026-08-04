@@ -25,12 +25,23 @@ LOCAL_ENDPOINT = "http://127.0.0.1:2024"
 LOCAL_ASSISTANT = "deep-work-local-agent"
 
 
+def _default_assistant() -> dict[str, object]:
+    return {
+        "assistant_id": LOCAL_ASSISTANT,
+        "graph_id": LOCAL_ASSISTANT,
+        "name": LOCAL_ASSISTANT,
+        "description": None,
+        "config": {},
+        "metadata": {"created_by": "system"},
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+
+
 @dataclass
 class _FakeAssistants:
-    default: dict[str, object] = field(
-        default_factory=lambda: {"assistant_id": LOCAL_ASSISTANT, "graph_id": LOCAL_ASSISTANT}
-    )
-    search_response: list[dict[str, object]] = field(default_factory=list)
+    default: dict[str, object] = field(default_factory=_default_assistant)
+    search_response: list[dict[str, object]] = field(default_factory=lambda: [_default_assistant()])
     create_response: dict[str, object] | None = None
     update_response: dict[str, object] | None = None
     deleted: list[str] = field(default_factory=list)
@@ -160,6 +171,7 @@ async def test_real_agent_mode_lists_the_default_and_registered_agents(
         search_response=[
             {
                 "assistant_id": LOCAL_ASSISTANT,
+                "graph_id": LOCAL_ASSISTANT,
                 "name": LOCAL_ASSISTANT,
                 "description": None,
                 "config": {},
@@ -168,6 +180,7 @@ async def test_real_agent_mode_lists_the_default_and_registered_agents(
             },
             {
                 "assistant_id": "assistant-2",
+                "graph_id": LOCAL_ASSISTANT,
                 "name": "Terse reviewer",
                 "description": "Short reviews.",
                 "config": {"configurable": {"system_prompt": "Always be terse."}},

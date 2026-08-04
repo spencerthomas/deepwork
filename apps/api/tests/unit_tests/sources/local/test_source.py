@@ -14,6 +14,7 @@ import pytest
 from deepwork_api.adapters.sources.local import (
     AgentSummary,
     LocalAgentServerSource,
+    LocalAgentServerStatus,
     LocalRunReference,
     LocalSourceConfigurationError,
     LocalSourceContractError,
@@ -252,7 +253,17 @@ class FakeAssistants:
         }
     )
     error: Exception | None = None
-    search_response: object = field(default_factory=list)
+    get_calls: list[str] = field(default_factory=list)
+    search_response: object = field(
+        default_factory=lambda: [
+            {
+                "assistant_id": "deep-work-local-agent",
+                "graph_id": "deep-work-local-agent",
+                "name": "deep-work-local-agent",
+                "metadata": {"created_by": "system"},
+            }
+        ]
+    )
     search_calls: list[dict[str, object]] = field(default_factory=list)
     search_error: Exception | None = None
     create_response: object | None = None
@@ -265,7 +276,7 @@ class FakeAssistants:
     delete_error: Exception | None = None
 
     async def get(self, assistant_id: str) -> object:
-        assert assistant_id == "deep-work-local-agent"
+        self.get_calls.append(assistant_id)
         if self.error is not None:
             raise self.error
         return self.response
@@ -275,6 +286,8 @@ class FakeAssistants:
     ) -> object:
         if self.search_error is not None:
             raise self.search_error
+        if self.error is not None:
+            raise self.error
         self.search_calls.append({"graph_id": graph_id, "limit": limit, "offset": offset})
         return self.search_response
 
@@ -495,6 +508,64 @@ async def test_status_is_sanitized_and_makes_no_provider_claim() -> None:
     assert "private" not in repr(unavailable)
 
 
+async def test_graph_alias_resolves_the_system_default_uuid_for_runs() -> None:
+    default_uuid = "96006ada-3e38-5556-9139-b74b9e91971e"
+    assistants = FakeAssistants(
+        search_response=[
+            {
+                "assistant_id": default_uuid,
+                "graph_id": "deep-work-local-agent",
+                "name": "deep-work-local-agent",
+                "metadata": {"created_by": "system"},
+            }
+        ]
+    )
+    source, client = _source(FakeClient(assistants=assistants))
+
+    await source.start(
+        "Prepare a release brief",
+        system_prompt="Always be terse.",
+        agent_id=default_uuid,
+    )
+
+    assert client.assistants.get_calls == []
+    assert client.runs.create_calls[0]["assistant_id"] == default_uuid
+    assert client.runs.create_calls[0]["input"] == {
+        "task": "Prepare a release brief",
+        "system_prompt": "Always be terse.",
+    }
+
+
+async def test_uuid_default_uses_direct_lookup_without_graph_search() -> None:
+    default_uuid = "019f91f5-4e11-75f2-b86f-01c3f3d7b9ba"
+    assistants = FakeAssistants(
+        response={"assistant_id": default_uuid, "graph_id": "deep-work-local-agent"}
+    )
+    source = LocalAgentServerSource(
+        client=FakeClient(assistants=assistants),
+        assistant_id=default_uuid,
+    )
+
+    await source.start("Prepare a release brief")
+
+    assert assistants.get_calls == [default_uuid]
+    assert assistants.search_calls == []
+
+
+async def test_graph_alias_fails_closed_when_the_default_is_ambiguous() -> None:
+    assistants = FakeAssistants(
+        search_response=[
+            {"assistant_id": "assistant-1", "graph_id": "deep-work-local-agent"},
+            {"assistant_id": "assistant-2", "graph_id": "deep-work-local-agent"},
+        ]
+    )
+    source, _ = _source(FakeClient(assistants=assistants))
+
+    status = await source.status()
+
+    assert status == LocalAgentServerStatus(available=False, code="contract-mismatch")
+
+
 async def test_start_with_agent_id_overrides_the_default_assistant() -> None:
     source, client = _source()
 
@@ -548,6 +619,7 @@ async def test_resume_and_update_plan_replay_the_thread_bound_assistant() -> Non
 async def test_list_agents_scopes_search_to_the_default_agents_graph() -> None:
     assistant = {
         "assistant_id": "assistant-2",
+        "graph_id": "deep-work-local-agent",
         "name": "Terse reviewer",
         "description": "Keeps everything short.",
         "config": {"configurable": {"system_prompt": "Always be terse."}},
@@ -556,6 +628,7 @@ async def test_list_agents_scopes_search_to_the_default_agents_graph() -> None:
     }
     default: dict[str, object] = {
         "assistant_id": "deep-work-local-agent",
+        "graph_id": "deep-work-local-agent",
         "name": "deep-work-local-agent",
         "description": None,
         "config": {},
@@ -694,6 +767,7 @@ async def test_list_schedules_filters_to_our_graphs_agents() -> None:
         search_response=[
             {
                 "assistant_id": "deep-work-local-agent",
+                "graph_id": "deep-work-local-agent",
                 "name": "deep-work-local-agent",
                 "description": None,
                 "config": {},

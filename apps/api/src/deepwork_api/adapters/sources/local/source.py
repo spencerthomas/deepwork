@@ -38,6 +38,7 @@ _LOCAL_SDK_TIMEOUT = (5.0, 300.0, 30.0, 5.0)
 _PLAN_UPDATE_CONFIRM_TIMEOUT_SECONDS = 30.0
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$")
 _ASSISTANT_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_UUID_IDENTIFIER = re.compile(r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$")
 _SAFE_AGENT_STATUSES = frozenset({"planned", "approved", "completed", "rejected"})
 _SAFE_DECISIONS: tuple[Decision, ...] = ("approve", "reject", "respond")
 
@@ -434,7 +435,7 @@ class LocalAgentServerSource:
         """Probe the configured assistant and suppress all upstream details."""
 
         try:
-            assistant = _as_mapping(await self.client.assistants.get(self.assistant_id))
+            assistant = await self._resolve_default_assistant()
             _required_identifier(assistant, "assistant_id")
         except LocalSourceContractError:
             return LocalAgentServerStatus(available=False, code="contract-mismatch")
@@ -465,12 +466,13 @@ class LocalAgentServerSource:
             field="task objective",
             maximum=MAX_TASK_OBJECTIVE_LENGTH,
         )
+        default_assistant_id = await self._resolve_default_assistant_id()
         resolved_assistant = (
-            _validate_assistant_identifier(agent_id) if agent_id is not None else self.assistant_id
+            _validate_assistant_identifier(agent_id)
+            if agent_id is not None
+            else default_assistant_id
         )
-        effective_prompt = (
-            system_prompt if agent_id is None or self.is_default_agent(resolved_assistant) else None
-        )
+        effective_prompt = system_prompt if resolved_assistant == default_assistant_id else None
         prompt_override = normalize_system_prompt(effective_prompt)
         run_input: dict[str, object] = {"task": normalized}
         if prompt_override is not None:
@@ -504,10 +506,13 @@ class LocalAgentServerSource:
         self._thread_assistants[thread_id] = resolved_assistant
         return LocalRunReference(thread_id=thread_id, run_id=run_id)
 
-    def is_default_agent(self, agent_id: str) -> bool:
+    async def is_default_agent(self, agent_id: str) -> bool:
         """Return whether an explicit registry choice names this source's default."""
 
-        return agent_id == self.assistant_id
+        safe_id = _validate_assistant_identifier(agent_id)
+        if safe_id == self.assistant_id:
+            return True
+        return safe_id == await self._resolve_default_assistant_id()
 
     async def get_state(self, thread_id: str) -> LocalStateSnapshot:
         """Read and sanitize source-authoritative thread state."""
@@ -667,6 +672,69 @@ class LocalAgentServerSource:
             interrupt_id=new_interrupt.interrupt_id,
         )
 
+    async def _resolve_default_assistant(self) -> Mapping[str, object]:
+        """Resolve a configured UUID or graph alias to the default Assistant record."""
+
+        try:
+            if _UUID_IDENTIFIER.fullmatch(self.assistant_id):
+                return _as_mapping(await self.client.assistants.get(self.assistant_id))
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server default assistant lookup failed"
+            raise LocalSourceUnavailableError(message) from None
+        return self._select_default_assistant(
+            await self._search_assistants_by_graph(self.assistant_id)
+        )
+
+    async def _search_assistants_by_graph(
+        self,
+        graph_id: str,
+    ) -> tuple[Mapping[str, object], ...]:
+        try:
+            raw = await self.client.assistants.search(
+                graph_id=graph_id,
+                limit=_MAX_AGENT_LIST,
+            )
+        except LocalSourceContractError:
+            raise
+        except Exception:
+            message = "local Agent Server agent search failed"
+            raise LocalSourceUnavailableError(message) from None
+        if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+            message = "local Agent Server agent search shape is unsupported"
+            raise LocalSourceContractError(message)
+        candidates = tuple(_as_mapping(item) for item in raw)
+        for candidate in candidates:
+            if _required_identifier(candidate, "graph_id") != graph_id:
+                message = "local Agent Server agent search escaped its graph"
+                raise LocalSourceContractError(message)
+        return candidates
+
+    def _select_default_assistant(
+        self,
+        candidates: Sequence[Mapping[str, object]],
+    ) -> Mapping[str, object]:
+        named = tuple(
+            candidate for candidate in candidates if candidate.get("name") == self.assistant_id
+        )
+        if len(named) == 1:
+            return named[0]
+        system: list[Mapping[str, object]] = []
+        for candidate in candidates:
+            metadata = candidate.get("metadata")
+            if isinstance(metadata, Mapping) and metadata.get("created_by") == "system":
+                system.append(candidate)
+        if len(system) == 1:
+            return system[0]
+        if len(candidates) == 1:
+            return candidates[0]
+        message = "local Agent Server default assistant is ambiguous or missing"
+        raise LocalSourceContractError(message)
+
+    async def _resolve_default_assistant_id(self) -> str:
+        return _required_identifier(await self._resolve_default_assistant(), "assistant_id")
+
     async def _resolve_graph_id(self) -> str:
         """Read the graph identifier of the configured default assistant.
 
@@ -676,7 +744,7 @@ class LocalAgentServerSource:
         """
 
         try:
-            default = _as_mapping(await self.client.assistants.get(self.assistant_id))
+            default = await self._resolve_default_assistant()
         except LocalSourceContractError:
             raise
         except Exception:
@@ -687,18 +755,22 @@ class LocalAgentServerSource:
     async def list_agents(self) -> tuple[AgentSummary, ...]:
         """List assistants sharing our deployed graph, sanitized for the app boundary."""
 
-        graph_id = await self._resolve_graph_id()
-        try:
-            raw = await self.client.assistants.search(graph_id=graph_id, limit=_MAX_AGENT_LIST)
-        except LocalSourceContractError:
-            raise
-        except Exception:
-            message = "local Agent Server agent list failed"
-            raise LocalSourceUnavailableError(message) from None
-        if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
-            message = "local Agent Server agent list shape is unsupported"
-            raise LocalSourceContractError(message)
-        return tuple(self._agent_summary(_as_mapping(item)) for item in raw)
+        if _UUID_IDENTIFIER.fullmatch(self.assistant_id):
+            default = await self._resolve_default_assistant()
+            graph_id = _required_identifier(default, "graph_id")
+            agents = await self._search_assistants_by_graph(graph_id)
+        else:
+            graph_id = self.assistant_id
+            agents = await self._search_assistants_by_graph(graph_id)
+            default = self._select_default_assistant(agents)
+        default_assistant_id = _required_identifier(default, "assistant_id")
+        return tuple(
+            self._agent_summary(
+                item,
+                default_assistant_id=default_assistant_id,
+            )
+            for item in agents
+        )
 
     async def create_agent(
         self,
@@ -745,7 +817,7 @@ class LocalAgentServerSource:
         """
 
         safe_id = _validate_assistant_identifier(agent_id)
-        if safe_id == self.assistant_id:
+        if await self.is_default_agent(safe_id):
             raise LocalSourceDefaultAgentImmutableError
         safe_name = _bounded_text(name, field="agent name", maximum=MAX_AGENT_NAME_LENGTH)
         safe_description = _optional_bounded_text(
@@ -770,7 +842,7 @@ class LocalAgentServerSource:
         """Delete one non-default assistant."""
 
         safe_id = _validate_assistant_identifier(agent_id)
-        if safe_id == self.assistant_id:
+        if await self.is_default_agent(safe_id):
             raise LocalSourceDefaultAgentImmutableError
         try:
             await self.client.assistants.delete(safe_id)
@@ -780,7 +852,12 @@ class LocalAgentServerSource:
             message = "local Agent Server agent delete failed"
             raise LocalSourceUnavailableError(message) from None
 
-    def _agent_summary(self, mapping: Mapping[str, object]) -> AgentSummary:
+    def _agent_summary(
+        self,
+        mapping: Mapping[str, object],
+        *,
+        default_assistant_id: str | None = None,
+    ) -> AgentSummary:
         agent_id = _required_identifier(mapping, "assistant_id")
         raw_name = mapping.get("name")
         name = _bounded_text(
@@ -798,7 +875,7 @@ class LocalAgentServerSource:
             name=name,
             description=description,
             system_prompt=_config_system_prompt(mapping.get("config")),
-            is_default=agent_id == self.assistant_id,
+            is_default=agent_id == (default_assistant_id or self.assistant_id),
             created_at=_agent_timestamp(mapping.get("created_at")),
             updated_at=_agent_timestamp(mapping.get("updated_at")),
         )

@@ -15,6 +15,7 @@ vi.mock("./command-bar", () => ({
 // AppShell reads the router for its global "n" shortcut; the static render has
 // no app-router context, so stub it.
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/tasks",
   useRouter: () => ({ push: () => {}, replace: () => {} }),
 }));
 

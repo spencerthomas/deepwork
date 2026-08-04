@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -32,6 +33,11 @@ import {
   taskEventCursor,
 } from "./task-normalizers";
 import { appendUniqueTaskEvent } from "./task-event-index";
+import {
+  sameTaskDetailProjection,
+  sameTaskSummaryProjection,
+  shouldRefreshAuthoritativeTask,
+} from "./task-refresh-policy";
 import type {
   ConnectionState,
   DecisionBatchInput,
@@ -41,6 +47,8 @@ import type {
   TaskEvent,
   TaskSummary,
 } from "./task-types";
+
+const AUTHORITATIVE_REFRESH_INTERVAL_MS = 2_000;
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : "Something unexpected happened.";
@@ -110,6 +118,8 @@ export interface TasksStore {
 const TasksStoreContext = createContext<TasksStore | undefined>(undefined);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const sessionRequired = pathname !== "/login";
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string>();
   const [detailsByTask, setDetailsByTask] = useState<Record<string, TaskDetail>>({});
@@ -153,6 +163,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   tasksRef.current = tasks;
 
   useEffect(() => {
+    if (!sessionRequired) {
+      setLoadingTasks(false);
+      return;
+    }
     const controller = new AbortController();
     setLoadingTasks(true);
     setListError(undefined);
@@ -184,7 +198,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [listAttempt]);
+  }, [listAttempt, sessionRequired]);
 
   useEffect(() => {
     if (!activeTaskId) {
@@ -206,32 +220,37 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     pendingDecisionRef.current = undefined;
 
     let recoveryStarted = false;
+    const applyAuthoritativeTask = (task: TaskDetail) => {
+      if (controller.signal.aborted || activeTaskIdRef.current !== activeTaskId) return;
+      const taskWithEarlyEvents = reduceEventsIntoDetail(
+        task,
+        eventsByTaskRef.current[activeTaskId] ?? [],
+      );
+      const currentDetails = detailsByTaskRef.current;
+      const existing = currentDetails[activeTaskId];
+      const nextTask = existing
+        ? sameTaskDetailProjection(existing, taskWithEarlyEvents)
+          ? existing
+          : detailAfterAuthoritativeReload(existing, taskWithEarlyEvents)
+        : taskWithEarlyEvents;
+      if (nextTask !== existing) {
+        const nextDetails = { ...currentDetails, [activeTaskId]: nextTask };
+        detailsByTaskRef.current = nextDetails;
+        setDetailsByTask(nextDetails);
+      }
+      const nextTasks = replaceTask(tasksRef.current, activeTaskId, (current) =>
+        sameTaskSummaryProjection(current, taskWithEarlyEvents)
+          ? current
+          : summaryAfterAuthoritativeReload(current, taskWithEarlyEvents),
+      );
+      if (nextTasks !== tasksRef.current) {
+        tasksRef.current = nextTasks;
+        setTasks(nextTasks);
+      }
+    };
     void taskClient
       .getTask(activeTaskId, controller.signal)
-      .then((task) => {
-        if (controller.signal.aborted || activeTaskIdRef.current !== activeTaskId) return;
-        const taskWithEarlyEvents = reduceEventsIntoDetail(
-          task,
-          eventsByTaskRef.current[activeTaskId] ?? [],
-        );
-        const currentDetails = detailsByTaskRef.current;
-        const existing = currentDetails[activeTaskId];
-        const nextTask = existing
-          ? detailAfterAuthoritativeReload(existing, taskWithEarlyEvents)
-          : taskWithEarlyEvents;
-        if (nextTask !== existing) {
-          const nextDetails = { ...currentDetails, [activeTaskId]: nextTask };
-          detailsByTaskRef.current = nextDetails;
-          setDetailsByTask(nextDetails);
-        }
-        const nextTasks = replaceTask(tasksRef.current, activeTaskId, (current) =>
-          summaryAfterAuthoritativeReload(current, taskWithEarlyEvents),
-        );
-        if (nextTasks !== tasksRef.current) {
-          tasksRef.current = nextTasks;
-          setTasks(nextTasks);
-        }
-      })
+      .then(applyAuthoritativeTask)
       .catch((error: unknown) => {
         if (!controller.signal.aborted && !recoveryStarted) {
           setDetailError(messageFrom(error));
@@ -337,11 +356,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         });
     };
 
+    let lastSourceActivityAt = Date.now();
     let closeStream: () => void = () => undefined;
     closeStream = taskClient.subscribe(activeTaskId, {
       onConnectionChange: (state) => {
         setConnectionState(state);
         if (state === "connected") {
+          lastSourceActivityAt = Date.now();
           disconnectEpisodeOpen = false;
           setStreamError(undefined);
         } else if (state === "reconnecting") {
@@ -350,6 +371,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       },
       onError: setStreamError,
       onEvent: (event) => {
+        lastSourceActivityAt = Date.now();
         const streamedCursor = taskEventCursor(event.id);
         const eventsBeforeEvent = eventsByTaskRef.current[activeTaskId] ?? [];
         const seenEventIds =
@@ -483,7 +505,44 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       },
     });
 
+    let authoritativeRefreshInFlight = false;
+    let authoritativeRefreshErrorActive = false;
+    const authoritativeRefresh = window.setInterval(() => {
+      const current = detailsByTaskRef.current[activeTaskId];
+      if (
+        !shouldRefreshAuthoritativeTask(current, {
+          inFlight: authoritativeRefreshInFlight,
+          silentForMs: Date.now() - lastSourceActivityAt,
+        })
+      ) {
+        return;
+      }
+      authoritativeRefreshInFlight = true;
+      void taskClient
+        .getTask(activeTaskId, controller.signal)
+        .then((task) => {
+          applyAuthoritativeTask(task);
+          lastSourceActivityAt = Date.now();
+          if (authoritativeRefreshErrorActive) {
+            authoritativeRefreshErrorActive = false;
+            setDetailError(undefined);
+          }
+        })
+        .catch((error: unknown) => {
+          lastSourceActivityAt = Date.now();
+          if (controller.signal.aborted || activeTaskIdRef.current !== activeTaskId) return;
+          authoritativeRefreshErrorActive = true;
+          setDetailError(
+            `Live progress could not be reconciled with the task API. ${messageFrom(error)}`,
+          );
+        })
+        .finally(() => {
+          authoritativeRefreshInFlight = false;
+        });
+    }, AUTHORITATIVE_REFRESH_INTERVAL_MS);
+
     return () => {
+      window.clearInterval(authoritativeRefresh);
       controller.abort();
       recoveryController?.abort();
       closeStream();

@@ -283,7 +283,15 @@ class _FakeAssistants:
     async def search(
         self, *, graph_id: str | None = None, limit: int = 10, offset: int = 0
     ) -> object:
-        raise NotImplementedError("agent registry is exercised in test_agents.py")
+        assert graph_id == LOCAL_ASSISTANT
+        return [
+            {
+                "assistant_id": LOCAL_ASSISTANT,
+                "graph_id": LOCAL_ASSISTANT,
+                "name": LOCAL_ASSISTANT,
+                "metadata": {"created_by": "system"},
+            }
+        ]
 
     async def create(
         self,

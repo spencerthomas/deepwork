@@ -191,16 +191,19 @@ def main() -> int:
     try:
         if real_agent:
             print(f"Starting local LangGraph Agent Server on {LOCAL_AGENT_ENDPOINT}")
+            agent_server_args = [
+                str(LANGGRAPH_EXECUTABLE),
+                "dev",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "2024",
+                "--no-browser",
+            ]
+            if os.environ.get("DEEPWORK_AGENT_NO_RELOAD") == "1":
+                agent_server_args.append("--no-reload")
             agent_server = subprocess.Popen(  # noqa: S603 - fixed reviewed local executable
-                [
-                    str(LANGGRAPH_EXECUTABLE),
-                    "dev",
-                    "--host",
-                    "127.0.0.1",
-                    "--port",
-                    "2024",
-                    "--no-browser",
-                ],
+                agent_server_args,
                 cwd=ROOT,
                 env=child_env,
             )

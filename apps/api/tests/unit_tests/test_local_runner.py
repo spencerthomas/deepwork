@@ -67,28 +67,33 @@ class _State:
 
 class _Source:
     def __init__(
-        self, *, events: tuple[object, ...] = (), default_agent_id: str = "assistant-default"
+        self,
+        *,
+        events: tuple[object, ...] = (),
+        default_agent_id: str = "assistant-default",
+        state: _State | None = None,
     ) -> None:
         self.events = events
         self.default_agent_id = default_agent_id
+        self.state = state or _State()
         self.resume_comment: str | None = None
         self.state_reads = 0
         self.start_system_prompts: list[str | None] = []
         self.start_agent_ids: list[str | None] = []
 
-    def is_default_agent(self, agent_id: str) -> bool:
-        return agent_id == self.default_agent_id
-
     async def start(
         self, objective: str, *, system_prompt: str | None = None, agent_id: str | None = None
     ) -> _Run:
-        self.start_system_prompts.append(system_prompt)
+        effective_prompt = (
+            system_prompt if agent_id is None or agent_id == self.default_agent_id else None
+        )
+        self.start_system_prompts.append(effective_prompt)
         self.start_agent_ids.append(agent_id)
         return _Run()
 
     async def get_state(self, thread_id: str) -> _State:
         self.state_reads += 1
-        return _State()
+        return self.state
 
     async def update_plan(
         self,
@@ -141,6 +146,12 @@ class _Source:
 
     async def list_schedules(self) -> tuple[LocalScheduleSummary, ...]:
         return ()
+
+
+class _HangingStreamSource(_Source):
+    async def stream(self, run: LocalRun) -> AsyncIterator[object]:
+        pending = asyncio.get_running_loop().create_future()
+        yield await pending
 
 
 async def _paused_task(repository: InMemoryTaskRepository) -> TaskSnapshot:
@@ -362,6 +373,77 @@ async def test_nonterminal_source_state_fails_instead_of_completing() -> None:
     await runner._follow(task, _Run())
 
     assert (await repository.get_task(task.task_id)).status is TaskStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_source_state_reconciles_a_run_that_settled_before_stream_join(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_STATE_RECONCILIATION_SECONDS",
+        0.01,
+    )
+    repository = InMemoryTaskRepository()
+    source = _HangingStreamSource()
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+
+    runner.start(task, _Run())
+    for _ in range(20):
+        current = await repository.get_task(task.task_id)
+        if current.status is TaskStatus.WAITING_APPROVAL:
+            break
+        await asyncio.sleep(0.01)
+
+    current = await repository.get_task(task.task_id)
+    assert source.state_reads == 1
+    assert current.status is TaskStatus.WAITING_APPROVAL
+    assert current.pending_interrupt_id == "interrupt_1"
+    await runner.close()
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_status", "expected_result"),
+    [
+        (
+            _State(status="completed", final_answer="Finished safely.", interrupt=None),
+            TaskStatus.COMPLETED,
+            "Finished safely.",
+        ),
+        (
+            _State(status="rejected", interrupt=None),
+            TaskStatus.REJECTED,
+            None,
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_terminal_source_state_reconciles_before_stream_join(
+    monkeypatch: pytest.MonkeyPatch,
+    state: _State,
+    expected_status: TaskStatus,
+    expected_result: str | None,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner._SOURCE_STATE_RECONCILIATION_SECONDS",
+        0.01,
+    )
+    repository = InMemoryTaskRepository()
+    source = _HangingStreamSource(state=state)
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+
+    runner.start(task, _Run())
+    for _ in range(20):
+        current = await repository.get_task(task.task_id)
+        if current.status is expected_status:
+            break
+        await asyncio.sleep(0.01)
+
+    current = await repository.get_task(task.task_id)
+    assert current.status is expected_status
+    assert current.result == expected_result
+    await runner.close()
 
 
 @pytest.mark.asyncio

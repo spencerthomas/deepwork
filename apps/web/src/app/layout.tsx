@@ -6,6 +6,7 @@ import "@fontsource/ibm-plex-mono/600.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { webRuntimeConfig } from "../../config/runtime";
 import { TasksProvider } from "@/lib/tasks-store";
 
 import "./globals.css";
@@ -40,10 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     // assertions (e.g. the demo acceptance journey) whenever CI runs dark.
     <html lang="en" className="bg-background" suppressHydrationWarning>
       <head>
-        <meta
-          name="deepwork-build-sha"
-          content={process.env.NEXT_PUBLIC_DEEPWORK_BUILD_SHA ?? "unknown"}
-        />
+        <meta name="deepwork-build-sha" content={webRuntimeConfig.buildSha} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body className="font-sans antialiased">

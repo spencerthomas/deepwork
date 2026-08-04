@@ -598,7 +598,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             access_key=access_key,
             web_origins=web_origins,
             trace_api_key=trace_api_key,
-            build_sha=os.environ.get("DEEPWORK_BUILD_SHA"),
+            build_sha=(
+                os.environ.get("DEEPWORK_BUILD_SHA")
+                or os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+            ),
         ),
         host=host,
         port=port,

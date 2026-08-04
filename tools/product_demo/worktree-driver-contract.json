@@ -1,7 +1,7 @@
 {
   "components": ["api", "object", "postgres", "telemetry", "web", "worker"],
   "browser_path": "tools/product_demo/browser_journey.mjs",
-  "browser_sha256": "a4dc3d1bc5d328c86bcb73c749b9742b1a30449d62955c68d71a8e06a72f8fbd",
+  "browser_sha256": "f00383ad5523dbdb94c68209acf2978a20c2a58a8fe88c289a112e20f82cf25f",
   "contract_version": 1,
   "credential_free": true,
   "driver_path": "tools/product_demo/worktree_driver.py",

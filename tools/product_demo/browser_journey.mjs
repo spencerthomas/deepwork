@@ -44,6 +44,8 @@ async function createIsolatedContext(browser, { origin, viewport }) {
         if (url.pathname.startsWith(POLICY_PROBE_PREFIX)) blockedNetworkProbes.push(record);
         else networkPolicyViolations.push(record);
         socket.close({ code: 1008, reason: "blocked by product-demo origin policy" });
+      } else {
+        socket.connectToServer();
       }
     });
   }

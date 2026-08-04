@@ -267,6 +267,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
     let disconnectEpisodeOpen = false;
     let recoveryRequest = 0;
+    let recoveryInFlight = false;
     let recoveryController: AbortController | undefined;
     const recoverFromDisconnect = () => {
       if (disconnectEpisodeOpen) return;
@@ -274,6 +275,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       recoveryStarted = true;
       const request = recoveryRequest + 1;
       recoveryRequest = request;
+      recoveryInFlight = true;
       recoveryController?.abort();
       recoveryController = new AbortController();
       const recoverySignal = AbortSignal.any([
@@ -361,6 +363,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             state: "failed",
             message: `Could not recover current task state from the API. The last known state is still shown while the live stream reconnects. ${messageFrom(error)}`,
           });
+        })
+        .finally(() => {
+          if (recoveryRequest === request) {
+            recoveryInFlight = false;
+          }
         });
     };
 
@@ -519,7 +526,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       const current = detailsByTaskRef.current[activeTaskId];
       if (
         !shouldRefreshAuthoritativeTask(current, {
-          inFlight: authoritativeRefreshInFlight,
+          inFlight: authoritativeRefreshInFlight || recoveryInFlight,
           silentForMs: Date.now() - lastSourceActivityAt,
         })
       ) {

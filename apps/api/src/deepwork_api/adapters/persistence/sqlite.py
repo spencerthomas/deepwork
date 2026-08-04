@@ -24,6 +24,7 @@ from deepwork_api.domain import (
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
+    MAX_SOURCE_EVENT_RECEIPTS,
     MAX_TASK_OBJECTIVE_LENGTH,
     MAX_TASK_RESULT_LENGTH,
     CancellationRecord,
@@ -2011,16 +2012,29 @@ class SQLiteTaskRepository:
                 raise TaskSourceContractError
             if _decode_status(task["status"]).is_terminal:
                 raise StaleInterruptError
-            receipt = connection.execute(
+            existing_receipt = connection.execute(
                 """
-                INSERT OR IGNORE INTO task_source_event_receipts (task_id, source_event_key)
+                SELECT 1 FROM task_source_event_receipts
+                WHERE task_id = ? AND source_event_key = ?
+                """,
+                (binding.task_id, source_event_key),
+            ).fetchone()
+            if existing_receipt is not None:
+                connection.commit()
+                return None
+            receipt_count = connection.execute(
+                "SELECT COUNT(*) FROM task_source_event_receipts WHERE task_id = ?",
+                (binding.task_id,),
+            ).fetchone()[0]
+            if receipt_count >= MAX_SOURCE_EVENT_RECEIPTS:
+                raise TaskSourceContractError
+            connection.execute(
+                """
+                INSERT INTO task_source_event_receipts (task_id, source_event_key)
                 VALUES (?, ?)
                 """,
                 (binding.task_id, source_event_key),
             )
-            if receipt.rowcount == 0:
-                connection.commit()
-                return None
             event = TaskEvent(
                 event_id=self._next_event_id_sync(connection, binding.task_id),
                 name=TaskEventName.CONTENT_DELTA,

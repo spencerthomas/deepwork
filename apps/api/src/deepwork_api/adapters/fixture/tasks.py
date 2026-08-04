@@ -12,6 +12,7 @@ from deepwork_api.domain import (
     MAX_PLAN_REVISION,
     MAX_PLAN_STEP_LENGTH,
     MAX_PLAN_STEPS,
+    MAX_SOURCE_EVENT_RECEIPTS,
     CancellationRecord,
     DecisionBatchRecord,
     DecisionBatchVersionStaleError,
@@ -549,6 +550,8 @@ class InMemoryTaskRepository:
             receipts = self._source_event_receipts.setdefault(task_id, set())
             if source_event_key in receipts:
                 return None
+            if len(receipts) >= MAX_SOURCE_EVENT_RECEIPTS:
+                raise TaskSourceContractError
             if task.status.is_terminal:
                 raise StaleInterruptError
             event = TaskEvent(

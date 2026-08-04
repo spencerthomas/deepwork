@@ -11,6 +11,7 @@ from typing import Protocol
 
 from deepwork_api.domain import (
     DEFAULT_SECURITY_CONTEXT,
+    MAX_SOURCE_EVENT_RECEIPTS,
     DecisionRecord,
     DecisionValue,
     EvidenceClass,
@@ -1073,10 +1074,11 @@ class LocalAgentServerRunner:
     ) -> LocalState:
         """Rejoin a transiently unavailable active stream without losing the task."""
 
-        delay = 0.25
+        delay = min(0.25, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
+        remaining_events = [MAX_SOURCE_EVENT_RECEIPTS]
         while True:
             try:
-                return await self._follow_stream_once(task, run)
+                return await self._follow_stream_once(task, run, remaining_events)
             except TaskSourceUnavailableError:
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, _SOURCE_RECOVERY_MAX_DELAY_SECONDS)
@@ -1085,6 +1087,7 @@ class LocalAgentServerRunner:
         self,
         task: TaskSnapshot,
         run: LocalRun,
+        remaining_events: list[int],
     ) -> LocalState:
         """Consume progress while reconciling a source run that settled before join.
 
@@ -1117,6 +1120,9 @@ class LocalAgentServerRunner:
                     event = pending.result()
                 except StopAsyncIteration:
                     return await self.source.get_state(run.thread_id)
+                remaining_events[0] -= 1
+                if remaining_events[0] < 0:
+                    raise TaskSourceContractError
                 kind = getattr(event, "kind", None)
                 if kind == "error":
                     raise TaskSourceContractError

@@ -737,6 +737,58 @@ async def test_source_progress_receipt_and_event_commit_once_across_reopen(tmp_p
     await reopened.close()
 
 
+async def test_source_progress_receipts_fail_closed_at_the_retention_bound(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.adapters.persistence.sqlite.MAX_SOURCE_EVENT_RECEIPTS",
+        2,
+    )
+    repository = SQLiteTaskRepository(tmp_path / "bounded-source-receipts.sqlite")
+    task = await repository.create_task(title="Streaming", objective="Bound receipt growth")
+    await repository.bind_source_run(
+        task.task_id,
+        thread_id="source-thread-1",
+        run_id="source-run-1",
+    )
+    data: EventData = (("text", "Source progress received."),)
+
+    for key in ("a" * 64, "b" * 64):
+        assert (
+            await repository.append_source_progress(
+                task.task_id,
+                thread_id="source-thread-1",
+                run_id="source-run-1",
+                source_event_key=key,
+                data=data,
+            )
+            is not None
+        )
+    assert (
+        await repository.append_source_progress(
+            task.task_id,
+            thread_id="source-thread-1",
+            run_id="source-run-1",
+            source_event_key="a" * 64,
+            data=data,
+        )
+        is None
+    )
+    with pytest.raises(TaskSourceContractError):
+        await repository.append_source_progress(
+            task.task_id,
+            thread_id="source-thread-1",
+            run_id="source-run-1",
+            source_event_key="c" * 64,
+            data=data,
+        )
+    assert [event.name for event in await repository.events_after(task.task_id, 0)].count(
+        TaskEventName.CONTENT_DELTA
+    ) == 2
+    await repository.close()
+
+
 async def test_waiting_approval_snapshot_and_waiters_survive_reopen(tmp_path: Path) -> None:
     database = tmp_path / "tasks.sqlite"
     first = SQLiteTaskRepository(database)

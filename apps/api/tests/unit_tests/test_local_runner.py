@@ -967,6 +967,33 @@ async def test_active_stream_retries_a_transient_outage_without_duplicate_progre
 
 
 @pytest.mark.asyncio
+async def test_source_replay_scan_fails_closed_at_the_application_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "deepwork_api.application.local_runner.MAX_SOURCE_EVENT_RECEIPTS",
+        2,
+    )
+    source = _Source(
+        events=(
+            SimpleNamespace(kind="metadata"),
+            SimpleNamespace(kind="metadata"),
+            SimpleNamespace(kind="metadata"),
+        ),
+        state=_State(status="completed", final_answer="Must not publish", interrupt=None),
+    )
+    repository = InMemoryTaskRepository()
+    runner = LocalAgentServerRunner(repository, source)
+    task = await repository.create_task(title="Task", objective="Objective", run_id="run_1")
+
+    await runner._follow(task, _Run())
+
+    current = await repository.get_task(task.task_id)
+    assert current.status is TaskStatus.FAILED
+    assert current.result is None
+
+
+@pytest.mark.asyncio
 async def test_nonterminal_source_state_fails_instead_of_completing() -> None:
     repository = InMemoryTaskRepository()
     source = _Source()

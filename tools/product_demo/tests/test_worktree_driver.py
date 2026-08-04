@@ -135,6 +135,62 @@ class DriverContractTests(unittest.TestCase):
         first.stop.assert_called_once_with()
         second.stop.assert_called_once_with()
 
+    def test_failure_log_copy_does_not_follow_destination_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sandbox = Path(temporary)
+            logs = sandbox / "logs"
+            logs.mkdir()
+            (logs / "api.log").write_text("bounded diagnostics\n", encoding="utf-8")
+            evidence = sandbox / "evidence"
+            diagnostic = evidence / "failure-logs/dw-test-a"
+            diagnostic.mkdir(parents=True)
+            victim = sandbox / "victim"
+            victim.write_text("unchanged\n", encoding="utf-8")
+            (diagnostic / "api.log").symlink_to(victim)
+            stack = SimpleNamespace(logs=logs, namespace="dw-test-a")
+            with self.assertRaises(FileExistsError):
+                driver._copy_failure_logs(stack, evidence)
+            self.assertEqual(victim.read_text(encoding="utf-8"), "unchanged\n")
+
+    def test_browser_report_requires_exact_observed_schema(self) -> None:
+        diagnostics = {"browserErrors": 0, "classifiedNavigationAborts": 1}
+
+        def journey(label: str) -> dict[str, object]:
+            prompt = f"Prepare isolated product-demo result for {label}"
+            return {
+                "diagnostics": {"desktop": diagnostics, "phone": diagnostics},
+                "label": label,
+                "liveProgressObserved": True,
+                "ownStorageObserved": f"owned-by-{label}",
+                "peerStorageObserved": None,
+                "portableDownload": True,
+                "prompt": prompt,
+                "resultText": f"Objective: {prompt}\nNext actions:",
+                "retainedEventsText": "Retained events11",
+                "sourceText": "local-runner evidence",
+                "states": [
+                    "sign-in",
+                    "agent-choice",
+                    "compose",
+                    "plan-review",
+                    "approved",
+                    "running",
+                    "result",
+                    "evidence-files-trace",
+                    "reopened",
+                ],
+                "taskPath": "/tasks/task_00000001",
+                "viewports": ["1440x900", "390x844"],
+            }
+
+        report = {
+            "schemaVersion": 1,
+            "journeys": [journey("stack-a"), journey("stack-b")],
+        }
+        self.assertTrue(driver._journey_report_is_complete(report))
+        report["journeys"][0]["liveProgressObserved"] = False
+        self.assertFalse(driver._journey_report_is_complete(report))
+
 
 if __name__ == "__main__":
     unittest.main()

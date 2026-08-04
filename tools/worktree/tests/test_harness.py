@@ -18,6 +18,7 @@ sys.path.insert(0, str(WORKTREE_TOOL))
 import harness  # noqa: E402
 from isolation import ReservationStore, allocate_manifest, public_manifest  # noqa: E402
 
+
 class HarnessCommandTests(unittest.TestCase):
     def run_main(self, arguments: list[str]) -> tuple[int, dict[str, object]]:
         output = io.StringIO()
@@ -30,9 +31,7 @@ class HarnessCommandTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(output["harness"], "ready")
         self.assertFalse(output["product_demo"]["available"])
-        self.assertEqual(
-            output["spike_worktree_001"], "implemented-not-accepted"
-        )
+        self.assertEqual(output["spike_worktree_001"], "implemented-not-accepted")
 
     def test_doctor_can_fail_closed_when_product_demo_is_required(self) -> None:
         with mock.patch(
@@ -78,12 +77,20 @@ class HarnessCommandTests(unittest.TestCase):
             (root / ".git").mkdir()
             driver = root / harness.PRODUCT_DEMO_DRIVER
             driver.parent.mkdir(parents=True)
-            driver.write_text("raise SystemExit('must not execute')\n", encoding="utf-8")
+            driver.write_text(
+                "raise SystemExit('must not execute')\n", encoding="utf-8"
+            )
+            browser = root / harness.PRODUCT_DEMO_BROWSER
+            browser.write_text(
+                "throw new Error('must not execute');\n", encoding="utf-8"
+            )
             contract = {
                 "contract_version": harness.PRODUCT_DEMO_CONTRACT_VERSION,
                 "protocol": harness.PRODUCT_DEMO_PROTOCOL,
                 "driver_path": harness.PRODUCT_DEMO_DRIVER.as_posix(),
                 "driver_sha256": harness._sha256_file(driver),
+                "browser_path": harness.PRODUCT_DEMO_BROWSER.as_posix(),
+                "browser_sha256": harness._sha256_file(browser),
                 "reviewed_repository_commit": "a" * 40,
                 "components": sorted(harness.REQUIRED_PRODUCT_DEMO_COMPONENTS),
                 "credential_free": True,
@@ -92,18 +99,20 @@ class HarnessCommandTests(unittest.TestCase):
             contract_path = root / harness.PRODUCT_DEMO_CONTRACT
             contract_path.write_text(json.dumps(contract), encoding="utf-8")
             reviewed_driver = driver.read_bytes()
+            reviewed_browser = browser.read_bytes()
             reviewed_contract = contract_path.read_bytes()
 
-            def reviewed_blob(
-                _root: Path, _commit: str, relative: Path
-            ) -> bytes:
+            def reviewed_blob(_root: Path, _commit: str, relative: Path) -> bytes:
                 if relative == harness.PRODUCT_DEMO_DRIVER:
                     return reviewed_driver
+                if relative == harness.PRODUCT_DEMO_BROWSER:
+                    return reviewed_browser
                 return reviewed_contract
 
-            with mock.patch(
-                "harness._reviewed_commit_is_ancestor", return_value=True
-            ), mock.patch("harness._git_blob", side_effect=reviewed_blob):
+            with (
+                mock.patch("harness._reviewed_commit_is_ancestor", return_value=True),
+                mock.patch("harness._git_blob", side_effect=reviewed_blob),
+            ):
                 self.assertTrue(harness._driver_status(root)["available"])
                 driver.write_text("raise SystemExit('tampered')\n", encoding="utf-8")
                 status = harness._driver_status(root)
@@ -111,11 +120,22 @@ class HarnessCommandTests(unittest.TestCase):
             self.assertIn("SHA-256", status["reason"])
 
             driver.write_bytes(reviewed_driver)
+            browser.write_text("throw new Error('tampered');\n", encoding="utf-8")
+            with (
+                mock.patch("harness._reviewed_commit_is_ancestor", return_value=True),
+                mock.patch("harness._git_blob", side_effect=reviewed_blob),
+            ):
+                status = harness._driver_status(root)
+            self.assertFalse(status["available"])
+            self.assertIn("browser journey", status["reason"])
+
+            browser.write_bytes(reviewed_browser)
             contract["components"] = list(reversed(contract["components"]))
             contract_path.write_text(json.dumps(contract), encoding="utf-8")
-            with mock.patch(
-                "harness._reviewed_commit_is_ancestor", return_value=True
-            ), mock.patch("harness._git_blob", side_effect=reviewed_blob):
+            with (
+                mock.patch("harness._reviewed_commit_is_ancestor", return_value=True),
+                mock.patch("harness._git_blob", side_effect=reviewed_blob),
+            ):
                 status = harness._driver_status(root)
             self.assertFalse(status["available"])
             self.assertIn("contract semantics", status["reason"])
@@ -223,8 +243,7 @@ class HarnessCommandTests(unittest.TestCase):
             evidence_dir = Path(temporary)
             fixture = json.loads(
                 (
-                    REPOSITORY_ROOT
-                    / "internal/fixtures/worktree/blocked-exercise.json"
+                    REPOSITORY_ROOT / "internal/fixtures/worktree/blocked-exercise.json"
                 ).read_text(encoding="utf-8")
             )
             (evidence_dir / "exercise.json").write_text(
@@ -295,8 +314,7 @@ class HarnessCommandTests(unittest.TestCase):
                     "dimension": dimension,
                     "result": "not-observed",
                     "probe_id": (
-                        f"probe-{source[-1]}-{target[-1]}-"
-                        f"{dimension.replace('_', '-')}"
+                        f"probe-{source[-1]}-{target[-1]}-{dimension.replace('_', '-')}"
                     ),
                 }
                 record["result_digest"] = bound("cross-observation", record)
@@ -364,9 +382,7 @@ class HarnessCommandTests(unittest.TestCase):
                 run_nonce=evidence["run_nonce"],
                 driver_revision=evidence["driver_revision"],
                 driver_sha256=evidence["driver_sha256"],
-                contract_semantic_sha256=evidence[
-                    "contract_semantic_sha256"
-                ],
+                contract_semantic_sha256=evidence["contract_semantic_sha256"],
                 namespaces=evidence["namespaces"],
             )
             receipt = harness._build_receipt(
@@ -385,13 +401,12 @@ class HarnessCommandTests(unittest.TestCase):
                 "available": True,
                 "reviewed_repository_commit": evidence["driver_revision"],
                 "driver_sha256": evidence["driver_sha256"],
-                "contract_semantic_sha256": evidence[
-                    "contract_semantic_sha256"
-                ],
+                "contract_semantic_sha256": evidence["contract_semantic_sha256"],
             }
-            with mock.patch(
-                "harness._driver_status", return_value=driver_status
-            ), mock.patch("harness.ReservationStore", return_value=store):
+            with (
+                mock.patch("harness._driver_status", return_value=driver_status),
+                mock.patch("harness.ReservationStore", return_value=store),
+            ):
                 status, output = self.run_main(
                     [
                         "verify",
@@ -506,9 +521,7 @@ class HarnessCommandTests(unittest.TestCase):
                 run_nonce=evidence["run_nonce"],
                 driver_revision=evidence["driver_revision"],
                 driver_sha256=evidence["driver_sha256"],
-                contract_semantic_sha256=evidence[
-                    "contract_semantic_sha256"
-                ],
+                contract_semantic_sha256=evidence["contract_semantic_sha256"],
                 namespaces=evidence["namespaces"],
             )
             receipt = harness._build_receipt(
@@ -529,9 +542,7 @@ class HarnessCommandTests(unittest.TestCase):
                     "available": True,
                     "reviewed_repository_commit": evidence["driver_revision"],
                     "driver_sha256": evidence["driver_sha256"],
-                    "contract_semantic_sha256": evidence[
-                        "contract_semantic_sha256"
-                    ],
+                    "contract_semantic_sha256": evidence["contract_semantic_sha256"],
                 },
             ):
                 failures = harness._receipt_failures(

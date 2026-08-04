@@ -44,11 +44,14 @@ EXIT_INVALID = 2
 EXIT_BLOCKED = 3
 EXIT_VERIFY_FAILED = 4
 PRODUCT_DEMO_DRIVER = Path("tools/product_demo/worktree_driver.py")
+PRODUCT_DEMO_BROWSER = Path("tools/product_demo/browser_journey.mjs")
 PRODUCT_DEMO_CONTRACT = Path("tools/product_demo/worktree-driver-contract.json")
 PRODUCT_DEMO_CONTRACT_VERSION = 1
 PRODUCT_DEMO_PROTOCOL = "deepwork-dual-product-demo-v1"
 CONTRACT_KEYS = {
     "components",
+    "browser_path",
+    "browser_sha256",
     "contract_version",
     "credential_free",
     "driver_path",
@@ -288,13 +291,9 @@ def _shape_failures(value: Any, shape: dict[str, Any], context: str) -> list[str
     for field, expected in shape.items():
         nested = value.get(field)
         if isinstance(expected, dict):
-            failures.extend(
-                _shape_failures(nested, expected, f"{context}.{field}")
-            )
+            failures.extend(_shape_failures(nested, expected, f"{context}.{field}"))
         else:
-            failures.extend(
-                _type_failure(nested, expected, f"{context}.{field}")
-            )
+            failures.extend(_type_failure(nested, expected, f"{context}.{field}"))
     return failures
 
 
@@ -303,9 +302,7 @@ def _blocker_schema_failures(evidence: Any) -> list[str]:
     if failures or not isinstance(evidence, dict):
         return failures
     failures.extend(
-        _type_failure(
-            evidence.get("schema_version"), int, "blocker schema_version"
-        )
+        _type_failure(evidence.get("schema_version"), int, "blocker schema_version")
     )
     for field in (
         "acceptance",
@@ -315,9 +312,7 @@ def _blocker_schema_failures(evidence: Any) -> list[str]:
         "spike",
         "status",
     ):
-        failures.extend(
-            _type_failure(evidence.get(field), str, f"blocker {field}")
-        )
+        failures.extend(_type_failure(evidence.get(field), str, f"blocker {field}"))
     namespaces = evidence.get("namespaces")
     if not isinstance(namespaces, list) or not all(
         isinstance(namespace, str) for namespace in namespaces
@@ -330,10 +325,7 @@ def _blocker_schema_failures(evidence: Any) -> list[str]:
         failures.append("blocker reasons have invalid type")
     processes_started = evidence.get("processes_started")
     if not (
-        (
-            isinstance(processes_started, int)
-            and not isinstance(processes_started, bool)
-        )
+        (isinstance(processes_started, int) and not isinstance(processes_started, bool))
         or processes_started == "unknown"
     ):
         failures.append("blocker processes_started has invalid type")
@@ -344,9 +336,7 @@ def _blocker_schema_failures(evidence: Any) -> list[str]:
             "blocker resources_reserved",
         )
     )
-    failures.extend(
-        _type_failure(evidence.get("retryable"), bool, "blocker retryable")
-    )
+    failures.extend(_type_failure(evidence.get("retryable"), bool, "blocker retryable"))
     context = evidence.get("recovery_context")
     if context is not None:
         failures.extend(
@@ -379,7 +369,9 @@ def _product_schema_failures(evidence: Any) -> list[str]:
         "status",
     ):
         failures.extend(_type_failure(evidence.get(field), str, field))
-    failures.extend(_type_failure(evidence.get("schema_version"), int, "schema_version"))
+    failures.extend(
+        _type_failure(evidence.get("schema_version"), int, "schema_version")
+    )
     if not isinstance(evidence.get("namespaces"), list):
         failures.append("namespaces must be a list")
     if not isinstance(evidence.get("manifests"), list):
@@ -387,9 +379,7 @@ def _product_schema_failures(evidence: Any) -> list[str]:
     else:
         for index, manifest in enumerate(evidence["manifests"]):
             failures.extend(
-                _shape_failures(
-                    manifest, PUBLIC_MANIFEST_SCHEMA, f"manifest[{index}]"
-                )
+                _shape_failures(manifest, PUBLIC_MANIFEST_SCHEMA, f"manifest[{index}]")
             )
             failures.extend(
                 _exact_keys(manifest, PUBLIC_MANIFEST_KEYS, f"manifest[{index}]")
@@ -428,9 +418,7 @@ def _product_schema_failures(evidence: Any) -> list[str]:
                 if isinstance(ports, dict):
                     for name, port in ports.items():
                         failures.extend(
-                            _type_failure(
-                                port, int, f"manifest[{index}].ports.{name}"
-                            )
+                            _type_failure(port, int, f"manifest[{index}].ports.{name}")
                         )
                 failures.extend(
                     _exact_keys(
@@ -578,9 +566,7 @@ def _product_schema_failures(evidence: Any) -> list[str]:
                     )
                 )
                 failures.extend(
-                    _type_failure(
-                        record.get("order"), int, f"teardown[{index}].order"
-                    )
+                    _type_failure(record.get("order"), int, f"teardown[{index}].order")
                 )
                 for name in ("peer_survived_after", "reservation_absent"):
                     failures.extend(
@@ -718,11 +704,14 @@ def _driver_status(root: Path) -> dict[str, Any]:
         }
     contract_path = root / PRODUCT_DEMO_CONTRACT
     driver = root / PRODUCT_DEMO_DRIVER
+    browser = root / PRODUCT_DEMO_BROWSER
     if (
         not contract_path.is_file()
         or contract_path.is_symlink()
         or not driver.is_file()
         or driver.is_symlink()
+        or not browser.is_file()
+        or browser.is_symlink()
     ):
         return {
             "available": False,
@@ -740,7 +729,10 @@ def _driver_status(root: Path) -> dict[str, Any]:
     if not isinstance(contract, dict):
         return {"available": False, "reason": "static driver contract is not an object"}
     if set(contract) != CONTRACT_KEYS:
-        return {"available": False, "reason": "static driver contract schema is not exact"}
+        return {
+            "available": False,
+            "reason": "static driver contract schema is not exact",
+        }
     raw_components = contract.get("components")
     if not isinstance(raw_components, list) or not all(
         isinstance(component, str) for component in raw_components
@@ -753,6 +745,8 @@ def _driver_status(root: Path) -> dict[str, Any]:
         return {"available": False, "reason": "unsupported driver protocol"}
     if contract.get("driver_path") != PRODUCT_DEMO_DRIVER.as_posix():
         return {"available": False, "reason": "driver contract path is not canonical"}
+    if contract.get("browser_path") != PRODUCT_DEMO_BROWSER.as_posix():
+        return {"available": False, "reason": "browser contract path is not canonical"}
     missing = sorted(REQUIRED_PRODUCT_DEMO_COMPONENTS.difference(components))
     if missing:
         return {
@@ -767,7 +761,18 @@ def _driver_status(root: Path) -> dict[str, Any]:
     if not isinstance(driver_sha256, str) or not SHA256_RE.fullmatch(driver_sha256):
         return {"available": False, "reason": "driver SHA-256 pin is invalid"}
     if not secrets.compare_digest(_sha256_file(driver), driver_sha256):
-        return {"available": False, "reason": "driver content does not match static SHA-256 pin"}
+        return {
+            "available": False,
+            "reason": "driver content does not match static SHA-256 pin",
+        }
+    browser_sha256 = contract.get("browser_sha256")
+    if not isinstance(browser_sha256, str) or not SHA256_RE.fullmatch(browser_sha256):
+        return {"available": False, "reason": "browser SHA-256 pin is invalid"}
+    if not secrets.compare_digest(_sha256_file(browser), browser_sha256):
+        return {
+            "available": False,
+            "reason": "browser journey content does not match static SHA-256 pin",
+        }
     reviewed_commit = contract.get("reviewed_repository_commit")
     if not isinstance(reviewed_commit, str) or not _reviewed_commit_is_ancestor(
         root, reviewed_commit
@@ -777,18 +782,36 @@ def _driver_status(root: Path) -> dict[str, Any]:
             "reason": "reviewed repository commit is invalid or not an ancestor",
         }
     reviewed_driver = _git_blob(root, reviewed_commit, PRODUCT_DEMO_DRIVER)
+    reviewed_browser = _git_blob(root, reviewed_commit, PRODUCT_DEMO_BROWSER)
     reviewed_contract_raw = _git_blob(root, reviewed_commit, PRODUCT_DEMO_CONTRACT)
-    if reviewed_driver is None or reviewed_contract_raw is None:
+    if (
+        reviewed_driver is None
+        or reviewed_browser is None
+        or reviewed_contract_raw is None
+    ):
         return {
             "available": False,
-            "reason": "reviewed commit lacks immutable driver or contract blobs",
+            "reason": "reviewed commit lacks immutable driver, browser, or contract blobs",
         }
-    if not secrets.compare_digest(
-        hashlib.sha256(reviewed_driver).hexdigest(), driver_sha256
-    ) or reviewed_driver != driver.read_bytes():
+    if (
+        not secrets.compare_digest(
+            hashlib.sha256(reviewed_driver).hexdigest(), driver_sha256
+        )
+        or reviewed_driver != driver.read_bytes()
+    ):
         return {
             "available": False,
             "reason": "current driver does not match immutable reviewed Git blob",
+        }
+    if (
+        not secrets.compare_digest(
+            hashlib.sha256(reviewed_browser).hexdigest(), browser_sha256
+        )
+        or reviewed_browser != browser.read_bytes()
+    ):
+        return {
+            "available": False,
+            "reason": "current browser journey does not match immutable reviewed Git blob",
         }
     try:
         reviewed_contract = json.loads(reviewed_contract_raw.decode("utf-8"))
@@ -808,6 +831,7 @@ def _driver_status(root: Path) -> dict[str, Any]:
         "available": True,
         "reason": "static-contract-ready",
         "driver_sha256": driver_sha256,
+        "browser_sha256": browser_sha256,
         "reviewed_repository_commit": reviewed_commit,
         "contract_semantic_sha256": contract_semantic_sha256,
         "protocol": PRODUCT_DEMO_PROTOCOL,
@@ -953,9 +977,7 @@ def self_test(args: argparse.Namespace) -> int:
             first_teardown.state == "released"
             and second_teardown.state == "already-absent"
         ),
-        "cleanup_verified": (
-            final_teardown.state == "released" and cleanup_verified
-        ),
+        "cleanup_verified": (final_teardown.state == "released" and cleanup_verified),
     }
     if not all(checks.values()):
         raise IsolationError("synthetic self-test failed")
@@ -1005,8 +1027,7 @@ def self_test(args: argparse.Namespace) -> int:
     if not all(isinstance(value, bool) for value in evidence["checks"].values()):
         raise EvidenceError("self-test checks must be booleans")
     if not all(
-        isinstance(value, bool)
-        for value in evidence["dimension_comparison"].values()
+        isinstance(value, bool) for value in evidence["dimension_comparison"].values()
     ):
         raise EvidenceError("self-test dimensions must be booleans")
     if not all(isinstance(value, str) for value in evidence["namespaces"]):
@@ -1076,9 +1097,7 @@ def _cleanup_evidence_failures(
     driver_sha256: str,
     contract_semantic_sha256: str,
 ) -> list[str]:
-    failures = _exact_keys(
-        evidence, CLEANUP_EVIDENCE_KEYS, "recovery cleanup evidence"
-    )
+    failures = _exact_keys(evidence, CLEANUP_EVIDENCE_KEYS, "recovery cleanup evidence")
     if failures or not isinstance(evidence, dict):
         return failures
     for field in (
@@ -1159,8 +1178,7 @@ def _cleanup_evidence_failures(
             )
         )
         if not isinstance(record.get("resources_absent"), list) or not all(
-            isinstance(resource, str)
-            for resource in record.get("resources_absent", ())
+            isinstance(resource, str) for resource in record.get("resources_absent", ())
         ):
             failures.append(
                 f"cleanup record[{index}].resources_absent has invalid type"
@@ -1170,9 +1188,7 @@ def _cleanup_evidence_failures(
         if set(record.get("resources_absent", ())) != TEARDOWN_RESOURCES:
             failures.append("cleanup resource absence matrix is incomplete")
         payload = {
-            key: value
-            for key, value in record.items()
-            if key != "cleanup_digest"
+            key: value for key, value in record.items() if key != "cleanup_digest"
         }
         expected_digest = _bound_digest(
             kind="recovery-cleanup",
@@ -1181,9 +1197,9 @@ def _cleanup_evidence_failures(
             driver_revision=driver_revision,
             driver_sha256=driver_sha256,
         )
-        if not isinstance(record.get("cleanup_digest"), str) or not secrets.compare_digest(
-            record["cleanup_digest"], expected_digest
-        ):
+        if not isinstance(
+            record.get("cleanup_digest"), str
+        ) or not secrets.compare_digest(record["cleanup_digest"], expected_digest):
             failures.append("cleanup digest does not bind cleanup record")
     return failures
 
@@ -1432,6 +1448,7 @@ def exercise(args: argparse.Namespace) -> int:
     peer_status = statuses["peer"]
     if (
         root_status["driver_sha256"] != peer_status["driver_sha256"]
+        or root_status["browser_sha256"] != peer_status["browser_sha256"]
         or root_status["reviewed_repository_commit"]
         != peer_status["reviewed_repository_commit"]
     ):
@@ -1455,6 +1472,7 @@ def exercise(args: argparse.Namespace) -> int:
     run_nonce = secrets.token_hex(16)
     driver_revision = root_status["reviewed_repository_commit"]
     driver_sha256 = root_status["driver_sha256"]
+    browser_sha256 = root_status["browser_sha256"]
     contract_semantic_sha256 = root_status["contract_semantic_sha256"]
     manifest_a = allocate_manifest(
         root=root,
@@ -1536,6 +1554,8 @@ def exercise(args: argparse.Namespace) -> int:
         driver_revision,
         "--driver-sha256",
         driver_sha256,
+        "--browser-sha256",
+        browser_sha256,
         "--contract-semantic-sha256",
         contract_semantic_sha256,
     ]
@@ -1627,8 +1647,7 @@ def exercise(args: argparse.Namespace) -> int:
         evidence.get("run_nonce") == run_nonce
         and evidence.get("driver_revision") == driver_revision
         and evidence.get("driver_sha256") == driver_sha256
-        and evidence.get("contract_semantic_sha256")
-        == contract_semantic_sha256
+        and evidence.get("contract_semantic_sha256") == contract_semantic_sha256
         and evidence.get("namespaces") == [namespace_a, namespace_b]
         and evidence.get("manifests")
         == [public_manifest(manifest_a), public_manifest(manifest_b)]
@@ -1701,9 +1720,7 @@ def exercise(args: argparse.Namespace) -> int:
     for record in evidence["teardown"]:
         record["reservation_absent"] = True
         payload = {
-            key: nested
-            for key, nested in record.items()
-            if key != "cleanup_digest"
+            key: nested for key, nested in record.items() if key != "cleanup_digest"
         }
         record["cleanup_digest"] = _bound_digest(
             kind="cleanup",
@@ -1718,7 +1735,9 @@ def exercise(args: argparse.Namespace) -> int:
         require_clean_teardown=True,
     )
     if final_failures:
-        raise EvidenceError("final product-demo evidence failed after reservation release")
+        raise EvidenceError(
+            "final product-demo evidence failed after reservation release"
+        )
     write_evidence(evidence_path, evidence)
     receipt = _build_receipt(
         evidence=evidence,
@@ -1793,12 +1812,15 @@ def recover(args: argparse.Namespace) -> int:
         "reviewed_repository_commit",
     ):
         context_field = (
-            "driver_revision"
-            if field == "reviewed_repository_commit"
-            else field
+            "driver_revision" if field == "reviewed_repository_commit" else field
         )
-        if primary[field] != context[context_field] or statuses[1][field] != primary[field]:
-            raise IsolationError("recovery context does not match immutable driver provenance")
+        if (
+            primary[field] != context[context_field]
+            or statuses[1][field] != primary[field]
+        ):
+            raise IsolationError(
+                "recovery context does not match immutable driver provenance"
+            )
     store = ReservationStore()
     if store.release_pair_pending(release_id=context["run_nonce"]):
         try:
@@ -1843,7 +1865,11 @@ def recover(args: argparse.Namespace) -> int:
         evidence_dir=evidence_dir,
         namespace_a=namespace_a,
         namespace_b=namespace_b,
-        reasons=["reviewed recovery retry completed" if cleaned else "reviewed recovery retry failed"],
+        reasons=[
+            "reviewed recovery retry completed"
+            if cleaned
+            else "reviewed recovery retry failed"
+        ],
         processes_started=0 if cleaned else "unknown",
         resources_reserved=resources_reserved,
         recovery="cleanup-proven" if cleaned else "reservation-retained",
@@ -1942,9 +1968,7 @@ def _receipt_failures(
         "receipt_hmac",
         "run_nonce",
     ):
-        failures.extend(
-            _type_failure(receipt.get(field), str, f"receipt {field}")
-        )
+        failures.extend(_type_failure(receipt.get(field), str, f"receipt {field}"))
     if not isinstance(receipt.get("namespaces"), list) or not all(
         isinstance(namespace, str) for namespace in receipt.get("namespaces", ())
     ):
@@ -1968,20 +1992,15 @@ def _receipt_failures(
                     f"harness receipt reservation_release[{index}] has invalid types"
                 )
         if any(
-            not isinstance(record, dict)
-            or record.get("state") != "released"
+            not isinstance(record, dict) or record.get("state") != "released"
             for record in release
         ):
             failures.append("harness receipt does not prove reservation release")
         released_namespaces = {
-            record.get("namespace")
-            for record in release
-            if isinstance(record, dict)
+            record.get("namespace") for record in release if isinstance(record, dict)
         }
         if released_namespaces != set(receipt.get("namespaces", ())):
-            failures.append(
-                "harness receipt releases do not match evidence namespaces"
-            )
+            failures.append("harness receipt releases do not match evidence namespaces")
     try:
         evidence_sha256 = _sha256_file(evidence_dir / "exercise.json")
     except OSError:
@@ -2012,18 +2031,13 @@ def _receipt_failures(
             "run_nonce": evidence.get("run_nonce"),
             "driver_revision": evidence.get("driver_revision"),
             "driver_sha256": evidence.get("driver_sha256"),
-            "contract_semantic_sha256": evidence.get(
-                "contract_semantic_sha256"
-            ),
+            "contract_semantic_sha256": evidence.get("contract_semantic_sha256"),
             "namespaces": evidence.get("namespaces"),
         }
         if any(
-            authority.get(field) != value
-            for field, value in authority_fields.items()
+            authority.get(field) != value for field, value in authority_fields.items()
         ):
-            failures.append(
-                "private harness receipt authority does not match evidence"
-            )
+            failures.append("private harness receipt authority does not match evidence")
         receipt_hmac = receipt.get("receipt_hmac")
         unsigned = {
             key: value for key, value in receipt.items() if key != "receipt_hmac"
@@ -2054,9 +2068,7 @@ def _receipt_failures(
         }
         for receipt_field, status_field in provenance.items():
             if receipt.get(receipt_field) != driver_status.get(status_field):
-                failures.append(
-                    f"harness receipt provenance mismatch: {receipt_field}"
-                )
+                failures.append(f"harness receipt provenance mismatch: {receipt_field}")
     return failures
 
 
@@ -2118,9 +2130,8 @@ def _product_demo_failures(
         failures.append("reviewed driver SHA-256 is absent or invalid")
         driver_sha256 = ""
     contract_semantic_sha256 = evidence.get("contract_semantic_sha256")
-    if (
-        not isinstance(contract_semantic_sha256, str)
-        or not SHA256_RE.fullmatch(contract_semantic_sha256)
+    if not isinstance(contract_semantic_sha256, str) or not SHA256_RE.fullmatch(
+        contract_semantic_sha256
     ):
         failures.append("reviewed contract semantic SHA-256 is absent or invalid")
 
@@ -2222,13 +2233,14 @@ def _allocation_digest_failures(
     if not isinstance(digests, dict):
         return ["allocation digest map is absent"]
     if not all(
-        isinstance(manifest, dict)
-        and isinstance(manifest.get("namespace"), str)
+        isinstance(manifest, dict) and isinstance(manifest.get("namespace"), str)
         for manifest in manifests
     ):
         return ["allocation manifests cannot be digested"]
     expected_namespaces = {
-        manifest.get("namespace") for manifest in manifests if isinstance(manifest, dict)
+        manifest.get("namespace")
+        for manifest in manifests
+        if isinstance(manifest, dict)
     }
     if set(digests) != expected_namespaces:
         return ["allocation digest map does not match manifests"]
@@ -2247,9 +2259,7 @@ def _allocation_digest_failures(
     return []
 
 
-def _public_manifest_failures(
-    manifests: list[Any], namespaces: list[str]
-) -> list[str]:
+def _public_manifest_failures(manifests: list[Any], namespaces: list[str]) -> list[str]:
     failures: list[str] = []
     if not all(isinstance(manifest, dict) for manifest in manifests):
         return ["public manifests must be objects"]
@@ -2374,7 +2384,9 @@ def _cross_observation_failures(
         digest = record.get("result_digest")
         if not isinstance(probe_id, str) or not SYNTHETIC_ID_RE.fullmatch(probe_id):
             return ["cross-observation probe id is invalid"]
-        payload = {key: nested for key, nested in record.items() if key != "result_digest"}
+        payload = {
+            key: nested for key, nested in record.items() if key != "result_digest"
+        }
         expected_digest = _bound_digest(
             kind="cross-observation",
             payload=payload,
@@ -2427,7 +2439,9 @@ def _restart_failures(
         ):
             return ["restart did not record a new process identity"]
         digest = record.get("restart_digest")
-        payload = {key: nested for key, nested in record.items() if key != "restart_digest"}
+        payload = {
+            key: nested for key, nested in record.items() if key != "restart_digest"
+        }
         expected_digest = _bound_digest(
             kind="restart",
             payload=payload,
@@ -2469,7 +2483,9 @@ def _teardown_failures(
         if require_reservation_absent and record.get("reservation_absent") is not True:
             return ["reservation cleanup proof is absent"]
         digest = record.get("cleanup_digest")
-        payload = {key: nested for key, nested in record.items() if key != "cleanup_digest"}
+        payload = {
+            key: nested for key, nested in record.items() if key != "cleanup_digest"
+        }
         expected_digest = _bound_digest(
             kind="cleanup",
             payload=payload,

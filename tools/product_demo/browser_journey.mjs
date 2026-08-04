@@ -8,6 +8,12 @@ function monitorPage(page, label, origin) {
   const failures = [];
   const navigationAborts = [];
   page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (["http:", "https:"].includes(url.protocol) && url.hostname !== "127.0.0.1") {
+      failures.push(`external-network: ${request.method()} ${url.origin}${url.pathname}`);
+    }
+  });
   page.on("console", (message) => {
     if (message.type() === "error") failures.push(`console: ${message.text()}`);
   });
@@ -157,6 +163,10 @@ async function completeJourney(browser, config) {
     ownKey: config.ownStorageKey,
     label: config.label,
   });
+  const ownStorageObserved = await page.evaluate(
+    (ownKey) => localStorage.getItem(ownKey),
+    config.ownStorageKey,
+  );
   const peerStorageObserved = await page.evaluate(
     (peerKey) => localStorage.getItem(peerKey),
     config.peerStorageKey,
@@ -205,6 +215,7 @@ async function completeJourney(browser, config) {
     portableDownload: true,
     liveProgressObserved: true,
     diagnostics: { desktop: desktopDiagnostics, phone: phoneDiagnostics },
+    ownStorageObserved,
     peerStorageObserved,
     states: [
       "sign-in",

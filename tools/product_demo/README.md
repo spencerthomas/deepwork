@@ -7,7 +7,7 @@ cluster, task/settings stores, worker, object service, telemetry service, browse
 origin, logs and proof artifacts.
 
 The contract is deliberately sealed in two commits. The candidate commit contains
-the exact reviewed driver bytes; its descendant seal changes only
+the exact reviewed driver and browser-oracle bytes; its descendant seal changes only
 `reviewed_repository_commit` in `worktree-driver-contract.json`. The canonical
 entry point is always `tools/worktree/harness.py exercise`; running the driver
 directly does not create an acceptance receipt.

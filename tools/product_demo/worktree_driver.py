@@ -234,6 +234,12 @@ def _write_private_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
+def _read_bounded_json(path: Path, *, maximum_bytes: int) -> Any:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > maximum_bytes:
+        raise DriverError(f"JSON artifact is absent, linked, or oversized: {path.name}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
@@ -346,7 +352,21 @@ class OwnedProcess:
     name: str
     process: subprocess.Popen[bytes]
     log_file: Any
-    command_marker: str
+    command_identity: str
+
+
+def _process_command_identity(pid: int) -> str:
+    result = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "command="],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=3,
+    )
+    identity = result.stdout.strip()
+    if result.returncode != 0 or not identity:
+        raise DriverError("started process identity could not be recorded")
+    return identity
 
 
 @dataclass
@@ -546,11 +566,19 @@ class Stack:
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+        try:
+            command_identity = _process_command_identity(process.pid)
+        except DriverError:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+            log_file.close()
+            raise
         owned = OwnedProcess(
             name=name,
             process=process,
             log_file=log_file,
-            command_marker=str(command[0]),
+            command_identity=command_identity,
         )
         self.processes.append(owned)
         self._persist_state()
@@ -563,7 +591,7 @@ class Stack:
                 {
                     "name": item.name,
                     "pid": item.process.pid,
-                    "marker": item.command_marker,
+                    "identity": item.command_identity,
                 }
                 for item in self.processes
                 if item.process.poll() is None
@@ -1063,7 +1091,11 @@ def _probe_isolation(
         if item["label"]
         == ("stack-a" if source.access_key == ACCESS_KEYS[0] else "stack-b")
     )
-    checks["browser_storage"] = journey.get("peerStorageObserved") is None
+    checks["browser_storage"] = (
+        journey.get("ownStorageObserved")
+        == f"owned-by-{'stack-a' if source.access_key == ACCESS_KEYS[0] else 'stack-b'}"
+        and journey.get("peerStorageObserved") is None
+    )
     own_status, own_telemetry = _request_json(
         f"http://127.0.0.1:{source.ports['telemetry']}/events?namespace={urllib.parse.quote(source.namespace)}"
     )
@@ -1147,6 +1179,169 @@ def _browser_command(
     return command
 
 
+def _assert_browser_digest(root: Path, peer: Path, expected_sha256: str) -> None:
+    if not SHA_RE.fullmatch(expected_sha256):
+        raise DriverError("browser journey digest input is invalid")
+    for candidate_root in (root, peer):
+        browser = candidate_root / "tools/product_demo/browser_journey.mjs"
+        if browser.is_symlink() or not browser.is_file():
+            raise DriverError("sealed browser journey is absent or linked")
+        if _sha256_bytes(browser.read_bytes()) != expected_sha256:
+            raise DriverError("sealed browser journey digest changed before execution")
+
+
+def _prepare_browser_evidence(evidence_dir: Path) -> Path:
+    if evidence_dir.is_symlink() or not evidence_dir.is_dir():
+        raise DriverError("product-demo evidence directory is unsafe")
+    for output in (
+        evidence_dir / "exercise.json",
+        evidence_dir / "product-demo-summary.json",
+    ):
+        if output.exists() or output.is_symlink():
+            raise DriverError("product-demo evidence output already exists")
+    browser_root = evidence_dir / "browser"
+    if browser_root.exists() or browser_root.is_symlink():
+        raise DriverError("browser evidence output already exists")
+    browser_root.mkdir(mode=0o700)
+    for label in ("stack-a", "stack-b"):
+        (browser_root / label).mkdir(mode=0o700)
+    return browser_root
+
+
+def _validate_browser_images(browser_root: Path) -> None:
+    expected = {
+        f"{label}/{name}.png"
+        for label in ("stack-a", "stack-b")
+        for name in (
+            "desktop-completed",
+            "phone-reopened",
+            "reopened-after-api-restart-desktop",
+            "reopened-after-api-restart-phone",
+        )
+    }
+    for relative in expected:
+        image = browser_root / relative
+        if (
+            image.is_symlink()
+            or not image.is_file()
+            or not 0 < image.stat().st_size <= 20 * 1024 * 1024
+        ):
+            raise DriverError(
+                f"browser screenshot is absent, linked, or invalid: {relative}"
+            )
+
+
+def _browser_diagnostics_are_clean(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"browserErrors", "classifiedNavigationAborts"}
+        and value.get("browserErrors") == 0
+        and isinstance(value.get("classifiedNavigationAborts"), int)
+        and value["classifiedNavigationAborts"] >= 0
+    )
+
+
+def _journey_report_is_complete(report: Any) -> bool:
+    if not isinstance(report, dict) or set(report) != {"schemaVersion", "journeys"}:
+        return False
+    journeys = report.get("journeys")
+    expected_keys = {
+        "diagnostics",
+        "label",
+        "liveProgressObserved",
+        "ownStorageObserved",
+        "peerStorageObserved",
+        "portableDownload",
+        "prompt",
+        "resultText",
+        "retainedEventsText",
+        "sourceText",
+        "states",
+        "taskPath",
+        "viewports",
+    }
+    expected_states = [
+        "sign-in",
+        "agent-choice",
+        "compose",
+        "plan-review",
+        "approved",
+        "running",
+        "result",
+        "evidence-files-trace",
+        "reopened",
+    ]
+    if report.get("schemaVersion") != 1 or not isinstance(journeys, list):
+        return False
+    if [item.get("label") for item in journeys if isinstance(item, dict)] != [
+        "stack-a",
+        "stack-b",
+    ]:
+        return False
+    for journey in journeys:
+        if not isinstance(journey, dict) or set(journey) != expected_keys:
+            return False
+        label = journey["label"]
+        prompt = f"Prepare isolated product-demo result for {label}"
+        diagnostics = journey.get("diagnostics")
+        if (
+            not isinstance(journey.get("taskPath"), str)
+            or not re.fullmatch(r"/tasks/task_[0-9]{8}", journey["taskPath"])
+            or journey.get("prompt") != prompt
+            or not isinstance(journey.get("resultText"), str)
+            or f"Objective: {prompt}" not in journey["resultText"]
+            or "Next actions:" not in journey["resultText"]
+            or not isinstance(journey.get("sourceText"), str)
+            or "local-runner" not in journey["sourceText"]
+            or not isinstance(journey.get("retainedEventsText"), str)
+            or not re.search(r"[1-9][0-9]*", journey["retainedEventsText"])
+            or journey.get("portableDownload") is not True
+            or journey.get("liveProgressObserved") is not True
+            or journey.get("ownStorageObserved") != f"owned-by-{label}"
+            or journey.get("peerStorageObserved") is not None
+            or journey.get("states") != expected_states
+            or journey.get("viewports") != ["1440x900", "390x844"]
+            or not isinstance(diagnostics, dict)
+            or set(diagnostics) != {"desktop", "phone"}
+            or not all(
+                _browser_diagnostics_are_clean(diagnostics.get(viewport))
+                for viewport in ("desktop", "phone")
+            )
+        ):
+            return False
+    return True
+
+
+def _reopen_report_is_complete(report: Any, task_paths: tuple[str, str]) -> bool:
+    if not isinstance(report, dict) or set(report) != {"schemaVersion", "reopened"}:
+        return False
+    reopened = report.get("reopened")
+    if report.get("schemaVersion") != 1 or not isinstance(reopened, list):
+        return False
+    expected = [
+        ("stack-a", task_paths[0], "1440x900"),
+        ("stack-a", task_paths[0], "390x844"),
+        ("stack-b", task_paths[1], "1440x900"),
+        ("stack-b", task_paths[1], "390x844"),
+    ]
+    observed: list[tuple[str, str, str]] = []
+    for item in reopened:
+        if not isinstance(item, dict) or set(item) != {
+            "diagnostics",
+            "label",
+            "reopenedAfterApiRestart",
+            "taskPath",
+            "viewport",
+        }:
+            return False
+        observed.append((item["label"], item["taskPath"], item["viewport"]))
+        if item.get(
+            "reopenedAfterApiRestart"
+        ) is not True or not _browser_diagnostics_are_clean(item.get("diagnostics")):
+            return False
+    return observed == expected
+
+
 def _validate_invocation(args: argparse.Namespace) -> tuple[Path, Path, Path]:
     root = canonical_root(args.root)
     peer = canonical_root(args.peer_root)
@@ -1164,21 +1359,47 @@ def _validate_invocation(args: argparse.Namespace) -> tuple[Path, Path, Path]:
     actual = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if actual != args.driver_sha256:
         raise DriverError("invoked driver bytes do not match the sealed digest")
+    if args.command == "dual-exercise":
+        _assert_browser_digest(root, peer, args.browser_sha256)
     return root, peer, evidence
 
 
 def _copy_failure_logs(stack: Stack, evidence_dir: Path) -> None:
     if not stack.logs.is_dir():
         return
-    diagnostic_dir = evidence_dir / "failure-logs" / stack.namespace
-    diagnostic_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if evidence_dir.is_symlink() or not evidence_dir.is_dir():
+        raise DriverError("diagnostic evidence root is unsafe")
+    failure_root = evidence_dir / "failure-logs"
+    if failure_root.exists():
+        if failure_root.is_symlink() or not failure_root.is_dir():
+            raise DriverError("diagnostic failure root is unsafe")
+    else:
+        failure_root.mkdir(mode=0o700)
+    diagnostic_dir = failure_root / stack.namespace
+    if diagnostic_dir.exists():
+        if diagnostic_dir.is_symlink() or not diagnostic_dir.is_dir():
+            raise DriverError("diagnostic namespace directory is unsafe")
+    else:
+        diagnostic_dir.mkdir(mode=0o700)
     for log in stack.logs.glob("*.log"):
         if (
             log.is_file()
             and not log.is_symlink()
             and log.stat().st_size <= 2 * 1024 * 1024
         ):
-            shutil.copy2(log, diagnostic_dir / log.name)
+            destination = diagnostic_dir / log.name
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(destination, flags, 0o600)
+            try:
+                with (
+                    log.open("rb") as source,
+                    os.fdopen(descriptor, "wb", closefd=False) as target,
+                ):
+                    shutil.copyfileobj(source, target, length=64 * 1024)
+            finally:
+                os.close(descriptor)
 
 
 def _cleanup_remaining(
@@ -1218,7 +1439,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
         Stack(root, manifest_a, ACCESS_KEYS[0], node, api_bin, postgres_bins),
         Stack(peer, manifest_b, ACCESS_KEYS[1], node, api_bin, postgres_bins),
     )
-    browser_root = evidence_dir / "browser"
+    browser_root = _prepare_browser_evidence(evidence_dir)
     browser_report_path = browser_root / "journeys.json"
     reopen_report_path = browser_root / "reopen.json"
     cleaned: set[str] = set()
@@ -1254,6 +1475,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
         }
         for stack in stacks:
             _write_proof_marker(stack, job_ids_by_namespace[stack.namespace])
+        _assert_browser_digest(root, peer, args.browser_sha256)
         subprocess.run(
             _browser_command(root, node, browser_report_path, stacks),
             cwd=root,
@@ -1261,27 +1483,10 @@ def dual_exercise(args: argparse.Namespace) -> int:
             check=True,
             timeout=180,
         )
-        browser_report = json.loads(browser_report_path.read_text(encoding="utf-8"))
-        if (
-            not isinstance(browser_report, dict)
-            or not isinstance(browser_report.get("journeys"), list)
-            or len(browser_report.get("journeys", [])) != 2
-            or not all(
-                isinstance(journey, dict)
-                for journey in browser_report.get("journeys", [])
-            )
-            or any(
-                not journey.get("liveProgressObserved")
-                or not journey.get("portableDownload")
-                or not isinstance(journey.get("resultText"), str)
-                or not isinstance(journey.get("prompt"), str)
-                or journey.get("prompt") not in journey.get("resultText", "")
-                or not isinstance(journey.get("sourceText"), str)
-                or not journey.get("sourceText")
-                or not isinstance(journey.get("retainedEventsText"), str)
-                for journey in browser_report.get("journeys", [])
-            )
-        ):
+        browser_report = _read_bounded_json(
+            browser_report_path, maximum_bytes=512 * 1024
+        )
+        if not _journey_report_is_complete(browser_report):
             raise DriverError("browser journey report is incomplete")
         isolation = {
             (source.namespace, target.namespace): _probe_isolation(
@@ -1300,6 +1505,7 @@ def dual_exercise(args: argparse.Namespace) -> int:
         ):
             raise DriverError("one or more cross-stack isolation probes failed")
         task_paths = tuple(item["taskPath"] for item in browser_report["journeys"])
+        _assert_browser_digest(root, peer, args.browser_sha256)
         subprocess.run(
             _browser_command(root, node, reopen_report_path, stacks, reopen=task_paths),
             cwd=root,
@@ -1307,26 +1513,12 @@ def dual_exercise(args: argparse.Namespace) -> int:
             check=True,
             timeout=120,
         )
-        reopen_report = json.loads(reopen_report_path.read_text(encoding="utf-8"))
-        reopened = reopen_report.get("reopened", [])
-        if (
-            len(reopened) != 4
-            or {
-                (item.get("label"), item.get("viewport"))
-                for item in reopened
-                if isinstance(item, dict)
-            }
-            != {
-                ("stack-a", "1440x900"),
-                ("stack-a", "390x844"),
-                ("stack-b", "1440x900"),
-                ("stack-b", "390x844"),
-            }
-            or not all(item.get("reopenedAfterApiRestart") for item in reopened)
-        ):
+        reopen_report = _read_bounded_json(reopen_report_path, maximum_bytes=512 * 1024)
+        if not _reopen_report_is_complete(reopen_report, task_paths):
             raise DriverError(
                 "desktop and phone fresh-browser reopen after API restart were not proven"
             )
+        _validate_browser_images(browser_root)
 
         public = [public_manifest(manifest_a), public_manifest(manifest_b)]
         allocation_digests = {
@@ -1490,8 +1682,8 @@ def _recover_stack(root: Path, manifest: dict[str, Any], pg_ctl: Path) -> bool:
             verified = False
             continue
         pid = record.get("pid")
-        marker = record.get("marker")
-        if not isinstance(pid, int) or pid <= 1 or not isinstance(marker, str):
+        identity = record.get("identity")
+        if not isinstance(pid, int) or pid <= 1 or not isinstance(identity, str):
             verified = False
             continue
         try:
@@ -1505,7 +1697,7 @@ def _recover_stack(root: Path, manifest: dict[str, Any], pg_ctl: Path) -> bool:
                 text=True,
                 timeout=3,
             ).stdout
-            if marker not in command or (
+            if command.strip() != identity or (
                 str(root) not in command and "worktree_driver.py" not in command
             ):
                 verified = False
@@ -1632,6 +1824,8 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--driver-revision", required=True)
         command.add_argument("--driver-sha256", required=True)
         command.add_argument("--contract-semantic-sha256", required=True)
+        if name == "dual-exercise":
+            command.add_argument("--browser-sha256", required=True)
         if name == "cleanup":
             command.add_argument("--recovery-reason", required=True)
     return parser

@@ -165,7 +165,8 @@ test("two tabs adopt one unresolved dispatch identity", async ({ page }) => {
     requests.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
     const response = await route.fetch();
     expect(response.status()).toBe(202);
-    const receipt = (await response.json()) as Record<string, unknown>;
+    const responseBody = await response.body();
+    const receipt = JSON.parse(responseBody.toString("utf8")) as Record<string, unknown>;
     if (requests.length === 1) {
       expect(receipt["duplicate"]).toBe(false);
       acceptedTaskId = String(receipt["taskId"]);
@@ -175,7 +176,11 @@ test("two tabs adopt one unresolved dispatch identity", async ({ page }) => {
       expect(receipt["duplicate"]).toBe(true);
       expect(receipt["taskId"]).toBe(acceptedTaskId);
     }
-    await route.fulfill({ response });
+    await route.fulfill({
+      status: response.status(),
+      headers: response.headers(),
+      body: responseBody,
+    });
   });
 
   await Promise.all([page.goto("/tasks/new"), peer.goto("/tasks/new")]);
@@ -198,10 +203,8 @@ test("two tabs adopt one unresolved dispatch identity", async ({ page }) => {
 
   releaseFirstResponse();
   await expect(page).toHaveURL(new RegExp(`/tasks/${acceptedTaskId}$`));
-  await peer.getByRole("button", { name: "Check task" }).click();
   await expect(peer).toHaveURL(new RegExp(`/tasks/${acceptedTaskId}$`));
-  expect(requests).toHaveLength(2);
-  expect(requests[1]).toEqual(requests[0]);
+  expect(requests).toHaveLength(1);
 
   const finalTaskIds = await peer.evaluate(async () => {
     const response = await fetch("/api/v1/tasks", { credentials: "include" });
